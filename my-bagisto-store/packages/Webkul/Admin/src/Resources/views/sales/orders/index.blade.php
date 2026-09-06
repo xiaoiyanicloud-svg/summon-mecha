@@ -42,7 +42,7 @@
 
     <div class="mb-2 flex flex-wrap items-center gap-2 px-1">
         <a
-            href="{{ url()->current() }}"
+            href="{{ url()->current() }}?order_type="
             class="rounded-full px-4 py-1.5 text-sm font-medium transition-all {{ empty($activeType) ? 'bg-blue-600 text-white shadow' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300' }}"
         >全部</a>
 
@@ -55,6 +55,38 @@
     </div>
 
     <v-customer-search ref="selectCustomerComponent"></v-customer-search>
+
+    <script>
+        // 页签导航后清理 datagrid 在 localStorage 里的过期状态:
+        // 组件 boot() 会还原上次浏览的分页页码/筛选芯片,与页签的 order_type 参数叠加会得出空列表。
+        // 此脚本在 Vue 挂载前执行:重置回第 1 页,并移除面板里与页签冲突的 order_type 芯片。
+        (function () {
+            if (window.location.search.indexOf('order_type=') === -1) return;
+
+            let datagrids = JSON.parse(localStorage.getItem('datagrids') || '[]');
+
+            datagrids = datagrids.map(function (d) {
+                if (d.src && d.src.indexOf('/admin/sales/orders') !== -1) {
+                    d.applied = d.applied || {};
+
+                    d.applied.pagination = {
+                        page: 1,
+                        perPage: (d.applied.pagination && d.applied.pagination.perPage) || 10,
+                    };
+
+                    if (d.applied.filters && Array.isArray(d.applied.filters.columns)) {
+                        d.applied.filters.columns = d.applied.filters.columns.filter(function (c) {
+                            return c.index !== 'order_type';
+                        });
+                    }
+                }
+
+                return d;
+            });
+
+            localStorage.setItem('datagrids', JSON.stringify(datagrids));
+        })();
+    </script>
 
     <x-admin::datagrid :src="route('admin.sales.orders.index')" :isMultiRow="true">
         <template #header="{
