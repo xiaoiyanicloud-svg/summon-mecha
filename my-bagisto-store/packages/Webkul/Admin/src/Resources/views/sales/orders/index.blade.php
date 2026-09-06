@@ -27,6 +27,33 @@
         </div>
     </div>
 
+    <!-- 订单类型快捷页签:一键按 定制/租用/购买/方案/技能/配件 筛选(后端按 ?order_type= 过滤,与过滤面板等效) -->
+    @php
+        $orderTypes = [
+            'rent'      => '租用',
+            'buy'       => '购买',
+            'plan'      => '方案',
+            'custom'    => '定制',
+            'skill'     => '技能',
+            'accessory' => '配件',
+        ];
+        $activeType = request('order_type');
+    @endphp
+
+    <div class="mb-2 flex flex-wrap items-center gap-2 px-1">
+        <a
+            href="{{ url()->current() }}"
+            class="rounded-full px-4 py-1.5 text-sm font-medium transition-all {{ empty($activeType) ? 'bg-blue-600 text-white shadow' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300' }}"
+        >全部</a>
+
+        @foreach ($orderTypes as $typeKey => $typeLabel)
+            <a
+                href="{{ url()->current() }}?order_type={{ $typeKey }}"
+                class="rounded-full px-4 py-1.5 text-sm font-medium transition-all {{ $activeType === $typeKey ? 'bg-blue-600 text-white shadow' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300' }}"
+            >{{ $typeLabel }}</a>
+        @endforeach
+    </div>
+
     <v-customer-search ref="selectCustomerComponent"></v-customer-search>
 
     <x-admin::datagrid :src="route('admin.sales.orders.index')" :isMultiRow="true">

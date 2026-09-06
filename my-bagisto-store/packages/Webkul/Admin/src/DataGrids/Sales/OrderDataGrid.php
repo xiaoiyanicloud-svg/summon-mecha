@@ -48,6 +48,11 @@ class OrderDataGrid extends DataGrid
         $this->addFilter('created_at', 'orders.created_at');
         $this->addFilter('order_type', 'orders.order_type');
 
+        // 快捷页签(?order_type=xx)过滤:与过滤面板的类型筛选等效,页签是独立入口
+        if ($orderType = request()->input('order_type')) {
+            $queryBuilder->where('orders.order_type', $orderType);
+        }
+
         return $queryBuilder;
     }
 
