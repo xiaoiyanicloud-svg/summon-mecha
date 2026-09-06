@@ -121,14 +121,14 @@ class OrderController extends APIController
             ->first();
 
         if (! $order) {
-            return new JsonResource([
+            return response()->json([
                 'success' => false,
                 'message' => '订单不存在。',
             ]);
         }
 
         if ($order->status !== 'pending') {
-            return new JsonResource([
+            return response()->json([
                 'success' => false,
                 'message' => '仅待处理订单可自助取消，请联系客服。',
             ]);
@@ -137,7 +137,7 @@ class OrderController extends APIController
         $order->status = 'canceled';
         $order->save();
 
-        return new JsonResource([
+        return response()->json([
             'success' => true,
             'message' => '订单已取消。',
             'status'  => 'canceled',

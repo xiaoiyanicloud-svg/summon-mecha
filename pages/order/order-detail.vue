@@ -251,7 +251,12 @@ import { TOKEN_KEY } from '@/utils/config'
 						orderApi.cancelOrder(id)
 							.then((r) => {
 								uni.showToast({ title: (r && r.message) || '订单已取消', icon: 'success' })
-								this.loadOrder(id)
+								// 本地同步状态,不等缓存刷新
+								if (this.order) {
+									this.order.status = 'cancelled'
+									this.order.statusText = '已取消'
+									this.order.statusClass = 'cancelled'
+								}
 							})
 							.catch((err) => uni.showToast({ title: (err && err.message) || '取消失败', icon: 'none' }))
 					}
