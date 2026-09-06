@@ -32,9 +32,14 @@ class TobOrderController extends APIController
     public function store(Request $request): JsonResponse
     {
         \Illuminate\Support\Facades\Log::debug('TOB_INPUT', $request->all());
+
+        $type = (string) $request->input('type');
+        $isCustom = $type === 'custom';
+
         $request->validate([
             // product_id 必须指向后台真实存在的商品,否则订单无法关联商品(会破坏后台订单页渲染)
-            'product_id' => 'required|integer|exists:products,id',
+            // 例外:custom 定制线索无商品 → 后端自动挂到锚点商品(sku=LEAD-CUSTOM)
+            'product_id' => ($isCustom ? 'nullable' : 'required').'|integer|exists:products,id',
             'qty'        => 'required|integer|min:1',
             'type'       => 'required|in:rent,buy,plan,custom',
             'name'         => 'required|string',
@@ -42,12 +47,23 @@ class TobOrderController extends APIController
             'sku'          => 'nullable|string',
             'price'      => 'nullable|numeric',
             'phone'      => 'required|string',
-            'city'       => 'required|string',
-            'address'    => 'required|string',
+            'city'       => ($isCustom ? 'nullable' : 'required').'|string',
+            'address'    => ($isCustom ? 'nullable' : 'required').'|string',
         ]);
 
         try {
-            $product = $this->productRepository->with('parent')->findOrFail($request->input('product_id'));
+            if ($request->input('product_id')) {
+                $product = $this->productRepository->with('parent')->findOrFail($request->input('product_id'));
+            } else {
+                // 定制线索:挂到锚点商品(后台需存在 sku=LEAD-CUSTOM 的商品,如「定制咨询线索」)
+                $product = $this->productRepository->findByField('sku', 'LEAD-CUSTOM')->first();
+                if (! $product) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => '缺少线索锚点商品:请在后台创建 sku 为 LEAD-CUSTOM 的商品',
+                    ], 422);
+                }
+            }
 
             $customer = auth()->guard('customer')->user();
             $channel = core()->getCurrentChannel();
@@ -73,6 +89,12 @@ class TobOrderController extends APIController
             $pName = $product ? $product->name : (string) $request->input('product_name', (string) $request->input('name', ''));
             $pType = $product ? $product->type : 'simple';
 
+            // 定制线索:金额恒为 0(线索不是销售),条目标题用前端传入的线索名(而非锚点商品名)
+            if ($isCustom) {
+                $unitPrice = 0;
+                $pName = (string) $request->input('product_name', '定制咨询');
+            }
+
             // 租用按天计价(一条订单项 = 一台机器人 × 租用天数)
             $linePrice = $type === 'rent' ? $unitPrice * $days : $unitPrice;
             $total = $linePrice * $qty;
@@ -84,14 +106,26 @@ class TobOrderController extends APIController
                 $itemName .= $rentPeriod ? '（租期'.$rentPeriod.'）' : '（'.$days.'天）';
             }
 
+            // 定制线索:公司/微信/需求拼进条目名,后台订单列表直接可见,无需点开详情
+            if ($isCustom) {
+                $extra = collect([
+                    $request->input('company') ? '公司：'.$request->input('company') : '',
+                    $request->input('wechat') ? '微信：'.$request->input('wechat') : '',
+                    $request->input('demand') ? '需求：'.mb_substr((string) $request->input('demand'), 0, 80) : '',
+                ])->filter()->implode('｜');
+                if ($extra !== '') {
+                    $itemName .= '（'.mb_substr($extra, 0, 160).'）';
+                }
+            }
+
             $email = $customer?->email ?? $request->input('email', 'guest@example.com');
             [$firstName, $lastName] = $this->splitName((string) $request->input('name'));
 
             $address = [
-                'address1'   => $request->input('address'),
+                'address1'   => $request->input('address', $isCustom ? '定制咨询(无交付地址)' : ''),
                 'country'    => $request->input('country', 'CN'),
                 'state'      => $request->input('state', ''),
-                'city'       => $request->input('city'),
+                'city'       => $request->input('city', $isCustom ? '定制咨询' : ''),
                 'postcode'   => $request->input('postcode', '100000'),
                 'phone'      => $request->input('phone'),
                 'email'      => $email,
