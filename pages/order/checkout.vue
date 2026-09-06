@@ -467,7 +467,8 @@ export default {
           product_name: this.product.name,
           price: parseFloat(String(this.product.price).replace(/,/g, '')) || 0,
           qty: this.qty,
-          type: this.product.type === 'rent' ? 'rent' : (this.product.type === 'plan' ? 'plan' : 'buy'),
+          // 类型白名单透传:rent/plan/custom/skill/accessory 按实际类型落库(修复 custom/技能/配件 被吞成 buy)
+          type: ['rent', 'plan', 'custom', 'skill', 'accessory'].includes(this.product.type) ? this.product.type : 'buy',
           phone: v.phone,
           city: v.city,
           address: v.address,

@@ -920,7 +920,7 @@ export default {
         this.showDetail = false
         this.selectedProduct = null
         this.fromHome = false
-        this.buyNow(product)
+        this.goCheckout(product, 'accessory')
         return
       }
       if (type === 'skill') {
@@ -928,7 +928,7 @@ export default {
         this.showDetail = false
         this.selectedProduct = null
         this.fromHome = false
-        this.buyNow(product)
+        this.goCheckout(product, 'skill')
         return
       }
     },
