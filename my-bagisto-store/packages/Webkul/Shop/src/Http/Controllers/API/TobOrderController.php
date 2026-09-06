@@ -41,7 +41,7 @@ class TobOrderController extends APIController
             // 例外:custom 定制线索无商品 → 后端自动挂到锚点商品(sku=LEAD-CUSTOM)
             'product_id' => ($isCustom ? 'nullable' : 'required').'|integer|exists:products,id',
             'qty'        => 'required|integer|min:1',
-            'type'       => 'required|in:rent,buy,plan,custom',
+            'type'       => 'required|in:rent,buy,plan,custom,skill,accessory',
             'name'         => 'required|string',
             'product_name' => 'nullable|string',
             'sku'          => 'nullable|string',
@@ -100,7 +100,7 @@ class TobOrderController extends APIController
             $total = $linePrice * $qty;
 
             // 条目名称:类型 + 租期,后台一眼可见
-            $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制'];
+            $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制', 'skill' => '技能', 'accessory' => '配件'];
             $itemName = $pName.'【'.($typeLabels[$type] ?? '购买').'】';
             if ($type === 'rent') {
                 $itemName .= $rentPeriod ? '（租期'.$rentPeriod.'）' : '（'.$days.'天）';
@@ -134,6 +134,8 @@ class TobOrderController extends APIController
             ];
 
             $data = [
+                // 订单类型(后台 order_type 列,分类筛选用):rent/buy/plan/custom/skill/accessory
+                'order_type'            => $type,
                 'customer_id'           => $customer?->id,
                 'customer_type'         => $customer ? get_class($customer) : null,
                 'customer_email'        => $email,
