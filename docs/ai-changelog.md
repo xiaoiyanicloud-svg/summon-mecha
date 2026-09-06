@@ -22,6 +22,17 @@
 
 ## 变更记录
 
+### [T2-1] 2026-09-06 · 留资管道：三处假表单接真实后端 + 品牌筛选修复
+- 提交：c3169da（后端）+ 本条前端提交
+- 后端（TobOrderController）：custom 类型免 product_id/免地址，自动挂锚点商品（sku=LEAD-CUSTOM，**需在后台创建**，缺失时返回 422 明确提示）；线索金额恒为 0；公司/微信/需求拼进订单条目名，后台订单列表直接可见。已实测 422 提示正确。
+- 前端三处真实提交（均走 tob-order type=custom）：
+  1. 首页「我要定制」弹窗 submitCustom
+  2. fangan 方案页「免费定制方案」→ 新留资表单弹窗 + 成功页（含企微活码占位，标记 [WECOM_QR]，待运营替换图片）
+  3. 机器人库「企业部署咨询」submitEnterprise（本地 storage 备份保留，含 synced 标记）
+- 品牌筛选修复：mapCatalogProduct 的 brand/type 从写死 'all' 改为按商品名关键词推断（detectBrandKey/detectTypeKey，v1）；未识别回退 'all' 恒显示。后续应迁移为后台商品属性驱动。
+- 待办（用户操作）：后台创建 sku=LEAD-CUSTOM 的商品（名称如「定制咨询线索」，价格 0），否则留资提交会收到 422 提示。
+- 回滚：`git revert c3169da <本提交>` 或用 `.claude/backup/T2-lead/` 覆盖。
+
 ### [T1-1] 2026-09-06 · 机器页性能：前端缓存
 - 提交：c8bfdde
 - 文件：`pages/robot/index.vue`、`components/jiqi/changjing.vue`

@@ -502,7 +502,7 @@
 <script>
 import Jineng from '@/components/jiqi/jineng.vue'
 import Peijian from '@/components/jiqi/peijian.vue'
-import { cartApi, productApi, categoryApi, catalogApi } from '@/utils/api'
+import { cartApi, productApi, categoryApi, catalogApi, tobOrderApi } from '@/utils/api'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing.vue'
 import { enrichWithProductImages } from '@/utils/productImage'
 import { BASE_URL } from '@/utils/config'
@@ -656,6 +656,32 @@ function fixDescUrls(html) {
     return `<img${a} width="100%" style="height:auto;display:block;max-width:100%">`
   })
   return out
+}
+
+// ===== 品牌/类别推断(v1:按商品名关键词,后台建品用规范命名即可被侧栏筛选识别;识别不出回退 'all' 恒显示) =====
+function detectBrandKey(name) {
+  const n = String(name || '')
+  const table = [
+    ['宇树', 'yushu'], ['智元', 'zhiyuan'], ['优必选', 'youbixuan'], ['众擎', 'zhongqing'],
+    ['乐聚', 'leju'], ['银河', 'galaxy'], ['加速进化', 'engine'], ['傅利叶', 'fourier'],
+    ['小米', 'xiaomi'], ['Figure', 'figure'], ['大疆', 'dajiang'], ['擎朗', 'qinglang'],
+    ['普渡', 'pudu'], ['高仙', 'gaoxian'], ['云迹', 'yunjii'], ['埃斯顿', 'estun'],
+    ['汇川', 'inovance'], ['新松', 'siasun'], ['埃夫特', 'efort'], ['节卡', 'jaka'],
+  ]
+  for (const [kw, key] of table) { if (n.includes(kw)) return key }
+  return 'all'
+}
+function detectTypeKey(name) {
+  const n = String(name || '')
+  if (/人形|仿生|humanoid|Walker|远征|CyberOne|Figure/i.test(n)) return 'humanoid'
+  if (/四足|机器狗|Go1|Go2|CyberDog|绝影/i.test(n)) return 'quadruped'
+  if (/配送|送餐|传菜|欢乐送|贝拉|闪电|T3|T5/i.test(n)) return 'delivery'
+  if (/清洁|扫地|洗地|高仙/i.test(n)) return 'cleaning'
+  if (/迎宾|接待|讲解|导览|Cruzr/i.test(n)) return 'reception'
+  if (/巡检|巡逻|巡查|M300|M30T|无人机/i.test(n)) return 'inspection'
+  if (/机械臂|机械手|ER\d|IR\d|SR\d/i.test(n)) return 'arm'
+  if (/陪伴|教育|Aelos|Roban/i.test(n)) return 'companion'
+  return 'all'
 }
 
 // ===== 目录缓存(模块级,5 分钟 TTL):onShow 频繁触发不再全量重拉,切回本页秒开 =====
@@ -1069,7 +1095,7 @@ export default {
     closeEnterpriseModal() {
       this.showEnterpriseModal = false
     },
-    submitEnterprise() {
+    async submitEnterprise() {
       const { mode, identity, name, phone, company } = this.enterpriseForm
       if (!mode) { uni.showToast({ title: '请选择意向类型', icon: 'none' }); return }
       if (!identity) { uni.showToast({ title: '请选择您的身份', icon: 'none' }); return }
@@ -1077,7 +1103,25 @@ export default {
       if (!phone || phone.length < 11) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
       if (identity === 'enterprise' && !company.trim()) { uni.showToast({ title: '请输入公司名称', icon: 'none' }); return }
 
-      // 保存企业咨询线索（本地），供后台/商务跟进
+      // 真实提交:线索走 tob-order(type=custom) → 后台订单列表可见;本地 storage 同步备份,接口失败也不丢线索
+      let submitted = true
+      try {
+        const res = await tobOrderApi.create({
+          type: 'custom',
+          product_name: '企业部署咨询·' + (mode === 'rent' ? '租用' : '购买') + (identity === 'enterprise' ? '·企业' : '·个人'),
+          name: name.trim(),
+          phone,
+          wechat: this.enterpriseForm.wechat,
+          company,
+          demand: this.enterpriseForm.demand,
+          qty: 1,
+        })
+        if (!res || !res.success) throw new Error((res && res.message) || '提交失败')
+      } catch (e) {
+        submitted = false
+      }
+
+      // 保存企业咨询线索（本地备份），供后台/商务跟进
       const list = uni.getStorageSync('enterpriseConsultList') || []
       list.unshift({
         id: Date.now(),
@@ -1088,11 +1132,12 @@ export default {
         wechat: this.enterpriseForm.wechat,
         company,
         demand: this.enterpriseForm.demand,
+        synced: submitted,
         time: new Date().toLocaleString('zh-CN', { hour12: false })
       })
       uni.setStorageSync('enterpriseConsultList', list)
 
-      uni.showToast({ title: '已提交，企业顾问将尽快联系您', icon: 'success' })
+      uni.showToast({ title: submitted ? '已提交，企业顾问将尽快联系您' : '网络异常，已记录，企业顾问将联系您', icon: submitted ? 'success' : 'none' })
       this.closeEnterpriseModal()
       this.enterpriseForm = {
         mode: this.currentTab === 'rent' ? 'rent' : 'buy',
@@ -1220,8 +1265,9 @@ export default {
         bagistoId: p.id,
         bagistoPrice: num,
         bagistoDescription: fixDescUrls(p.description || ''),
-        brand: 'all',
-        type: 'all',
+        // v1:品牌/类别按商品名推断(见 detectBrandKey/detectTypeKey);后续迁移为后台商品属性驱动
+        brand: detectBrandKey(p.name),
+        type: detectTypeKey(p.name),
       }
     }
   },

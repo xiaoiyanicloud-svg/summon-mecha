@@ -167,6 +167,7 @@
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import EcoCenter from '@/components/EcoCenter.vue';
 import { sceneProducts, loadBackendScenes } from '@/components/jiqi/changjing.vue';
+import { tobOrderApi } from '@/utils/api';
 
 	export default {
 		components: {
@@ -249,15 +250,30 @@ import { sceneProducts, loadBackendScenes } from '@/components/jiqi/changjing.vu
 			closeCustomModal() {
 				this.showCustomModal = false;
 			},
-			submitCustom() {
-				const { identity, name, phone, company } = this.customForm;
+			async submitCustom() {
+				const { identity, name, phone, company, wechat, demand } = this.customForm;
 				if (!identity) { uni.showToast({ title: '请选择您的身份', icon: 'none' }); return; }
 				if (!name.trim()) { uni.showToast({ title: '请输入联系人姓名', icon: 'none' }); return; }
 				if (!phone || phone.length < 11) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return; }
 				if (identity === 'enterprise' && !company.trim()) { uni.showToast({ title: '请输入公司名称', icon: 'none' }); return; }
-				uni.showToast({ title: '已提交，专家将1小时内联系您', icon: 'success' });
-				this.closeCustomModal();
-				this.customForm = { identity: 'enterprise', name: '', phone: '', wechat: '', company: '', demand: '' };
+				// 真实提交:线索走 tob-order(type=custom),后台订单列表可见
+				let submitted = true;
+				try {
+					const res = await tobOrderApi.create({
+						type: 'custom',
+						product_name: '首页定制咨询·' + (identity === 'enterprise' ? '企业' : '个人'),
+						name: name.trim(), phone, wechat, company, demand,
+						qty: 1,
+					});
+					if (!res || !res.success) throw new Error((res && res.message) || '提交失败');
+				} catch (e) {
+					submitted = false;
+				}
+				uni.showToast({ title: submitted ? '已提交，专家将1小时内联系您' : '网络异常，请稍后重试', icon: submitted ? 'success' : 'none' });
+				if (submitted) {
+					this.closeCustomModal();
+					this.customForm = { identity: 'enterprise', name: '', phone: '', wechat: '', company: '', demand: '' };
+				}
 			},
 			handleTouchStart() {
 				this.autoplayEnabled = false;

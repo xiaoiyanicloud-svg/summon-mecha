@@ -136,11 +136,38 @@
       <view style="height: 160rpx;"></view>
     </scroll-view>
 
+    <!-- ===== 免费定制方案 · 留资弹窗 ===== -->
+    <view class="lead-mask" v-if="showLeadForm" @tap="closeLeadForm">
+      <view class="lead-modal" @tap.stop>
+        <view class="lead-title">免费定制「{{ leadSchemeTitle }}」方案</view>
+        <view class="lead-sub">留下联系方式，方案专家将在 1 小时内联系您</view>
+        <input class="lead-input" v-model="leadForm.name" placeholder="联系人姓名" />
+        <input class="lead-input" v-model="leadForm.phone" type="number" maxlength="11" placeholder="手机号" />
+        <textarea class="lead-textarea" v-model="leadForm.demand" placeholder="补充需求（选填）：时间 / 数量 / 城市" />
+        <view class="lead-submit" @tap="submitLead">提交</view>
+      </view>
+    </view>
+
+    <!-- ===== 提交成功页（含企微活码占位） ===== -->
+    <view class="lead-mask" v-if="showLeadSuccess" @tap="closeLeadSuccess">
+      <view class="lead-modal" @tap.stop>
+        <view class="lead-success-icon">✅</view>
+        <view class="lead-title-sm">已收到您的需求</view>
+        <view class="lead-sub">方案专家将在 1 小时内联系您</view>
+        <view class="lead-qr-box">
+          <!-- [WECOM_QR] 企微活码占位：上线前把活码图片放 static/ 并替换此块为 image 标签 -->
+          <text class="lead-qr-text">企微咨询码（占位）</text>
+        </view>
+        <view class="lead-qr-tip">想立刻聊？微信扫码添加方案专家</view>
+        <view class="lead-close" @tap="closeLeadSuccess">知道了</view>
+      </view>
+    </view>
+
   </view>
 </template>
 
 <script>
-import { sceneApi, categoryApi, productApi } from '@/utils/api'
+import { sceneApi, categoryApi, productApi, tobOrderApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
 import { SCENE_SCHEMES, SCHEME_DB, DEFAULT_SCHEME, sceneProducts } from '@/components/jiqi/changjing.vue'
 
@@ -177,6 +204,11 @@ export default {
       // 适用机器（后台配置的目录租用产品 id + 拉取的产品列表）
       sceneRobots: [],
       rentCatalog: [],
+      // 免费定制方案 · 留资弹窗/成功页
+      showLeadForm: false,
+      showLeadSuccess: false,
+      leadSchemeTitle: '',
+      leadForm: { name: '', phone: '', demand: '' },
       // 分页加载
       page: 1,
       pageSize: 10,
@@ -350,12 +382,37 @@ export default {
       uni.showToast({ title: `查看案例：${item.title}`, icon: 'none' })
     },
     onConsult() {
-      uni.showModal({
-        title: '免费定制方案',
-        content: `方案专家将在 1 小时内联系您\n为您定制「${this.scheme.title || this.sceneInfo.name}」专属方案`,
-        confirmText: '好的',
-        showCancel: false
-      })
+      this.leadSchemeTitle = this.scheme.title || this.sceneInfo.name || '专属'
+      this.leadForm = { name: '', phone: '', demand: '' }
+      this.showLeadForm = true
+    },
+    closeLeadForm() {
+      this.showLeadForm = false
+    },
+    closeLeadSuccess() {
+      this.showLeadSuccess = false
+    },
+    // 真实提交:线索走 tob-order(type=custom) → 后台订单列表可见;成功后展示企微码成功页
+    async submitLead() {
+      const { name, phone, demand } = this.leadForm
+      if (!name.trim()) { uni.showToast({ title: '请输入联系人姓名', icon: 'none' }); return }
+      if (!phone || phone.length < 11) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
+      try {
+        const res = await tobOrderApi.create({
+          type: 'custom',
+          product_name: '方案定制·' + this.leadSchemeTitle,
+          name: name.trim(),
+          phone,
+          demand,
+          qty: 1,
+        })
+        if (!res || !res.success) throw new Error((res && res.message) || '提交失败')
+      } catch (e) {
+        uni.showToast({ title: e.message || '网络异常，请稍后重试', icon: 'none' })
+        return
+      }
+      this.showLeadForm = false
+      this.showLeadSuccess = true
     }
   }
 }
@@ -701,4 +758,18 @@ page {
   box-shadow: 0 10rpx 24rpx rgba(30, 111, 255, 0.3);
 }
 .custom-cta:active { opacity: 0.85; }
+/* ===== 留资弹窗 / 成功页 ===== */
+.lead-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
+.lead-modal { width: 600rpx; background: #fff; border-radius: 24rpx; padding: 40rpx 36rpx; box-sizing: border-box; }
+.lead-title { font-size: 34rpx; font-weight: 700; color: #1F2937; line-height: 1.4; }
+.lead-sub { font-size: 24rpx; color: #6B7280; margin: 12rpx 0 24rpx; }
+.lead-input { height: 84rpx; border: 1px solid #E5E7EB; border-radius: 14rpx; padding: 0 22rpx; font-size: 28rpx; margin-bottom: 18rpx; background: #F8FAFC; }
+.lead-textarea { width: 100%; height: 140rpx; border: 1px solid #E5E7EB; border-radius: 14rpx; padding: 18rpx 22rpx; font-size: 26rpx; margin-bottom: 24rpx; background: #F8FAFC; box-sizing: border-box; }
+.lead-submit { height: 88rpx; line-height: 88rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 44rpx; }
+.lead-success-icon { font-size: 72rpx; text-align: center; margin-bottom: 8rpx; }
+.lead-title-sm { font-size: 34rpx; font-weight: 700; color: #1F2937; text-align: center; }
+.lead-qr-box { width: 300rpx; height: 300rpx; margin: 28rpx auto 12rpx; border: 2rpx dashed #94A3B8; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; background: #F8FAFC; }
+.lead-qr-text { font-size: 24rpx; color: #94A3B8; text-align: center; }
+.lead-qr-tip { font-size: 22rpx; color: #6B7280; text-align: center; margin-bottom: 28rpx; }
+.lead-close { height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 40rpx; border: 1px solid #CBD5E1; color: #475569; font-size: 28rpx; }
 </style>
