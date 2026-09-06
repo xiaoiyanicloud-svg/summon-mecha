@@ -11,8 +11,30 @@
     </view>
 
     <scroll-view class="checkout-scroll" scroll-y="true" show-scrollbar="false">
-      <!-- ===== 商品信息卡 ===== -->
-      <view class="product-card">
+      <!-- ===== 多机合单商品清单（场景租用一次选多台） ===== -->
+      <view class="info-card" v-if="multiItems.length">
+        <view class="multi-item" v-for="(it, idx) in multiItems" :key="idx">
+          <view class="multi-img" :style="{ backgroundColor: it.bg || '#F0F4FA' }">
+            <image v-if="it.image" class="multi-img-img" :src="it.image" mode="aspectFill"></image>
+            <text v-else class="multi-icon">{{ it.icon || '🤖' }}</text>
+          </view>
+          <view class="multi-info">
+            <text class="multi-name">{{ it.name }}</text>
+            <text class="multi-scene">{{ it.scene || '场景租用' }}</text>
+          </view>
+          <view class="multi-price-box">
+            <text class="multi-price">¥{{ it.price }}</text>
+            <text class="multi-unit">/天</text>
+          </view>
+        </view>
+        <view class="rent-info-row">
+          <text class="rent-info-label">合计</text>
+          <text class="rent-info-value">¥{{ formatMoney(productTotal) }}（{{ multiItems.length }}台 × {{ rentDays }}天）</text>
+        </view>
+      </view>
+
+      <!-- ===== 商品信息卡（单商品模式） ===== -->
+      <view class="product-card" v-if="!multiItems.length">
         <view class="product-image" :style="{ backgroundColor: product.bg }">
           <image v-if="product.image" class="product-img" :src="product.image" mode="aspectFill"></image>
           <text v-else class="product-icon">{{ product.icon }}</text>
@@ -187,6 +209,9 @@ export default {
       qty: 1,
       intentMode: false,
       submitting: false,
+      // 多机合单(场景租用):items 非空时走多商品模式,全场共用租期
+      multiItems: [],
+      rentDays: 1,
       form: {
         name: '',
         phone: '',
@@ -214,6 +239,11 @@ export default {
 
   computed: {
     productTotal() {
+      // 多机合单:Σ(每台日租价) × 共用租期天数
+      if (this.multiItems.length) {
+        const perDay = this.multiItems.reduce((sum, it) => sum + (parseFloat(String(it.price).replace(/,/g, '')) || 0), 0)
+        return perDay * this.rentDays
+      }
       const price = parseFloat(String(this.product.price).replace(/,/g, '')) || 0
       return price * this.qty
     },
@@ -243,6 +273,14 @@ export default {
       from: q.from || '',
     }
     if (q.qty) this.qty = Number(q.qty) || 1
+
+    // 多机合单(场景租用):items=JSON 数组,全场共用租期(rent_days)
+    if (q.items) {
+      let rawItems = q.items
+      try { rawItems = decodeURIComponent(rawItems) } catch (e) {}
+      try { this.multiItems = JSON.parse(rawItems) || [] } catch (e) { this.multiItems = [] }
+      this.rentDays = Number(q.rent_days) || 1
+    }
 
     // 租用信息（产品类型 + 租期 + 起止日期）
     this.product.productType = q.productType ? decodeURIComponent(q.productType) : ''
@@ -481,6 +519,18 @@ export default {
           rentPeriod: this.product.type === 'rent' ? this.product.rentPeriod : '',
           startDate: this.product.type === 'rent' ? this.product.startDate : '',
           endDate: this.product.type === 'rent' ? this.product.endDate : '',
+        }
+        // 多机合单:整包 items[],后端按行计价建单(共用租期)
+        if (this.multiItems.length) {
+          payload.items = this.multiItems.map(it => ({
+            product_id: it.bagistoId || it.id,
+            qty: 1,
+            price: parseFloat(String(it.price).replace(/,/g, '')) || 0,
+            rent_days: this.rentDays,
+          }))
+          delete payload.product_id
+          delete payload.price
+          delete payload.qty
         }
         const res = await tobOrderApi.create(payload)
         this.syncAddressToMine()
@@ -1103,4 +1153,17 @@ export default {
 }
 .submit-btn:active { opacity: 0.85; }
 .submit-btn.disabled { opacity: 0.6; pointer-events: none; }
+
+/* ===== 多机合单商品清单 ===== */
+.multi-item { display: flex; align-items: center; gap: 16rpx; padding: 14rpx 0; border-bottom: 1px solid #F1F5F9; }
+.multi-item:last-of-type { border-bottom: none; }
+.multi-img { width: 88rpx; height: 88rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+.multi-img-img { width: 100%; height: 100%; }
+.multi-icon { font-size: 44rpx; }
+.multi-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.multi-name { font-size: 28rpx; font-weight: 600; color: #1F2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multi-scene { font-size: 22rpx; color: #6B7280; }
+.multi-price-box { display: flex; align-items: baseline; flex-shrink: 0; }
+.multi-price { font-size: 30rpx; font-weight: 700; color: #165DFF; }
+.multi-unit { font-size: 22rpx; color: #6B7280; }
 </style>

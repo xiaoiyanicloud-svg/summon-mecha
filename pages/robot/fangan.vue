@@ -50,7 +50,7 @@
         <view class="product-section">
           <text class="section-title">适用机型</text>
           <view class="product-grid">
-            <view class="product-card" v-for="(item, idx) in filteredProducts" :key="idx" @tap="goProductDetail(item)">
+            <view class="product-card" :class="{ selected: isMachineSelected(item) }" v-for="(item, idx) in filteredProducts" :key="idx" @tap="goProductDetail(item)">
               <view class="product-image" :style="{ backgroundColor: item.bg || '#F0F4FA' }">
                 <image v-if="item.image" class="product-image-img" :src="item.image" mode="aspectFill"></image>
                 <text v-else class="product-icon">{{ item.icon || '🤖' }}</text>
@@ -62,6 +62,10 @@
                   <text class="price">¥{{ item.price }}</text>
                   <text class="unit" v-if="item.unit">{{ item.unit }}</text>
                 </view>
+              </view>
+              <!-- 多机合单:选择/取消,不触发卡片跳详情 -->
+              <view class="product-select-btn" @tap.stop="toggleMachine(item)">
+                <text>{{ isMachineSelected(item) ? '✓' : '＋' }}</text>
               </view>
             </view>
           </view>
@@ -136,6 +140,24 @@
       <view style="height: 160rpx;"></view>
     </scroll-view>
 
+    <!-- ===== 多机合单底部结算栏 ===== -->
+    <view class="scene-cart-bar" v-if="selectedMachines.length > 0">
+      <view class="scene-cart-row">
+        <text class="scene-cart-count">已选 {{ selectedMachines.length }} 台</text>
+        <view class="scene-cart-days">
+          <text
+            class="day-chip"
+            :class="{ active: rentDays === d }"
+            v-for="d in rentDayOptions"
+            :key="d"
+            @tap="rentDays = d"
+          >{{ d }}天</text>
+        </view>
+        <text class="scene-cart-total">¥{{ sceneTotal() }}</text>
+      </view>
+      <view class="scene-cart-submit" @tap="submitSceneOrder">立即下单</view>
+    </view>
+
     <!-- ===== 免费定制方案 · 留资弹窗 ===== -->
     <view class="lead-mask" v-if="showLeadForm" @tap="closeLeadForm">
       <view class="lead-modal" @tap.stop>
@@ -209,6 +231,10 @@ export default {
       showLeadSuccess: false,
       leadSchemeTitle: '',
       leadForm: { name: '', phone: '', demand: '' },
+      // 场景租用多机合单:已选机器 + 全场统一租期(天)
+      selectedMachines: [],
+      rentDays: 1,
+      rentDayOptions: [1, 3, 7, 30],
       // 分页加载
       page: 1,
       pageSize: 10,
@@ -382,6 +408,40 @@ export default {
     viewCase(item) {
       uni.showToast({ title: `查看案例：${item.title}`, icon: 'none' })
     },
+    // ===== 场景租用多机合单 =====
+    isMachineSelected(item) {
+      const key = item.bagistoId || item.id
+      return this.selectedMachines.some(m => (m.bagistoId || m.id) === key)
+    },
+    toggleMachine(item) {
+      const key = item.bagistoId || item.id
+      const idx = this.selectedMachines.findIndex(m => (m.bagistoId || m.id) === key)
+      if (idx !== -1) {
+        this.selectedMachines.splice(idx, 1)
+      } else {
+        this.selectedMachines.push({ ...item })
+      }
+    },
+    sceneTotal() {
+      const perDay = this.selectedMachines.reduce((sum, m) => sum + (parseFloat(String(m.price).replace(/,/g, '')) || 0), 0)
+      return Math.round(perDay * this.rentDays * 100) / 100
+    },
+    submitSceneOrder() {
+      if (!this.selectedMachines.length) return
+      const items = this.selectedMachines.map(m => ({
+        product_id: m.bagistoId || m.id,
+        name: m.name,
+        price: m.price,
+        bg: m.bg || '',
+        icon: m.icon || '🤖',
+        image: m.image || '',
+        qty: 1,
+      }))
+      uni.navigateTo({
+        url: `/pages/order/checkout?type=rent&from=scene&scene=${encodeURIComponent(this.sceneInfo.name)}&rent_days=${this.rentDays}&rentPeriod=${this.rentDays}天&items=${encodeURIComponent(JSON.stringify(items))}`
+      })
+    },
+
     onConsult() {
       this.leadSchemeTitle = this.scheme.title || this.sceneInfo.name || '专属'
       this.leadForm = { name: '', phone: '', demand: '' }
@@ -773,4 +833,17 @@ page {
 .lead-qr-text { font-size: 24rpx; color: #94A3B8; text-align: center; }
 .lead-qr-tip { font-size: 22rpx; color: #6B7280; text-align: center; margin-bottom: 28rpx; }
 .lead-close { height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 40rpx; border: 1px solid #CBD5E1; color: #475569; font-size: 28rpx; }
+
+/* ===== 场景租用多机合单 ===== */
+.product-card { position: relative; }
+.product-card.selected { border-color: #165DFF; box-shadow: 0 0 0 2rpx rgba(22, 93, 255, 0.35); }
+.product-select-btn { position: absolute; top: 10rpx; right: 10rpx; width: 52rpx; height: 52rpx; border-radius: 50%; background: rgba(22, 93, 255, 0.92); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 34rpx; line-height: 1; z-index: 2; }
+.scene-cart-bar { position: fixed; left: 20rpx; right: 20rpx; bottom: calc(env(safe-area-inset-bottom) + 20rpx); background: #fff; border-radius: 20rpx; box-shadow: 0 8rpx 32rpx rgba(15, 23, 42, 0.18); padding: 18rpx 24rpx; z-index: 1100; }
+.scene-cart-row { display: flex; align-items: center; gap: 16rpx; }
+.scene-cart-count { font-size: 26rpx; font-weight: 700; color: #1F2937; flex-shrink: 0; }
+.scene-cart-days { display: flex; gap: 8rpx; flex: 1; flex-wrap: wrap; }
+.day-chip { font-size: 22rpx; color: #475569; background: #F1F5F9; border-radius: 24rpx; padding: 6rpx 18rpx; }
+.day-chip.active { background: #165DFF; color: #fff; }
+.scene-cart-total { font-size: 32rpx; font-weight: 700; color: #165DFF; flex-shrink: 0; }
+.scene-cart-submit { margin-top: 14rpx; height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 42rpx; }
 </style>
