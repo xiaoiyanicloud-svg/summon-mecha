@@ -16,6 +16,8 @@
 | 4 | `Shop/src/Http/Controllers/API/CustomerController.php` | 修改 | login/register 返回 `createToken('uniapp-api')` 明文 token；logout 吊销当前 token |
 | 5 | `Shop/src/Http/Controllers/API/CartController.php` `OnepageController.php` `WishlistController.php` | 修改 | `route('shop.*')` 死引用替换为 `/admin`（Shopfront 停用实验遗留；前台现未停用，但替换保留——升级时随官方结构走） |
 | 6 | `Shop/src/Http/Controllers/API/TobOrderController.php` | **新增** | TOB 统一下单：单商品 + items[] 多机合单；定制线索挂锚点商品（sku=LEAD-CUSTOM）；order_type 归类（场景租用→plan）；条目名携带场景/租期/线索信息 |
+| 6b | `Shop/src/Http/Controllers/API/OrderController.php` | 修改 | formatOrder() 增加 `order_type` 字段（列表+详情），供前端类型显示/分类 |
+| 6c | `Shop/src/Http/Controllers/API/AddressController.php` | 修改 | 新增 `destroy(int $id)`（仅删除本人地址）+ 对应 DELETE 路由 |
 | 7 | `Shop/src/Http/Controllers/API/CatalogController.php` | **新增** | `/api/tob-catalog`：一次返回四类目录 + 场景（机器页性能优化，数据层与原生 products API 一致） |
 | 8 | `Shop/src/Http/Controllers/API/SceneController.php` | **新增** | 场景列表/详情（scenes 表） |
 | 9 | `Shop/src/Models/Scene.php`、`Shop/database/seeders/SceneSeeder.php` | **新增** | 场景模型 + 预置数据 |
