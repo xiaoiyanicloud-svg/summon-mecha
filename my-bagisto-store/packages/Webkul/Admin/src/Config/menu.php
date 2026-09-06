@@ -87,6 +87,12 @@ return [
         'sort'       => 3,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.events',
+        'name'       => '赛事活动',
+        'route'      => 'admin.catalog.events.index',
+        'sort'       => 3,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.attributes',
         'name'       => 'admin::app.components.layouts.sidebar.attributes',
         'route'      => 'admin.catalog.attributes.index',

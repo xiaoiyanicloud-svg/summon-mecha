@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeController;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeFamilyController;
 use Webkul\Admin\Http\Controllers\Catalog\CategoryController;
+use Webkul\Admin\Http\Controllers\Catalog\EventController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\BundleController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\ConfigurableController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\DownloadableController;
@@ -105,6 +106,17 @@ Route::prefix('catalog')->group(function () {
         Route::post('mass-update', 'massUpdate')->name('admin.catalog.scenes.mass_update');
 
         Route::post('mass-delete', 'massDestroy')->name('admin.catalog.scenes.mass_delete');
+    });
+
+    // 赛事(Event)后台管理:紧凑 CRUD + 报名列表(平台级闭环)
+    Route::controller(EventController::class)->prefix('events')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.events.index');
+        Route::get('create', 'create')->name('admin.catalog.events.create');
+        Route::post('', 'store')->name('admin.catalog.events.store');
+        Route::get('edit/{id}', 'edit')->name('admin.catalog.events.edit');
+        Route::post('edit/{id}', 'update')->name('admin.catalog.events.update');
+        Route::delete('delete/{id}', 'destroy')->name('admin.catalog.events.delete');
+        Route::get('registrations', 'registrations')->name('admin.catalog.events.registrations');
     });
 
     /**
