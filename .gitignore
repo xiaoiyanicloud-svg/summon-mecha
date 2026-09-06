@@ -1,0 +1,25 @@
+# ===== 有痕修改机制：排除可重建/敏感内容，其余全量入库 =====
+
+# 依赖（composer/npm 可重建）
+my-bagisto-store/vendor/
+my-bagisto-store2/vendor/
+node_modules/
+
+# 构建产物（HBuilderX 重新编译生成）
+unpackage/
+
+# 运行时数据（日志/缓存/上传图片；上线素材另行走文件备份）
+my-bagisto-store/storage/
+my-bagisto-store2/storage/
+
+# 密钥与配置（绝不入库；.env.example 模板除外）
+**/.env
+**/.env.*
+!**/.env.example
+
+# AI 备份目录（与 git 双保险分层，独立存在）
+.claude/backup/
+
+# 系统杂项
+Thumbs.db
+.DS_Store

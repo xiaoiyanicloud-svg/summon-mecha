@@ -1,0 +1,672 @@
+<template>
+	<view class="order-page">
+		<!-- ===== 顶部标题 + 自定义方案入口 ===== -->
+		<view class="page-header">
+			<text class="page-title">我的订单</text>
+			<view class="custom-plan-btn" @click="goCustomPlan">
+				<text class="plan-icon">✨</text>
+				<text class="plan-text">自定义方案</text>
+			</view>
+		</view>
+
+		<!-- ===== 统计卡片 ===== -->
+		<view class="stats-row">
+			<view class="stat-card" @click="filterByStatus('all')">
+				<text class="stat-number">{{ orders.length }}</text>
+				<text class="stat-label">全部订单</text>
+			</view>
+			<view class="stat-card" @click="filterByStatus('pending')">
+				<text class="stat-number">{{ getCountByStatus('pending') }}</text>
+				<text class="stat-label">待付款</text>
+			</view>
+			<view class="stat-card" @click="filterByStatus('active')">
+				<text class="stat-number">{{ getCountByStatus('active') }}</text>
+				<text class="stat-label">服务中</text>
+			</view>
+			<view class="stat-card" @click="filterByStatus('completed')">
+				<text class="stat-number">{{ getCountByStatus('completed') }}</text>
+				<text class="stat-label">已完成</text>
+			</view>
+		</view>
+
+		<!-- ===== 状态Tab ===== -->
+		<scroll-view class="tab-scroll" scroll-x="true" show-scrollbar="false">
+			<view class="tab-list">
+				<text class="tab-item" :class="{ active: currentStatus === 'all' }" @click="switchStatus('all')">全部</text>
+				<text class="tab-item" :class="{ active: currentStatus === 'pending' }" @click="switchStatus('pending')">待付款</text>
+				<text class="tab-item" :class="{ active: currentStatus === 'confirm' }" @click="switchStatus('confirm')">待确认</text>
+				<text class="tab-item" :class="{ active: currentStatus === 'execute' }" @click="switchStatus('execute')">待执行</text>
+				<text class="tab-item" :class="{ active: currentStatus === 'active' }" @click="switchStatus('active')">服务中</text>
+				<text class="tab-item" :class="{ active: currentStatus === 'completed' }" @click="switchStatus('completed')">已完成</text>
+				<text class="tab-item" :class="{ active: currentStatus === 'cancelled' }" @click="switchStatus('cancelled')">已取消</text>
+			</view>
+		</scroll-view>
+
+		<!-- ===== 订单列表 ===== -->
+		<view class="order-list">
+			<view class="order-card" v-for="item in filteredOrders" :key="item.id" @click="viewDetail(item)">
+				<!-- 卡片头部 -->
+				<view class="card-header">
+					<view class="robot-info">
+						<view class="robot-avatar" :style="{ backgroundColor: item.bg }">
+							<text class="robot-icon">{{ item.icon }}</text>
+						</view>
+						<view class="robot-meta">
+							<text class="robot-name">{{ item.name }}</text>
+							<text class="order-id">#{{ item.orderNo }}</text>
+						</view>
+					</view>
+					<view class="status-tag" :class="item.statusClass">
+						<text>{{ item.statusText }}</text>
+					</view>
+				</view>
+
+				<!-- 卡片主体（按订单类型动态渲染不同字段） -->
+				<view class="card-body">
+					<view class="detail-row">
+						<text class="detail-label">订单类型</text>
+						<text class="detail-value type-badge" :class="item.typeClass">{{ item.typeText }}</text>
+					</view>
+					<view class="detail-row" v-for="f in orderFields(item)" :key="f.label" :class="{ highlight: f.highlight }">
+						<text class="detail-label">{{ f.label }}</text>
+						<text class="detail-value" :class="f.className || ''">{{ f.value }}</text>
+					</view>
+				</view>
+
+				<!-- 卡片底部 -->
+				<view class="card-footer">
+					<view class="btn-group">
+						<view class="btn-outline" @click.stop="viewDetail(item)">查看详情</view>
+						<view class="btn-outline" @click.stop="contactService(item)">联系客服</view>
+						<view class="btn-primary" @click.stop="reorder(item)">再次下单</view>
+					</view>
+				</view>
+			</view>
+
+			<!-- ===== 空状态 ===== -->
+			<view class="empty-state" v-if="filteredOrders.length === 0">
+				<view class="empty-icon">🤖</view>
+				<text class="empty-title">暂无订单</text>
+				<text class="empty-desc">去AI生成机器人方案，快速匹配您的需求</text>
+				<view class="empty-btn" @click="goAI">去AI生成方案 →</view>
+			</view>
+		</view>
+
+		<!-- ===== 自定义底部导航栏 ===== -->
+		<CustomTabBar currentPage="/pages/order/index" />
+	</view>
+</template>
+
+<script>
+	import CustomTabBar from '@/components/CustomTabBar.vue';
+	import { orderApi } from '@/utils/api';
+
+	export default {
+		components: {
+			CustomTabBar
+		},
+		data() {
+			return {
+				currentStatus: 'all',
+				orders: [
+					{
+						id: 1,
+						orderNo: 'SO20260728001',
+						name: '宇树 Go2 Pro',
+						icon: '🐕',
+						bg: '#F0F4FA',
+						type: 'rent',
+						typeText: '租赁',
+						typeClass: 'rent',
+						scene: '工厂巡检·安防',
+						duration: '2026-07-28 ~ 2026-08-27',
+						quantity: 2,
+						amount: '2,400',
+						status: 'active',
+						statusText: '服务中',
+						statusClass: 'active'
+					},
+					{
+						id: 2,
+						orderNo: 'SO20260727002',
+						name: '智元远征 A1',
+						icon: '🧑‍🤖',
+						bg: '#E8F0FE',
+						type: 'rent',
+						typeText: '租赁',
+						typeClass: 'rent',
+						scene: '展厅接待·讲解',
+						duration: '2026-07-27 ~ 2026-08-26',
+						quantity: 1,
+						amount: '2,800',
+						status: 'pending',
+						statusText: '待付款',
+						statusClass: 'pending'
+					},
+					{
+						id: 3,
+						orderNo: 'SO20260726003',
+						name: '普渡欢乐送 3',
+						icon: '📦',
+						bg: '#F0F4FA',
+						type: 'rent',
+						typeText: '租赁',
+						typeClass: 'rent',
+						scene: '酒店配送·餐饮',
+						duration: '2026-07-26 ~ 2026-08-25',
+						quantity: 3,
+						amount: '2,400',
+						status: 'confirm',
+						statusText: '待确认',
+						statusClass: 'confirm'
+					},
+					{
+						id: 4,
+						orderNo: 'SO20260725004',
+						name: '高仙 50 清洁',
+						icon: '🧹',
+						bg: '#E8F0FE',
+						type: 'buy',
+						typeText: '购买',
+						typeClass: 'buy',
+						scene: '商场清洁·办公',
+						duration: '2026-07-25 ~ 2026-08-24',
+						quantity: 1,
+						amount: '12,800',
+						status: 'execute',
+						statusText: '待执行',
+						statusClass: 'execute'
+					},
+					{
+						id: 5,
+						orderNo: 'SO20260724005',
+						name: '优必选 Walker X',
+						icon: '🤖',
+						bg: '#F0F4FA',
+						type: 'buy',
+						typeText: '购买',
+						typeClass: 'buy',
+						scene: '高端服务·迎宾',
+						duration: '2026-06-24 ~ 2026-07-23',
+						quantity: 1,
+						amount: '88,000',
+						status: 'completed',
+						statusText: '已完成',
+						statusClass: 'completed'
+					},
+					{
+						id: 6,
+						orderNo: 'SO20260723006',
+						name: '擎朗 T5 Pro',
+						icon: '🏥',
+						bg: '#E8F0FE',
+						type: 'plan',
+						typeText: '方案',
+						typeClass: 'plan',
+						scene: '医院配送·物流',
+						duration: '2026-07-23 ~ 2026-08-22',
+						quantity: 2,
+						amount: '1,900',
+						status: 'cancelled',
+						statusText: '已取消',
+						statusClass: 'cancelled'
+					}
+				]
+			}
+		},
+		computed: {
+			filteredOrders() {
+				if (this.currentStatus === 'all') return this.orders
+				return this.orders.filter(item => item.status === this.currentStatus)
+			}
+		},
+		onShow() {
+			// 结算页下单/提交意向后标记刷新；进入订单页时重新载入
+			this.loadOrders()
+		},
+		methods: {
+			switchStatus(status) { this.currentStatus = status },
+			filterByStatus(status) { this.currentStatus = status },
+
+			// ================ 订单数据加载（真实 API + 意向订单） ================
+			async loadOrders() {
+				const intents = (uni.getStorageSync('intentOrders') || []).map(i => this.mapIntent(i))
+
+				let apiOrders = []
+				if (uni.getStorageSync('token')) {
+					try {
+						const res = await orderApi.getOrders()
+						const list = (res && res.data) ? res.data : []
+						apiOrders = list.map(o => this.mapApiOrder(o))
+					} catch (e) {
+						apiOrders = []
+					}
+				}
+
+				const merged = [...intents, ...apiOrders]
+				if (merged.length) {
+					this.orders = merged
+					// 缓存到本地，供「订单详情」页读取
+					uni.setStorageSync('orderList', merged)
+				} else if (uni.getStorageSync('orderNeedRefresh')) {
+					// 刚下过单但拉取不到（后端未启动）→ 展示空列表
+					this.orders = []
+				}
+				uni.removeStorageSync('orderNeedRefresh')
+			},
+
+			// 后端订单 → 前端卡片字段
+			mapApiOrder(o) {
+				const statusMap = {
+					pending: 'pending',          // 待付款
+					pending_payment: 'pending',
+					processing: 'confirm',       // 待确认
+					completed: 'completed',      // 已完成
+					canceled: 'cancelled',       // 已取消
+					closed: 'completed',
+					fraud: 'cancelled',
+				}
+				const status = statusMap[o.status] || 'active'
+				const textMap = {
+					pending: '待付款',
+					confirm: '待确认',
+					execute: '待执行',
+					active: '服务中',
+					completed: '已完成',
+					cancelled: '已取消',
+				}
+				const firstItem = (o.items && o.items[0]) || {}
+				const amount = (o.grand_total != null) ? Number(o.grand_total).toLocaleString('en-US') : '0'
+				return {
+					id: o.id,
+					productId: firstItem.product_id || '',
+					orderNo: o.increment_id || `SO${o.id}`,
+					name: firstItem.name || '机器人订单',
+					icon: '🤖',
+					bg: '#F0F4FA',
+					type: 'buy',
+					typeText: '购买',
+					typeClass: 'buy',
+					scene: firstItem.name || '',
+					duration: o.created_at || '',
+					quantity: o.items_qty || 1,
+					amount,
+					status,
+					statusText: textMap[status],
+					statusClass: status,
+				}
+			},
+
+			// 本地意向订单 → 前端卡片字段
+			mapIntent(i) {
+				const isRent = i.type === 'rent'
+				return {
+					id: i.id,
+					productId: i.productId || '',
+					orderNo: `ZT${i.id}`,
+					name: i.name,
+					icon: i.icon || '🤖',
+					bg: i.bg || '#F0F4FA',
+					type: isRent ? 'rent' : 'buy',
+					typeText: isRent ? '租赁' : '购买',
+					typeClass: isRent ? 'rent' : 'buy',
+					// 购买不再出现「购买意向」措辞；优先用实际场景
+					scene: i.scene || (isRent ? '租用意向' : '产品购买'),
+					duration: i.rentPeriod || i.time || '',
+					quantity: i.qty || 1,
+					amount: i.price ? String(Math.round(parseFloat(String(i.price).replace(/[^\d.]/g, '')) * 100) / 100) : '0',
+					status: 'confirm',
+					statusText: '待确认',
+					statusClass: 'confirm',
+				}
+			},
+
+			// 按订单类型动态生成展示字段（租用/购买/方案/定制），代码逻辑区分而非硬写
+			orderFields(item) {
+				const t = item.type || 'buy'
+				const rows = [{ label: '使用场景', value: item.scene || '—' }]
+				if (t === 'rent') {
+					const duration = item.duration || (item.startDate ? `${item.startDate} ~ ${item.endDate || ''}` : '—')
+					rows.push({ label: '租期', value: duration })
+					rows.push({ label: '租用数量', value: `${item.quantity} 台` })
+				} else if (t === 'plan') {
+					rows.push({ label: '方案数量', value: `${item.quantity} 台` })
+				} else if (t === 'custom') {
+					rows.push({ label: '定制数量', value: `${item.quantity} 台` })
+				} else {
+					// buy 及其它：购买不需要租期
+					rows.push({ label: '数量', value: `${item.quantity} 台` })
+				}
+				rows.push({ label: '订单金额', value: `¥${item.amount}`, highlight: true, className: 'price' })
+				return rows
+			},
+
+			getCountByStatus(status) {
+				return this.orders.filter(item => item.status === status).length
+			},
+			viewDetail(item) {
+				// 同步完整订单数据给详情页
+				uni.setStorageSync('orderDetailData', item)
+				uni.navigateTo({
+					url: `/pages/order/order-detail?id=${item.id}`
+				})
+			},
+			contactService(item) {
+				uni.showToast({ title: '客服已接入', icon: 'none' })
+			},
+			reorder(item) {
+				const pid = item.productId || ''
+				if (!pid) {
+					uni.showToast({ title: '该订单未关联可再次下单的商品', icon: 'none' })
+					return
+				}
+				const params = {
+					robotName: item.name,
+					productId: pid,
+					scene: item.scene,
+					quantity: item.quantity,
+					duration: item.duration,
+					amount: item.amount,
+					type: item.type,
+					rentPeriod: item.duration || '',
+					productType: item.productType || '',
+				}
+				uni.navigateTo({
+					url: `/pages/order/checkout?data=${encodeURIComponent(JSON.stringify(params))}`,
+					fail: () => {
+						uni.setStorageSync('reorderData', params)
+						uni.showModal({
+							title: '提示',
+							content: `将根据「${item.name}」的订单信息为您生成新订单，请前往AI方案页确认。`,
+							confirmText: '去AI方案',
+							success: (res) => {
+								if (res.confirm) {
+									uni.switchTab({ url: '/pages/ai/index' })
+								}
+							}
+						})
+					}
+				})
+			},
+			goAI() { uni.switchTab({ url: '/pages/ai/index' }) },
+			goCustomPlan() { uni.switchTab({ url: '/pages/ai/index' }) }
+		}
+	}
+</script>
+
+<style scoped>
+	.order-page {
+		position: relative;
+		background-color: #f5f7fa;
+		min-height: 100vh;
+		padding: 88rpx 24rpx 160rpx;  /* 底部内边距从120rpx改为160rpx，为自定义导航栏留空间 */
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	}
+	.order-page::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 240rpx;
+		background: linear-gradient(135deg, #7AB8F7, #D4EAFF);
+		border-radius: 0 0 48rpx 48rpx;
+		z-index: 0;
+	}
+	.page-header {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 8rpx 0 16rpx;
+	}
+	.page-title {
+		font-size: 36rpx;
+		font-weight: 700;
+		color: #1A2A3A;
+	}
+	.custom-plan-btn {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+		background: rgba(255,255,255,0.85);
+		padding: 10rpx 20rpx;
+		border-radius: 30rpx;
+		border: 1.5rpx solid rgba(255,255,255,0.6);
+		cursor: pointer;
+		backdrop-filter: blur(8rpx);
+	}
+	.custom-plan-btn:active { opacity: 0.7; }
+	.plan-icon { font-size: 24rpx; }
+	.plan-text { font-size: 22rpx; color: #1A2A3A; font-weight: 500; }
+
+	.stats-row {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		gap: 12rpx;
+		margin-bottom: 24rpx;
+		margin-top: 4rpx;
+	}
+	.stat-card {
+		flex: 1;
+		background: #ffffff;
+		border-radius: 16rpx;
+		padding: 16rpx 0;
+		text-align: center;
+		box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+		cursor: pointer;
+	}
+	.stat-card:active { opacity: 0.7; }
+	.stat-number {
+		font-size: 32rpx;
+		font-weight: 700;
+		color: #1e293b;
+		display: block;
+	}
+	.stat-label {
+		font-size: 20rpx;
+		color: #94a3b8;
+		display: block;
+		margin-top: 4rpx;
+	}
+
+	.tab-scroll {
+		position: relative;
+		z-index: 1;
+		margin-bottom: 20rpx;
+	}
+	.tab-list {
+		display: flex;
+		gap: 8rpx;
+		padding: 4rpx 0;
+	}
+	.tab-item {
+		flex-shrink: 0;
+		padding: 10rpx 24rpx;
+		font-size: 24rpx;
+		color: #64748b;
+		background: #ffffff;
+		border-radius: 40rpx;
+		border: 1px solid #e8f0fe;
+		cursor: pointer;
+	}
+	.tab-item.active {
+		background: #ffffff;
+		color: #2563eb;
+		border-color: #2563eb;
+		font-weight: 600;
+	}
+
+	.order-list {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 16rpx;
+	}
+	.order-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 20rpx 24rpx 18rpx;
+		box-shadow: 0 2rpx 16rpx rgba(0,0,0,0.04);
+		cursor: pointer;
+	}
+	.order-card:active { opacity: 0.95; }
+
+	.card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 16rpx;
+	}
+	.robot-info {
+		display: flex;
+		align-items: center;
+		gap: 14rpx;
+	}
+	.robot-avatar {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 16rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.robot-icon { font-size: 36rpx; }
+	.robot-meta {
+		display: flex;
+		flex-direction: column;
+		gap: 4rpx;
+	}
+	.robot-name {
+		font-size: 26rpx;
+		font-weight: 600;
+		color: #1e293b;
+	}
+	.order-id {
+		font-size: 20rpx;
+		color: #94a3b8;
+	}
+
+	.status-tag {
+		padding: 6rpx 18rpx;
+		border-radius: 30rpx;
+		font-size: 20rpx;
+		font-weight: 500;
+	}
+	.status-tag.pending { background: #fef3c7; color: #d97706; }
+	.status-tag.confirm { background: #dbeafe; color: #2563eb; }
+	.status-tag.execute { background: #dbeafe; color: #2563eb; }
+	.status-tag.active { background: #d1fae5; color: #059669; }
+	.status-tag.completed { background: #e8f0fe; color: #64748b; }
+	.status-tag.cancelled { background: #f1f5f9; color: #94a3b8; }
+
+	.card-body {
+		background: #f8faff;
+		border-radius: 16rpx;
+		padding: 16rpx 18rpx;
+		margin-bottom: 16rpx;
+	}
+	.detail-row {
+		display: flex;
+		justify-content: space-between;
+		padding: 6rpx 0;
+		border-bottom: 1px solid #f1f5f9;
+	}
+	.detail-row:last-child { border-bottom: none; }
+	.detail-row.highlight { padding: 10rpx 0 6rpx; }
+	.detail-label {
+		font-size: 22rpx;
+		color: #94a3b8;
+	}
+	.detail-value {
+		font-size: 22rpx;
+		color: #1e293b;
+		font-weight: 500;
+	}
+	.detail-value.type-badge {
+		padding: 2rpx 16rpx;
+		border-radius: 20rpx;
+		font-size: 20rpx;
+		font-weight: 500;
+	}
+	.type-badge.rent { background: #dbeafe; color: #2563eb; }
+	.type-badge.buy { background: #d1fae5; color: #059669; }
+	.type-badge.plan { background: #fef3c7; color: #d97706; }
+	.type-badge.custom { background: #ede9fe; color: #7c3aed; }
+	.detail-value.price {
+		font-size: 26rpx;
+		font-weight: 700;
+		color: #2563eb;
+	}
+
+	.card-footer { padding-top: 4rpx; }
+	.btn-group {
+		display: flex;
+		gap: 12rpx;
+	}
+	.btn-outline {
+		flex: 1;
+		padding: 14rpx 0;
+		border-radius: 30rpx;
+		text-align: center;
+		font-size: 22rpx;
+		font-weight: 500;
+		color: #1e293b;
+		background: #f8faff;
+		border: 1px solid #e8f0fe;
+		cursor: pointer;
+	}
+	.btn-outline:active { opacity: 0.7; }
+	.btn-primary {
+		flex: 1;
+		padding: 14rpx 0;
+		border-radius: 30rpx;
+		text-align: center;
+		font-size: 22rpx;
+		font-weight: 500;
+		color: #2563eb;
+		background: #ffffff;
+		border: 1.5rpx solid #2563eb;
+		cursor: pointer;
+	}
+	.btn-primary:active { opacity: 0.7; }
+
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 80rpx 40rpx 60rpx;
+	}
+	.empty-icon { font-size: 120rpx; margin-bottom: 24rpx; }
+	.empty-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #1e293b;
+	}
+	.empty-desc {
+		font-size: 24rpx;
+		color: #94a3b8;
+		margin-top: 8rpx;
+	}
+	.empty-btn {
+		margin-top: 32rpx;
+		background: #ffffff;
+		color: #2563eb;
+		padding: 16rpx 48rpx;
+		border-radius: 40rpx;
+		font-size: 26rpx;
+		font-weight: 500;
+		border: 1.5rpx solid #2563eb;
+		cursor: pointer;
+	}
+	.empty-btn:active { opacity: 0.7; }
+
+	/* 隐藏原生的 bottom-safe，由自定义导航栏替代 */
+	.bottom-safe {
+		display: none;
+	}
+</style>

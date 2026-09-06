@@ -1,0 +1,106 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "召唤机甲",
+        "navigationBarBackgroundColor": "ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/home/rmfangan",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "方案定制"
+      }
+    },
+    {
+      "path": "pages/home/jineng",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "技能详情"
+      }
+    },
+    {
+      "path": "pages/robot/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "机器人库",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/robot/fangan",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "场景方案详情"
+      }
+    },
+    {
+      "path": "pages/ai/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "AI 召唤中心",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/order/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的订单",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/order/order-detail",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/order/checkout",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "确认订单"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "召唤机甲",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#ffffff"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#007aff",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "height": "20rpx",
+    "fontSize": "0rpx",
+    "iconWidth": "0rpx",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/robot/index", "text": "机器" },
+      { "pagePath": "pages/ai/index", "text": "AI召唤" },
+      { "pagePath": "pages/order/index", "text": "订单" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  }
+}

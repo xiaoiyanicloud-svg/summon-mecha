@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"handleLogin\" \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
+      "Bash(awk 'NR>=657 && NR<=658' \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
+      "Bash(awk 'NR>=657 && NR<=674' \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
+      "Bash(awk 'NR>=1055 && NR<=1069' \"d:\\\\main\\\\pages\\\\mine\\\\index.vue\")",
+      "Bash(awk 'NR>=1055 && NR<=1072' \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
+      "Bash(grep -n \"onLoad\" \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
+      "Bash(awk 'NR>=633 && NR<=639' \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const j=require\\('d:/main/pages.json'\\); j.pages.forEach\\(p=>console.log\\(p.path, p.style.navigationBarTitleText\\)\\); console.log\\('--- tabs ---'\\); j.tabBar.list.forEach\\(t=>console.log\\(t.pagePath\\)\\);\")"
+    ]
+  }
+}
