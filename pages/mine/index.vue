@@ -567,8 +567,9 @@
 
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
-	import { authApi } from '@/utils/api';
+	import { authApi, addressApi } from '@/utils/api';
 	import { TOKEN_KEY, CUSTOMER_KEY } from '@/utils/config';
+	import { serverToLocal, localToServerPayload } from '@/utils/address';
 
 	export default {
 		components: {
@@ -863,16 +864,21 @@
 			// 地址管理 - 数据持久化
 			// ================================================================
 			loadAddressData() {
-				const data = uni.getStorageSync('addressList');
-				if (data) {
-					this.addressList = JSON.parse(data);
-				} else {
-					this.addressList = [
-						{ id: 1, name: '张三', phone: '13800008888', province: '北京市', city: '北京市', district: '朝阳区', detail: '建国门外大街1号国贸大厦A座2001室', isDefault: true },
-						{ id: 2, name: '李四', phone: '13900006666', province: '上海市', city: '上海市', district: '浦东新区', detail: '陆家嘴环路1000号恒生银行大厦35层', isDefault: false },
-					];
-					this.saveAddressData();
+				const token = uni.getStorageSync(TOKEN_KEY);
+				if (token) {
+					// 已登录:地址走后台接口(真实增删改查)
+					addressApi.getAddresses()
+						.then((res) => {
+							this.addressList = ((res && res.data) || []).map(a => serverToLocal(a));
+						})
+						.catch(() => {
+							this.addressList = [];
+						});
+					return;
 				}
+				// 游客:本地存储,不再注入假数据
+				const data = uni.getStorageSync('addressList');
+				this.addressList = data ? JSON.parse(data) : [];
 			},
 			saveAddressData() {
 				uni.setStorageSync('addressList', JSON.stringify(this.addressList));
@@ -900,9 +906,16 @@
 					content: '确认删除该地址吗？',
 					success: (res) => {
 						if (res.confirm) {
-							this.addressList = this.addressList.filter(item => item.id !== id);
-							this.saveAddressData();
-							uni.showToast({ title: '已删除', icon: 'success' });
+							// 已登录:走后台接口;游客:本地过滤
+							if (uni.getStorageSync(TOKEN_KEY)) {
+								addressApi.deleteAddress(id)
+									.then(() => this.loadAddressData())
+									.catch((err) => uni.showToast({ title: (err && err.message) || '删除失败', icon: 'none' }));
+							} else {
+								this.addressList = this.addressList.filter(item => item.id !== id);
+								this.saveAddressData();
+								uni.showToast({ title: '已删除', icon: 'success' });
+							}
 						}
 					}
 				});
@@ -975,6 +988,25 @@
 				if (!district.trim()) { uni.showToast({ title: '请输入区/县', icon: 'none' }); return; }
 				if (!detail.trim()) { uni.showToast({ title: '请输入详细地址', icon: 'none' }); return; }
 
+				// 已登录:走后台接口(真实增改)
+				if (uni.getStorageSync(TOKEN_KEY)) {
+					const payload = localToServerPayload(this.formData, '');
+					const req = this.editingId
+						? addressApi.updateAddress(this.editingId, payload)
+						: addressApi.createAddress(payload);
+					req
+						.then(() => {
+							uni.showToast({ title: '保存成功', icon: 'success' });
+							this.showForm = false;
+							this.loadAddressData();
+						})
+						.catch((err) => {
+							uni.showToast({ title: (err && err.message) || '保存失败', icon: 'none' });
+						});
+					return;
+				}
+
+				// 游客:本地存储
 				let list = [...this.addressList];
 				if (this.formData.isDefault) {
 					list = list.map(item => ({ ...item, isDefault: false }));

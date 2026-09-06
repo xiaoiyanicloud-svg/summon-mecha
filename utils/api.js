@@ -89,4 +89,6 @@ export const addressApi = {
   getAddresses: () => http.get('/api/customer/addresses', { loading: false }),
   createAddress: (data) => http.post('/api/customer/addresses', data, { loading: false }),
   updateAddress: (id, data) => http.put(`/api/customer/addresses/edit/${id}`, data, { loading: false }),
+  // 删除地址(后端 9/7 新增 destroy 接口,仅允许删除本人地址)
+  deleteAddress: (id) => http.delete(`/api/customer/addresses/${id}`, { loading: false }),
 }

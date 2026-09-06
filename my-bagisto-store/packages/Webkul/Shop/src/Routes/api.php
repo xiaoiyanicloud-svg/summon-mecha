@@ -132,6 +132,8 @@ Route::group(['prefix' => 'api'], function () {
             Route::post('', 'store')->name('shop.api.customers.account.addresses.store');
 
             Route::put('edit/{id?}', 'update')->name('shop.api.customers.account.addresses.update');
+
+            Route::delete('{id}', 'destroy')->name('shop.api.customers.account.addresses.destroy');
         });
 
         Route::controller(WishlistController::class)->prefix('wishlist')->group(function () {

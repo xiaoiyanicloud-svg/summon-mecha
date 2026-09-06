@@ -192,7 +192,8 @@
 </template>
 
 <script>
-import { cartApi, tobOrderApi } from '@/utils/api'
+import { cartApi, tobOrderApi, addressApi } from '@/utils/api'
+import { serverToLocal, localToServerPayload } from '@/utils/address'
 
 export default {
   data() {
@@ -338,7 +339,23 @@ export default {
     },
 
     // 加载地址列表，自动选中默认（或第一条）地址
+    // 已登录:走后台接口;游客:本地存储(双模式)
     loadAddressList() {
+      const token = uni.getStorageSync('token')
+      if (token) {
+        addressApi.getAddresses()
+          .then((res) => {
+            const list = ((res && res.data) || []).map(a => serverToLocal(a))
+            this.addressList = list
+            this.selectAddress(list.find(a => a.isDefault) || list[0] || null)
+          })
+          .catch(() => {
+            const list = this.readAddressList()
+            this.addressList = list
+            this.selectAddress(list.find(a => a.isDefault) || list[0] || null)
+          })
+        return
+      }
       const list = this.readAddressList()
       this.addressList = list
       this.selectAddress(list.find(a => a.isDefault) || list[0] || null)
@@ -397,6 +414,24 @@ export default {
       if (!f.district.trim()) { uni.showToast({ title: '请输入区/县', icon: 'none' }); return }
       if (!f.detail.trim()) { uni.showToast({ title: '请输入详细地址', icon: 'none' }); return }
 
+      // 已登录:走后台接口(真实新增/更新)
+      if (uni.getStorageSync('token')) {
+        const payload = localToServerPayload({ ...f, name: f.name.trim(), phone: f.phone.trim() }, '')
+        const req = this.editingAddrId !== null
+          ? addressApi.updateAddress(this.editingAddrId, payload)
+          : addressApi.createAddress(payload)
+        req
+          .then(() => {
+            uni.showToast({ title: '保存成功', icon: 'success' })
+            this.showAddrForm = false
+            this.editingAddrId = null
+            this.loadAddressList()
+          })
+          .catch((err) => uni.showToast({ title: (err && err.message) || '保存失败', icon: 'none' }))
+        return
+      }
+
+      // 游客:本地存储
       const payload = {
         name: f.name.trim(),
         phone: f.phone.trim(),
@@ -445,6 +480,8 @@ export default {
 
     // 下单（含意向）成功后，把本次收货地址同步回「我的-地址管理」，保持两端一致
     syncAddressToMine() {
+      // 已登录:地址已存后台,无需写本地(游客才走本地地址簿)
+      if (uni.getStorageSync('token')) return
       const v = this.form
       if (!v.name.trim() || !v.phone.trim() || !v.city.trim()) return
       const list = this.readAddressList()

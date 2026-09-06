@@ -104,4 +104,26 @@ class AddressController extends APIController
             'message' => trans('shop::app.customers.account.addresses.index.update-success'),
         ]);
     }
+
+    /**
+     * 删除客户的收货地址(仅允许删除本人地址)。
+     */
+    public function destroy(int $id): JsonResource
+    {
+        $customer = auth()->guard('customer')->user();
+
+        $address = $customer->addresses()->where('id', $id)->first();
+
+        if (! $address) {
+            return new JsonResource([
+                'message' => '地址不存在。',
+            ]);
+        }
+
+        $address->delete();
+
+        return new JsonResource([
+            'message' => '地址已删除。',
+        ]);
+    }
 }
