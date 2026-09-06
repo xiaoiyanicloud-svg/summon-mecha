@@ -55,8 +55,8 @@ export const checkoutApi = {
 
 // ==================== TOB 统一下单（租/买/配件/技能，真实后台订单） ====================
 export const tobOrderApi = {
-  // data: { product_id?, sku?, name, price, qty, type(rent|buy|plan|custom), name/phone/city/address, ... }
-  create: (data) => http.post('/api/tob-order', data, { loading: false }),
+  // loading 统一开启:下单/留资在慢环节时给"提交中"反馈(mask 挡重复点击),避免用户误以为无响应
+  create: (data) => http.post('/api/tob-order', data, { loading: true, loadingText: '提交中...' }),
 }
 
 // ==================== 目录聚合(机器页性能优化) ====================
