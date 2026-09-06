@@ -58,7 +58,7 @@
             <text class="tag" :class="{ active: isTagSelected('30万以上') }" @tap="onTagClick('30万以上')">30万以上</text>
           </view>
           <view class="tags-row" style="margin-top: 12rpx;">
-            <text class="tag" :class="{ active: isTagSelected('分栋') }" @tap="onTagClick('分栋')">分栋</text>
+            <text class="tag" :class="{ active: isTagSelected('分拣') }" @tap="onTagClick('分拣')">分拣</text>
             <text class="tag" :class="{ active: isTagSelected('搬运') }" @tap="onTagClick('搬运')">搬运</text>
             <text class="tag" :class="{ active: isTagSelected('焊接') }" @tap="onTagClick('焊接')">焊接</text>
             <text class="tag" :class="{ active: isTagSelected('装配') }" @tap="onTagClick('装配')">装配</text>

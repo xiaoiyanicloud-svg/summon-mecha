@@ -468,7 +468,7 @@
 							</view>
 							<view class="settings-user">
 								<text class="settings-name">{{ userName || '点击登录' }}</text>
-								<text class="settings-phone">138****8888</text>
+								<text class="settings-phone">{{ customerPhone }}</text>
 							</view>
 						</view>
 						<view class="settings-right">
@@ -579,6 +579,7 @@
 				// ===== 主页面数据 =====
 				currentPage: 'main',
 				userName: '',
+				customerPhone: '未绑定手机',
 				showLoginModal: false,
 				authMode: 'login', // 'login' | 'register'
 				loginForm: { email: '', password: '' },
@@ -698,6 +699,8 @@
 			const customer = uni.getStorageSync(CUSTOMER_KEY);
 			if (customer && customer.name) {
 				this.userName = customer.name;
+				// 诚实显示:有真实手机号才脱敏展示,否则明确"未绑定"
+				this.customerPhone = customer.phone ? String(customer.phone).replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2') : '未绑定手机';
 			}
 		},
 		methods: {
@@ -738,6 +741,7 @@
 							uni.setStorageSync(TOKEN_KEY, data.token);
 							uni.setStorageSync(CUSTOMER_KEY, data.customer || { email: email.trim() });
 							this.userName = (data.customer && data.customer.name) ? data.customer.name : email.trim().split('@')[0];
+							this.customerPhone = (data.customer && data.customer.phone) ? String(data.customer.phone).replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2') : '未绑定手机';
 						} else {
 							// 诚实化:后端未返回凭证视为登录失败,不再制造本地假登录态(假登录会导致后续请求静默 401)
 							uni.showToast({ title: '登录失败：服务未返回凭证，请稍后重试', icon: 'none' });
@@ -798,6 +802,7 @@
 							uni.setStorageSync(TOKEN_KEY, data.token);
 							uni.setStorageSync(CUSTOMER_KEY, data.customer || { email });
 							this.userName = (data.customer && data.customer.name) ? data.customer.name : `${first_name} ${last_name}`;
+							this.customerPhone = (data.customer && data.customer.phone) ? String(data.customer.phone).replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2') : '未绑定手机';
 						} else {
 							// 诚实化:后端未返回凭证视为注册失败,引导用户直接登录
 							uni.showToast({ title: '注册失败：服务未返回凭证，请直接登录或稍后重试', icon: 'none' });
@@ -820,7 +825,7 @@
 					});
 			},
 			goVip() {
-				uni.showToast({ title: '会员中心', icon: 'none' });
+				uni.showToast({ title: '会员中心即将开放', icon: 'none' });
 			},
 
 			// ================================================================
@@ -846,12 +851,12 @@
 			// ================================================================
 			goAddress() { this.currentPage = 'address'; },
 			goCooperate() { this.currentPage = 'cooperate'; },
-			goSupplierCode() { uni.showToast({ title: '供应商邀请码', icon: 'none' }); },
+			goSupplierCode() { uni.showToast({ title: '供应商邀请码：即将开放', icon: 'none' }); },
 			goPartnerRecommend() {
 				this.currentPage = 'partner';
 				this.loadPartnerFormCache();
 			},
-			goCustomerService() { uni.showToast({ title: '客服', icon: 'none' }); },
+			goCustomerService() { uni.showToast({ title: '在线客服建设中，敬请期待', icon: 'none' }); },
 			goSettings() { this.currentPage = 'settings'; },
 
 			// ================================================================
@@ -990,49 +995,19 @@
 			// 合作申请 - 跳转表单（预留接口）
 			// ================================================================
 			goApplyForm(item) {
-				uni.showModal({
-					title: '申请表单',
-					content: `即将跳转至「${item.name}」申请表单页（路径：${item.formPath}）`,
-					confirmText: '前往',
-					success: (res) => {
-						if (res.confirm) {
-							uni.showToast({ title: `跳转至${item.name}表单`, icon: 'none' });
-						}
-					}
-				});
+				// 诚实化:表单页未开发,不再假装跳转
+				uni.showToast({ title: `「${item.name}」申请通道即将开放`, icon: 'none' });
 			},
 
 			// ================================================================
 			// 开票中心 - 方法
 			// ================================================================
-			applyInvoice(item) { uni.showToast({ title: `申请开票：${item.id}`, icon: 'none' }); },
-			downloadInvoice(item) { uni.showToast({ title: `下载发票：${item.id}`, icon: 'success' }); },
-			viewInvoice(item) { uni.showToast({ title: `查看发票：${item.id}`, icon: 'none' }); },
+			applyInvoice(item) { uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' }); },
+			downloadInvoice(item) { uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' }); },
+			viewInvoice(item) { uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' }); },
 			applyNewInvoice() {
-				uni.showModal({
-					title: '申请开票',
-					content: '请选择需要开票的订单',
-					confirmText: '选择订单',
-					success: (res) => {
-						if (res.confirm) {
-							uni.showToast({ title: '已选择订单，正在申请...', icon: 'none' });
-							setTimeout(() => {
-								this.invoiceStats.pending += 1;
-								this.invoiceStats.total += 1;
-								this.invoiceList.unshift({
-									id: `INV-2026-${String(this.invoiceStats.total).padStart(3, '0')}`,
-									amount: '1,200',
-									date: new Date().toISOString().slice(0, 10),
-									type: '电子发票',
-									status: 'pending',
-									statusText: '待开票'
-								});
-								this.invoiceCount = this.invoiceStats.pending;
-								uni.showToast({ title: '开票申请已提交', icon: 'success' });
-							}, 800);
-						}
-					}
-				});
+				// 诚实化:开票通道未接后端,不再假装申请成功
+				uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' });
 			},
 
 			// ================================================================
@@ -1150,22 +1125,8 @@
 					uni.showToast({ title: '请完善所有必填项', icon: 'none' });
 					return;
 				}
-				uni.showLoading({ title: '提交中...' });
-				setTimeout(() => {
-					uni.hideLoading();
-					uni.showModal({
-						title: '提交成功',
-						content: '合伙人推荐已提交，我们将尽快审核。',
-						showCancel: false,
-						success: () => {
-							uni.removeStorageSync(this.cacheKey);
-							this.partnerForm = { companyName: '', level: '金牌', contactName: '', phone: '', region: '', intro: '', recommenderType: 'sales', inviteCode: '' };
-							this.licenseFile = null;
-							this.licenseFileName = '';
-							this.currentPage = 'main';
-						}
-					});
-				}, 1500);
+				// 诚实化:提交通道未接后端,不再假装提交成功;草稿仍本地保留便于日后一键提交
+				uni.showToast({ title: '合伙人计划通道即将开放，资料已暂存草稿', icon: 'none' });
 			},
 
 			// ================================================================

@@ -155,8 +155,11 @@ export default {
       item.likes += item.liked ? 1 : -1;
     },
     toggleFav(idx) {
-      this.feedList[idx].favs += 1;
-      uni.showToast({ title: '已收藏', icon: 'success' });
+      // 诚实化:收藏可切换,不再无限累加
+      const item = this.feedList[idx];
+      item.faved = !item.faved;
+      item.favs += item.faved ? 1 : -1;
+      uni.showToast({ title: item.faved ? '已收藏' : '已取消收藏', icon: 'none' });
     },
     showCommentInput(idx) {
       this.feedList.forEach((v, i) => {
@@ -189,7 +192,11 @@ export default {
       uni.showToast({ title: '评论成功', icon: 'success' });
     },
     shareItem(item) {
-      uni.showToast({ title: '已复制链接，可分享给好友', icon: 'none' });
+      // 诚实化:真的复制内容到剪贴板,不再只弹 toast
+      uni.setClipboardData({
+        data: `【召唤机甲】${item.name}：${(item.text || '').slice(0, 60)}`,
+        success: () => uni.showToast({ title: '已复制，可分享给好友', icon: 'none' })
+      });
     },
     joinCommunity() {
       uni.showToast({ title: '加入社区', icon: 'success' });
