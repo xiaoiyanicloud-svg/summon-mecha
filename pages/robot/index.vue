@@ -504,99 +504,11 @@ import Jineng from '@/components/jiqi/jineng.vue'
 import Peijian from '@/components/jiqi/peijian.vue'
 import { cartApi, productApi, categoryApi, catalogApi, tobOrderApi } from '@/utils/api'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing.vue'
-import { enrichWithProductImages } from '@/utils/productImage'
 import { BASE_URL } from '@/utils/config'
 
 // 场景数据统一在 components/jiqi/changjing.vue（见上方 import sceneProducts）
 
-const rentList = [
-  { id: 1, name: '宇树Go2', scene: '巡检·安防', price: '1,200', icon: '🐕', bg: '#F0F4FA', brand: 'yushu', type: 'quadruped' },
-  { id: 2, name: '宇树Go1', scene: '教育·科研', price: '800', icon: '🐕', bg: '#F0F4FA', brand: 'yushu', type: 'quadruped' },
-  { id: 3, name: '宇树B2', scene: '工业巡检', price: '2,800', icon: '🐕', bg: '#E8F0FE', brand: 'yushu', type: 'quadruped' },
-  { id: 4, name: '智元远征A1', scene: '工业·制造', price: '2,800', icon: '🧑‍🤖', bg: '#E8F0FE', brand: 'zhiyuan', type: 'humanoid' },
-  { id: 5, name: '智元远征A2', scene: '服务·接待', price: '3,200', icon: '🧑‍🤖', bg: '#E8F0FE', brand: 'zhiyuan', type: 'humanoid' },
-  { id: 6, name: '优必选Walker', scene: '高端服务', price: '4,200', icon: '🤖', bg: '#F0F4FA', brand: 'youbixuan', type: 'humanoid' },
-  { id: 7, name: '优必选Cruzr', scene: '展厅·前台', price: '1,800', icon: '🤖', bg: '#F0F4FA', brand: 'youbixuan', type: 'reception' },
-  { id: 8, name: '众擎ZQ-1', scene: '教育·科研', price: '1,500', icon: '🤖', bg: '#F0F4FA', brand: 'zhongqing', type: 'humanoid' },
-  { id: 9, name: '众擎ZQ-2', scene: '服务展示', price: '2,200', icon: '🤖', bg: '#E8F0FE', brand: 'zhongqing', type: 'humanoid' },
-  { id: 10, name: '乐聚Aelos', scene: '竞赛·教育', price: '1,200', icon: '🤖', bg: '#F0F4FA', brand: 'leju', type: 'humanoid' },
-  { id: 11, name: '乐聚Roban', scene: '科研开发', price: '2,600', icon: '🤖', bg: '#E8F0FE', brand: 'leju', type: 'humanoid' },
-  { id: 12, name: '银河G1', scene: '通用平台', price: '3,000', icon: '🧠', bg: '#F0F4FA', brand: 'galaxy', type: 'humanoid' },
-  { id: 13, name: '银河G2', scene: '商业服务', price: '4,500', icon: '🧠', bg: '#E8F0FE', brand: 'galaxy', type: 'humanoid' },
-  { id: 14, name: '加速进化E1', scene: '消费级', price: '1,800', icon: '⚡', bg: '#F0F4FA', brand: 'engine', type: 'humanoid' },
-  { id: 15, name: '加速进化E2', scene: '娱乐互动', price: '2,400', icon: '⚡', bg: '#E8F0FE', brand: 'engine', type: 'humanoid' },
-  { id: 16, name: '傅利叶M2', scene: '康复训练', price: '2,000', icon: '💪', bg: '#F0F4FA', brand: 'fourier', type: 'humanoid' },
-  { id: 17, name: '傅利叶M3', scene: '医疗辅助', price: '3,500', icon: '💪', bg: '#E8F0FE', brand: 'fourier', type: 'humanoid' },
-  { id: 18, name: '小米CyberDog 2', scene: '家庭陪伴', price: '1,500', icon: '📱', bg: '#F0F4FA', brand: 'xiaomi', type: 'quadruped' },
-  { id: 19, name: '小米CyberOne', scene: '人形服务', price: '3,800', icon: '📱', bg: '#E8F0FE', brand: 'xiaomi', type: 'humanoid' },
-  { id: 20, name: 'Figure 01', scene: '工业制造', price: '6,800', icon: '⚡', bg: '#F0F4FA', brand: 'figure', type: 'humanoid' },
-  { id: 21, name: 'Figure 02', scene: '物流仓储', price: '7,200', icon: '⚡', bg: '#E8F0FE', brand: 'figure', type: 'humanoid' },
-  { id: 22, name: '大疆M300', scene: '工业巡检', price: '3,200', icon: '✈️', bg: '#E8F0FE', brand: 'dajiang', type: 'inspection' },
-  { id: 23, name: '大疆M30T', scene: '安防巡查', price: '2,800', icon: '✈️', bg: '#F0F4FA', brand: 'dajiang', type: 'inspection' },
-  { id: 24, name: '擎朗T5', scene: '医院物流', price: '950', icon: '🏥', bg: '#E8F0FE', brand: 'qinglang', type: 'delivery' },
-  { id: 25, name: '擎朗T3', scene: '餐厅·酒店', price: '550', icon: '🏥', bg: '#E8F0FE', brand: 'qinglang', type: 'delivery' },
-  { id: 26, name: '普渡欢乐送', scene: '酒店·餐饮', price: '800', icon: '📦', bg: '#F0F4FA', brand: 'pudu', type: 'delivery' },
-  { id: 27, name: '普渡贝拉', scene: '写字楼·医院', price: '650', icon: '📦', bg: '#F0F4FA', brand: 'pudu', type: 'delivery' },
-  { id: 28, name: '普渡闪电', scene: '即时配送', price: '950', icon: '📦', bg: '#E8F0FE', brand: 'pudu', type: 'delivery' },
-  { id: 29, name: '高仙商用', scene: '商场·办公', price: '600', icon: '🧹', bg: '#E8F0FE', brand: 'gaoxian', type: 'cleaning' },
-  { id: 30, name: '高仙50', scene: '酒店·医院', price: '750', icon: '🧹', bg: '#E8F0FE', brand: 'gaoxian', type: 'cleaning' },
-  { id: 31, name: '云迹润', scene: '酒店服务', price: '700', icon: '🏨', bg: '#F0F4FA', brand: 'yunjii', type: 'reception' },
-  { id: 32, name: '云迹澜', scene: '楼宇配送', price: '900', icon: '🏨', bg: '#E8F0FE', brand: 'yunjii', type: 'delivery' },
-  { id: 33, name: '埃斯顿ER12', scene: '机床上下料', price: '3,800', icon: '⚙️', bg: '#F0F4FA', brand: 'estun', type: 'arm' },
-  { id: 34, name: '埃斯顿ER30', scene: '冲压搬运', price: '5,600', icon: '⚙️', bg: '#E8F0FE', brand: 'estun', type: 'arm' },
-  { id: 35, name: '汇川IR20', scene: '电子装配', price: '4,200', icon: '⚙️', bg: '#F0F4FA', brand: 'inovance', type: 'arm' },
-  { id: 36, name: '汇川IR50', scene: '搬运码垛', price: '6,800', icon: '⚙️', bg: '#E8F0FE', brand: 'inovance', type: 'arm' },
-  { id: 37, name: '新松SR10C', scene: '精密装配', price: '4,500', icon: '🤖', bg: '#F0F4FA', brand: 'siasun', type: 'arm' },
-  { id: 38, name: '新松SR50A', scene: '物流搬运', price: '8,200', icon: '🤖', bg: '#E8F0FE', brand: 'siasun', type: 'arm' },
-  { id: 39, name: '埃夫特ER6', scene: '焊接·喷涂', price: '5,000', icon: '🔧', bg: '#F0F4FA', brand: 'efort', type: 'arm' },
-  { id: 40, name: '埃夫特ER10', scene: '搬运', price: '6,200', icon: '🔧', bg: '#E8F0FE', brand: 'efort', type: 'arm' },
-  { id: 41, name: '节卡JAKA Zu 3', scene: '精密装配', price: '4,800', icon: '🦾', bg: '#F0F4FA', brand: 'jaka', type: 'arm' },
-  { id: 42, name: '节卡JAKA Zu 7', scene: '柔性搬运', price: '6,500', icon: '🦾', bg: '#E8F0FE', brand: 'jaka', type: 'arm' }
-]
 
-const buyList = [
-  { id: 101, name: '宇树Go2 Pro', scene: '旗舰·四足', price: '32,800', icon: '🐕', bg: '#F0F4FA', brand: 'yushu', type: 'quadruped' },
-  { id: 102, name: '宇树Go2 Edu', scene: '教育版', price: '18,800', icon: '🐕', bg: '#F0F4FA', brand: 'yushu', type: 'quadruped' },
-  { id: 103, name: '宇树B2 Pro', scene: '工业旗舰', price: '68,800', icon: '🐕', bg: '#E8F0FE', brand: 'yushu', type: 'quadruped' },
-  { id: 104, name: '智元远征A1', scene: '工业级人形', price: '68,000', icon: '🧑‍🤖', bg: '#E8F0FE', brand: 'zhiyuan', type: 'humanoid' },
-  { id: 105, name: '智元远征A2', scene: '服务级人形', price: '78,000', icon: '🧑‍🤖', bg: '#E8F0FE', brand: 'zhiyuan', type: 'humanoid' },
-  { id: 106, name: '优必选Walker X', scene: '高端人形', price: '128,000', icon: '🤖', bg: '#F0F4FA', brand: 'youbixuan', type: 'humanoid' },
-  { id: 107, name: '优必选Cruzr Pro', scene: '智能迎宾', price: '48,800', icon: '🤖', bg: '#F0F4FA', brand: 'youbixuan', type: 'reception' },
-  { id: 108, name: '众擎ZQ-1 Pro', scene: '科研旗舰', price: '38,000', icon: '🤖', bg: '#F0F4FA', brand: 'zhongqing', type: 'humanoid' },
-  { id: 109, name: '众擎ZQ-2 Pro', scene: '商用服务', price: '52,000', icon: '🤖', bg: '#E8F0FE', brand: 'zhongqing', type: 'humanoid' },
-  { id: 110, name: '乐聚Aelos Pro', scene: '竞赛旗舰', price: '28,000', icon: '🤖', bg: '#F0F4FA', brand: 'leju', type: 'humanoid' },
-  { id: 111, name: '乐聚Roban Pro', scene: '科研开发', price: '58,000', icon: '🤖', bg: '#E8F0FE', brand: 'leju', type: 'humanoid' },
-  { id: 112, name: '银河G1 Pro', scene: '通用平台', price: '78,000', icon: '🧠', bg: '#F0F4FA', brand: 'galaxy', type: 'humanoid' },
-  { id: 113, name: '银河G2 Pro', scene: '商业旗舰', price: '98,000', icon: '🧠', bg: '#E8F0FE', brand: 'galaxy', type: 'humanoid' },
-  { id: 114, name: '加速进化E1 Pro', scene: '消费旗舰', price: '32,000', icon: '⚡', bg: '#F0F4FA', brand: 'engine', type: 'humanoid' },
-  { id: 115, name: '加速进化E2 Pro', scene: '娱乐旗舰', price: '42,000', icon: '⚡', bg: '#E8F0FE', brand: 'engine', type: 'humanoid' },
-  { id: 116, name: '傅利叶M2 Pro', scene: '康复旗舰', price: '48,000', icon: '💪', bg: '#F0F4FA', brand: 'fourier', type: 'humanoid' },
-  { id: 117, name: '傅利叶M3 Pro', scene: '医疗旗舰', price: '68,000', icon: '💪', bg: '#E8F0FE', brand: 'fourier', type: 'humanoid' },
-  { id: 118, name: '小米CyberDog 2 Pro', scene: '四足旗舰', price: '29,800', icon: '📱', bg: '#E8F0FE', brand: 'xiaomi', type: 'quadruped' },
-  { id: 119, name: '小米CyberOne Pro', scene: '人形旗舰', price: '68,800', icon: '📱', bg: '#E8F0FE', brand: 'xiaomi', type: 'humanoid' },
-  { id: 120, name: 'Figure 02 Pro', scene: '工业旗舰', price: '188,000', icon: '⚡', bg: '#E8F0FE', brand: 'figure', type: 'humanoid' },
-  { id: 121, name: 'Figure 01 Pro', scene: '物流旗舰', price: '168,000', icon: '⚡', bg: '#F0F4FA', brand: 'figure', type: 'humanoid' },
-  { id: 122, name: '大疆M300 RTK', scene: '工业巡检', price: '58,800', icon: '✈️', bg: '#E8F0FE', brand: 'dajiang', type: 'inspection' },
-  { id: 123, name: '大疆M30T Pro', scene: '安防巡检', price: '42,800', icon: '✈️', bg: '#F0F4FA', brand: 'dajiang', type: 'inspection' },
-  { id: 124, name: '擎朗T5 Max', scene: '医院物流', price: '26,800', icon: '🏥', bg: '#E8F0FE', brand: 'qinglang', type: 'delivery' },
-  { id: 125, name: '擎朗T3 Pro', scene: '餐厅配送', price: '14,800', icon: '🏥', bg: '#E8F0FE', brand: 'qinglang', type: 'delivery' },
-  { id: 126, name: '普渡欢乐送3', scene: '旗舰配送', price: '18,800', icon: '📦', bg: '#F0F4FA', brand: 'pudu', type: 'delivery' },
-  { id: 127, name: '普渡贝拉 Pro', scene: '高端配送', price: '12,800', icon: '📦', bg: '#F0F4FA', brand: 'pudu', type: 'delivery' },
-  { id: 128, name: '高仙50 Pro', scene: '商用清洁', price: '22,800', icon: '🧹', bg: '#E8F0FE', brand: 'gaoxian', type: 'cleaning' },
-  { id: 129, name: '高仙商用 Max', scene: '大型场景', price: '28,800', icon: '🧹', bg: '#E8F0FE', brand: 'gaoxian', type: 'cleaning' },
-  { id: 130, name: '云迹润Pro', scene: '酒店旗舰', price: '16,800', icon: '🏨', bg: '#F0F4FA', brand: 'yunjii', type: 'reception' },
-  { id: 131, name: '云迹澜Pro', scene: '楼宇旗舰', price: '22,800', icon: '🏨', bg: '#E8F0FE', brand: 'yunjii', type: 'delivery' },
-  { id: 132, name: '埃斯顿ER12 Pro', scene: '机床旗舰', price: '118,000', icon: '⚙️', bg: '#F0F4FA', brand: 'estun', type: 'arm' },
-  { id: 133, name: '埃斯顿ER30 Pro', scene: '冲压旗舰', price: '158,000', icon: '⚙️', bg: '#E8F0FE', brand: 'estun', type: 'arm' },
-  { id: 134, name: '汇川IR20 Pro', scene: '装配旗舰', price: '128,000', icon: '⚙️', bg: '#F0F4FA', brand: 'inovance', type: 'arm' },
-  { id: 135, name: '汇川IR50 Pro', scene: '搬运旗舰', price: '188,000', icon: '⚙️', bg: '#E8F0FE', brand: 'inovance', type: 'arm' },
-  { id: 136, name: '新松SR10C Pro', scene: '精密旗舰', price: '128,000', icon: '🤖', bg: '#F0F4FA', brand: 'siasun', type: 'arm' },
-  { id: 137, name: '新松SR50A Pro', scene: '物流旗舰', price: '218,000', icon: '🤖', bg: '#E8F0FE', brand: 'siasun', type: 'arm' },
-  { id: 138, name: '埃夫特ER6 Pro', scene: '焊接旗舰', price: '148,000', icon: '🔧', bg: '#F0F4FA', brand: 'efort', type: 'arm' },
-  { id: 139, name: '埃夫特ER10 Pro', scene: '搬运旗舰', price: '178,000', icon: '🔧', bg: '#E8F0FE', brand: 'efort', type: 'arm' },
-  { id: 140, name: '节卡Zu 3 Pro', scene: '精密旗舰', price: '138,000', icon: '🦾', bg: '#F0F4FA', brand: 'jaka', type: 'arm' },
-  { id: 141, name: '节卡Zu 7 Pro', scene: '柔性旗舰', price: '168,000', icon: '🦾', bg: '#E8F0FE', brand: 'jaka', type: 'arm' }
-]
 
 const accessoryCategoryMap = {
   fight: '格斗改装',
@@ -608,8 +520,6 @@ const accessoryCategoryMap = {
 
 // 稳定 sku:用于与 Bagisto 商品对齐。运营在后台按 RENT-<id> 或同名建已上架商品,
 // 前端加购/结算即可用真 id 走 Bagisto 真下单(否则回退意向单,mock 不变)。
-rentList.forEach(it => { if (!it.sku) it.sku = 'RENT-' + it.id })
-buyList.forEach(it => { if (!it.sku) it.sku = 'BUY-' + it.id })
 
 // ===== 详情「服务/售后」区内容（按板块区分: 租赁 / 购买・配件 / 技能） =====
 const BUY_SERVICE = {
@@ -862,12 +772,6 @@ export default {
         }, 80)
       })
     },
-    handleAction(item, type) {
-      this.selectedProduct = item
-      this.actionType = type
-      this.detailTab = 'desc'
-      this.showDetail = true
-    },
 
     onAccessory(item, fromHome = false) {
       const accessoryDetail = {
@@ -1002,13 +906,10 @@ export default {
       const p = Number(String(this.selectedProduct && this.selectedProduct.price || '0').replace(/,/g, '')) || 0
       return (p * this.rentForm.qty * this.rentDays()).toLocaleString('en-US')
     },
-    onRentTypeChange(e) { this.rentForm.productTypeIndex = Number(e.detail.value) },
-    onRentDaysChange(e) { this.rentForm.daysIndex = Number(e.detail.value) },
     onRentQtyChange(delta) {
       const v = this.rentForm.qty + delta
       this.rentForm.qty = v >= 1 && v <= 99 ? v : this.rentForm.qty
     },
-    onStartDateChange(e) { this.rentForm.startDate = e.detail.value },
     // ===== 日期三列选择（picker-view） =====
     monthColumn() { return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
     dayColumn() {
@@ -1029,10 +930,6 @@ export default {
       this.rentForm.startDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
     },
     cancelRentModal() { this.showRentModal = false },
-    onRentMaskTap(e) {
-      // 仅点击底部弹层外的遮罩才关闭
-      if (e.target === e.currentTarget) this.cancelRentModal()
-    },
     confirmRent() {
       const product = this.selectedProduct
       const opts = {
@@ -1062,13 +959,6 @@ export default {
           uni.hideLoading()
           uni.showToast({ title: (err && err.message) || '加入购物车失败', icon: 'none' })
         })
-    },
-    consult() {
-      uni.showModal({
-        title: '咨询',
-        content: '请拨打 400-888-9999 或在线留言，我们将尽快回复。',
-        showCancel: false
-      })
     },
     goSceneDetail(scene) {
       // 带上 category,供场景详情页判断是否为 TOB(企业商用)场景去拉后端真实图+描述
@@ -1179,16 +1069,6 @@ export default {
       this.hintShow(type)
     },
 
-    // ===== 商品桥接:把 Bagisto 真实商品(图/真 id/真价)补到 mock 卡片/详情 =====
-    // 【当前未调用】mock rentList/buyList 已不参与任何渲染,此方法保留备查;调用会多一个全量商品请求(约 0.85s)
-    async enrichProductCards() {
-      try {
-        await enrichWithProductImages(rentList, { prefix: 'RENT' })
-        await enrichWithProductImages(buyList, { prefix: 'BUY' })
-      } catch (e) {
-        // 任何失败都忽略,页面照旧
-      }
-    },
 
     // 场景对接 loadBackendScenes 已迁至 components/jiqi/changjing.vue（见 import）
 

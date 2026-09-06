@@ -494,16 +494,6 @@ export const SCENE_SCHEMES = {
   28: { desc: '爱好者体验、开发调试，让每个人都能上手机器人', icon: '🧑‍💻', bgColor: '#F0F4FA', consultCount: 98, tags: ['可租用', '开放接口', '开发调试'], stats: { amp: '上手快', roi: '单次', scene: '极客' }, pains: [ { icon: '🧩', text: '开发门槛高、上手难', solve: '开放接口、快速上手' }, { icon: '🛠️', text: '调试环境搭建耗时', solve: '多机型可租、即租即测' }, { icon: '🧑‍🤝‍🧑', text: '缺交流、问题难解', solve: '社区资源、学习支撑' } ], benefits: [ { icon: '🔌', title: '开放开发', desc: '接口开放、易于调试' }, { icon: '🎛️', title: '多机型', desc: '人形/四足/机械臂' }, { icon: '💡', title: '快速验证', desc: '即租即测、迭代快' } ], scenes: [ { name: '开发者', desc: '二次开发、调试验证', data: '上手快' }, { name: '创客空间', desc: '体验、实验、比赛', data: '创意 UP' } ] }
 }
 
-// ================================================================
-// 首页前四个带图场景方案（仓储分拣/电力巡检/酒店服务/展会接待）
-// id 用 2001+ 避免与 28 场景冲突；image=展示图；title=SCHEME_DB key（详细页取完整方案）
-// ================================================================
-export const featuredScenes = [
-  { id: 2001, name: '仓储分拣', icon: '📦', bg: '#E8F0FE', desc: '仓库货物分拣搬运的专属方案', category: 'warehouse_logistics', image: '/static/cangkufj.png', title: '仓储分拣' },
-  { id: 2002, name: '电力巡检', icon: '⚡', bg: '#E8F0FE', desc: '电力设施安全巡检的专属方案', category: 'security', image: '/static/dianlixj.png', title: '电力巡检' },
-  { id: 2003, name: '酒店服务', icon: '🏨', bg: '#E8F0FE', desc: '酒店配送迎宾的专属方案', category: 'enterprise', image: '/static/jiudianfw.png', title: '酒店服务' },
-  { id: 2004, name: '展会接待', icon: '🎪', bg: '#E8F0FE', desc: '展台迎宾引流的专属方案', category: 'business_event', image: '/static/zhanguanjd.png', title: '展会接待' }
-]
 
 export default {
   name: 'Changjing',
