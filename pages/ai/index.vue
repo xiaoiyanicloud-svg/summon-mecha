@@ -71,6 +71,45 @@
       <view class="bottom-space"></view>
     </view>
 
+    <!-- ===== 小召·召唤结果流 ===== -->
+    <scroll-view class="summon-scroll" scroll-y="true" show-scrollbar="false" v-if="summonResult">
+      <view class="summon-wrap">
+        <view class="summon-head">
+          <text class="summon-badge">小召为你召唤</text>
+          <text class="summon-close" @tap="clearSummon">收起</text>
+        </view>
+
+        <view class="summon-scene" v-if="summonResult.scene" @tap="goSceneDetail(summonResult.scene)">
+          <text class="summon-scene-icon">{{ summonResult.scene.icon || '🎯' }}</text>
+          <view class="summon-scene-info">
+            <text class="summon-scene-name">{{ summonResult.scene.name }}</text>
+            <text class="summon-scene-desc">{{ summonResult.scene.description }}</text>
+          </view>
+          <text class="summon-scene-go">查看方案 ›</text>
+        </view>
+
+        <view class="summon-machines" v-if="summonResult.machines && summonResult.machines.length">
+          <text class="summon-sub">推荐机型（点击立即租用）</text>
+          <view class="summon-machine" v-for="m in summonResult.machines" :key="m.id" @tap="goMachineRent(m)">
+            <text class="summon-machine-name">{{ m.name }}</text>
+            <text class="summon-machine-price" v-if="m.prices && m.prices.final">¥{{ m.prices.final.price }}/天起</text>
+          </view>
+        </view>
+
+        <view class="summon-alts" v-if="summonResult.alternatives && summonResult.alternatives.length">
+          <text class="summon-sub">其他可能匹配的场景</text>
+          <view class="summon-alt" v-for="a in summonResult.alternatives" :key="a.id" @tap="goSceneDetail(a)">
+            <text>{{ a.name }}</text>
+            <text class="summon-alt-arrow">›</text>
+          </view>
+        </view>
+
+        <view class="summon-empty" v-if="!summonResult.scene && !summonResult.machines.length">
+          <text class="summon-empty-text">暂时没有匹配的方案，可试试「方案定制」由专家为你定制</text>
+        </view>
+      </view>
+    </scroll-view>
+
     <!-- ===== 底部输入区域 ===== -->
     <view class="input-area">
       <input 
@@ -130,6 +169,7 @@
 
 <script>
 import CustomTabBar from '@/components/CustomTabBar.vue';
+import { summonApi } from '@/utils/api';
 
 export default {
   components: {
@@ -139,6 +179,9 @@ export default {
     return {
       inputValue: '',
       drawerVisible: false,
+      // 小召·召唤结果(意图→场景→机型)
+      summonResult: null,
+      summoning: false,
       historyList: [
         { id: 1, title: '工业机器人选型建议', time: '2026-08-08 14:32' },
         { id: 2, title: '协作机器人部署方案', time: '2026-08-08 11:20' },
@@ -169,22 +212,49 @@ export default {
     },
     onSendMsg() {
       const val = this.inputValue.trim();
-      if (val) {
-        const now = new Date();
-        const timeStr = 
-          now.getFullYear() + '-' + 
-          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(now.getDate()).padStart(2, '0') + ' ' +
-          String(now.getHours()).padStart(2, '0') + ':' +
-          String(now.getMinutes()).padStart(2, '0');
-        this.historyList.unshift({
-          id: Date.now(),
-          title: val.length > 20 ? val.slice(0, 20) + '...' : val,
-          time: timeStr
-        });
-        uni.showToast({ title: `发送：${val}`, icon: 'none' });
-        this.inputValue = '';
-      }
+      if (!val) { uni.showToast({ title: '请描述你的需求', icon: 'none' }); return; }
+
+      // 历史(本地)
+      const now = new Date();
+      const timeStr =
+        now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0');
+      this.historyList.unshift({
+        id: Date.now(),
+        title: val.length > 20 ? val.slice(0, 20) + '...' : val,
+        time: timeStr
+      });
+
+      // 小召·召唤引擎:意图→场景→机型→方案
+      this.summoning = true
+      summonApi.summon(val)
+        .then((res) => {
+          this.summoning = false
+          this.summonResult = (res && res.data) || null
+          if (this.summonResult && !this.summonResult.scene && !(this.summonResult.machines || []).length) {
+            uni.showToast({ title: '暂无匹配，可试试「方案定制」', icon: 'none' })
+          }
+        })
+        .catch((err) => {
+          this.summoning = false
+          uni.showToast({ title: (err && err.message) || '召唤失败，请稍后重试', icon: 'none' })
+        })
+      this.inputValue = ''
+    },
+    clearSummon() {
+      this.summonResult = null
+    },
+    goSceneDetail(scene) {
+      uni.navigateTo({ url: `/pages/robot/fangan?sceneId=${scene.id}` })
+    },
+    goMachineRent(m) {
+      const price = (m.prices && m.prices.final && m.prices.final.price) || (m.min_price || 0)
+      uni.navigateTo({
+        url: `/pages/order/checkout?productId=${m.id}&name=${encodeURIComponent(m.name || '机器人')}&price=${price}&type=rent&qty=1&scene=${encodeURIComponent('小召推荐')}`
+      })
     },
     onVoiceTap() {
       uni.showToast({ title: '语音识别中...', icon: 'none' });
@@ -649,4 +719,36 @@ page {
 .custom-tabbar .tab-text {
   font-size: 21rpx !important;
 }
+</style>
+<style scoped lang="scss">
+/* ===== 小召·召唤结果流 ===== */
+.summon-scroll {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: 150rpx;
+  max-height: 52vh;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 24rpx;
+  box-shadow: 0 12rpx 40rpx rgba(15, 23, 42, 0.18);
+}
+.summon-wrap { padding: 24rpx; }
+.summon-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.summon-badge { font-size: 26rpx; font-weight: 700; color: #165DFF; background: rgba(22, 93, 255, 0.1); border-radius: 20rpx; padding: 6rpx 20rpx; }
+.summon-close { font-size: 24rpx; color: #94A3B8; padding: 6rpx 12rpx; }
+.summon-scene { display: flex; align-items: center; gap: 16rpx; background: #F0F6FF; border: 1px solid #D6E4FF; border-radius: 16rpx; padding: 18rpx; }
+.summon-scene-icon { font-size: 44rpx; }
+.summon-scene-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.summon-scene-name { font-size: 30rpx; font-weight: 700; color: #1F2937; }
+.summon-scene-desc { font-size: 22rpx; color: #6B7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summon-scene-go { font-size: 24rpx; color: #165DFF; flex-shrink: 0; }
+.summon-sub { display: block; font-size: 24rpx; color: #6B7280; margin: 20rpx 0 10rpx; }
+.summon-machine { display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14rpx; padding: 16rpx 20rpx; margin-bottom: 10rpx; }
+.summon-machine-name { font-size: 26rpx; color: #1F2937; font-weight: 600; }
+.summon-machine-price { font-size: 24rpx; color: #165DFF; font-weight: 700; }
+.summon-alts { margin-top: 6rpx; }
+.summon-alt { display: flex; align-items: center; justify-content: space-between; padding: 14rpx 6rpx; border-bottom: 1px solid #F1F5F9; font-size: 26rpx; color: #334155; }
+.summon-alt-arrow { color: #CBD5E1; }
+.summon-empty-text { font-size: 26rpx; color: #6B7280; line-height: 1.6; }
 </style>

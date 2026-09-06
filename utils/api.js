@@ -91,6 +91,11 @@ export const eventApi = {
   register: (id, data) => http.post(`/api/events/${id}/register`, data, { loading: true, loadingText: '报名中...' }),
 }
 
+// ==================== 小召·召唤引擎(意图→场景→机型) ====================
+export const summonApi = {
+  summon: (q) => http.post('/api/summon', { q }, { loading: true, loadingText: '召唤中...' }),
+}
+
 // ==================== 收货地址 ====================
 export const addressApi = {
   getAddresses: () => http.get('/api/customer/addresses', { loading: false }),

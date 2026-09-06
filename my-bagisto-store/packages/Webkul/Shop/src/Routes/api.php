@@ -14,6 +14,7 @@ use Webkul\Shop\Http\Controllers\API\OrderController;
 use Webkul\Shop\Http\Controllers\API\ProductController;
 use Webkul\Shop\Http\Controllers\API\ReviewController;
 use Webkul\Shop\Http\Controllers\API\SceneController;
+use Webkul\Shop\Http\Controllers\API\SummonController;
 use Webkul\Shop\Http\Controllers\API\TobOrderController;
 use Webkul\Shop\Http\Controllers\API\WishlistController;
 
@@ -53,6 +54,9 @@ Route::group(['prefix' => 'api'], function () {
 
         Route::get('reviews/{review_id}/translate', 'translate')->name('shop.api.products.reviews.translate');
     });
+
+    // 小召·召唤引擎:意图→场景→机型(确定性规则匹配 v1,后续可平滑升级 LLM)
+    Route::post('summon', [SummonController::class, 'summon'])->name('shop.api.summon');
 
     // 赛事(Event):生态中心「赛事活动」tab + 真实报名(平台级闭环)
     Route::controller(EventController::class)->prefix('events')->group(function () {
