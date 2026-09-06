@@ -17,6 +17,9 @@ use Webkul\Sales\Repositories\OrderRepository;
  *   - 支持未登录(游客)下单(customer_id 为空);
  *   - 租用按「日租价 × 数量 × 天数」计价;类型/租期写进订单条目名称(后台可见)。
  *
+ * 多机合单:场景租用一次选多台 → 前端传 items 数组,一单多条目,全场共用租期;
+ * 单商品走顶层参数老路径,两条路径在内部归一化成同一份「行」结构后统一建单。
+ *
  * 注意:Bagisto orders 表无 additional 列,故不做迁移,类型信息放在条目名称里。
  */
 class TobOrderController extends APIController
@@ -36,12 +39,21 @@ class TobOrderController extends APIController
         $type = (string) $request->input('type');
         $isCustom = $type === 'custom';
 
+        // 多机合单:items 数组(场景租用一次选多台),否则走单商品老路径
+        $itemsInput = $request->input('items');
+        $isMulti = is_array($itemsInput) && ! empty($itemsInput);
+
         $request->validate([
             // product_id 必须指向后台真实存在的商品,否则订单无法关联商品(会破坏后台订单页渲染)
-            // 例外:custom 定制线索无商品 → 后端自动挂到锚点商品(sku=LEAD-CUSTOM)
-            'product_id' => ($isCustom ? 'nullable' : 'required').'|integer|exists:products,id',
-            'qty'        => 'required|integer|min:1',
+            // 例外:custom 定制线索挂锚点商品;多机合单逐行校验 items.*.product_id
+            'product_id' => (($isCustom || $isMulti) ? 'nullable' : 'required').'|integer|exists:products,id',
+            'qty'        => ($isMulti ? 'nullable' : 'required').'|integer|min:1',
             'type'       => 'required|in:rent,buy,plan,custom,skill,accessory',
+            'items'              => $isMulti ? 'required|array|min:1' : 'nullable',
+            'items.*.product_id' => ($isMulti ? 'required' : 'nullable').'|integer|exists:products,id',
+            'items.*.qty'        => ($isMulti ? 'required' : 'nullable').'|integer|min:1',
+            'items.*.price'      => 'nullable|numeric',
+            'items.*.rent_days'  => 'nullable|integer|min:1',
             'name'         => 'required|string',
             'product_name' => 'nullable|string',
             'sku'          => 'nullable|string',
@@ -52,74 +64,117 @@ class TobOrderController extends APIController
         ]);
 
         try {
-            if ($request->input('product_id')) {
-                $product = $this->productRepository->with('parent')->findOrFail($request->input('product_id'));
+            $customer = auth()->guard('customer')->user();
+            $channel = core()->getCurrentChannel();
+            $baseCurrency = core()->getBaseCurrencyCode();
+
+            $rentPeriod = (string) $request->input('rentPeriod', '');
+            $sceneName = (string) $request->input('scene', '');
+
+            $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制', 'skill' => '技能', 'accessory' => '配件'];
+
+            // 统一归一化成「行」:多机合单来自 items[],单商品来自顶层参数
+            if ($isMulti) {
+                $lines = collect($itemsInput)->map(fn ($it) => [
+                    'product_id' => (int) ($it['product_id'] ?? 0),
+                    'qty'        => max(1, (int) ($it['qty'] ?? 1)),
+                    'price'      => (float) ($it['price'] ?? 0),
+                    'rent_days'  => max(1, (int) ($it['rent_days'] ?? 1)),
+                ])->values()->all();
             } else {
-                // 定制线索:挂到锚点商品(后台需存在 sku=LEAD-CUSTOM 的商品,如「定制咨询线索」)
-                $product = $this->productRepository->findByField('sku', 'LEAD-CUSTOM')->first();
-                if (! $product) {
+                $lines = [[
+                    'product_id' => (int) $request->input('product_id'),
+                    'qty'        => max(1, (int) $request->input('qty', 1)),
+                    'price'      => (float) $request->input('price', 0),
+                    'rent_days'  => $type === 'rent' ? max(1, (int) $request->input('rent_days', 1)) : 1,
+                ]];
+            }
+
+            // 定制线索:无商品 → 挂锚点商品(后台需存在 sku=LEAD-CUSTOM 的商品,如「定制咨询线索」)
+            if ($isCustom && ! $isMulti && empty($lines[0]['product_id'])) {
+                $anchor = $this->productRepository->findByField('sku', 'LEAD-CUSTOM')->first();
+
+                if (! $anchor) {
                     return response()->json([
                         'success' => false,
                         'message' => '缺少线索锚点商品:请在后台创建 sku 为 LEAD-CUSTOM 的商品',
                     ], 422);
                 }
-            }
 
-            $customer = auth()->guard('customer')->user();
-            $channel = core()->getCurrentChannel();
-            $baseCurrency = core()->getBaseCurrencyCode();
-
-            $qty = (int) $request->input('qty');
-            $type = $request->input('type');
-            $days = $type === 'rent' ? max(1, (int) $request->input('rent_days', 1)) : 1;
-            $startDate = (string) $request->input('startDate', '');
-            $rentPeriod = (string) $request->input('rentPeriod', '');
-
-            // 单价:优先前端确认价;否则后端商品价;都没有则为 0
-            $frontPrice = (float) $request->input('price', 0);
-            if ($frontPrice > 0) {
-                $unitPrice = $frontPrice;
-            } elseif ($product) {
-                $unitPrice = (float) ($product->getTypeInstance()->getMinimalPrice() ?: $product->price);
-            } else {
-                $unitPrice = 0;
-            }
-
-            $sku   = $product ? $product->sku : (string) $request->input('sku', '');
-            $pName = $product ? $product->name : (string) $request->input('product_name', (string) $request->input('name', ''));
-            $pType = $product ? $product->type : 'simple';
-
-            // 定制线索:金额恒为 0(线索不是销售),条目标题用前端传入的线索名(而非锚点商品名)
-            if ($isCustom) {
-                $unitPrice = 0;
-                $pName = (string) $request->input('product_name', '定制咨询');
-            }
-
-            // 租用按天计价(一条订单项 = 一台机器人 × 租用天数)
-            $linePrice = $type === 'rent' ? $unitPrice * $days : $unitPrice;
-            $total = $linePrice * $qty;
-
-            // 条目名称:类型 + 租期,后台一眼可见;场景租用单把场景名放进条目名
-            $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制', 'skill' => '技能', 'accessory' => '配件'];
-            $itemName = ((string) $request->input('scene') !== '' ? $request->input('scene').' · ' : '').$pName.'【'.($typeLabels[$type] ?? '购买').'】';
-            if ($type === 'rent') {
-                $itemName .= $rentPeriod ? '（租期'.$rentPeriod.'）' : '（'.$days.'天）';
-            }
-
-            // 定制线索:公司/微信/需求拼进条目名,后台订单列表直接可见,无需点开详情
-            if ($isCustom) {
-                $extra = collect([
-                    $request->input('company') ? '公司：'.$request->input('company') : '',
-                    $request->input('wechat') ? '微信：'.$request->input('wechat') : '',
-                    $request->input('demand') ? '需求：'.mb_substr((string) $request->input('demand'), 0, 80) : '',
-                ])->filter()->implode('｜');
-                if ($extra !== '') {
-                    $itemName .= '（'.mb_substr($extra, 0, 160).'）';
-                }
+                $lines[0]['product_id'] = $anchor->id;
             }
 
             $email = $customer?->email ?? $request->input('email', 'guest@example.com');
             [$firstName, $lastName] = $this->splitName((string) $request->input('name'));
+
+            $orderItems = [];
+            $total = 0;
+            $totalQty = 0;
+
+            foreach ($lines as $line) {
+                $product = $this->productRepository->with('parent')->find($line['product_id']);
+
+                if (! $product) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => '商品不存在(ID: '.$line['product_id'].')',
+                    ], 422);
+                }
+
+                $days = $type === 'rent' ? $line['rent_days'] : 1;
+
+                // 单价:优先前端确认价;否则后端商品价;都没有则为 0
+                $unitPrice = $line['price'] > 0
+                    ? $line['price']
+                    : (float) ($product->getTypeInstance()->getMinimalPrice() ?: $product->price);
+
+                $pName = $product->name;
+
+                // 定制线索:金额恒为 0(线索不是销售),条目标题用前端传入的线索名(而非锚点商品名)
+                if ($isCustom) {
+                    $unitPrice = 0;
+                    $pName = (string) $request->input('product_name', '定制咨询');
+                }
+
+                // 租用按天计价(一条订单项 = 一台机器人 × 租用天数)
+                $linePrice = $type === 'rent' ? $unitPrice * $days : $unitPrice;
+                $lineTotal = $linePrice * $line['qty'];
+
+                // 条目名称:场景名 + 商品名 + 类型 + 租期,后台一眼可见
+                $itemName = ($sceneName !== '' ? $sceneName.' · ' : '').$pName.'【'.($typeLabels[$type] ?? '购买').'】';
+
+                if ($type === 'rent') {
+                    $itemName .= $rentPeriod !== '' ? '（租期'.$rentPeriod.'）' : '（'.$days.'天）';
+                }
+
+                // 定制线索:公司/微信/需求拼进条目名,后台订单列表直接可见,无需点开详情
+                if ($isCustom) {
+                    $extra = collect([
+                        $request->input('company') ? '公司：'.$request->input('company') : '',
+                        $request->input('wechat') ? '微信：'.$request->input('wechat') : '',
+                        $request->input('demand') ? '需求：'.mb_substr((string) $request->input('demand'), 0, 80) : '',
+                    ])->filter()->implode('｜');
+                    if ($extra !== '') {
+                        $itemName .= '（'.mb_substr($extra, 0, 160).'）';
+                    }
+                }
+
+                $orderItems[] = [
+                    'product_id'   => $product->id,
+                    'product_type' => get_class($product),  // morphTo 需要完整类名(如 Webkul\Product\Models\Product), 不能是 'simple'
+                    'type'         => $product->type,       // 商品类型码(如 'simple')
+                    'sku'          => $product->sku,
+                    'name'         => $itemName,
+                    'qty_ordered'  => $line['qty'],
+                    'price'        => $linePrice,
+                    'base_price'   => $linePrice,
+                    'total'        => $lineTotal,
+                    'base_total'   => $lineTotal,
+                ];
+
+                $total += $lineTotal;
+                $totalQty += $line['qty'];
+            }
 
             $address = [
                 'address1'   => $request->input('address', $isCustom ? '定制咨询(无交付地址)' : ''),
@@ -151,8 +206,8 @@ class TobOrderController extends APIController
                 'base_currency_code'    => $baseCurrency,
                 'channel_currency_code' => $baseCurrency,
                 'order_currency_code'   => $baseCurrency,
-                'total_item_count'      => $qty,
-                'total_qty_ordered'     => $qty,
+                'total_item_count'      => $totalQty,
+                'total_qty_ordered'     => $totalQty,
                 'grand_total'           => $total,
                 'base_grand_total'      => $total,
                 'sub_total'             => $total,
@@ -168,18 +223,7 @@ class TobOrderController extends APIController
                 'payment'               => ['method' => 'cashondelivery', 'method_title' => 'Cash on Delivery'],
                 'billing_address'       => $address,
                 'shipping_address'      => $address,
-                'items'                 => [[
-                    'product_id'   => $product->id,
-                    'product_type' => get_class($product),  // morphTo 需要完整类名(如 Webkul\Product\Models\Product), 不能是 'simple'
-                    'type'         => $product->type,       // 商品类型码(如 'simple')
-                    'sku'          => $sku,
-                    'name'         => $itemName,
-                    'qty_ordered'  => $qty,
-                    'price'        => $linePrice,
-                    'base_price'   => $linePrice,
-                    'total'        => $total,
-                    'base_total'   => $total,
-                ]],
+                'items'                 => $orderItems,
             ];
 
             $order = $this->orderRepository->create($data);
