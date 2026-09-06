@@ -739,9 +739,9 @@
 							uni.setStorageSync(CUSTOMER_KEY, data.customer || { email: email.trim() });
 							this.userName = (data.customer && data.customer.name) ? data.customer.name : email.trim().split('@')[0];
 						} else {
-							// 后端未返回 token（未连接后端）→ 保留本地登录态
-							uni.setStorageSync(CUSTOMER_KEY, { email: email.trim() });
-							this.userName = email.trim().split('@')[0];
+							// 诚实化:后端未返回凭证视为登录失败,不再制造本地假登录态(假登录会导致后续请求静默 401)
+							uni.showToast({ title: '登录失败：服务未返回凭证，请稍后重试', icon: 'none' });
+							return;
 						}
 						this.couponCount = 5;
 						this.invoiceCount = 3;
@@ -799,9 +799,9 @@
 							uni.setStorageSync(CUSTOMER_KEY, data.customer || { email });
 							this.userName = (data.customer && data.customer.name) ? data.customer.name : `${first_name} ${last_name}`;
 						} else {
-							// 后端未返回 token（未连接后端）→ 保留本地登录态
-							uni.setStorageSync(CUSTOMER_KEY, { email });
-							this.userName = `${first_name} ${last_name}`;
+							// 诚实化:后端未返回凭证视为注册失败,引导用户直接登录
+							uni.showToast({ title: '注册失败：服务未返回凭证，请直接登录或稍后重试', icon: 'none' });
+							return;
 						}
 						this.couponCount = 5;
 						this.invoiceCount = 3;
