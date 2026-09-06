@@ -22,6 +22,15 @@
 
 ## 变更记录
 
+### [体检] 2026-09-06 · 全项目健康检查（T1/T2 之后）
+- 工作区干净，基线以来 10 文件 +390/−35，全部符合预期；.env 仅 MAIL_MAILER 一行变化。
+- 语法：4 个 PHP + 5 个 JS/Vue 全部通过。
+- 接口：tob-catalog/scenes/categories 200；rent 路径 422 校验仍在（无数据污染）；custom 线索成功；LEAD-CUSTOM 未泄漏进任何前台目录。
+- 日志：切 log 邮件后零新增 ERROR。
+- **发现并修复**：脚本创建的锚点商品缺 `product_flat` 行（官方 Repository 边缘情况，主表/订单链路正常但后台商品列表可能空白）——已按现有 flat 结构补插（zh_CN/default，visible=0），补后链路复测无损（订单 51）。
+- 待清理测试数据：后台订单 30、40–48、50、51 共 12 条（姓名 555/TestLead/SpeedTest/HealthCheck/PostFlatCheck）。
+- 观察项（非缺陷）：enrichProductCards 为保留的死方法；品牌筛选 v1 按商品名推断，后续迁后台属性。
+
 ### [T2-1] 2026-09-06 · 留资管道：三处假表单接真实后端 + 品牌筛选修复
 - 提交：c3169da（后端）+ 本条前端提交
 - 后端（TobOrderController）：custom 类型免 product_id/免地址，自动挂锚点商品（sku=LEAD-CUSTOM，**需在后台创建**，缺失时返回 422 明确提示）；线索金额恒为 0；公司/微信/需求拼进订单条目名，后台订单列表直接可见。已实测 422 提示正确。
