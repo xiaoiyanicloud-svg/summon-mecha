@@ -1105,6 +1105,7 @@ export default {
 
       // 真实提交:线索走 tob-order(type=custom) → 后台订单列表可见;本地 storage 同步备份,接口失败也不丢线索
       let submitted = true
+      let errText = '网络异常'
       try {
         const res = await tobOrderApi.create({
           type: 'custom',
@@ -1118,7 +1119,9 @@ export default {
         })
         if (!res || !res.success) throw new Error((res && res.message) || '提交失败')
       } catch (e) {
+        // 透传后端真实原因
         submitted = false
+        errText = (e && e.message) || '网络异常'
       }
 
       // 保存企业咨询线索（本地备份），供后台/商务跟进
@@ -1137,7 +1140,7 @@ export default {
       })
       uni.setStorageSync('enterpriseConsultList', list)
 
-      uni.showToast({ title: submitted ? '已提交，企业顾问将尽快联系您' : '网络异常，已记录，企业顾问将联系您', icon: submitted ? 'success' : 'none' })
+      uni.showToast({ title: submitted ? '已提交，企业顾问将尽快联系您' : (errText + '，已记录待跟进'), icon: submitted ? 'success' : 'none' })
       this.closeEnterpriseModal()
       this.enterpriseForm = {
         mode: this.currentTab === 'rent' ? 'rent' : 'buy',

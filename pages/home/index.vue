@@ -258,6 +258,7 @@ import { tobOrderApi } from '@/utils/api';
 				if (identity === 'enterprise' && !company.trim()) { uni.showToast({ title: '请输入公司名称', icon: 'none' }); return; }
 				// 真实提交:线索走 tob-order(type=custom),后台订单列表可见
 				let submitted = true;
+				let errText = '网络异常，请稍后重试';
 				try {
 					const res = await tobOrderApi.create({
 						type: 'custom',
@@ -267,9 +268,11 @@ import { tobOrderApi } from '@/utils/api';
 					});
 					if (!res || !res.success) throw new Error((res && res.message) || '提交失败');
 				} catch (e) {
+					// 透传后端真实原因(如锚点商品缺失),不再笼统显示网络异常
 					submitted = false;
+					errText = (e && e.message) || '网络异常，请稍后重试';
 				}
-				uni.showToast({ title: submitted ? '已提交，专家将1小时内联系您' : '网络异常，请稍后重试', icon: submitted ? 'success' : 'none' });
+				uni.showToast({ title: submitted ? '已提交，专家将1小时内联系您' : errText, icon: submitted ? 'success' : 'none' });
 				if (submitted) {
 					this.closeCustomModal();
 					this.customForm = { identity: 'enterprise', name: '', phone: '', wechat: '', company: '', demand: '' };
