@@ -99,9 +99,9 @@ class TobOrderController extends APIController
             $linePrice = $type === 'rent' ? $unitPrice * $days : $unitPrice;
             $total = $linePrice * $qty;
 
-            // 条目名称:类型 + 租期,后台一眼可见
+            // 条目名称:类型 + 租期,后台一眼可见;场景租用单把场景名放进条目名
             $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制', 'skill' => '技能', 'accessory' => '配件'];
-            $itemName = $pName.'【'.($typeLabels[$type] ?? '购买').'】';
+            $itemName = ((string) $request->input('scene') !== '' ? $request->input('scene').' · ' : '').$pName.'【'.($typeLabels[$type] ?? '购买').'】';
             if ($type === 'rent') {
                 $itemName .= $rentPeriod ? '（租期'.$rentPeriod.'）' : '（'.$days.'天）';
             }
@@ -133,9 +133,12 @@ class TobOrderController extends APIController
                 'last_name'  => $lastName,
             ];
 
+            // 订单归类:场景租用(from=scene)的租用单归入「方案」,计价仍按租期
+            $orderType = ($type === 'rent' && $request->input('from') === 'scene') ? 'plan' : $type;
+
             $data = [
                 // 订单类型(后台 order_type 列,分类筛选用):rent/buy/plan/custom/skill/accessory
-                'order_type'            => $type,
+                'order_type'            => $orderType,
                 'customer_id'           => $customer?->id,
                 'customer_type'         => $customer ? get_class($customer) : null,
                 'customer_email'        => $email,

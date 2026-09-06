@@ -374,8 +374,9 @@ export default {
     },
     goProductDetail(item) {
       // 修复：原跳不存在的 /pages/product/detail（坏路由）→ 改走统一结算（type=rent）
+      // from=scene：场景租用来源标记，后端把此类订单归类到「方案」(order_type=plan)
       uni.navigateTo({
-        url: `/pages/order/checkout?productId=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.price}&icon=${encodeURIComponent(item.icon)}&bg=${encodeURIComponent(item.bg)}&scene=${encodeURIComponent(this.sceneInfo.name)}&type=rent&qty=1`
+        url: `/pages/order/checkout?productId=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.price}&icon=${encodeURIComponent(item.icon)}&bg=${encodeURIComponent(item.bg)}&scene=${encodeURIComponent(this.sceneInfo.name)}&type=rent&qty=1&from=scene`
       })
     },
     viewCase(item) {

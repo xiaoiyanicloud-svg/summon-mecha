@@ -240,6 +240,7 @@ export default {
       type: q.type || 'buy',
       sku: q.sku ? decodeURIComponent(q.sku) : '',
       image: q.image ? decodeURIComponent(q.image) : '',
+      from: q.from || '',
     }
     if (q.qty) this.qty = Number(q.qty) || 1
 
@@ -469,6 +470,9 @@ export default {
           qty: this.qty,
           // 类型白名单透传:rent/plan/custom/skill/accessory 按实际类型落库(修复 custom/技能/配件 被吞成 buy)
           type: ['rent', 'plan', 'custom', 'skill', 'accessory'].includes(this.product.type) ? this.product.type : 'buy',
+          // 下单来源(场景租用 from=scene → 后端归类为「方案」) + 场景名(写入条目名,后台可辨认)
+          from: this.product.from || '',
+          scene: this.product.scene || '',
           phone: v.phone,
           city: v.city,
           address: v.address,
