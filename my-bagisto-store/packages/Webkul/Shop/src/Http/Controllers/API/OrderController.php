@@ -107,4 +107,40 @@ class OrderController extends APIController
 
         return $data;
     }
+
+    /**
+     * 客户自助取消本人待处理订单(信任层:真实自助服务)。
+     */
+    public function cancel(int $id): JsonResource
+    {
+        $customer = auth()->guard('customer')->user();
+
+        $order = Order::query()
+            ->where('customer_id', $customer->id)
+            ->where('id', $id)
+            ->first();
+
+        if (! $order) {
+            return new JsonResource([
+                'success' => false,
+                'message' => '订单不存在。',
+            ]);
+        }
+
+        if ($order->status !== 'pending') {
+            return new JsonResource([
+                'success' => false,
+                'message' => '仅待处理订单可自助取消，请联系客服。',
+            ]);
+        }
+
+        $order->status = 'canceled';
+        $order->save();
+
+        return new JsonResource([
+            'success' => true,
+            'message' => '订单已取消。',
+            'status'  => 'canceled',
+        ]);
+    }
 }

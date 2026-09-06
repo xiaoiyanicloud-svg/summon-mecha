@@ -238,6 +238,25 @@ import { TOKEN_KEY } from '@/utils/config'
 
 			// ===== 按钮交互 =====
 			payOrder() { uni.showToast({ title: '跳转支付', icon: 'none' }) },
+
+			// 真实自助取消:仅本人待处理订单(后端校验),成功后刷新状态
+			cancelOrder() {
+				const id = this.order && this.order.id
+				if (!id) return
+				uni.showModal({
+					title: '取消订单',
+					content: '确认取消该订单吗？',
+					success: (res) => {
+						if (!res.confirm) return
+						orderApi.cancelOrder(id)
+							.then((r) => {
+								uni.showToast({ title: (r && r.message) || '订单已取消', icon: 'success' })
+								this.loadOrder(id)
+							})
+							.catch((err) => uni.showToast({ title: (err && err.message) || '取消失败', icon: 'none' }))
+					}
+				})
+			},
 			cancelOrder() {
 				uni.showModal({
 					title: '提示',

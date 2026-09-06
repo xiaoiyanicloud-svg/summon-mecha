@@ -164,6 +164,7 @@ Route::group(['prefix' => 'api'], function () {
             Route::get('', 'index')->name('shop.api.customers.orders.index');
 
             Route::get('{id}', 'show')->name('shop.api.customers.orders.show');
+            Route::post('{id}/cancel', 'cancel')->name('shop.api.customers.orders.cancel');
         });
     });
 });
