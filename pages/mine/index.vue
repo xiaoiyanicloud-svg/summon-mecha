@@ -56,11 +56,11 @@
 						<text class="order-icon">⏳</text>
 						<text class="order-label">待付款</text>
 					</view>
-					<view class="order-item" @click="goOrderList('shipping')">
+					<view class="order-item" @click="goOrderList('confirm')">
 						<text class="order-icon">📦</text>
 						<text class="order-label">待发货</text>
 					</view>
-					<view class="order-item" @click="goOrderList('done')">
+					<view class="order-item" @click="goOrderList('completed')">
 						<text class="order-icon">✅</text>
 						<text class="order-label">已完成</text>
 					</view>

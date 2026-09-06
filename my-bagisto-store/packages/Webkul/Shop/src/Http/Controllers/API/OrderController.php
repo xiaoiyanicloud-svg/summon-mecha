@@ -67,6 +67,7 @@ class OrderController extends APIController
             'increment_id'             => $order->increment_id,
             'status'                   => $order->status,
             'status_label'             => $order->status_label,
+            'order_type'               => $order->order_type,
             'created_at'               => $order->created_at->format('Y-m-d H:i:s'),
             'items_count'              => $order->items_count,
             'items_qty'                => $order->items_qty,

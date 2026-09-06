@@ -38,7 +38,7 @@
 					<text class="label">租赁类型</text>
 					<text class="value type-badge" :class="order.typeClass">{{ order.typeText }}</text>
 				</view>
-				<view class="info-row">
+				<view class="info-row" v-if="order.scene">
 					<text class="label">使用场景</text>
 					<text class="value">{{ order.scene }}</text>
 				</view>
@@ -54,19 +54,19 @@
 
 			<!-- 费用明细 -->
 			<view class="card fee-card">
-				<view class="fee-row">
+				<view class="fee-row" v-if="order.rentPrice">
 					<text class="label">租金</text>
-					<text class="value">¥{{ order.rentPrice || '0' }}</text>
+					<text class="value">¥{{ order.rentPrice }}</text>
 				</view>
-				<view class="fee-row">
+				<view class="fee-row" v-if="order.deposit">
 					<text class="label">押金</text>
-					<text class="value">¥{{ order.deposit || '0' }}</text>
+					<text class="value">¥{{ order.deposit }}</text>
 				</view>
-				<view class="fee-row">
+				<view class="fee-row" v-if="order.freight">
 					<text class="label">运费</text>
 					<text class="value">¥{{ order.freight || '0' }}</text>
 				</view>
-				<view class="fee-row discount">
+				<view class="fee-row discount" v-if="order.discount">
 					<text class="label">优惠</text>
 					<text class="value">-¥{{ order.discount || '0' }}</text>
 				</view>
@@ -76,8 +76,8 @@
 				</view>
 			</view>
 
-			<!-- 履约时间轴 -->
-			<view class="card timeline-card">
+			<!-- 履约时间轴（真实订单暂无履约数据时隐藏,不伪造进度） -->
+			<view class="card timeline-card" v-if="order.timeline && order.timeline.length">
 				<text class="card-title">履约进度</text>
 				<view class="timeline">
 					<view class="timeline-item" v-for="(item, idx) in order.timeline" :key="idx">
@@ -139,6 +139,8 @@
 </template>
 
 <script>
+import { orderApi } from '@/utils/api'
+import { TOKEN_KEY } from '@/utils/config'
 	export default {
 		data() {
 			return {
@@ -156,7 +158,7 @@
 			}
 		},
 		methods: {
-			loadOrder(id) {
+			async loadOrder(id) {
 				// 方式一：优先使用列表页同步过来的完整订单（viewDetail 里 setStorageSync）
 				const synced = uni.getStorageSync('orderDetailData')
 				if (synced && (id == null || Number(synced.id) === Number(id))) {
@@ -175,47 +177,55 @@
 					return
 				}
 
-				// 方式三：模拟网络请求兜底（实际项目应替换为接口调用）
-				const mockOrders = [
-					{
-						id: 1,
-						orderNo: 'SO20260728001',
-						name: '宇树 Go2 Pro',
-						icon: '🐕',
-						bg: '#F0F4FA',
-						type: 'rent',
-						typeText: '租赁',
-						typeClass: 'rent',
-						scene: '工厂巡检·安防',
-						startDate: '2026-07-28',
-						endDate: '2026-08-27',
-						quantity: 2,
-						rentPrice: '2,400',
-						deposit: '1,200',
-						freight: '0',
-						discount: '200',
-						actualAmount: '3,400',
-						status: 'active',
-						statusText: '服务中',
-						statusClass: 'active',
-						snCode: 'SN20260728001A',
-						deliveryMethod: '快递物流',
-						timeline: [
-							{ title: '下单成功', time: '2026-07-28 10:30', done: true },
-							{ title: '订单确认', time: '2026-07-28 14:20', done: true },
-							{ title: '仓库发货', time: '2026-07-29 08:00', done: true },
-							{ title: '已签收', time: '2026-07-30 16:00', done: true },
-							{ title: '服务中', time: '2026-07-30 16:00', done: true, isLast: true }
-						]
-					},
-				]
-				const foundMock = mockOrders.find(item => Number(item.id) === Number(id))
-				if (foundMock) {
-					this.order = this.normalizeOrder(foundMock)
-				} else {
-					this.order = null
+					// 方式三：真实接口(已登录且有数字 id)——后台订单以服务端为准,不再回退假数据
+				const token = uni.getStorageSync(TOKEN_KEY)
+				if (token && id != null && !isNaN(Number(id))) {
+					try {
+						const res = await orderApi.getOrderDetail(id)
+						const d = (res && res.data) || {}
+						if (d && d.id) {
+							this.order = this.normalizeOrder(this.mapApiDetail(d))
+							this.loading = false
+							return
+						}
+					} catch (e) {
+						// 接口失败 → 落入下方空态
+					}
 				}
+
+				this.order = null
 				this.loading = false
+			},
+
+			// 后台订单详情 → 展示字段(只映射接口真实存在的数据,mock 专属字段不伪造)
+			mapApiDetail(d) {
+				const item = (d.items && d.items[0]) || {}
+				const statusMap = {
+					pending: ['待处理', 'pending'],
+					processing: ['待确认', 'confirm'],
+					completed: ['已完成', 'completed'],
+					closed: ['已完成', 'completed'],
+					canceled: ['已取消', 'cancelled'],
+				}
+				const pair = statusMap[d.status] || ['服务中', 'active']
+				const typeLabels = { rent: '租赁', buy: '购买', plan: '方案', custom: '定制', skill: '技能', accessory: '配件' }
+				return {
+					id: d.id,
+					orderNo: d.increment_id,
+					name: item.name || '订单',
+					icon: '🤖',
+					bg: '#F0F4FA',
+					type: d.order_type || 'buy',
+					typeText: typeLabels[d.order_type] || '购买',
+					typeClass: d.order_type || 'buy',
+					scene: '',
+					quantity: d.total_qty_ordered != null ? d.total_qty_ordered : (item.qty_ordered || 1),
+					actualAmount: d.grand_total != null ? String(d.grand_total) : '0',
+					status: pair[1],
+					statusText: pair[0],
+					statusClass: pair[1],
+					timeline: [],
+				}
 			},
 
 			// 补齐详情页字段：缺失时回退到订单已有字段，避免显示为空

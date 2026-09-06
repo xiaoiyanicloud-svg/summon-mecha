@@ -108,110 +108,7 @@
 		data() {
 			return {
 				currentStatus: 'all',
-				orders: [
-					{
-						id: 1,
-						orderNo: 'SO20260728001',
-						name: '宇树 Go2 Pro',
-						icon: '🐕',
-						bg: '#F0F4FA',
-						type: 'rent',
-						typeText: '租赁',
-						typeClass: 'rent',
-						scene: '工厂巡检·安防',
-						duration: '2026-07-28 ~ 2026-08-27',
-						quantity: 2,
-						amount: '2,400',
-						status: 'active',
-						statusText: '服务中',
-						statusClass: 'active'
-					},
-					{
-						id: 2,
-						orderNo: 'SO20260727002',
-						name: '智元远征 A1',
-						icon: '🧑‍🤖',
-						bg: '#E8F0FE',
-						type: 'rent',
-						typeText: '租赁',
-						typeClass: 'rent',
-						scene: '展厅接待·讲解',
-						duration: '2026-07-27 ~ 2026-08-26',
-						quantity: 1,
-						amount: '2,800',
-						status: 'pending',
-						statusText: '待付款',
-						statusClass: 'pending'
-					},
-					{
-						id: 3,
-						orderNo: 'SO20260726003',
-						name: '普渡欢乐送 3',
-						icon: '📦',
-						bg: '#F0F4FA',
-						type: 'rent',
-						typeText: '租赁',
-						typeClass: 'rent',
-						scene: '酒店配送·餐饮',
-						duration: '2026-07-26 ~ 2026-08-25',
-						quantity: 3,
-						amount: '2,400',
-						status: 'confirm',
-						statusText: '待确认',
-						statusClass: 'confirm'
-					},
-					{
-						id: 4,
-						orderNo: 'SO20260725004',
-						name: '高仙 50 清洁',
-						icon: '🧹',
-						bg: '#E8F0FE',
-						type: 'buy',
-						typeText: '购买',
-						typeClass: 'buy',
-						scene: '商场清洁·办公',
-						duration: '2026-07-25 ~ 2026-08-24',
-						quantity: 1,
-						amount: '12,800',
-						status: 'execute',
-						statusText: '待执行',
-						statusClass: 'execute'
-					},
-					{
-						id: 5,
-						orderNo: 'SO20260724005',
-						name: '优必选 Walker X',
-						icon: '🤖',
-						bg: '#F0F4FA',
-						type: 'buy',
-						typeText: '购买',
-						typeClass: 'buy',
-						scene: '高端服务·迎宾',
-						duration: '2026-06-24 ~ 2026-07-23',
-						quantity: 1,
-						amount: '88,000',
-						status: 'completed',
-						statusText: '已完成',
-						statusClass: 'completed'
-					},
-					{
-						id: 6,
-						orderNo: 'SO20260723006',
-						name: '擎朗 T5 Pro',
-						icon: '🏥',
-						bg: '#E8F0FE',
-						type: 'plan',
-						typeText: '方案',
-						typeClass: 'plan',
-						scene: '医院配送·物流',
-						duration: '2026-07-23 ~ 2026-08-22',
-						quantity: 2,
-						amount: '1,900',
-						status: 'cancelled',
-						statusText: '已取消',
-						statusClass: 'cancelled'
-					}
-				]
+				orders: [],
 			}
 		},
 		computed: {
@@ -221,7 +118,12 @@
 			}
 		},
 		onShow() {
-			// 结算页下单/提交意向后标记刷新；进入订单页时重新载入
+			// 消费「我的-订单入口」传来的状态定位(读后即清),再刷新
+			const status = uni.getStorageSync('orderStatus')
+			if (status) {
+				uni.removeStorageSync('orderStatus')
+				if (['pending', 'confirm', 'completed'].includes(status)) this.currentStatus = status
+			}
 			this.loadOrders()
 		},
 		methods: {
@@ -244,14 +146,9 @@
 				}
 
 				const merged = [...intents, ...apiOrders]
-				if (merged.length) {
-					this.orders = merged
-					// 缓存到本地，供「订单详情」页读取
-					uni.setStorageSync('orderList', merged)
-				} else if (uni.getStorageSync('orderNeedRefresh')) {
-					// 刚下过单但拉取不到（后端未启动）→ 展示空列表
-					this.orders = []
-				}
+				// 诚实化:有什么显示什么,不再回退假种子订单
+				this.orders = merged
+				uni.setStorageSync('orderList', merged)
 				uni.removeStorageSync('orderNeedRefresh')
 			},
 
@@ -284,9 +181,10 @@
 					name: firstItem.name || '机器人订单',
 					icon: '🤖',
 					bg: '#F0F4FA',
-					type: 'buy',
-					typeText: '购买',
-					typeClass: 'buy',
+					// 真实类型(后端 order_type):页签/详情分类显示的数据源
+					type: o.order_type || 'buy',
+					typeText: ({rent:'租赁',buy:'购买',plan:'方案',custom:'定制',skill:'技能',accessory:'配件'})[o.order_type] || '购买',
+					typeClass: o.order_type || 'buy',
 					scene: firstItem.name || '',
 					duration: o.created_at || '',
 					quantity: o.items_qty || 1,
