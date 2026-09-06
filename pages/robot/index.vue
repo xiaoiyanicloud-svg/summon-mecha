@@ -502,7 +502,7 @@
 <script>
 import Jineng from '@/components/jiqi/jineng.vue'
 import Peijian from '@/components/jiqi/peijian.vue'
-import { cartApi, productApi, categoryApi } from '@/utils/api'
+import { cartApi, productApi, categoryApi, catalogApi } from '@/utils/api'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing.vue'
 import { enrichWithProductImages } from '@/utils/productImage'
 import { BASE_URL } from '@/utils/config'
@@ -1151,6 +1151,17 @@ export default {
         this.applyCatalog(_catalogRawCache)
         return
       }
+      // 优先聚合端点:1 个请求拿全部(后端未部署该接口时自动回退旧多请求逻辑)
+      try {
+        const aggRes = await catalogApi.getAggregate()
+        const d = aggRes && aggRes.data
+        if (d && Array.isArray(d.rent) && Array.isArray(d.buy)) {
+          _catalogRawCache = { rent: d.rent, buy: d.buy, accessory: d.accessory, skill: d.skill }
+          _catalogCachedAt = Date.now()
+          this.applyCatalog(_catalogRawCache)
+          return
+        }
+      } catch (e) { /* 聚合端点不可用 → 回退旧多请求逻辑 */ }
       // 按分类区分:rent=租用,buy=购买,accessory=配件,skill=技能(找不到则对应为空)
       const catIds = { rent: null, buy: null, accessory: null, skill: null }
       try {

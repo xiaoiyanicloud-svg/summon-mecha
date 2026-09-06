@@ -22,6 +22,19 @@
 
 ## 变更记录
 
+### [T1-1] 2026-09-06 · 机器页性能：前端缓存
+- 提交：c8bfdde
+- 文件：`pages/robot/index.vue`、`components/jiqi/changjing.vue`
+- 内容：目录数据 5 分钟模块级缓存（onShow 高频触发不再全量重拉）；移除 onShow 里的 enrichProductCards 调用（mock 列表已不渲染，纯浪费 0.85s）；loadBackendScenes 加 5 分钟 TTL。
+- 根因实测：artisan serve 单进程排队，原 7 请求关键路径 4.4s。
+- 回滚：`git revert c8bfdde` 或用 `.claude/backup/T1-perf/` 内原文件覆盖。
+
+### [T1-2] 2026-09-06 · 机器页性能：后端聚合端点
+- 文件：新增 `my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/CatalogController.php`；`Routes/api.php` 加 `/api/tob-catalog` 路由；`utils/api.js` 加 catalogApi；`robot/index.vue` loadCatalog 聚合优先、失败自动回退旧多请求逻辑。
+- 数据层与原生 `/api/products` 一致（ProductRepository::getAll + ProductResource），前端映射零适配；scenes 段复用 SceneController。
+- 实测：首屏关键路径 4.4s → **1.1s**（1 个请求 29.7KB）；配合缓存，切回机器页 0 请求秒开。后台改商品 5 分钟内生效，急用刷新前端即可。
+- 回滚：`git revert <本提交>`；新控制器可直接删除，前端自动走回退逻辑。
+
 ### [基线] 2026-09-06 · 机制建立
 - 动作：git init（main 分支，core.autocrlf=false 保证字节级保真）+ 本 .gitignore + 本文件；**未修改任何现有文件**。
 - 排除入库：两个 Bagisto 的 `vendor/`、`storage/`，根目录 `unpackage/`、`node_modules/`、`.env*`（.env.example 除外）、`.claude/backup/`。

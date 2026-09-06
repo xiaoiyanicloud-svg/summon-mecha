@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Webkul\Shop\Http\Controllers\API\AddressController;
+use Webkul\Shop\Http\Controllers\API\CatalogController;
 use Webkul\Shop\Http\Controllers\API\CartController;
 use Webkul\Shop\Http\Controllers\API\CategoryController;
 use Webkul\Shop\Http\Controllers\API\CompareController;
@@ -56,6 +57,11 @@ Route::group(['prefix' => 'api'], function () {
     Route::controller(SceneController::class)->prefix('scenes')->group(function () {
         Route::get('', 'index')->name('shop.api.scenes.index');
         Route::get('{id}', 'show')->name('shop.api.scenes.show');
+    });
+
+    // 目录聚合:1 个请求返回租用/购买/配件/技能四类商品 + 场景(机器页性能优化,替代 6 连发)
+    Route::controller(CatalogController::class)->prefix('tob-catalog')->group(function () {
+        Route::get('', 'index')->name('shop.api.tob-catalog.index');
     });
 
     Route::controller(CompareController::class)->prefix('compare-items')->group(function () {

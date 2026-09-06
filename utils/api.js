@@ -59,6 +59,12 @@ export const tobOrderApi = {
   create: (data) => http.post('/api/tob-order', data, { loading: false }),
 }
 
+// ==================== 目录聚合(机器页性能优化) ====================
+// 1 个请求返回 {rent:[],buy:[],accessory:[],skill:[],scenes:[]};后端未部署时前端自动回退旧多请求逻辑
+export const catalogApi = {
+  getAggregate: () => http.get('/api/tob-catalog', { loading: false }),
+}
+
 // ==================== 订单 ====================
 export const orderApi = {
   getOrders: (params = {}) => http.get('/api/customer/orders', { data: params, loading: false }),
