@@ -24,6 +24,11 @@
 
     <!-- ===== 场景分类滚动条 - 已删除 ===== -->
 
+    <!-- ===== 搜索框(租/购) =====
+    <view class="search-bar" v-show="currentTab === 'rent' || currentTab === 'buy'">
+      <input class="search-input" v-model="searchQ" placeholder="搜索机型 / 品牌 / 关键词" confirm-type="search" />
+    </view>
+
     <!-- ===== 主体 ===== -->
     <view class="main-body">
       <!-- 租用/购买：品牌侧边栏 -->
@@ -668,22 +673,27 @@ export default {
         { pagePath: '/pages/order/index', text: '订单', iconEmoji: '/static/dingdan.png', iconActive: '/static/dingdan1.png' },
         { pagePath: '/pages/mine/index', text: '我的', iconEmoji: '/static/wode.png', iconActive: '/static/wode1.png' }
       ],
+      searchQ: '',
       fromHome: false
     }
   },
   computed: {
     filteredRentList() {
       return this.rentCatalog.filter(item => {
-        const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
+        const q = (this.searchQ || '').trim().toLowerCase()
+				const matchSearch = !q || String(item.name || '').toLowerCase().includes(q)
+				const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
         const matchBrand = this.currentBrand === 'all' || item.brand === this.currentBrand || item.brand === 'all'
-        return matchType && matchBrand
+        return matchType && matchBrand && matchSearch
       })
     },
     filteredBuyList() {
       return this.buyCatalog.filter(item => {
-        const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
+        const q = (this.searchQ || '').trim().toLowerCase()
+				const matchSearch = !q || String(item.name || '').toLowerCase().includes(q)
+				const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
         const matchBrand = this.currentBrand === 'all' || item.brand === this.currentBrand || item.brand === 'all'
-        return matchType && matchBrand
+        return matchType && matchBrand && matchSearch
       })
     },
     filteredSceneList() {
@@ -1191,6 +1201,10 @@ export default {
 </script>
 
 <style scoped>
+/* ===== 搜索框(租/购) ===== */
+.search-bar { padding: 12rpx 20rpx 4rpx; }
+.search-input { width: 100%; height: 68rpx; background: #F1F5F9; border-radius: 34rpx; padding: 0 28rpx; font-size: 26rpx; box-sizing: border-box; }
+
 /* ===== 基础布局 ===== */
 page {
   height: 100%;
