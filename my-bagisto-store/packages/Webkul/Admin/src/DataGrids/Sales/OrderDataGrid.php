@@ -36,6 +36,7 @@ class OrderDataGrid extends DataGrid
                 'channel_name',
                 'channel_id',
                 'status',
+                'orders.order_type',
                 'customer_email',
                 'orders.cart_id as items',
                 DB::raw('CONCAT('.DB::getTablePrefix().'orders.customer_first_name, " ", '.DB::getTablePrefix().'orders.customer_last_name) as full_name'),
@@ -45,6 +46,7 @@ class OrderDataGrid extends DataGrid
 
         $this->addFilter('full_name', DB::raw('CONCAT('.DB::getTablePrefix().'orders.customer_first_name, " ", '.DB::getTablePrefix().'orders.customer_last_name)'));
         $this->addFilter('created_at', 'orders.created_at');
+        $this->addFilter('order_type', 'orders.order_type');
 
         return $queryBuilder;
     }
@@ -126,6 +128,37 @@ class OrderDataGrid extends DataGrid
                     case Order::STATUS_FRAUD:
                         return '<p class="label-canceled">'.trans('admin::app.sales.orders.index.datagrid.fraud').'</p>';
                 }
+            },
+        ]);
+
+        // 自定义列:订单类型(纯增量,不动任何现有列),配合 orders.order_type 列做分类筛选
+        $this->addColumn([
+            'index'              => 'order_type',
+            'label'              => '类型',
+            'type'               => 'string',
+            'searchable'         => false,
+            'filterable'         => true,
+            'filterable_type'    => 'dropdown',
+            'filterable_options' => [
+                ['label' => '租用', 'value' => 'rent'],
+                ['label' => '购买', 'value' => 'buy'],
+                ['label' => '方案', 'value' => 'plan'],
+                ['label' => '定制', 'value' => 'custom'],
+                ['label' => '技能', 'value' => 'skill'],
+                ['label' => '配件', 'value' => 'accessory'],
+            ],
+            'sortable' => true,
+            'closure'  => function ($row) {
+                $map = [
+                    'rent'      => '租用',
+                    'buy'       => '购买',
+                    'plan'      => '方案',
+                    'custom'    => '定制',
+                    'skill'     => '技能',
+                    'accessory' => '配件',
+                ];
+
+                return $map[$row->order_type] ?? '-';
             },
         ]);
 
