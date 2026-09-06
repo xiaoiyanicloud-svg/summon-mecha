@@ -91,9 +91,14 @@ export const sceneProducts = [
 ]
 
 // 拉后台 scenes 表，按 id 合并进场景卡片（说明/图取自后端；无则保持本地 mock）
+// 5 分钟 TTL:首页/机器页 onShow 高频调用,避免每次重拉;失败不计时,下次 onShow 重试
+let _scenesLoadedAt = 0
+const SCENES_TTL = 5 * 60 * 1000
 export async function loadBackendScenes() {
+  if (Date.now() - _scenesLoadedAt < SCENES_TTL) return
   try {
     const res = await sceneApi.getScenes()
+    _scenesLoadedAt = Date.now()
     const list = (res && res.data) ? res.data : []
     if (!Array.isArray(list) || !list.length) return
     list.forEach(s => {

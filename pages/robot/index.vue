@@ -658,6 +658,11 @@ function fixDescUrls(html) {
   return out
 }
 
+// ===== 目录缓存(模块级,5 分钟 TTL):onShow 频繁触发不再全量重拉,切回本页秒开 =====
+const CATALOG_TTL = 5 * 60 * 1000
+let _catalogRawCache = null // {rent:[],buy:[],accessory:[],skill:[]} 原始商品数组;命中后经 applyCatalog 重新映射,mapCatalogProduct 为纯函数无共享可变风险
+let _catalogCachedAt = 0
+
 export default {
   components: { Jineng, Peijian },
   data() {
@@ -1127,7 +1132,7 @@ export default {
     },
 
     // ===== 商品桥接:把 Bagisto 真实商品(图/真 id/真价)补到 mock 卡片/详情 =====
-    // 幂等、静默;接口失败或无同名(同 sku)商品时页面照旧、id 仍回退 mock(走意向单)
+    // 【当前未调用】mock rentList/buyList 已不参与任何渲染,此方法保留备查;调用会多一个全量商品请求(约 0.85s)
     async enrichProductCards() {
       try {
         await enrichWithProductImages(rentList, { prefix: 'RENT' })
@@ -1140,7 +1145,12 @@ export default {
     // 场景对接 loadBackendScenes 已迁至 components/jiqi/changjing.vue（见 import）
 
     // ===== 最小闭环:租用/购买 动态从后台商品库拉取(后台建品即在前端显示) =====
+    // 带 5 分钟模块级缓存;后台改数据最多 5 分钟生效,急用重启前端/刷新页面即清
     async loadCatalog() {
+      if (_catalogRawCache && Date.now() - _catalogCachedAt < CATALOG_TTL) {
+        this.applyCatalog(_catalogRawCache)
+        return
+      }
       // 按分类区分:rent=租用,buy=购买,accessory=配件,skill=技能(找不到则对应为空)
       const catIds = { rent: null, buy: null, accessory: null, skill: null }
       try {
@@ -1157,10 +1167,16 @@ export default {
       const [rentItems, buyItems, accItems, sklItems] = await Promise.all([
         f(catIds.rent), f(catIds.buy), f(catIds.accessory), f(catIds.skill),
       ])
-      this.rentCatalog = rentItems.map(p => this.mapCatalogProduct(p))
-      this.buyCatalog = buyItems.map(p => this.mapCatalogProduct(p))
-      this.accessoryCatalog = accItems.map(p => ({ ...this.mapCatalogProduct(p), category: '配件' }))
-      this.skillCatalog = sklItems.map(p => ({ ...this.mapCatalogProduct(p), tag: '技能' }))
+      _catalogRawCache = { rent: rentItems, buy: buyItems, accessory: accItems, skill: sklItems }
+      _catalogCachedAt = Date.now()
+      this.applyCatalog(_catalogRawCache)
+    },
+    // 原始商品数组 → 四个目录(纯展示映射,缓存命中与首拉共用一条路径)
+    applyCatalog(raw) {
+      this.rentCatalog = (raw.rent || []).map(p => this.mapCatalogProduct(p))
+      this.buyCatalog = (raw.buy || []).map(p => this.mapCatalogProduct(p))
+      this.accessoryCatalog = (raw.accessory || []).map(p => ({ ...this.mapCatalogProduct(p), category: '配件' }))
+      this.skillCatalog = (raw.skill || []).map(p => ({ ...this.mapCatalogProduct(p), tag: '技能' }))
     },
     async fetchProductsByCat(categoryId) {
       try {
@@ -1221,11 +1237,8 @@ export default {
       this.onSkill(skillData, skillData.fromHome || false)
     }
 
-    // 租用/购买 动态从后台商品库拉取(后台建品即显示)
+    // 租用/购买 动态从后台商品库拉取(内部自带 5 分钟缓存,onShow 高频触发不再全量重拉)
     this.loadCatalog()
-
-    // 尝试补真实商品图(有缓存,不会每次重复请求)
-    this.enrichProductCards()
 
     // 拉取后台维护的场景列表,按 id 合并进 enterprise(TOB)卡片; 完成后刷新场景列表
     loadBackendScenes().then(() => { this.sceneVersion++ })
