@@ -84,6 +84,13 @@ export const sceneApi = {
   },
 }
 
+// ==================== 赛事(生态中心赛事活动 tab) ====================
+export const eventApi = {
+  getEvents: () => http.get('/api/events', { loading: false }),
+  // 真实报名(落 event_registrations 表,后台报名列表可查)
+  register: (id, data) => http.post(`/api/events/${id}/register`, data, { loading: true, loadingText: '报名中...' }),
+}
+
 // ==================== 收货地址 ====================
 export const addressApi = {
   getAddresses: () => http.get('/api/customer/addresses', { loading: false }),

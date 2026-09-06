@@ -157,12 +157,23 @@
         <Dongtai />
       </view>
     </view>
+
+    <!-- ===== 赛事报名弹窗（真实落库） ===== -->
+    <view class="event-reg-mask" v-if="showEventReg" @tap="closeEventReg">
+      <view class="event-reg-modal" @tap.stop>
+        <view class="event-reg-title">赛事报名</view>
+        <view class="event-reg-sub">留下联系方式，赛事动态与参赛指引将发送给您</view>
+        <input class="event-reg-input" v-model="eventRegForm.name" placeholder="姓名" />
+        <input class="event-reg-input" v-model="eventRegForm.phone" type="number" maxlength="11" placeholder="手机号" />
+        <view class="event-reg-btn" @tap="submitEventRegistration">确认报名</view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
 import Dongtai from '@/components/shouye/dongtai.vue'
-import { productApi, categoryApi } from '@/utils/api'
+import { productApi, categoryApi, eventApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
 
 export default {
@@ -175,6 +186,10 @@ export default {
       selectedEvent: null,
       skillCatalog: [],
       accessoryCatalog: [],
+      // 赛事:后台 events 表数据(拉取失败保留 mock 兜底);报名弹窗
+      showEventReg: false,
+      regEventId: null,
+      eventRegForm: { name: '', phone: '' },
 
       skillList: [
         { id: 20, name: '智能叠衣', icon: '👕', bg: '#E8F5E9' },
@@ -402,6 +417,7 @@ export default {
   mounted() {
     this.loadSkill();
     this.loadAccessory();
+    this.loadEvents();
   },
   methods: {
     switchTab(tab) {
@@ -530,17 +546,43 @@ export default {
       };
       return map[status] || '';
     },
-    registerEvent(item) {
-      uni.showModal({
-        title: '报名确认',
-        content: `您即将报名「${item.name}」\n请确认您的姓名和联系方式`,
-        confirmText: '确认报名',
-        success: (res) => {
-          if (res.confirm) {
-            uni.showToast({ title: '报名成功！', icon: 'success' });
+    // 赛事:后台 events 表优先(平台级闭环),失败保留 mock 兜底
+    loadEvents() {
+      eventApi.getEvents()
+        .then((res) => {
+          const list = (res && res.data) || []
+          if (Array.isArray(list) && list.length) {
+            this.eventList = list.map(e => ({ ...e, fav: false }))
           }
-        }
-      });
+        })
+        .catch(() => { /* 保留 mock 兜底 */ })
+    },
+
+    registerEvent(item) {
+      if (item.status === 'ended') {
+        uni.showToast({ title: '该赛事已结束报名', icon: 'none' });
+        return;
+      }
+      // 真实报名:落 event_registrations 表(后台报名列表可查)
+      this.regEventId = item.id
+      this.eventRegForm = { name: '', phone: '' }
+      this.showEventReg = true
+    },
+    closeEventReg() {
+      this.showEventReg = false
+    },
+    submitEventRegistration() {
+      const f = this.eventRegForm
+      if (!f.name.trim()) { uni.showToast({ title: '请输入姓名', icon: 'none' }); return }
+      if (!/^1\d{10}$/.test(f.phone.trim())) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
+      eventApi.register(this.regEventId, { name: f.name.trim(), phone: f.phone.trim() })
+        .then((res) => {
+          this.showEventReg = false
+          uni.showToast({ title: (res && res.message) || '报名成功', icon: 'success' })
+        })
+        .catch((err) => {
+          uni.showToast({ title: (err && err.message) || '报名失败，请稍后重试', icon: 'none' })
+        })
     },
     toggleFavEvent(item) {
       item.fav = !item.fav;
@@ -904,4 +946,11 @@ export default {
   color: #1F2937;
   border: none;
 }
+/* ===== 赛事报名弹窗 ===== */
+.event-reg-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
+.event-reg-modal { width: 580rpx; background: #fff; border-radius: 24rpx; padding: 40rpx 36rpx; box-sizing: border-box; }
+.event-reg-title { font-size: 34rpx; font-weight: 700; color: #1F2937; text-align: center; }
+.event-reg-sub { font-size: 24rpx; color: #6B7280; margin: 12rpx 0 24rpx; text-align: center; }
+.event-reg-input { height: 84rpx; border: 1px solid #E5E7EB; border-radius: 14rpx; padding: 0 22rpx; font-size: 28rpx; margin-bottom: 18rpx; background: #F8FAFC; }
+.event-reg-btn { height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: #165DFF; border-radius: 42rpx; }
 </style>
