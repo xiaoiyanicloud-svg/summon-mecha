@@ -34,7 +34,7 @@ d:\main
 └── my-bagisto-store/   ============================================
     │   Bagisto (Laravel) 后端 = 本商城的 API 服务器
     │   ★ 前端 uni-app 只通过 REST API 访问它(见 utils/api.js)
-    │   ⚠ 前台 Shop(Shopfront)已停用 —— 只用后端。改动记录见:
+    │   ⚠ 前台 Shop(Shopfront)已恢复启用(2026-08-27 还原,仅作演示,业务不走它)。历史记录见:
     │     my-bagisto-store/docs/CHANGES-shopfront-disabled.md
     │   ★ 后端一切代码都有用 —— 改字段、改接口、改后台管理都来这里。
     │   ✅ 最常改 —— 自定义 API 代码(uni-app 对接的数据流)
@@ -108,10 +108,9 @@ d:\main
 - 最近活跃文件(改代码优先看这些)：components/jiqi/changjing.vue(场景数据源)、home/index.vue、robot/index.vue、
   robot/fangan.vue、utils/api.js、docs/scene-merge-log.md；以及后端 Admin/Shop 的 Scene 相关文件。
 - 改后端或 API 契约时，前端和后端两侧都要对齐(字段名、路由、方法)。
-- 前台 Shop 已停用(纯注释、未删文件)；还原/维护细节见 `my-bagisto-store/docs/CHANGES-shopfront-disabled.md`。
+- 前台 Shop 已恢复启用(2026-08-27 还原,仅作演示,业务不走它)；历史见 `my-bagisto-store/docs/CHANGES-shopfront-disabled.md`。
 - 图片都在 static/，新页面用图直接从那里引用。
-- my-bagisto-store 里只有网页交互页面(Shopfront/Theme/resources/views/CMS 前台)与本项目无关；
-  后端一切(含 Admin 后台)都有用，uni-app 就是调用它的后端。
+- my-bagisto-store 的网页交互页面(Shopfront/Theme/CMS 前台)非核心业务；后端 API 与 Admin 后台才是本项目所用。
 
 ## 快速定位常用问法
 
@@ -123,3 +122,13 @@ d:\main
 - "接口问题" → `utils/api.js` + `packages/Webkul/Shop/src/Routes/api.php`
 - "请求没带 token / 401" → `utils/request.js`
 - "改后端地址" → `utils/config.js`
+
+## 工作区备忘（2026-09-07 更新）
+
+- **my-bagisto-store2/** = 用户手动备份（2026-08-28 快照：含 tob-order、无 scenes/order_type 功能）。**保留勿删**；勿从它启动服务或部署——主后端永远是 `my-bagisto-store`，唯一端口 `127.0.0.1:8000`（8011 的多余 serve 进程已于 9/7 清除，若再出现请查启动脚本）。
+- **_prevai_log.txt** = 历次 AI 协作修改的会话日志（商品图片修复等来龙去脉），历史资料勿删。
+- **bagisto/（根目录）** = 空目录，2026-09-07 已删除。
+- **docs/**：ai-changelog.md（AI 改动流水 + 恢复方法）/ scene-merge-log.md（场景整合记录）/ **UPGRADE-NOTES.md（Bagisto 核心改动 16 处清单，升级版本前必读）**。
+- **后台账号** admin@zhaohuan.com：密码 2026-09-07 已更换（向项目负责人索取）。
+- **测试订单**：9/7 已清理 18 条测试单（备份 JSON 在 `.claude/backup/T4-ordertype/`），剩余 41 条为真实流程单；后台订单页顶部有**类型页签**（全部/租用/购买/方案/定制/技能/配件）。
+- **计算机使用纪律**：AI 不主动控制用户屏幕，仅在用户明确要求时使用。
