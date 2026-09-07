@@ -20,8 +20,11 @@
 | 6c | `Shop/src/Http/Controllers/API/AddressController.php` | 修改 | 新增 `destroy(int $id)`（仅删除本人地址）+ 对应 DELETE 路由 |
 | 7 | `Shop/src/Http/Controllers/API/CatalogController.php` | **新增** | `/api/tob-catalog`：一次返回四类目录 + 场景（机器页性能优化，数据层与原生 products API 一致） |
 | 8 | `Shop/src/Http/Controllers/API/SceneController.php` | **新增** | 场景列表/详情（scenes 表） |
+| 8b | `Shop/src/Http/Controllers/API/EventController.php` | **新增** | 赛事列表/详情/**真实报名**（event_registrations 落库，防重复） |
+| 8c | `Shop/src/Http/Controllers/API/SummonController.php` | **新增** | 小召召唤引擎 `/api/summon`：关键词+15 组同义词表打分，意图→场景(含方案)→机型（rule-v1，可平滑换 LLM） |
 | 9 | `Shop/src/Models/Scene.php`、`Shop/database/seeders/SceneSeeder.php` | **新增** | 场景模型 + 预置数据 |
-| 10 | `Shop/src/Database/Migrations/` | **新增 5 个迁移** | scenes 表（4 个：建表+方案 JSON 列+sort+is_hot）+ orders 表加 `order_type` 列（带索引，含存量回填） |
+| 10 | `Shop/src/Database/Migrations/` | **新增 6 个迁移** | scenes 表（4 个：建表+方案 JSON 列+sort+is_hot）+ `2026_09_07_100001_create_events_tables`（events + event_registrations）+ orders 表加 `order_type` 列（带索引，含存量回填） |
+| 10b | `Shop/src/Models/Event.php`、`EventRegistration.php`、`Database/Seeders/EventSeeder.php` | **新增** | 赛事模型/报名模型/8 场赛事种子 |
 
 ### Admin 包（后台管理）
 
@@ -30,6 +33,7 @@
 | 11 | `Admin/src/DataGrids/Sales/OrderDataGrid.php` | 修改 | 纯增量：order_type 列 + 下拉筛选 + `?order_type=` 参数过滤（页签用）；未动任何现有列 |
 | 12 | `Admin/src/Resources/views/sales/orders/index.blade.php` | 修改 | 顶部常驻分类页签（全部/租用/购买/方案/定制/技能/配件）+ 内联脚本（页签导航后清理 datagrid 的 localStorage 过期分页/筛选状态） |
 | 13 | `Admin/src/Http/Controllers/Catalog/SceneController.php`、`DataGrids/Catalog/SceneDataGrid.php`、`Http/Requests/SceneRequest.php`、`Resources/views/catalog/scenes/*`、`Routes/catalog-routes.php`(L86-108)、`Config/menu.php`(L84-86) | **新增整套** | 后台「场景管理」CRUD（照 Category 模式搭）：banner 上传、方案 JSON 列、排序/热门/咨询数 |
+| 13b | `Admin/src/Http/Controllers/Catalog/EventController.php`、`DataGrids/Catalog/{EventDataGrid,EventRegistrationDataGrid}.php`、`Resources/views/catalog/events/*`(4 个 blade)、`Routes/catalog-routes.php`(events 组)、`Config/menu.php`(catalog.events 项) | **新增整套** | 后台「赛事活动」CRUD + 「报名列表」（订单分类页签的"方案/技能/配件"等也涉及 OrderDataGrid/订单 blade，见 #11/#12） |
 
 ### 应用骨架与配置
 

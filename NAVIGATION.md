@@ -26,7 +26,9 @@ d:\main
 ├── utils/          ✅ 与后端对接的唯一入口(核心)
 │   ├── config.js   BASE_URL(现为 http://127.0.0.1:8000)/超时/token key
 │   ├── request.js  统一请求封装:Bearer token 注入、401 清登录态
-│   └── api.js      全部 API 清单:认证/商品/分类/购物车/结算/订单/地址
+│   ├── api.js      全部 API 清单:认证/商品/分类/购物车/结算/订单/地址/赛事(eventApi)/召唤(summonApi)/目录聚合(catalogApi)
+│   └── address.js  地址行转换:后台接口行 ↔ 前端展示行(mine/checkout 共用,登录走接口游客走本地)
+├── tools/          ✅ 运维脚本:bash tools/api-regression.sh 一键 API 体检(7项)
 ├── static/         ✅ 图片素材(png),不用读
 ├── unpackage/      ❌ 构建产物,别动
 ├── .claude/        Claude 配置(settings.local.json)
@@ -94,6 +96,38 @@ d:\main
 - 后端跑 `http://127.0.0.1:8000`，CORS 已允许 `*`；前端带 token GET 会触发 OPTIONS 预检，Laravel `HandleCors` 已放行。
 - 改后端文件：控制器/路由/DataGrid 改动需**重启后端 PHP 服务**；blade/语言包改动 `php artisan view:clear` + 刷新后台即可。
 
+## ★ 夜班新增功能架构（2026-09-07，均已闭环可用）
+
+### 1. 订单分类体系（order_type）
+- orders 表 `order_type` 列：rent/buy/plan/custom/skill/accessory（迁移含存量回填）。
+- 后台订单页顶部**类型页签**（全部/租用/购买/方案/定制/技能/配件）+ 过滤面板"类型"下拉。
+- 归类规则：tob-order 落类型；**场景租用(from=scene)→plan**；技能/配件从 checkout 白名单透传（不再被吞成 buy）。
+- 前端订单列表/详情的类型显示走 `/api/customer/orders` 返回的 `order_type`（OrderController::formatOrder 已补字段）。
+
+### 2. 场景租用多机合单
+- fangan 场景租用页：机器卡片 ⊕ 多选 → 底部结算栏（1/3/7/30 天全场统一租期）→ checkout 多机清单模式 → tob-order `items[]` **一单多条目**。
+
+### 3. 赛事活动平台级闭环
+- 数据：`events` / `event_registrations` 表（⚠ Bagisto 自带 marketing_events 是另一张表，勿混淆）。
+- 后台：目录 → 赛事活动（CRUD + 报名列表）。
+- 前台：EcoCenter 赛事 tab 拉 `/api/events`（失败回退 mock）；报名弹窗 POST `/api/events/{id}/register` 真实落库（同手机号同赛事防重复）。
+
+### 4. 小召·召唤引擎（AI 页灵魂入口）
+- `POST /api/summon`：需求文本 →（拆词+15组同义词表）→ 场景打分 → rent 分类机型打分 → 返回最佳场景(含方案)/推荐机型/备选；`engine: rule-v1` 标记，后续可平滑换 LLM。
+- AI 页 onSendMsg 真实调用，结果流卡片：场景→查看方案、机型→立即租用、备选切换。
+
+### 5. 信任与自助层
+- 订单自助取消：`POST /api/customer/orders/{id}/cancel`（仅本人+仅 pending，状态机校验），详情页按钮真实化。
+- 诚实化扫尾：登录/注册无假登录态；我的页开票/合伙人/会员等未接后端的交互统一"开发中"提示；手机号显示真实数据。
+
+### 6. 地址统一（T3）
+- 登录：mine 地址簿 + checkout 结算均走 `addressApi`（含新增 destroy 接口）；游客：本地存储双模式。张三李四假数据已清。
+
+### 7. 其他
+- 机器人库：租/购页搜索框（本地过滤）；品牌/类别筛选 v1 按商品名关键词推断。
+- 订单详情接真接口 getOrderDetail；列表 6 条假种子已删。
+- 业务表备份：`cd my-bagisto-store && D:/php.exe tools_backup_db.php`（11 表 JSON 按日期归档到 .claude/backup/db/）。
+
 ## 关键联结点（数据流）
 
 前端页面 → `utils/api.js` 里某个 `xxxApi` → `utils/request.js`(带 Bearer token、超时、401 处理)
@@ -122,6 +156,13 @@ d:\main
 - "接口问题" → `utils/api.js` + `packages/Webkul/Shop/src/Routes/api.php`
 - "请求没带 token / 401" → `utils/request.js`
 - "改后端地址" → `utils/config.js`
+- "订单分类/类型页签" → `OrderDataGrid.php` + `orders/index.blade.php`(页签+localStorage清理脚本) + `TobOrderController`(order_type 归类)
+- "赛事/报名" → 后端 `Shop/.../API/EventController.php` + 后台 `Admin/.../Catalog/EventController.php` + 前端 `components/EcoCenter.vue`
+- "小召/召唤/AI 匹配" → `Shop/.../API/SummonController.php`(同义词表在此) + `pages/ai/index.vue`
+- "多机合单/场景租用" → `pages/robot/fangan.vue`(⊕选择+结算栏) + `TobOrderController`(items[])
+- "取消订单" → `OrderController::cancel` + `pages/order/order-detail.vue`
+- "地址" → `utils/address.js` + `AddressController`(destroy) + mine/checkout 双模式
+- "接口体检" → `bash tools/api-regression.sh`；"备份业务表" → `tools_backup_db.php`
 
 ## 工作区备忘（2026-09-07 更新）
 
