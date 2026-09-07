@@ -254,8 +254,8 @@ export default {
     },
     submitLabel() {
       if (this.submitting) return '提交中...'
-      // 租用走「意向」，购买（含机器人/配件/技能）一律显示「提交订单」
-      return this.product.type === 'rent' ? '提交租用意向' : '提交订单'
+      // 真实下单:tob-order 落后台正式订单(租用含租期),措辞与行为一致
+      return this.product.type === 'rent' ? '确认下单' : '提交订单'
     },
   },
 
