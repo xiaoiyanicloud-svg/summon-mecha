@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
@@ -345,6 +346,26 @@ class SkillController extends APIController
 
         $entitlement->meta = $meta;
         $entitlement->save();
+
+        // D4 · 自报安装同步落 install_record。
+        // 此前 confirm-install 只改 meta/status,安装事实分裂成两套:走人工通道的用户
+        // 在灰度回滚(GrayReleaseService)、事故影响面(IncidentService)、设备已装列表
+        // (GET devices/{id}/installs)里**查无此设备** —— 它们都只读 install_record。
+        // 唯一键是 did+skill_version_id,故需有已确权设备(binding.did)与锁定版本才写。
+        if ($binding && $entitlement->skill_version_id) {
+            InstallRecord::updateOrCreate(
+                [
+                    'did'              => $binding->did,
+                    'skill_version_id' => $entitlement->skill_version_id,
+                ],
+                [
+                    'entitlement_id'  => $entitlement->id,
+                    'status'          => 'installed',
+                    'current_version' => $entitlement->version?->version,
+                    'installed_at'    => now(),
+                ]
+            );
+        }
 
         return response()->json([
             'message' => '已标记为安装完成。',
