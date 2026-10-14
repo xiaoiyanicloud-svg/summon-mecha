@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Illuminate\Http\Request;
 use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Listeners\SkillDelivery;
+use Webkul\Shop\Models\PaymentTransaction;
 use Webkul\Shop\Services\Payment\MockGateway;
 use Webkul\Shop\Services\Payment\PaymentManager;
 
@@ -46,6 +47,38 @@ class PaymentCallbackController extends APIController
 
         if (! $order) {
             return response()->json(['message' => '订单未找到。'], 404);
+        }
+
+        // 幂等 + 落流水(M6):以商户订单号 out_trade_no 唯一键为锚点。
+        // 此前回调只翻订单状态,把网关交易号/商户订单号/金额全部丢弃 —— 既无幂等键,
+        // 也无对账源(OpsMetricsService 自己就写着「out_trade_no 从未持久化」)。
+        // 现在重复回调会撞唯一键 → 按已处理返回,不再依赖"先查订单状态再改"的 check-then-act。
+        $transaction = PaymentTransaction::query()
+            ->where('out_trade_no', $result->outTradeNo)
+            ->first();
+
+        if (! $transaction) {
+            try {
+                $transaction = PaymentTransaction::create([
+                    'order_id'       => $order->id,
+                    'out_trade_no'   => $result->outTradeNo,
+                    'transaction_id' => $result->transactionId,
+                    'gateway'        => $gateway->key(),
+                    'amount'         => $result->amount,
+                    'status'         => PaymentTransaction::STATUS_PAID,
+                    'paid_at'        => now(),
+                    'raw'            => $result->raw,
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // 并发重复回调:唯一键冲突 = 另一半已落库 → 取回并按幂等处理
+                $transaction = PaymentTransaction::query()
+                    ->where('out_trade_no', $result->outTradeNo)
+                    ->first();
+
+                if (! $transaction) {
+                    throw $e;
+                }
+            }
         }
 
         // 幂等:已支付则直接返回
