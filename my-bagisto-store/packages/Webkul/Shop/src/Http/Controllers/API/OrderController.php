@@ -230,6 +230,11 @@ class OrderController extends APIController
         $order->status = 'canceled';
         $order->save();
 
+        // M4:取消必须**对称撤销**技能授权,否则用户取消订单后仍可下载/使用技能包(双花)。
+        // 走与 OrderRepository::cancel() 相同的统一事件 —— 撤销逻辑只此一处(listener 已挂),
+        // 不在这里各写各的。
+        \Illuminate\Support\Facades\Event::dispatch('sales.order.cancel.after', $order);
+
         return response()->json([
             'success' => true,
             'message' => '订单已取消。',
