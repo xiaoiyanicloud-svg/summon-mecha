@@ -2,7 +2,7 @@
 
 # 依赖（composer/npm 可重建）
 my-bagisto-store/vendor/
-my-bagisto-store2/vendor/
+my-bagisto-store2 备份/vendor/
 node_modules/
 
 # 构建产物（HBuilderX 重新编译生成）
@@ -10,7 +10,7 @@ unpackage/
 
 # 运行时数据（日志/缓存/上传图片；上线素材另行走文件备份）
 my-bagisto-store/storage/
-my-bagisto-store2/storage/
+my-bagisto-store2 备份/storage/
 
 # 密钥与配置（绝不入库；.env.example 模板除外）
 **/.env
@@ -19,6 +19,15 @@ my-bagisto-store2/storage/
 
 # AI 备份目录（与 git 双保险分层，独立存在）
 .claude/backup/
+
+# 平台历史备份目录（2026-10-15 由 my-bagisto-store2 改名而来，磁盘上仍在，只是退出 git）
+# ⚠ 目录名**带空格与中文**，原先的 my-bagisto-store2/vendor|storage 两条规则匹配不到它，
+#   `git add -A` 会把整个 2770 个文件的旧副本卷进来 —— 这正是本次要堵的洞。
+#   旧目录 my-bagisto-store2/ 已删除，其内容完整保存在 git 历史（提交 1deeeac 及之前）。
+my-bagisto-store2 备份/
+
+# 开源部署项目（独立仓库，不属于召唤机甲，勿混入版本库）
+coze-studio/
 
 # 系统杂项
 Thumbs.db
