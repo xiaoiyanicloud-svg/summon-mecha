@@ -25,6 +25,12 @@
         <testsuite name="Shop Feature Test">
             <directory suffix="Test.php">packages/Webkul/Shop/tests/Feature</directory>
         </testsuite>
+
+        <!-- Shop 纯单元测试(无容器/无数据库)。见 tests/Unit/Pest.php 的说明:
+             这些测试要脱离 Laravel 跑,所以必须显式绑回 PHPUnit\Framework\TestCase。 -->
+        <testsuite name="Shop Unit Test">
+            <directory suffix="Test.php">packages/Webkul/Shop/tests/Unit</directory>
+        </testsuite>
     </testsuites>
 
     <source>

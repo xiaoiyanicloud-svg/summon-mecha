@@ -26,6 +26,41 @@
         </v-dashboard-filters>
     </div>
 
+    {{--
+        口径说明（本项目新增，非 Bagisto 原生）
+
+        ⚠ 必须写在页面上，不能只写在这段注释里：本页每个金额都取自 Bagisto 原生报表，
+        而原生报表算的是「已开票金额」，不是「收到的钱」。这不是本平台的业务口径 ——
+        两套口径并排摆着却不说清，读的人一定会把"销售额 ¥0.00"理解成"没有生意"，
+        而事实是"从未开过发票"。这类"数字对、含义错"的误读比没有数字更危险。
+    --}}
+    <div class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+        <p class="font-semibold">
+            本页数字按 Bagisto 原生报表口径计算，与平台业务口径不同
+        </p>
+
+        <ul class="mt-1 list-disc pl-5">
+            <li>
+                「总销售额 / 平均销售额」= 所选期间内订单的
+                <span class="font-semibold">已开票金额 − 已退款</span>。
+                <span class="font-semibold">未付款、未开票的订单不计入</span>
+                —— 因此显示 ¥0 的含义是「没有开过发票」，不等于「没有订单」。
+            </li>
+
+            <li>
+                「未付发票」= 状态为待处理的发票金额合计。平台尚未启用发票流程，故恒为 0。
+            </li>
+
+            <li>
+                平台真实经营口径（含明确指出「未接入」的维度）见
+                <a
+                    href="{{ route('admin.dashboard.ops') }}"
+                    class="font-semibold underline"
+                >运营总览</a>。
+            </li>
+        </ul>
+    </div>
+
     <!-- Body Component -->
     <div class="mt-3.5 flex gap-2.5 max-xl:flex-wrap">
         <!-- Left Section -->

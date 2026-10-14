@@ -1,0 +1,92 @@
+@extends('shop::dev.layouts.app')
+
+@section('title', $product->name.' · 开发者中心')
+
+@section('content')
+    <h1>{{ $product->name }}</h1>
+    <p class="muted">
+        SKU: {{ $product->sku }} ｜ 定价：￥{{ number_format((float) $product->price, 2) }} ｜
+        <span class="badge {{ $product->status ? 'ok' : '' }}">{{ $product->status ? '已上架' : '未上架' }}</span>
+        <a href="{{ route('shop.dev.skills.index') }}" style="margin-left:10px">← 返回列表</a>
+    </p>
+
+    {{-- 新建版本 --}}
+    <div class="card">
+        <h2>新建版本</h2>
+        <form method="POST" action="{{ route('shop.dev.skills.versions.store', $product->id) }}">
+            @csrf
+            <div class="row">
+                <div>
+                    <label for="version">版本号</label>
+                    <input id="version" type="text" name="version" placeholder="1.0.0" required maxlength="32">
+                </div>
+                <div>
+                    <label for="changelog">变更说明</label>
+                    <input id="changelog" type="text" name="changelog" maxlength="2000">
+                </div>
+            </div>
+            <div style="margin-top:14px">
+                <button type="submit">创建版本</button>
+            </div>
+        </form>
+    </div>
+
+    @forelse ($versions as $version)
+        <div class="card">
+            <h2>
+                版本 {{ $version->version }}
+                <span class="badge {{ $version->status === 'published' ? 'ok' : '' }}">{{ $version->status }}</span>
+                <span class="muted" style="font-weight:400">通道 {{ $version->channel }}</span>
+            </h2>
+
+            {{-- 已上传的交付物 --}}
+            @if ($version->assets->isNotEmpty())
+                <table>
+                    <tr><th>载体</th><th>文件</th><th>大小</th><th>状态</th></tr>
+                    @foreach ($version->assets as $asset)
+                        <tr>
+                            <td>{{ $asset->carrier_type }}</td>
+                            <td>{{ $asset->file_name ?: '—' }}</td>
+                            <td>{{ $asset->file_size ? number_format($asset->file_size / 1024, 1).' KB' : '—' }}</td>
+                            <td>{{ $asset->fileExists() ? '已落盘' : '无文件' }}</td>
+                        </tr>
+                    @endforeach
+                </table>
+            @else
+                <p class="muted">还没有交付物。</p>
+            @endif
+
+            {{-- 上传技能包 --}}
+            <form method="POST" action="{{ route('shop.dev.versions.upload', $version->id) }}" enctype="multipart/form-data" style="margin-top:14px">
+                @csrf
+                <div class="row">
+                    <div>
+                        <label>载体类型</label>
+                        <select name="carrier_type" required>
+                            {{-- 白名单取自模型常量，不在视图里另写一份 --}}
+                            @foreach (\Webkul\Shop\Models\SkillAsset::CARRIER_TYPES as $type)
+                                <option value="{{ $type }}" @selected($type === 'file')>{{ $type }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label>技能包文件（.skill / zip）</label>
+                        <input type="file" name="file">
+                    </div>
+                </div>
+                <div style="margin-top:12px">
+                    <button type="submit" class="btn small">上传</button>
+                </div>
+            </form>
+
+            {{-- 提审 --}}
+            <form method="POST" action="{{ route('shop.dev.versions.submit', $version->id) }}" style="margin-top:14px">
+                @csrf
+                <button type="submit">提交审核</button>
+                <span class="muted">提交后走 L0 机审；驳回理由见「审核状态」页。</span>
+            </form>
+        </div>
+    @empty
+        <div class="card"><p class="muted">还没有版本。先在上方创建一个版本，再上传技能包。</p></div>
+    @endforelse
+@endsection

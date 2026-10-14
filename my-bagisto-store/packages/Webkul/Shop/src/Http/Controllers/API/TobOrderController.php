@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Sales\Repositories\OrderRepository;
+use Webkul\Shop\Models\Device;
 
 /**
  * TOB 统一下单接口(新增,不改动现有 onepage/后台逻辑)。
@@ -40,7 +41,9 @@ class TobOrderController extends APIController
         $isCustom = $type === 'custom';
 
         // 多机合单:items 数组(场景租用一次选多台),否则走单商品老路径
-        $itemsInput = $request->input('items');
+        // 用 merge 后的 all() 取 items(兼容 input() 对嵌套数组的剥离,避免多机被误判为单商品导致 422)
+        $all = $request->all();
+        $itemsInput = $all['items'] ?? $request->input('items');
         $isMulti = is_array($itemsInput) && ! empty($itemsInput);
 
         $request->validate([
@@ -63,10 +66,35 @@ class TobOrderController extends APIController
             'address'    => ($isCustom ? 'nullable' : 'required').'|string',
         ]);
 
+        // 技能交易强制登录(已与业务确认)。技能要绑设备、要产生授权,需要一个稳定身份;
+        // 游客单 customer_id 为空,授权无处挂靠 —— 与其事后补,不如在下单口就拦住。
+        // 其余类型(租/买/配件/定制)仍允许游客,行为不变。
+        if ($type === 'skill' && ! auth()->guard('customer')->user()) {
+            return response()->json([
+                'success' => false,
+                'message' => '购买技能需要先登录。',
+            ], 401);
+        }
+
         try {
             $customer = auth()->guard('customer')->user();
             $channel = core()->getCurrentChannel();
             $baseCurrency = core()->getBaseCurrencyCode();
+
+            // 技能可指定装到哪台设备。必须是本人的设备,不合法就当作没选(走"待绑定")
+            // 而不是报错打断下单 —— 用户可以先买后绑。
+            $deviceId = null;
+            if ($type === 'skill' && $customer) {
+                $requestedDeviceId = (int) $request->input('device_id', 0);
+
+                if ($requestedDeviceId) {
+                    $deviceId = Device::query()
+                        ->where('customer_id', $customer->id)
+                        ->where('id', $requestedDeviceId)
+                        ->where('bind_status', Device::STATUS_BOUND)
+                        ->value('id');
+                }
+            }
 
             $rentPeriod = (string) $request->input('rentPeriod', '');
             $sceneName = (string) $request->input('scene', '');
@@ -159,6 +187,21 @@ class TobOrderController extends APIController
                     }
                 }
 
+                // 技能条目:把结构化信息写进 order_items.additional。
+                // 该列本来就存在(json)且 OrderItem 的 $guarded 不含它,所以零迁移。
+                // 这是把类型/租期硬拼进 name 的结构化替代 —— 事实源仍是 skill_entitlements,
+                // 这里只是下单瞬间的快照(用户之后换绑设备不该改变历史记录)。
+                $additional = null;
+
+                if ($type === 'skill') {
+                    $additional = [
+                        'skill' => [
+                            'device_id'  => $deviceId,
+                            'ordered_at' => now()->toDateTimeString(),
+                        ],
+                    ];
+                }
+
                 $orderItems[] = [
                     'product_id'   => $product->id,
                     'product_type' => get_class($product),  // morphTo 需要完整类名(如 Webkul\Product\Models\Product), 不能是 'simple'
@@ -170,6 +213,7 @@ class TobOrderController extends APIController
                     'base_price'   => $linePrice,
                     'total'        => $lineTotal,
                     'base_total'   => $lineTotal,
+                    'additional'   => $additional,
                 ];
 
                 $total += $lineTotal;
@@ -200,6 +244,9 @@ class TobOrderController extends APIController
                 'customer_first_name'   => $firstName,
                 'customer_last_name'    => $lastName,
                 'is_guest'              => ! $customer,
+                // 游客单必须记下本机标识:否则游客订单列表只能靠 customer_id IS NULL 去捞,
+                // 那会把所有人的游客单都返回给任何一个访客(见 OrderController::guestIndex 的修复)
+                'guest_key'             => $customer ? null : $this->guestKey($request),
                 'channel_id'            => $channel->id,
                 'channel_name'          => $channel->name,
                 'channel_type'          => get_class($channel),

@@ -134,6 +134,15 @@
         </div>
     </script>
 
+    @php
+        /* 技能 / 配件 商品把这组关系当「适配机型」用, 标题按分类切换; 其它商品仍叫「相关产品」.
+           用 category slug 判断而不是硬编码分类 id —— slug 是稳定值(accessory / skill) */
+        $isAdaptTarget = $product->categories
+            ->pluck('slug')
+            ->intersect(['accessory', 'skill'])
+            ->isNotEmpty();
+    @endphp
+
     <script type="module">
         app.component('v-product-links', {
             template: '#v-product-links-template',
@@ -147,9 +156,9 @@
                     types: [
                         {
                             key: 'related_products',
-                            title: `@lang('admin::app.catalog.products.edit.links.related-products.title')`,
-                            info: `@lang('admin::app.catalog.products.edit.links.related-products.info')`,
-                            empty_info: `@lang('admin::app.catalog.products.edit.links.related-products.empty-info')`,
+                            title: `@lang($isAdaptTarget ? 'admin::app.catalog.products.edit.links.adapt-models.title' : 'admin::app.catalog.products.edit.links.related-products.title')`,
+                            info: `@lang($isAdaptTarget ? 'admin::app.catalog.products.edit.links.adapt-models.info' : 'admin::app.catalog.products.edit.links.related-products.info')`,
+                            empty_info: `@lang($isAdaptTarget ? 'admin::app.catalog.products.edit.links.adapt-models.empty-info' : 'admin::app.catalog.products.edit.links.related-products.empty-info')`,
                         }, {
                             key: 'up_sells',
                             title: `@lang('admin::app.catalog.products.edit.links.up-sells.title')`,

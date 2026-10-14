@@ -9,11 +9,17 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Webkul\Core\Http\Middleware\PreventRequestsDuringMaintenance;
 use Webkul\Shop\Http\Middleware\AuthenticateCustomer;
+use Webkul\Shop\Http\Middleware\AuthenticateDeveloper;
 use Webkul\Shop\Http\Middleware\CacheResponse;
 use Webkul\Shop\Http\Middleware\Currency;
 use Webkul\Shop\Http\Middleware\Locale;
+use Webkul\Shop\Http\Middleware\RequireDeveloperLogin;
 use Webkul\Shop\Http\Middleware\ResolveApiCustomer;
+use Webkul\Shop\Http\Middleware\ResolveDeveloper;
+use Webkul\Shop\Http\Middleware\ResolveDeveloperLogin;
 use Webkul\Shop\Http\Middleware\Theme;
+use Webkul\Shop\Http\Middleware\VerifyAgentKey;
+use Webkul\Shop\Http\Middleware\VerifyInternalKey;
 
 class ShopServiceProvider extends ServiceProvider
 {
@@ -42,6 +48,14 @@ class ShopServiceProvider extends ServiceProvider
         $router->aliasMiddleware('cache.response', CacheResponse::class);
         $router->aliasMiddleware('customer', AuthenticateCustomer::class);
         $router->aliasMiddleware('api.customer', ResolveApiCustomer::class);
+        $router->aliasMiddleware('internal.key', VerifyInternalKey::class);
+        $router->aliasMiddleware('agent.key', VerifyAgentKey::class);
+
+        // v3.4 步骤 9 · 开发者门户：会话鉴权 / 轻量登录门槛 / token 鉴权
+        $router->aliasMiddleware('developer', AuthenticateDeveloper::class);
+        $router->aliasMiddleware('developer.session', RequireDeveloperLogin::class);
+        $router->aliasMiddleware('api.developer', ResolveDeveloper::class);
+        $router->aliasMiddleware('api.developer.login', ResolveDeveloperLogin::class);
 
         Route::middleware(['web', 'shop', PreventRequestsDuringMaintenance::class])->group(__DIR__.'/../Routes/web.php');
         Route::middleware(['web', 'shop', 'api.customer', PreventRequestsDuringMaintenance::class])->group(__DIR__.'/../Routes/api.php');

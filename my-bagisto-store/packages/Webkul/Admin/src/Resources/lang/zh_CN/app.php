@@ -878,6 +878,14 @@ return [
                 ],
 
                 'links' => [
+                    /* 技能 / 配件 商品把「相关产品」这组关系当适配机型用;
+                       标签页标题的切换逻辑见 catalog/products/edit/links.blade.php 的 $isAdaptTarget */
+                    'adapt-models' => [
+                        'empty-info' => '尚未添加适配机型。',
+                        'info'       => '选择这个技能/配件兼容的机器人机型。',
+                        'title'      => '适配机型',
+                    ],
+
                     'related-products' => [
                         'empty-info' => '在路上添加相关产品。',
                         'info'       => '除了客户当前查看的产品外，他们还会看到相关产品。',
@@ -4899,6 +4907,7 @@ return [
                 'add-btn'       => '添加所选产品',
                 'empty-info'    => '没有找到与搜索词匹配的产品。',
                 'empty-title'   => '未找到任何产品',
+                'placeholder'   => '按机型名称搜索',
                 'product-image' => '产品图片',
                 'qty'           => ':qty 可用',
                 'sku'           => 'SKU - :sku',

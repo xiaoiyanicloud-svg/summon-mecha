@@ -16,3 +16,8 @@ require 'customer-routes.php';
  * cart, coupons, etc will be placed here.
  */
 require 'checkout-routes.php';
+
+/**
+ * Developer portal routes (v3.4 步骤 9) —— 独立门户，与前台/后台互不干扰。
+ */
+require 'dev.php';

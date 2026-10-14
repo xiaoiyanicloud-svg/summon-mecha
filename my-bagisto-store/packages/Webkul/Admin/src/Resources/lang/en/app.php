@@ -4899,6 +4899,7 @@ return [
                 'add-btn'       => 'Add Selected Product',
                 'empty-info'    => 'No products available for search term.',
                 'empty-title'   => 'No products found',
+                'placeholder'   => 'Search by name',
                 'product-image' => 'Product Image',
                 'qty'           => ':qty Available',
                 'sku'           => 'SKU - :sku',

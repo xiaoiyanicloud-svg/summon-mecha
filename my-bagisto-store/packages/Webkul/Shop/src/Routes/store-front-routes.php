@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webkul\Shop\Http\Controllers\AgentSetupController;
 use Webkul\Shop\Http\Controllers\BookingProductController;
 use Webkul\Shop\Http\Controllers\CompareController;
 use Webkul\Shop\Http\Controllers\HomeController;
@@ -9,6 +10,22 @@ use Webkul\Shop\Http\Controllers\ProductController;
 use Webkul\Shop\Http\Controllers\ProductsCategoriesProxyController;
 use Webkul\Shop\Http\Controllers\SearchController;
 use Webkul\Shop\Http\Controllers\SubscriptionController;
+
+/**
+ * v3.4 步骤 8 · Agent 安装脚本(纯文本 GET,不走 /api 前缀)。
+ * 显式路由优先于下方的 fallback,不冲突。
+ *
+ * ⚠ 路径**故意叫 setup.sh 而不是 install.sh**:Bagisto 的 Installer 包有个全局
+ *   `CanInstall` 中间件,对任何含 `/install` 的路径都 `redirect('/admin')`。
+ *   叫 install.sh 会被它拦掉。改名不是为了好看,是绕开那个中间件。
+ */
+Route::controller(AgentSetupController::class)->prefix('agent')->group(function () {
+    Route::get('setup.sh', 'installScript')->name('shop.agent.install_script');
+
+    Route::get('platform_public.pem', 'publicKey')->name('shop.agent.public_key');
+
+    Route::get('agent.py', 'agentPy')->name('shop.agent.py');
+});
 
 /**
  * CMS pages.

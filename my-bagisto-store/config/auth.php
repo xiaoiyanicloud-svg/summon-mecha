@@ -50,6 +50,17 @@ return [
             'driver'   => 'sanctum',
             'provider' => 'customers',
         ],
+
+        /*
+         * 开发者门户（v3.4 步骤 9）—— 与买家**同账号表、不同会话**。
+         * 开发者 = 一行 customers + 一行 developer_profile；这里只是把
+         * "开发者会话"与"买家会话"隔离开，互不影响。
+         * ⚠ defaults.guard 是 customer，门户代码一律显式 auth('developer')。
+         */
+        'developer' => [
+            'driver'   => 'session',
+            'provider' => 'developers',
+        ],
     ],
 
     /*
@@ -78,6 +89,12 @@ return [
         'admins' => [
             'driver' => 'eloquent',
             'model'  => Webkul\User\Models\Admin::class,
+        ],
+
+        // 开发者门户：账号主体仍是 customers（计划口径"开发者 = customers × sellers"）
+        'developers' => [
+            'driver' => 'eloquent',
+            'model'  => Webkul\Customer\Models\Customer::class,
         ],
     ],
 

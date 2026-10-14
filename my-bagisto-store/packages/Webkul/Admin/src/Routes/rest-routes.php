@@ -5,6 +5,8 @@ use Webkul\Admin\Http\Controllers\DashboardController;
 use Webkul\Admin\Http\Controllers\DataGrid\DataGridController;
 use Webkul\Admin\Http\Controllers\DataGrid\SavedFilterController;
 use Webkul\Admin\Http\Controllers\MagicAIController;
+use Webkul\Admin\Http\Controllers\Ops\AlertController;
+use Webkul\Admin\Http\Controllers\Ops\OverviewController;
 use Webkul\Admin\Http\Controllers\TinyMCEController;
 use Webkul\Admin\Http\Controllers\User\AccountController;
 use Webkul\Admin\Http\Controllers\User\SessionController;
@@ -16,6 +18,28 @@ Route::controller(DashboardController::class)->prefix('dashboard')->group(functi
     Route::get('', 'index')->name('admin.dashboard.index');
 
     Route::get('stats', 'stats')->name('admin.dashboard.stats');
+});
+
+/**
+ * 平台告警收件箱（定时任务产出的待办）。
+ *
+ * 挂在 dashboard 下的原因：它是运营每天开工第一眼要看的东西，
+ * 与仪表盘是同一类"总览"界面。Bagisto 的通知铃铛用不了 ——
+ * 那张 `notifications` 表是订单专用的（核心列是 order_id）。
+ */
+Route::controller(AlertController::class)->prefix('alerts')->group(function () {
+    Route::get('', 'index')->name('admin.alerts.index');
+    // ⚠ 只有「标记已读」，没有「删除」—— 告警是系统产出的事实记录
+    Route::post('{id}/read', 'read')->whereNumber('id')->name('admin.alerts.read');
+    Route::post('read-all', 'readAll')->name('admin.alerts.read-all');
+});
+
+/**
+ * 运营总览（技能平台口径的只读统计）。
+ * 与原生仪表盘（电商口径）并存，不替代它。
+ */
+Route::controller(OverviewController::class)->prefix('dashboard')->group(function () {
+    Route::get('ops', 'index')->name('admin.dashboard.ops');
 });
 
 /**

@@ -1,0 +1,1 @@
+{"model": "deepseek-v4-pro", "messages": [{"role": "user", "content": "说一句话"}], "max_tokens": 20}

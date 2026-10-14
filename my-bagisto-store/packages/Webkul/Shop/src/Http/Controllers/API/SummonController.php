@@ -52,6 +52,12 @@ class SummonController extends APIController
 
     public function summon(Request $request): JsonResponse
     {
+        // AI 版开关(见 config/summon.php,由 .env 的 SUMMON_AI_ENABLED 控制)。
+        // 关闭时(默认)下面的 rule-v1 逻辑一行不动,行为与从前完全一致。
+        if (config('summon.ai_enabled')) {
+            return app(SummonAiController::class)->summon($request);
+        }
+
         $q = trim((string) $request->input('q', ''));
 
         if ($q === '') {

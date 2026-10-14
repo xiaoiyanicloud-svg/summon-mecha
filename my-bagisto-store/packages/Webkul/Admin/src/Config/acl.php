@@ -15,6 +15,18 @@ return [
         'name'  => 'admin::app.acl.dashboard',
         'route' => 'admin.dashboard.index',
         'sort'  => 1,
+    ], [
+        // 平台告警收件箱（定时任务产出的待办）
+        'key'   => 'dashboard.alerts',
+        'name'  => '平台告警',
+        'route' => 'admin.alerts.index',
+        'sort'  => 2,
+    ], [
+        // 运营总览（技能平台口径的只读统计）
+        'key'   => 'dashboard.overview',
+        'name'  => '运营总览',
+        'route' => 'admin.dashboard.ops',
+        'sort'  => 3,
     ],
 
     /*
@@ -186,6 +198,92 @@ return [
         'route' => 'admin.catalog.scenes.delete',
         'sort'  => 3,
     ], [
+        // 技能管理:技能包的版本 / 交付物 / 安装指引
+        'key'   => 'catalog.skills',
+        'name'  => '技能管理',
+        'route' => 'admin.catalog.skills.index',
+        'sort'  => 5,
+    ], [
+        // 审核台:技能准入的 L0 / L2 判定(发布闸门在这里落地)
+        'key'   => 'catalog.skill-reviews',
+        'name'  => '审核台',
+        'route' => 'admin.catalog.skill-reviews.index',
+        'sort'  => 6,
+    ], [
+        // 机型库:兼容性校验的输入
+        'key'   => 'catalog.device-models',
+        'name'  => '机型库',
+        'route' => 'admin.catalog.device-models.index',
+        'sort'  => 7,
+    ], [
+        'key'   => 'catalog.device-models.create',
+        'name'  => 'admin::app.acl.create',
+        'route' => 'admin.catalog.device-models.create',
+        'sort'  => 1,
+    ], [
+        'key'   => 'catalog.device-models.edit',
+        'name'  => 'admin::app.acl.edit',
+        'route' => 'admin.catalog.device-models.edit',
+        'sort'  => 2,
+    ], [
+        'key'   => 'catalog.device-models.delete',
+        'name'  => 'admin::app.acl.delete',
+        'route' => 'admin.catalog.device-models.delete',
+        'sort'  => 3,
+    ], [
+        // 技能类目:技能市场的品类(不是 Bagisto 商品分类)
+        'key'   => 'catalog.skill-categories',
+        'name'  => '技能类目',
+        'route' => 'admin.catalog.skill-categories.index',
+        'sort'  => 8,
+    ], [
+        'key'   => 'catalog.skill-categories.create',
+        'name'  => 'admin::app.acl.create',
+        'route' => 'admin.catalog.skill-categories.create',
+        'sort'  => 1,
+    ], [
+        'key'   => 'catalog.skill-categories.edit',
+        'name'  => 'admin::app.acl.edit',
+        'route' => 'admin.catalog.skill-categories.edit',
+        'sort'  => 2,
+    ], [
+        'key'   => 'catalog.skill-categories.delete',
+        'name'  => 'admin::app.acl.delete',
+        'route' => 'admin.catalog.skill-categories.delete',
+        'sort'  => 3,
+    ], [
+        // 技能标签:市场筛选维度
+        'key'   => 'catalog.skill-tags',
+        'name'  => '技能标签',
+        'route' => 'admin.catalog.skill-tags.index',
+        'sort'  => 9,
+    ], [
+        'key'   => 'catalog.skill-tags.create',
+        'name'  => 'admin::app.acl.create',
+        'route' => 'admin.catalog.skill-tags.create',
+        'sort'  => 1,
+    ], [
+        'key'   => 'catalog.skill-tags.edit',
+        'name'  => 'admin::app.acl.edit',
+        'route' => 'admin.catalog.skill-tags.edit',
+        'sort'  => 2,
+    ], [
+        'key'   => 'catalog.skill-tags.delete',
+        'name'  => 'admin::app.acl.delete',
+        'route' => 'admin.catalog.skill-tags.delete',
+        'sort'  => 3,
+    ], [
+        // 内容安全处置台
+        'key'   => 'catalog.content-security',
+        'name'  => '内容安全',
+        'route' => 'admin.catalog.content-security.index',
+        'sort'  => 10,
+    ], [
+        'key'   => 'catalog.content-security.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.catalog.content-security.show',
+        'sort'  => 1,
+    ], [
         'key'   => 'catalog.attributes',
         'name'  => 'admin::app.acl.attributes',
         'route' => 'admin.catalog.attributes.index',
@@ -335,6 +433,39 @@ return [
         'name'  => 'admin::app.acl.delete',
         'route' => 'admin.customers.gdpr.delete',
         'sort'  => 2,
+    ], [
+        // 开发者主体管理:入驻审核 / 账号处置
+        'key'   => 'customers.developers',
+        'name'  => '开发者管理',
+        'route' => 'admin.customers.developers.index',
+        'sort'  => 7,
+    ], [
+        'key'   => 'customers.developers.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.customers.developers.show',
+        'sort'  => 1,
+    ], [
+        // 客服工单受理台
+        'key'   => 'customers.tickets',
+        'name'  => '客服工单',
+        'route' => 'admin.customers.tickets.index',
+        'sort'  => 8,
+    ], [
+        'key'   => 'customers.tickets.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.customers.tickets.show',
+        'sort'  => 1,
+    ], [
+        // 事故受理台（安全关键路径，与工单分开授权）
+        'key'   => 'customers.incidents',
+        'name'  => '事故受理',
+        'route' => 'admin.customers.incidents.index',
+        'sort'  => 9,
+    ], [
+        'key'   => 'customers.incidents.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.customers.incidents.show',
+        'sort'  => 1,
     ],
 
     /*
@@ -640,6 +771,22 @@ return [
         'name'  => 'admin::app.acl.settings',
         'route' => 'admin.settings.users.index',
         'sort'  => 8,
+    ], [
+        // 合规备案台账（只有查看/新增/编辑，无删除 —— 台账不可抹）
+        'key'   => 'settings.compliance',
+        'name'  => '备案台账',
+        'route' => 'admin.settings.compliance.index',
+        'sort'  => 0,
+    ], [
+        'key'   => 'settings.compliance.create',
+        'name'  => 'admin::app.acl.create',
+        'route' => 'admin.settings.compliance.create',
+        'sort'  => 1,
+    ], [
+        'key'   => 'settings.compliance.edit',
+        'name'  => 'admin::app.acl.edit',
+        'route' => 'admin.settings.compliance.edit',
+        'sort'  => 2,
     ], [
         'key'   => 'settings.locales',
         'name'  => 'admin::app.acl.locales',

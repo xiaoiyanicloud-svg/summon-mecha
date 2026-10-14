@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeController;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeFamilyController;
 use Webkul\Admin\Http\Controllers\Catalog\CategoryController;
+use Webkul\Admin\Http\Controllers\Catalog\ContentSecurityController;
+use Webkul\Admin\Http\Controllers\Catalog\DeviceModelController;
 use Webkul\Admin\Http\Controllers\Catalog\EventController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\BundleController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\ConfigurableController;
@@ -13,6 +15,10 @@ use Webkul\Admin\Http\Controllers\Catalog\Product\SimpleController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\VirtualController;
 use Webkul\Admin\Http\Controllers\Catalog\ProductController;
 use Webkul\Admin\Http\Controllers\Catalog\SceneController;
+use Webkul\Admin\Http\Controllers\Catalog\SkillCategoryController;
+use Webkul\Admin\Http\Controllers\Catalog\SkillController;
+use Webkul\Admin\Http\Controllers\Catalog\SkillReviewController;
+use Webkul\Admin\Http\Controllers\Catalog\SkillTagController;
 
 /**
  * Catalog routes.
@@ -117,6 +123,89 @@ Route::prefix('catalog')->group(function () {
         Route::post('edit/{id}', 'update')->name('admin.catalog.events.update');
         Route::delete('delete/{id}', 'destroy')->name('admin.catalog.events.delete');
         Route::get('registrations', 'registrations')->name('admin.catalog.events.registrations');
+    });
+
+    /**
+     * 技能管理后台:技能包的版本 / 交付物 / 安装指引。
+     *
+     * 与 /api/skill-admin/* 写的是同一批表(Webkul\Shop\Models\SkillVersion),
+     * 那条通道面向开发者/CI,这条面向运营手工维护。
+     */
+    Route::controller(SkillController::class)->prefix('skills')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.skills.index');
+        Route::get('edit/{productId}', 'edit')->name('admin.catalog.skills.edit');
+
+        Route::post('{productId}/versions', 'storeVersion')->name('admin.catalog.skills.versions.store');
+        Route::put('versions/{versionId}', 'updateVersion')->name('admin.catalog.skills.versions.update');
+        Route::post('versions/{versionId}/assets', 'storeAsset')->name('admin.catalog.skills.assets.store');
+        Route::post('versions/{versionId}/publish', 'publish')->name('admin.catalog.skills.versions.publish');
+        Route::delete('versions/{versionId}', 'deleteVersion')->name('admin.catalog.skills.versions.delete');
+    });
+
+    /**
+     * 审核台：技能准入的人工端。
+     *
+     * 与 /api/skill-supply/*（internal.key，CI/合作方通道）判的是同一批审核记录，
+     * 差别在于这里的 auditor 取自**登录的 Admin 身份**，不是请求体里填的。
+     */
+    Route::controller(SkillReviewController::class)->prefix('skill-reviews')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.skill-reviews.index');
+        Route::get('{versionId}', 'show')->whereNumber('versionId')->name('admin.catalog.skill-reviews.show');
+
+        Route::post('{versionId}/judge', 'judge')->whereNumber('versionId')->name('admin.catalog.skill-reviews.judge');
+        Route::post('{versionId}/layer0', 'runLayer0')->whereNumber('versionId')->name('admin.catalog.skill-reviews.layer0');
+    });
+
+    /**
+     * 机型库（v3.4 步骤 5）—— 兼容性校验的输入。
+     * 在这之前只能靠 DeviceModelSeeder / 手写 SQL 维护。
+     */
+    Route::controller(DeviceModelController::class)->prefix('device-models')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.device-models.index');
+        Route::get('create', 'create')->name('admin.catalog.device-models.create');
+        Route::post('', 'store')->name('admin.catalog.device-models.store');
+
+        // 静态段必须在 {id} 之前，否则 create 会被当成 id
+        Route::get('edit/{id}', 'edit')->whereNumber('id')->name('admin.catalog.device-models.edit');
+        Route::put('{id}', 'update')->whereNumber('id')->name('admin.catalog.device-models.update');
+        Route::delete('{id}', 'destroy')->whereNumber('id')->name('admin.catalog.device-models.delete');
+    });
+
+    /**
+     * 技能类目（技能市场的品类，**不是** Bagisto 商品分类）。
+     * 在这之前只能靠 SkillCatalogSeeder 维护。
+     */
+    Route::controller(SkillCategoryController::class)->prefix('skill-categories')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.skill-categories.index');
+        Route::get('create', 'create')->name('admin.catalog.skill-categories.create');
+        Route::post('', 'store')->name('admin.catalog.skill-categories.store');
+
+        Route::get('edit/{id}', 'edit')->whereNumber('id')->name('admin.catalog.skill-categories.edit');
+        Route::put('{id}', 'update')->whereNumber('id')->name('admin.catalog.skill-categories.update');
+        Route::delete('{id}', 'destroy')->whereNumber('id')->name('admin.catalog.skill-categories.delete');
+    });
+
+    /**
+     * 技能标签（市场筛选维度：动作形态 / 场景 / 难度）。
+     */
+    Route::controller(SkillTagController::class)->prefix('skill-tags')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.skill-tags.index');
+        Route::get('create', 'create')->name('admin.catalog.skill-tags.create');
+        Route::post('', 'store')->name('admin.catalog.skill-tags.store');
+
+        Route::get('edit/{id}', 'edit')->whereNumber('id')->name('admin.catalog.skill-tags.edit');
+        Route::put('{id}', 'update')->whereNumber('id')->name('admin.catalog.skill-tags.update');
+        Route::delete('{id}', 'destroy')->whereNumber('id')->name('admin.catalog.skill-tags.delete');
+    });
+
+    /**
+     * 内容安全处置台（计划 §4.16）。
+     * 扫描明细由 ContentScanRecorder 自动落库；这里是人来判断的那半截。
+     */
+    Route::controller(ContentSecurityController::class)->prefix('content-security')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.content-security.index');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.catalog.content-security.show');
+        Route::post('{id}/dispose', 'dispose')->whereNumber('id')->name('admin.catalog.content-security.dispose');
     });
 
     /**

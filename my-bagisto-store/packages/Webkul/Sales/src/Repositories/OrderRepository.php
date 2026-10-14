@@ -41,7 +41,7 @@ class OrderRepository extends Repository
      *
      * @return \Webkul\Sales\Contracts\Order
      */
-    public function createOrderIfNotThenRetry(array $data)
+    public function createOrderIfNotThenRetry(array $data, int $retry = 0)
     {
         DB::beginTransaction();
 
@@ -91,8 +91,12 @@ class OrderRepository extends Repository
                 ['data' => $data]
             );
 
-            /* recalling */
-            return $this->createOrderIfNotThenRetry($data);
+            /* 重试有上限，避免任意建单异常导致无限递归刷日志/卡死(如 booking 类型商品曾触发) */
+            if ($retry >= 2) {
+                throw $e;
+            }
+
+            return $this->createOrderIfNotThenRetry($data, $retry + 1);
         } finally {
             /* commit in each case */
             DB::commit();

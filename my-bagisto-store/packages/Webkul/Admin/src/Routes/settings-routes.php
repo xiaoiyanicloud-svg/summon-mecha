@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Webkul\Admin\Http\Controllers\Settings\ChannelController;
+use Webkul\Admin\Http\Controllers\Settings\ComplianceController;
 use Webkul\Admin\Http\Controllers\Settings\CurrencyController;
 use Webkul\Admin\Http\Controllers\Settings\DataTransfer\ImportController;
 use Webkul\Admin\Http\Controllers\Settings\ExchangeRateController;
@@ -222,5 +223,20 @@ Route::prefix('settings')->group(function () {
 
             Route::get('download-error-report/{id}', 'downloadErrorReport')->name('admin.settings.data_transfer.imports.download_error_report');
         });
+    });
+
+    /**
+     * 合规备案台账（计划 §4.17）。
+     *
+     * ⚠ **没有 delete 路由**，这是刻意的：备案记录是"确实办过这件事"的凭据，
+     *   能被抹掉的台账不是台账。作废走 update 改状态为「已作废」。
+     */
+    Route::controller(ComplianceController::class)->prefix('compliance')->group(function () {
+        Route::get('', 'index')->name('admin.settings.compliance.index');
+        Route::get('create', 'create')->name('admin.settings.compliance.create');
+        Route::post('', 'store')->name('admin.settings.compliance.store');
+
+        Route::get('edit/{id}', 'edit')->whereNumber('id')->name('admin.settings.compliance.edit');
+        Route::put('{id}', 'update')->whereNumber('id')->name('admin.settings.compliance.update');
     });
 });

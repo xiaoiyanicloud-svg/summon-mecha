@@ -233,6 +233,9 @@
                         <!-- Related, Cross Sells, Up Sells View Blade File -->
                         @include('admin::catalog.products.edit.links')
 
+                        <!-- 技能包(仅 skill 分类的商品显示):版本 / 交付物 / 安装指引 -->
+                        @include('admin::catalog.products.edit.skill-package')
+
                         <!-- Include Product Type Additional Blade Files If Any -->
                         @foreach ($product->getTypeInstance()->getAdditionalViews() as $view)
                             @includeIf($view)
@@ -260,6 +263,9 @@
 
                             <!-- Related, Cross Sells, Up Sells View Blade File -->
                             @include('admin::catalog.products.edit.links')
+
+                            <!-- 技能包(仅 skill 分类的商品显示) -->
+                            @include('admin::catalog.products.edit.skill-package')
 
                             <!-- Include Product Type Additional Blade Files If Any -->
                             @foreach ($product->getTypeInstance()->getAdditionalViews() as $view)

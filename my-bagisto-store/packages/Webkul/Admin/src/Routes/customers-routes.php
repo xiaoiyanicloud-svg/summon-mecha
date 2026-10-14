@@ -8,8 +8,11 @@ use Webkul\Admin\Http\Controllers\Customers\Customer\OrderController;
 use Webkul\Admin\Http\Controllers\Customers\Customer\WishlistController;
 use Webkul\Admin\Http\Controllers\Customers\CustomerController;
 use Webkul\Admin\Http\Controllers\Customers\CustomerGroupController;
+use Webkul\Admin\Http\Controllers\Customers\DeveloperController;
 use Webkul\Admin\Http\Controllers\Customers\GDPRController;
+use Webkul\Admin\Http\Controllers\Customers\IncidentController;
 use Webkul\Admin\Http\Controllers\Customers\ReviewController;
+use Webkul\Admin\Http\Controllers\Customers\SupportTicketController;
 
 /**
  * Customers routes.
@@ -125,5 +128,46 @@ Route::prefix('customers')->group(function () {
         Route::put('edit/{id}', 'update')->name('admin.customers.gdpr.update');
 
         Route::delete('delete/{id}', 'delete')->name('admin.customers.gdpr.delete');
+    });
+
+    /**
+     * 开发者主体管理（v3.4 步骤 9 的平台端侧）。
+     *
+     * 开发者 = 一行 customers + 一行 developer_profile，所以挂在客户分区下。
+     * 在此之前 realname_status 永远停在 pending —— 平台端一个入口都没有。
+     */
+    Route::controller(DeveloperController::class)->prefix('developers')->group(function () {
+        Route::get('', 'index')->name('admin.customers.developers.index');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.customers.developers.show');
+
+        Route::post('{id}/realname/approve', 'approveRealname')->whereNumber('id')->name('admin.customers.developers.realname.approve');
+        Route::post('{id}/realname/reject', 'rejectRealname')->whereNumber('id')->name('admin.customers.developers.realname.reject');
+        Route::post('{id}/status', 'toggleStatus')->whereNumber('id')->name('admin.customers.developers.status');
+    });
+
+    /**
+     * 客服工单受理台（v3.4 步骤 10 的平台端侧）。
+     *
+     * 用户侧开单接口早已存在（`POST /api/tickets`，带 24h SLA），
+     * 但平台端此前没有任何入口 —— 工单进了一个没人看的池子。
+     */
+    Route::controller(SupportTicketController::class)->prefix('tickets')->group(function () {
+        Route::get('', 'index')->name('admin.customers.tickets.index');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.customers.tickets.show');
+
+        Route::post('{id}/reply', 'reply')->whereNumber('id')->name('admin.customers.tickets.reply');
+        Route::post('{id}/status', 'updateStatus')->whereNumber('id')->name('admin.customers.tickets.status');
+    });
+
+    /**
+     * 事故受理台（计划 §4.19）。
+     *
+     * 技能在真实机器人上物理执行 —— 出事故必须有可追溯的上报链。
+     * 用户侧上报接口 POST /api/incidents（证据链在报案时冻结）。
+     */
+    Route::controller(IncidentController::class)->prefix('incidents')->group(function () {
+        Route::get('', 'index')->name('admin.customers.incidents.index');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.customers.incidents.show');
+        Route::post('{id}/handle', 'handle')->whereNumber('id')->name('admin.customers.incidents.handle');
     });
 });

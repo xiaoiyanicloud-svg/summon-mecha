@@ -10,6 +10,18 @@ return [
         'route'      => 'admin.dashboard.index',
         'sort'       => 1,
         'icon'       => 'icon-dashboard',
+    ], [
+        'key'        => 'dashboard.alerts',
+        'name'       => '平台告警',
+        'route'      => 'admin.alerts.index',
+        'sort'       => 1,
+        'icon'       => '',
+    ], [
+        'key'        => 'dashboard.overview',
+        'name'       => '运营总览',
+        'route'      => 'admin.dashboard.ops',
+        'sort'       => 2,
+        'icon'       => '',
     ],
 
     /**
@@ -93,6 +105,42 @@ return [
         'sort'       => 3,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.skills',
+        'name'       => '技能管理',
+        'route'      => 'admin.catalog.skills.index',
+        'sort'       => 4,
+        'icon'       => '',
+    ], [
+        'key'        => 'catalog.skill-reviews',
+        'name'       => '审核台',
+        'route'      => 'admin.catalog.skill-reviews.index',
+        'sort'       => 5,
+        'icon'       => '',
+    ], [
+        'key'        => 'catalog.device-models',
+        'name'       => '机型库',
+        'route'      => 'admin.catalog.device-models.index',
+        'sort'       => 6,
+        'icon'       => '',
+    ], [
+        'key'        => 'catalog.skill-categories',
+        'name'       => '技能类目',
+        'route'      => 'admin.catalog.skill-categories.index',
+        'sort'       => 7,
+        'icon'       => '',
+    ], [
+        'key'        => 'catalog.skill-tags',
+        'name'       => '技能标签',
+        'route'      => 'admin.catalog.skill-tags.index',
+        'sort'       => 8,
+        'icon'       => '',
+    ], [
+        'key'        => 'catalog.content-security',
+        'name'       => '内容安全',
+        'route'      => 'admin.catalog.content-security.index',
+        'sort'       => 9,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.attributes',
         'name'       => 'admin::app.components.layouts.sidebar.attributes',
         'route'      => 'admin.catalog.attributes.index',
@@ -138,6 +186,24 @@ return [
         'name'       => 'admin::app.components.layouts.sidebar.gdpr-data-requests',
         'route'      => 'admin.customers.gdpr.index',
         'sort'       => 4,
+        'icon'       => '',
+    ], [
+        'key'        => 'customers.developers',
+        'name'       => '开发者管理',
+        'route'      => 'admin.customers.developers.index',
+        'sort'       => 5,
+        'icon'       => '',
+    ], [
+        'key'        => 'customers.tickets',
+        'name'       => '客服工单',
+        'route'      => 'admin.customers.tickets.index',
+        'sort'       => 6,
+        'icon'       => '',
+    ], [
+        'key'        => 'customers.incidents',
+        'name'       => '事故受理',
+        'route'      => 'admin.customers.incidents.index',
+        'sort'       => 7,
         'icon'       => '',
     ],
 
@@ -282,6 +348,12 @@ return [
         'sort'       => 8,
         'icon'       => 'icon-settings',
         'icon-class' => 'settings-icon',
+    ], [
+        'key'        => 'settings.compliance',
+        'name'       => '备案台账',
+        'route'      => 'admin.settings.compliance.index',
+        'sort'       => 0,
+        'icon'       => '',
     ], [
         'key'        => 'settings.locales',
         'name'       => 'admin::app.components.layouts.sidebar.locales',
