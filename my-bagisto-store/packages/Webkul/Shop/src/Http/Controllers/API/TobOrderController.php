@@ -55,12 +55,16 @@ class TobOrderController extends APIController
             'items'              => $isMulti ? 'required|array|min:1' : 'nullable',
             'items.*.product_id' => ($isMulti ? 'required' : 'nullable').'|integer|exists:products,id',
             'items.*.qty'        => ($isMulti ? 'required' : 'nullable').'|integer|min:1',
-            'items.*.price'      => 'nullable|numeric',
-            'items.*.rent_days'  => 'nullable|integer|min:1',
+            // M1:成交价不能无界。下限 0(0 表示"用服务端目录价",前端既有契约),
+            // 上限挡住天文数字;负数(如 -1)被 min:0 直接拒。
+            'items.*.price'      => 'nullable|numeric|min:0|max:10000000',
+            // 租期加上限,防 rent_days=99999 撑出天价或压出天价
+            'items.*.rent_days'  => 'nullable|integer|min:1|max:3650',
             'name'         => 'required|string',
             'product_name' => 'nullable|string',
             'sku'          => 'nullable|string',
-            'price'      => 'nullable|numeric',
+            'price'      => 'nullable|numeric|min:0|max:10000000',
+            'rent_days'  => 'nullable|integer|min:1|max:3650',
             'phone'      => 'required|string',
             'city'       => ($isCustom ? 'nullable' : 'required').'|string',
             'address'    => ($isCustom ? 'nullable' : 'required').'|string',
@@ -151,10 +155,14 @@ class TobOrderController extends APIController
 
                 $days = $type === 'rent' ? $line['rent_days'] : 1;
 
-                // 单价:优先前端确认价;否则后端商品价;都没有则为 0
-                $unitPrice = $line['price'] > 0
-                    ? $line['price']
-                    : (float) ($product->getTypeInstance()->getMinimalPrice() ?: $product->price);
+                // 单价:技能是**标准商品**,一律用服务端目录价,不接受客户端改价(M1)。
+                // 此前任何登录用户都能给技能开任意价 —— 技能单不该走议价。
+                // 其余类型(租/买/配件)沿用"前端确认价优先"(询价/议价流,设计如此);
+                // 客户端价 <=0 时同样回退到服务端目录价,下限由上面的 min/max 校验兜住。
+                $catalogPrice = (float) ($product->getTypeInstance()->getMinimalPrice() ?: $product->price);
+                $unitPrice = ($type === 'skill' || ! ($line['price'] > 0))
+                    ? $catalogPrice
+                    : $line['price'];
 
                 $pName = $product->name;
 
