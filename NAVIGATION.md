@@ -128,6 +128,64 @@ d:\main
 - 订单详情接真接口 getOrderDetail；列表 6 条假种子已删。
 - 业务表备份：`cd my-bagisto-store && D:/php.exe tools_backup_db.php`（11 表 JSON 按日期归档到 .claude/backup/db/）。
 
+## ★ 技能供需平台（skill supply / demand）— 2026-10 开发中
+
+> **现状（2026-10-14）**：v1 底座已上线（2026-09-30 skill_delivery 迁移）；**v3.4 计划已按步骤开发到第 8 步** ——
+> 第 7 步（用户端前端）**已完成**，第 8 步（Agent 下发）**平台侧已完成**；第 2/3/4/5/6 步为"主体完成、各留缺口"。
+> **先看 [`docs/skill-dev-steps.md`](./docs/skill-dev-steps.md) 的【进度快照】**——那里是唯一权威的进度口径（按代码实测核验，非仅凭文档）。
+> ⚠ **改这块之前，先读计划**（`docs/skill-supply-plan.md` + `docs/skill-dev-steps.md`），别凭现状改。
+
+### 要读的文档（**完整清单见 `skill-supply-plan.md` §12**；先读第一个）
+| 文档 | 内容 |
+|---|---|
+| `docs/skill-supply-plan.md` | **主开发计划 v3.4**（§0.5 定位边界 / §3 数据模型 / §4 功能 / §11 全球 / §12 文档索引） |
+| `docs/skill-dev-steps.md` | **施工顺序 + 【进度快照】**（第 1→10 步 / 每步缺口 / 里程碑状态）← **想知道做到哪了看这个** |
+| `docs/skill-dev-step8.md` | 第 8 步交付说明（Agent 下发：签名/状态机/一键下发/灰度回滚/参考 Agent） |
+| `docs/skill-p0-board.md` | **P0 可执行看板**（任务 / 人日 / 依赖 / 里程碑） |
+| `docs/agent-adaptation-plan.md` | **Agent 落地判定 + F1–F5 功能 + 协议** |
+| `docs/skill-standardization-chain.md` | **技能转换层**（上传↔编译↔下发 三端标准化） |
+| `docs/skill-quality-and-review.md` | **质量体系 + 过审门槛 + 拒绝清单** |
+| `docs/skill-user-tutorial.md` | **用户手册**（零基础装 Agent） |
+| `docs/device-model-seed.md` | 机型库种子数据（宇树/智元/众擎…） |
+| `docs/skill-plan-verification.md` | 逐项验证矩阵（已有/缺失/假设不成立，带代码行号） |
+| `docs/skill-flows-and-readiness.md` | 开发前准备 + 三端交互路径 |
+| `docs/skill-plan-team-review-2026-10.md`、`skill-plan-audit-2026-10.md`、`skill-plan-boss-response.md` | 团队评审 / 三端体检 / Boss 决议回应 |
+
+### 代码在哪（v1 已上线部分）
+- **表结构**：`my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_09_30_000001_create_skill_delivery_tables.php`（`sellers`/`skill_versions`/`skill_assets`/`devices`/`skill_entitlements`）+ `..._000004_add_verify_status_to_devices.php`
+- **模型**：`Shop/src/Models/{SkillVersion,SkillAsset,SkillEntitlement,Device}.php`
+- **C 端接口**：`Shop/src/Http/Controllers/API/SkillController.php`（mine/assets/download/bindDevice/confirmInstall）、`DeviceController.php`；路由 `Shop/src/Routes/api.php`（前缀 **`/api/skills/*`**、`/api/devices/*`）
+- **上传通道**：`Shop/src/Http/Controllers/API/SkillAdminController.php` + 中间件 `VerifyInternalKey.php`（X-Internal-Key，key=`SKILL_UPLOAD_KEY`）
+- **交付通道**：`config/skill_delivery.php`（默认 `app` = 人工通道）+ `Services/SkillDelivery/AppChannel.php`
+- **发授权监听**：`Listeners/SkillDelivery.php`（挂 `checkout.order.save.after`，**幂等、吞异常**——为建单重试兜底）
+- **后台**：`Admin/.../Catalog/SkillController.php` + `Admin/src/Routes/catalog-routes.php`
+- **前端**：`pages/mine/skills.vue`、`pages/mine/devices.vue`、`utils/api.js` 的 `skillApi`/`deviceApi`；技能市场在 `components/EcoCenter.vue`(首页生态中心) + `pages/robot/index.vue`(机器页技能 tab)。⚠ `pages/home/jineng.vue` 是 **mock**（未接后端）
+
+### v3.4 新增代码在哪（第 2–8 步，均在 `my-bagisto-store/packages/Webkul/Shop/src/`）
+- **下发链路**：`Services/Deploy/`（`DeployTaskService` 状态机 / `SigningService` RSA 签名 / `AgentGateway` + `HttpPollAgentGateway` HTTP 轮询真传输 / `KillSwitchService` 熔断 / `GrayReleaseService` 灰度自动回滚）；接口 `Http/Controllers/API/{AgentController,DeployController,GrayReleaseController}.php`
+- **Agent 安装脚本**：`Http/Controllers/AgentSetupController.php`（输出 `agent/setup.sh`、公钥、参考 `agent.py`）——路径**故意不叫 install.sh**（含 `/install` 会被 Bagisto Installer 中间件重定向到 `/admin`）
+- **技能供给侧**：`Services/{SkillPackage,SkillAudit,SkillCompile,SkillImport,SkillQuality}/` + `Http/Controllers/API/SkillSupplyController.php`
+- **设备/机型**：`Services/SkillDelivery/{DeviceBindingService,CompatibilityService}.php`、`database/seeders/DeviceModelSeeder.php`
+- **C 端页面**：`pages/mine/{deploy,agent-setup}.vue`（下发进度、一键配对）
+- **测试**：`packages/Webkul/Shop/tests/Feature/API/AgentDeployTest.php`
+
+### 约定 / 坑（改前必看）
+- 交付通道：代码内 **`app` ≡ 计划 `manual`**；`skill_versions.channel` 是**发布通道**（stable/beta），**≠** `delivery_channels`（交付通道）
+- `skill_assets.carrier_type` 白名单 = **`file/cloud_config/remote_service/api_bundle` + v3.4 扩的 `motion_data/app_package/vendor_package`**（以 `SkillAsset::CARRIER_TYPES` 为准）
+- **设备唯一真相源 = `device_binding`**（下发链路只认它）；`devices` 是用户自报登记。⚠ v1 的 `mine/bind/confirm-install` **尚未**改读 binding（只做了加性回填）
+- `.env`：`QUEUE_CONNECTION=database`、`CACHE_STORE=database`（原 sync/file；**改用 database 驱动而非 Redis**，将来切 Redis 改 2 行 env）。**仍无 scheduler**，故灰度自动回滚靠"设备回报后自驱"，不靠定时任务
+
+### 问法定位
+- "技能计划 / 改技能" → `docs/skill-supply-plan.md` + `docs/skill-p0-board.md`
+- "**做到哪了 / 进度 / 还剩什么**" → `docs/skill-dev-steps.md`【进度快照】
+- "技能表 / 字段" → 上面 migration + `Shop/src/Models/Skill*.php`
+- "技能接口 / 下载 / 绑定 / 自报安装" → `SkillController.php` + `Routes/api.php`
+- "技能上传 / 建版本" → `SkillAdminController.php`
+- "技能下发通道" → `config/skill_delivery.php` + `Services/SkillDelivery/`
+- "Agent / 下发 / 装机 / 灰度 / 回滚 / 熔断" → `Services/Deploy/` + `AgentSetupController.php` + `docs/skill-dev-step8.md`
+- "机型库 / 兼容性校验" → `docs/device-model-seed.md`
+- "技能前端页" → `pages/mine/skills.vue`、`components/EcoCenter.vue`、`pages/robot/index.vue`
+
 ## 关键联结点（数据流）
 
 前端页面 → `utils/api.js` 里某个 `xxxApi` → `utils/request.js`(带 Bearer token、超时、401 处理)
@@ -163,6 +221,7 @@ d:\main
 - "取消订单" → `OrderController::cancel` + `pages/order/order-detail.vue`
 - "地址" → `utils/address.js` + `AddressController`(destroy) + mine/checkout 双模式
 - "接口体检" → `bash tools/api-regression.sh`；"备份业务表" → `tools_backup_db.php`
+- "技能 / 技能市场 / 技能下发 / 技能供需" → 见上「★ 技能供需平台」段（`docs/skill-supply-plan.md` + `docs/skill-p0-board.md`）
 
 ## 工作区备忘（2026-09-07 更新）
 

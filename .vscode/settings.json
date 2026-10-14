@@ -1,3 +1,23 @@
 {
-    "mcpFigma.autoStartWebSocket": true
+    "mcpFigma.autoStartWebSocket": true,
+
+    // ↓↓↓ 2026-10-14 上下文瘦身:Claude Code 会把 VS Code 诊断注入自己的上下文。
+    //    实测某个 11MB 会话里,intelephense 对 packages/ 下的类反复误报
+    //    "Undefined type ...APIController"(文件明明存在),被注入 53 次、共 0.42MB。
+    //    根因是工作区里有两份同名命名空间的 Bagisto 代码(主库 + 备份库),索引互相干扰。
+    "intelephense.files.exclude": [
+        "**/my-bagisto-store2 备份/**",
+        "**/unpackage/**",
+        "**/node_modules/**"
+    ],
+    // 这类"未定义类型"误报对真实开发没有价值,关掉它,顺带省掉每轮的诊断注入
+    "intelephense.diagnostics.undefinedTypes": false,
+
+    // 备份库本来就不参与开发,别让 VS Code 去监视/搜索它(也顺带降 CPU)
+    "files.watcherExclude": {
+        "**/my-bagisto-store2 备份/**": true
+    },
+    "search.exclude": {
+        "**/my-bagisto-store2 备份/**": true
+    }
 }

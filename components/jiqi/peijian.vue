@@ -471,7 +471,7 @@ export default {
   background: #ffffff;
 }
 .brand-item .brand-name {
-  font-size: 24rpx;
+  font-size: 26.4rpx;
   color: #1F2937;
   text-align: center;
   font-weight: 500;

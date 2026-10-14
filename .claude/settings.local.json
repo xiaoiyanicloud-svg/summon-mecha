@@ -9,7 +9,11 @@
       "Bash(grep -n \"onLoad\" \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
       "Bash(awk 'NR>=633 && NR<=639' \"d:\\\\\\\\main\\\\\\\\pages\\\\\\\\mine\\\\\\\\index.vue\")",
       "Bash(node -e ' *)",
-      "Bash(node -e \"const j=require\\('d:/main/pages.json'\\); j.pages.forEach\\(p=>console.log\\(p.path, p.style.navigationBarTitleText\\)\\); console.log\\('--- tabs ---'\\); j.tabBar.list.forEach\\(t=>console.log\\(t.pagePath\\)\\);\")"
+      "Bash(node -e \"const j=require\\('d:/main/pages.json'\\); j.pages.forEach\\(p=>console.log\\(p.path, p.style.navigationBarTitleText\\)\\); console.log\\('--- tabs ---'\\); j.tabBar.list.forEach\\(t=>console.log\\(t.pagePath\\)\\);\")",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File 'd:\\\\main\\\\.scan-c3.ps1')",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File 'd:\\\\main\\\\.clean-c.ps1')",
+      "Bash(powershell -NoProfile -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','D:\\\\main\\\\.elev-clean.ps1'\")",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File 'd:\\\\main\\\\.scan-c4.ps1')"
     ]
   }
 }

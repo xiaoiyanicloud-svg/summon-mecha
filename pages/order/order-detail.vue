@@ -91,16 +91,22 @@
 				</view>
 			</view>
 
-			<!-- 设备信息 -->
-			<view class="card device-card">
+			<!-- 设备信息：只有技能单才有交付设备的概念。此前这块对所有订单都显示、且值恒为「—」 -->
+			<view class="card device-card" v-if="order.deviceInfoVisible">
 				<view class="device-row">
 					<text class="label">设备SN码</text>
-					<text class="value sn-code">{{ order.snCode || '—' }}</text>
+					<text class="value sn-code">{{ order.snCode || '待指派' }}</text>
 				</view>
 				<view class="device-row">
 					<text class="label">交付方式</text>
 					<text class="value">{{ order.deliveryMethod || '—' }}</text>
 				</view>
+				<!-- 下单只是开通授权,真正启用要去「我的技能」绑设备、下技能包 -->
+				<view class="device-row">
+					<text class="label">技能状态</text>
+					<text class="value">{{ skillStatusText }}</text>
+				</view>
+				<view class="go-skills" @click="goSkills">去使用这个技能 ›</view>
 			</view>
 
 			<view style="height: 180rpx;"></view>
@@ -156,6 +162,21 @@ import { TOKEN_KEY } from '@/utils/config'
 				this.loading = false
 				this.order = null
 			}
+		},
+		computed: {
+			// 技能单的状态文案。后端 formatOrder 在 items[].skill_status 上给了授权状态,
+			// 这里转成人话 —— 「已开通」是「已授权」,不等于「已能使用」(还要绑设备)。
+			skillStatusText() {
+				const map = {
+					pending_bind: '已开通 · 待指派设备',
+					granted: '已开通 · 可用',
+					active: '已安装',
+					expired: '已过期',
+					revoked: '已撤销',
+				}
+				const s = this.order && this.order.skillStatus
+				return map[s] || (s || '—')
+			},
 		},
 		methods: {
 			async loadOrder(id) {
@@ -225,6 +246,12 @@ import { TOKEN_KEY } from '@/utils/config'
 					statusText: pair[0],
 					statusClass: pair[1],
 					timeline: [],
+					// 技能单才有交付设备的概念。后端 formatOrder 在技能单上返回 sn_code / delivery_method，
+					// 非技能单为 null —— 这时整块设备卡片不该出现（此前它对所有订单都显示、值恒为「—」）。
+					deviceInfoVisible: d.order_type === 'skill',
+					snCode: d.sn_code || '',
+					deliveryMethod: d.delivery_method || '',
+					skillStatus: item.skill_status || '',
 				}
 			},
 
@@ -235,6 +262,9 @@ import { TOKEN_KEY } from '@/utils/config'
 			},
 
 			goBack() { uni.navigateBack() },
+
+			// 技能单的「开通」落点在「我的技能」页(绑设备 + 下技能包)
+			goSkills() { uni.navigateTo({ url: '/pages/mine/skills' }); },
 
 			// ===== 按钮交互 =====
 			payOrder() { uni.showToast({ title: '跳转支付', icon: 'none' }) },
@@ -248,7 +278,11 @@ import { TOKEN_KEY } from '@/utils/config'
 					content: '确认取消该订单吗？',
 					success: (res) => {
 						if (!res.confirm) return
-						orderApi.cancelOrder(id)
+						// 游客单走游客取消接口(免登录),登录单走本人取消;后者需后端已绑定 token
+						const req = uni.getStorageSync('token')
+							? orderApi.cancelOrder(id)
+							: orderApi.cancelGuestOrder(id)
+						req
 							.then((r) => {
 								uni.showToast({ title: (r && r.message) || '订单已取消', icon: 'success' })
 								// 本地同步状态,不等缓存刷新
@@ -259,18 +293,6 @@ import { TOKEN_KEY } from '@/utils/config'
 								}
 							})
 							.catch((err) => uni.showToast({ title: (err && err.message) || '取消失败', icon: 'none' }))
-					}
-				})
-			},
-			cancelOrder() {
-				uni.showModal({
-					title: '提示',
-					content: '确认取消此订单吗？',
-					success: (res) => {
-						if (res.confirm) {
-							uni.showToast({ title: '已取消', icon: 'success' })
-							setTimeout(() => { uni.navigateBack() }, 800)
-						}
 					}
 				})
 			},
@@ -551,6 +573,19 @@ import { TOKEN_KEY } from '@/utils/config'
 		color: #1e293b;
 		font-weight: 500;
 	}
+	/* 「去使用这个技能」入口接在最后一个 device-row 之后,那条 :last-child 去边框的规则
+	   就失效了(最后一个子元素变成了 .go-skills)。用 nth-last-child(2) 把上边框补回来,
+	   避免和 .go-skills 的 border-top 叠成双线 */
+	.device-card .device-row:nth-last-child(2) { border-bottom: none; }
+	.go-skills {
+		margin-top: 18rpx;
+		padding-top: 18rpx;
+		border-top: 1rpx solid #f1f5f9;
+		font-size: 26rpx;
+		color: #165DFF;
+		text-align: right;
+	}
+	.go-skills:active { opacity: 0.6; }
 	.sn-code {
 		font-family: 'Courier New', monospace;
 		letter-spacing: 2rpx;

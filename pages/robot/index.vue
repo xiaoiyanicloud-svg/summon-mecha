@@ -1,7 +1,8 @@
 <template>
   <view class="rental-page">
-    <!-- ===== 顶部 Tab（五个） ===== -->
-    <view class="top-tabs">
+    <!-- ===== 顶部 Tab（五个）：每格 750/5=150rpx 宽 × 150rpx 高＝正方形。
+         选中那格整块铺白，且顶栏不画 border-bottom，让白块与下方白色内容区连成一体。 ===== -->
+    <view class="top-tabs" v-if="!customPlanMode">
       <text class="tab-item" :class="{ active: currentTab === 'rent' }" @tap="switchTab('rent')">租用</text>
       <text class="tab-item" :class="{ active: currentTab === 'scene' }" @tap="switchTab('scene')">场景</text>
       <text class="tab-item" :class="{ active: currentTab === 'buy' }" @tap="switchTab('buy')">购买</text>
@@ -9,18 +10,10 @@
       <text class="tab-item" :class="{ active: currentTab === 'accessory' }" @tap="switchTab('accessory')">配件</text>
     </view>
 
-    <!-- ===== 租用/购买 分类滚动条 ===== -->
-    <scroll-view class="type-scroll" scroll-x="true" show-scrollbar="false" v-show="currentTab === 'rent' || currentTab === 'buy'">
-      <text class="type-item" :class="{ active: currentType === 'all' }" @tap="selectType('all')">全部类别</text>
-      <text class="type-item" :class="{ active: currentType === 'humanoid' }" @tap="selectType('humanoid')">人形</text>
-      <text class="type-item" :class="{ active: currentType === 'quadruped' }" @tap="selectType('quadruped')">四足</text>
-      <text class="type-item" :class="{ active: currentType === 'delivery' }" @tap="selectType('delivery')">配送</text>
-      <text class="type-item" :class="{ active: currentType === 'cleaning' }" @tap="selectType('cleaning')">清洁</text>
-      <text class="type-item" :class="{ active: currentType === 'reception' }" @tap="selectType('reception')">迎宾</text>
-      <text class="type-item" :class="{ active: currentType === 'inspection' }" @tap="selectType('inspection')">巡检</text>
-      <text class="type-item" :class="{ active: currentType === 'arm' }" @tap="selectType('arm')">机械臂</text>
-      <text class="type-item" :class="{ active: currentType === 'companion' }" @tap="selectType('companion')">陪伴</text>
-    </scroll-view>
+    <!-- ===== 自定义方案顶栏 ===== -->
+    <view class="custom-plan-header" v-if="customPlanMode"></view>
+
+    <!-- ===== 类别选择：原弹窗已改为内联向下展开（见 .type-bar 下方 .type-inline） ===== -->
 
     <!-- ===== 场景分类滚动条 - 已删除 ===== -->
 
@@ -134,10 +127,35 @@
         <view style="height: 250rpx; flex-shrink: 0;"></view>
       </scroll-view>
 
-      <!-- ===== 右侧内容区域 ===== -->
+      <!-- ===== 右侧内容列 ===== -->
+      <view class="content-column">
 
-      <!-- 租用 -->
-      <view class="product-area-wrapper" v-show="currentTab === 'rent'">
+        <!-- 租用/购买 分类滚动条（与左边栏「全部品牌」同行） -->
+        <view class="type-bar" v-if="currentTab === 'rent' || currentTab === 'buy'">
+          <!-- 电商排序：综合 / 价格（在类别左边） -->
+          <view class="sort-group">
+            <text class="sort-item" :class="{ active: currentSort === 'default' }" @tap="setSort('default')">综合</text>
+            <!-- 默认态显示 ↓（真机上 ↕ 会被当 emoji 渲染成大块，故不用那个字符）；正序/倒序都由 ↓/↑ 表示 -->
+            <text class="sort-item price" :class="{ active: currentSort !== 'default' }" @tap="togglePriceSort">价格<text class="sort-arrow">{{ priceSortMark }}</text></text>
+          </view>
+          <!-- 分类：「分类」标签与类别值合体成一段文字（默认「全部分类」），点开在下方就地展开 -->
+          <view class="cat-group">
+            <view class="cat-picker" @tap="openTypePicker">
+              <text class="cat-text">{{ currentTypeLabel }}</text>
+              <text class="cat-arrow">{{ showTypePicker ? '▲' : '▼' }}</text>
+            </view>
+          </view>
+          <text class="type-item custom-plan-fixed" v-if="!customPlanMode && currentTab === 'rent'" @tap="enterCustomPlanMode">+方案</text>
+        </view>
+
+        <!-- 类别：点「分类」后在下方就地展开（非弹窗），再点一次收起 -->
+        <view class="type-inline" v-if="showTypePicker && (currentTab === 'rent' || currentTab === 'buy')">
+          <view class="type-opt" :class="{ active: currentType === 'all' }" @tap="selectType('all'); showTypePicker = false">全部分类</view>
+          <view class="type-opt" :class="{ active: currentType === t.code }" v-for="t in rentTypeOptions" :key="t.code" @tap="selectType(t.code); showTypePicker = false">{{ t.label }}</view>
+        </view>
+
+        <!-- 租用 -->
+        <view class="product-area-wrapper" v-show="currentTab === 'rent'">
         <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
           <view class="product-flex-wrapper">
             <view v-if="currentBrand === 'all'" class="enterprise-banner" @tap="goEnterprise">
@@ -149,11 +167,12 @@
                 <view class="banner-btn">咨询</view>
               </view>
             </view>
-            <view class="product-card" v-for="item in filteredRentList" :key="item.id" @tap="goDetail(item)">
+            <view class="product-card" :class="{ selected: customPlanMode && isPlanSelected(item) }" v-for="item in filteredRentList" :key="item.id" @tap="customPlanMode ? togglePlanItem(item) : goDetail(item)">
               <view class="product-image" :style="{ backgroundColor: item.bg }">
                 <image v-if="item.image" class="product-img" :src="item.image" mode="aspectFill"></image>
                 <text v-else class="product-icon">{{ item.icon }}</text>
               </view>
+              <view v-if="customPlanMode" class="product-select-btn" @tap.stop="togglePlanItem(item)">{{ isPlanSelected(item) ? '✓' : '＋' }}</view>
               <view class="product-info">
                 <text class="product-name">{{ item.name }}</text>
                 <text class="scene-tag">{{ item.scene }}</text>
@@ -250,6 +269,7 @@
 
       <!-- 配件组件 -->
       <Peijian v-show="currentTab === 'accessory'" :items="accessoryCatalog" @item-click="onAccessory" />
+      </view>
 
       <!-- 滚动提示：轻微淡入，暗示可继续滑动查看 -->
       <view class="scroll-hint brand-hint" :class="{ 'is-visible': brandHint }"></view>
@@ -282,6 +302,13 @@
             </view>
             <text class="detail-name">{{ selectedProduct.name }}</text>
             <!-- [LINK_TAG] 已隐藏"已对接官方商品"状态提示(原: ●已对接官方商品 / ●未对接官方商品) -->
+          </view>
+          <!-- 适配机型:技能/配件专用,数据来自后台「关联商品」(GET /api/products/{id}/related) -->
+          <view class="adapt-card" v-if="relatedList.length">
+            <text class="adapt-title">适配机型</text>
+            <view class="adapt-list">
+              <text class="adapt-name" v-for="r in relatedList" :key="r.id">{{ r.name }}</text>
+            </view>
           </view>
           <!-- 产品参数:有后端属性时展示(已过滤系统字段),无则隐藏 -->
           <view class="spec-card" v-if="detailSpecs.length">
@@ -418,9 +445,81 @@
       </view>
     </view>
 
+    <!-- ===== 自定义方案：底部方案框 ===== -->
+    <view class="scene-cart-bar" v-if="customPlanMode">
+      <!-- 右上角操作：我的方案 / 退出 -->
+      <view class="cart-bar-top">
+        <view class="cpp-btn" @tap="openCustomPlans">我的方案</view>
+        <view class="cpp-btn" @tap="exitCustomPlanMode">退出</view>
+      </view>
+      <!-- 无机型时的引导 -->
+      <view v-if="!selectedPlanItems.length" class="scene-cart-empty">点上方机型的「＋」添加到方案</view>
+      <!-- 已选机型列表(每台：图/名/单价/移除) -->
+      <scroll-view v-else class="cart-items-scroll" scroll-x="true" show-scrollbar="false">
+        <view class="cart-item" v-for="m in selectedPlanItems" :key="(m.bagistoId || m.id)">
+          <view class="cart-item-img" :style="{ backgroundColor: m.bg || '#F0F4FA' }">
+            <image v-if="m.image" class="cart-item-img-img" :src="m.image" mode="aspectFill" />
+            <text v-else class="cart-item-img-icon">{{ m.icon || '🤖' }}</text>
+            <view class="cart-item-del" @tap.stop="togglePlanItem(m)">×</view>
+          </view>
+          <text class="cart-item-name">{{ m.name }}</text>
+          <text class="cart-item-price">¥{{ m.price }}/天</text>
+        </view>
+      </scroll-view>
+      <!-- 租期(开始/结束日期) + 合计 -->
+      <view class="scene-cart-row">
+        <text class="cart-date-label">租期</text>
+        <view class="date-pill" @tap="planShowStartPicker = !planShowStartPicker">{{ planStartDate || '开始' }}<text class="pv-arrow">⌄</text></view>
+        <view class="date-pill" @tap="planShowEndPicker = !planShowEndPicker">{{ planEndDate || '结束' }}<text class="pv-arrow">⌄</text></view>
+      </view>
+      <view class="scene-cart-row">
+        <text class="scene-cart-total">已选 {{ selectedPlanItems.length }} 台 · 共 {{ planDays }} 天 ¥{{ planTotal() }}</text>
+      </view>
+      <view class="scene-cart-actions">
+        <view class="scene-cart-save" @tap="saveCustomPlan">保存方案</view>
+        <view class="scene-cart-submit" @tap="submitCustomPlanOrder">提交订单</view>
+      </view>
+    </view>
+
+    <!-- ===== 方案栏 · 日期选择弹层(开始/结束) ===== -->
+    <view class="plan-date-mask" v-if="customPlanMode && (planShowStartPicker || planShowEndPicker)" @tap="planShowStartPicker = false; planShowEndPicker = false">
+      <view class="plan-date-modal" @tap.stop>
+        <view class="plan-date-head">
+          <text class="plan-date-title">{{ planShowStartPicker ? '选择开始日期' : '选择结束日期' }}</text>
+          <text class="plan-date-close" @tap="planShowStartPicker = false; planShowEndPicker = false">✕</text>
+        </view>
+        <picker-view class="date-pv" :value="dateVal" @change="planShowStartPicker ? onPlanStartDateChange : onPlanEndDateChange">
+          <picker-view-column><view v-for="y in dateYearList" :key="y" class="pv-item">{{ y }}年</view></picker-view-column>
+          <picker-view-column><view v-for="m in monthColumn()" :key="m" class="pv-item">{{ m }}月</view></picker-view-column>
+          <picker-view-column><view v-for="d in dayColumn()" :key="d" class="pv-item">{{ d }}日</view></picker-view-column>
+        </picker-view>
+        <view class="plan-date-ok" @tap="planShowStartPicker = false; planShowEndPicker = false">确定</view>
+      </view>
+    </view>
+
+    <!-- ===== 我的方案弹层 ===== -->
+    <view class="plan-mask" v-if="customPlanMode && showCustomPlanModal" @tap="showCustomPlanModal = false">
+      <view class="plan-modal" @tap.stop>
+        <view class="plan-modal-head">
+          <text class="plan-modal-title">我的方案</text>
+          <text class="plan-modal-close" @tap="showCustomPlanModal = false">✕</text>
+        </view>
+        <scroll-view class="plan-modal-list" scroll-y="true">
+          <view class="plan-item" v-for="p in customPlanList" :key="p.id" @tap="loadPlanFromList(p)">
+            <view class="plan-item-info">
+              <text class="plan-item-name">{{ p.name }} · {{ p.items.length }}台 · {{ p.days }}天</text>
+              <text class="plan-item-total">¥{{ p.total }}</text>
+            </view>
+            <view class="plan-item-del" @tap.stop="deleteCustomPlan(p)">删除</view>
+          </view>
+          <view class="plan-empty" v-if="!customPlanList.length">还没有保存的方案</view>
+        </scroll-view>
+      </view>
+    </view>
+
     <!-- ============================================================ -->
     <!-- ===== 自定义底部导航栏 ===== -->
-    <view class="custom-tabbar" v-show="!showDetail">
+    <view class="custom-tabbar" v-show="!showDetail && !customPlanMode">
       <view 
         class="tab-item" 
         v-for="(tab, index) in bottomTabs" 
@@ -508,7 +607,7 @@
 import Jineng from '@/components/jiqi/jineng.vue'
 import Peijian from '@/components/jiqi/peijian.vue'
 import { cartApi, productApi, categoryApi, catalogApi, tobOrderApi } from '@/utils/api'
-import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing.vue'
+import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing-data.js'
 import { BASE_URL } from '@/utils/config'
 
 // 场景数据统一在 components/jiqi/changjing.vue（见上方 import sceneProducts）
@@ -547,8 +646,12 @@ const serviceConfigs = {
   accessory: BUY_SERVICE,
   skill: {
     title: '大平台・有保障',
+    // ⚠ 原第一行是「绑定序列号云端下发」—— 那时后端零实现,是对用户的假承诺。
+    //    P0 的真实能力是:下单即自动开通授权 → 在「我的设备」绑定机器 → 技能包在应用内鉴权下载。
+    //    等 P1 设备拉取通道上线,再把措辞改回「云端下发」。
     items: [
-      { label: '配送', value: '绑定序列号云端下发' },
+      { label: '开通', value: '下单即开通,指派一台已登记设备后即可使用' },
+      { label: '', value: '技能包可在应用内下载' },
       { label: '', value: '提供远程协助' },
       { label: '', value: '使用后不支持退货' },
     ],
@@ -604,6 +707,10 @@ const CATALOG_TTL = 5 * 60 * 1000
 let _catalogRawCache = null // {rent:[],buy:[],accessory:[],skill:[]} 原始商品数组;命中后经 applyCatalog 重新映射,mapCatalogProduct 为纯函数无共享可变风险
 let _catalogCachedAt = 0
 
+// 适配机型请求的竞态 token:详情浮层可以在上一个请求在途时被替换成另一个商品,
+// 回来时比对一下,过期的响应直接丢弃(项目的 request.js 不返回 task,没法 abort)
+let _relatedSeq = 0
+
 export default {
   components: { Jineng, Peijian },
   data() {
@@ -614,7 +721,9 @@ export default {
       accessoryCatalog: [],
       skillCatalog: [],
       currentType: 'all',
+      showTypePicker: false,
       currentBrand: 'all',
+      currentSort: 'default',
       currentSceneCategory: 'all',
       sceneVersion: 0,
 
@@ -623,6 +732,8 @@ export default {
       selectedProduct: null,
       actionType: 'rent',
       detailTab: 'desc',
+      // 适配机型(技能/配件详情页):来自 GET /api/products/{id}/related
+      relatedProducts: [],
       // ===== 租用弹窗（价格/商品/数量/产品类型/服务时间/确认） =====
       showRentModal: false,
       rentForm: { productTypeIndex: 0, daysIndex: 0, qty: 1, startDate: '' },
@@ -674,27 +785,53 @@ export default {
         { pagePath: '/pages/mine/index', text: '我的', iconEmoji: '/static/wode.png', iconActive: '/static/wode1.png' }
       ],
       searchQ: '',
-      fromHome: false
+      fromHome: false,
+      // 本次详情是否来自 AI 召唤页(关闭详情时切回 AI 页,而不是停在机器 tab)
+      fromAi: false,
+      // ===== 自定义方案(机器页多选 + 方案框) =====
+      customPlanMode: false,
+      selectedPlanItems: [],
+      planDays: 1,
+      planDayOptions: [1, 3, 7, 30],
+      planStartDate: '',
+      planEndDate: '',
+      planShowStartPicker: false,
+      planShowEndPicker: false,
+      customPlanList: [],
+      showCustomPlanModal: false
     }
   },
   computed: {
+    // 「分类」标签已与类别值合体：默认显示「全部分类」，选中后为「人形分类」等
+    currentTypeLabel() {
+      const map = { humanoid: '人形', quadruped: '四足', delivery: '配送', cleaning: '清洁', reception: '迎宾', inspection: '巡检', arm: '机械臂', companion: '陪伴' }
+      if (this.currentType === 'all') return '全部分类'
+      return (map[this.currentType] || this.currentType) + '分类'
+    },
+    // 默认态与「价格↓」都是 ↓（默认态灰色，排序激活后变蓝加粗），「价格↑」为 ↑
+    priceSortMark() {
+      if (this.currentSort === 'lowest') return '↑'
+      return '↓'
+    },
     filteredRentList() {
-      return this.rentCatalog.filter(item => {
+      const list = this.rentCatalog.filter(item => {
         const q = (this.searchQ || '').trim().toLowerCase()
 				const matchSearch = !q || String(item.name || '').toLowerCase().includes(q)
 				const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
         const matchBrand = this.currentBrand === 'all' || item.brand === this.currentBrand || item.brand === 'all'
         return matchType && matchBrand && matchSearch
       })
+      return this.sortList(list)
     },
     filteredBuyList() {
-      return this.buyCatalog.filter(item => {
+      const list = this.buyCatalog.filter(item => {
         const q = (this.searchQ || '').trim().toLowerCase()
 				const matchSearch = !q || String(item.name || '').toLowerCase().includes(q)
 				const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
         const matchBrand = this.currentBrand === 'all' || item.brand === this.currentBrand || item.brand === 'all'
         return matchType && matchBrand && matchSearch
       })
+      return this.sortList(list)
     },
     filteredSceneList() {
       // 依赖响应式 sceneVersion，使 loadBackendScenes 合并后端场景后强制重算（sceneProducts 是非响应数组）
@@ -736,6 +873,11 @@ export default {
         .map(code => ({ name: (attrs[code].name || code), value: String(attrs[code].value).trim() }))
         .filter(s => s.value !== '')
     },
+    // 适配机型:只展示机型名。不用 mapCatalogProduct —— 那套是为了取图片/价格的,
+    // 这里只需要 name,直接映射更简单
+    relatedList() {
+      return this.relatedProducts.map(p => ({ id: p.id, name: p.name || '商品' }))
+    },
     // 详情「服务/售后」区按板块取内容(租赁/购买/配件/技能);未知类型兜底用「购买」
     serviceInfo() {
       return serviceConfigs[this.actionType] || serviceConfigs.buy
@@ -744,22 +886,218 @@ export default {
   methods: {
     switchTab(tab) {
       this.currentTab = tab
+      this.showTypePicker = false   // 切 Tab 收起类别展开面板
       if (tab === 'rent' || tab === 'buy') {
         this.currentType = 'all'
         this.currentBrand = 'all'
+        this.currentSort = 'default'
       } else if (tab === 'scene') {
         this.currentSceneCategory = 'all'
       }
     },
     selectType(type) { this.currentType = type },
+    setSort(kind) { this.currentSort = kind },
+    togglePriceSort() {
+      if (this.currentSort === 'default') this.currentSort = 'highest'
+      else if (this.currentSort === 'highest') this.currentSort = 'lowest'
+      else this.currentSort = 'default'
+    },
+    sortList(list) {
+      const s = this.currentSort
+      if (s === 'lowest') return [...list].sort((a, b) => this.priceNum(a) - this.priceNum(b))
+      if (s === 'highest') return [...list].sort((a, b) => this.priceNum(b) - this.priceNum(a))
+      return list
+    },
+    priceNum(item) {
+      const v = (item && item.bagistoPrice != null) ? item.bagistoPrice : (item ? item.price : 0)
+      const n = Number(String(v == null ? '' : v).replace(/[^\d.]/g, ''))
+      return isNaN(n) ? 0 : n
+    },
+    // 点击「分类」在下方就地展开 / 收起（原为弹窗）
+    openTypePicker() { this.showTypePicker = !this.showTypePicker },
     selectBrand(brand) { this.currentBrand = brand },
     selectSceneCategory(category) { this.currentSceneCategory = category },
+
+    // ===== 自定义方案：机器页多选 + 方案框 + 下单/保存 =====
+    enterCustomPlanMode() {
+      this.customPlanMode = true
+      this.currentTab = 'rent'
+      this.selectedPlanItems = []
+      this.planDays = 1
+      this.initPlanDate()
+      this.loadCustomPlans()
+    },
+    initPlanDate() {
+      const now = new Date()
+      this.dateYearList = [now.getFullYear(), now.getFullYear() + 1, now.getFullYear() + 2, now.getFullYear() + 3, now.getFullYear() + 4, now.getFullYear() + 5]
+      this.dateVal = [0, now.getMonth(), now.getDate() - 1]
+      this.planStartDate = this.todayStr()
+      this.planEndDate = this.todayStr()
+      this.planShowStartPicker = false
+      this.planShowEndPicker = false
+    },
+    planDateFromPv(e) {
+      const [yi, mi, di] = e.detail.value || [0, 0, 0]
+      const y = this.dateYearList[yi] || this.dateYearList[0]
+      const m = mi + 1
+      const maxDay = new Date(y, m, 0).getDate()
+      const d = Math.min(di + 1, maxDay)
+      this.dateVal = [yi, mi, d - 1]
+      return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    },
+    onPlanStartDateChange(e) {
+      this.planStartDate = this.planDateFromPv(e)
+      this.planShowStartPicker = false
+      this.calcPlanDays()
+    },
+    onPlanEndDateChange(e) {
+      this.planEndDate = this.planDateFromPv(e)
+      this.planShowEndPicker = false
+      this.calcPlanDays()
+    },
+    calcPlanDays() {
+      if (this.planStartDate && this.planEndDate) {
+        const s = new Date(this.planStartDate), en = new Date(this.planEndDate)
+        const diff = Math.round((en - s) / 86400000)
+        if (diff > 0) this.planDays = diff
+      }
+    },
+    exitCustomPlanMode() {
+      this.customPlanMode = false
+      this.selectedPlanItems = []
+      this.showCustomPlanModal = false
+    },
+    isPlanSelected(item) {
+      const key = item.bagistoId || item.id
+      return this.selectedPlanItems.some(m => (m.bagistoId || m.id) === key)
+    },
+    togglePlanItem(item) {
+      const key = item.bagistoId || item.id
+      const idx = this.selectedPlanItems.findIndex(m => (m.bagistoId || m.id) === key)
+      if (idx !== -1) this.selectedPlanItems.splice(idx, 1)
+      else this.selectedPlanItems.push({ ...item })
+    },
+    planPerDay() {
+      return this.selectedPlanItems.reduce((sum, m) => sum + (parseFloat(String(m.price).replace(/,/g, '')) || 0), 0)
+    },
+    planTotal() {
+      return Math.round(this.planPerDay() * this.planDays * 100) / 100
+    },
+    submitCustomPlanOrder() {
+      if (!this.selectedPlanItems.length) return
+      const items = this.selectedPlanItems.map(m => ({
+        product_id: m.bagistoId || m.id,
+        name: m.name,
+        price: m.price,
+        bg: m.bg || '',
+        icon: m.icon || '🤖',
+        image: m.image || '',
+        qty: 1,
+      }))
+      const url = `/pages/order/checkout?type=rent&from=scene&scene=${encodeURIComponent('自定义方案')}&rent_days=${this.planDays}&rentPeriod=${this.planDays}天&startDate=${encodeURIComponent(this.planStartDate)}&endDate=${encodeURIComponent(this.planEndDate)}&items=${encodeURIComponent(JSON.stringify(items))}`
+      this.showCustomPlanModal = false
+      uni.navigateTo({ url })
+    },
+    saveCustomPlan() {
+      if (!this.selectedPlanItems.length) { uni.showToast({ title: '请先选择机型', icon: 'none' }); return }
+      const list = uni.getStorageSync('customPlans') || []
+      list.unshift({
+        id: Date.now(),
+        name: '自定义方案',
+        items: this.selectedPlanItems.map(m => ({ ...m })),
+        days: this.planDays,
+        perDay: this.planPerDay(),
+        total: this.planTotal(),
+        status: 'draft',
+        time: new Date().toLocaleString('zh-CN', { hour12: false }),
+        synced: false,
+      })
+      uni.setStorageSync('customPlans', list)
+      this.customPlanList = list
+      uni.showToast({ title: '方案已保存', icon: 'success' })
+    },
+    loadCustomPlans() {
+      this.customPlanList = uni.getStorageSync('customPlans') || []
+    },
+    openCustomPlans() {
+      this.loadCustomPlans()
+      this.showCustomPlanModal = true
+    },
+    loadPlanFromList(p) {
+      this.selectedPlanItems = (p.items || []).map(m => ({ ...m }))
+      this.planDays = p.days || 1
+      this.showCustomPlanModal = false
+      uni.showToast({ title: `已载入「${p.name}」`, icon: 'none' })
+    },
+    deleteCustomPlan(p) {
+      uni.showModal({
+        title: '删除方案', content: `删除「${p.name}」？`,
+        success: (res) => {
+          if (!res.confirm) return
+          const list = this.customPlanList.filter(x => x.id !== p.id)
+          uni.setStorageSync('customPlans', list)
+          this.customPlanList = list
+        }
+      })
+    },
 
     goDetail(item) {
       this.selectedProduct = item
       this.actionType = this.currentTab
       this.detailTab = 'desc'
       this.showDetail = true
+      this.loadRelatedProducts()
+    },
+
+    // 技能/配件的「适配机型」:读后台关联商品关系(GET /api/products/{id}/related)。
+    // 机器人商品(rent/buy)不走这里 —— 与后台 links.blade.php 切换标题的条件保持一致。
+    // request.js 失败一律 reject 且不返回 task(没法 abort),所以用 _relatedSeq 比对来丢弃过期响应。
+    async loadRelatedProducts() {
+      const seq = ++_relatedSeq
+      this.relatedProducts = []
+      const item = this.selectedProduct
+      if (this.actionType !== 'accessory' && this.actionType !== 'skill') return
+      if (!item || !item.bagistoId) return
+      try {
+        const res = await productApi.getRelatedProducts(item.bagistoId)
+        if (seq !== _relatedSeq) return // 在途期间详情已被换成别的商品,丢弃
+        this.relatedProducts = (res && Array.isArray(res.data)) ? res.data : []
+      } catch (e) {
+        if (seq !== _relatedSeq) return
+        // 静默降级:拿不到就不显示这一块,不打扰用户(同 fangan.vue 的接口失败处理)
+        this.relatedProducts = []
+      }
+    },
+
+    // AI 召唤页点推荐商品 → 先写 storage 再跳本页;这里读出来自动打开详情。
+    // 只传了 id(不传分类),所以四个目录都找一遍——同一商品可能归在不同分类下。
+    async openPendingAiProduct() {
+      let req = null
+      try {
+        req = uni.getStorageSync('aiOpenProduct')
+      } catch (e) { return }
+      if (!req || !req.id) return
+      uni.removeStorageSync('aiOpenProduct')
+
+      // 目录是异步拉的,等它落地再找
+      try { await this.loadCatalog() } catch (e) { return }
+
+      const buckets = [
+        ['rent', this.rentCatalog, 'detail'],
+        ['buy', this.buyCatalog, 'detail'],
+        ['skill', this.skillCatalog, 'skill'],
+        ['accessory', this.accessoryCatalog, 'accessory'],
+      ]
+      for (const [tab, list, kind] of buckets) {
+        const hit = (list || []).find(x => Number(x.bagistoId || x.id) === Number(req.id))
+        if (!hit) continue
+        this.currentTab = tab
+        this.fromAi = true   // 关闭详情时切回 AI 召唤页
+        if (kind === 'detail') this.goDetail(hit)
+        else if (kind === 'skill') this.onSkill(hit, false)
+        else this.onAccessory(hit, false)
+        return
+      }
     },
     // 详情顶部图：按图片实际比例自适应框架高度，整图完整显示（不裁切、不留白）
     // 详情顶部图：框架高度直接取图片实际渲染高度，保证=图片 —— 无留白、无裁切
@@ -794,6 +1132,7 @@ export default {
       this.detailTab = 'desc'
       this.showDetail = true
       this.fromHome = fromHome
+      this.loadRelatedProducts()
     },
 
     onSkill(item, fromHome = false) {
@@ -806,6 +1145,7 @@ export default {
       this.detailTab = 'desc'
       this.showDetail = true
       this.fromHome = fromHome
+      this.loadRelatedProducts()
     },
 
     closeDetail() {
@@ -815,6 +1155,15 @@ export default {
         this.fromHome = false
         uni.switchTab({ url: '/pages/home/index' })
       }
+      // 从 AI 召唤页点推荐商品跳过来的:关掉详情就回到 AI 召唤页,
+      // 而不是把用户丢在"机器"tab 上(与上面 fromHome 的处理保持一致)。
+      if (this.fromAi) {
+        this.fromAi = false
+        uni.switchTab({ url: '/pages/ai/index' })
+      }
+      // 清掉适配机型,并作废在途请求(关了浮层还可能有一个 related 请求在路上)
+      this.relatedProducts = []
+      _relatedSeq++
     },
 
     confirmAction(type) {
@@ -1190,6 +1539,9 @@ export default {
     // 租用/购买 动态从后台商品库拉取(内部自带 5 分钟缓存,onShow 高频触发不再全量重拉)
     this.loadCatalog()
 
+    // AI 召唤页点推荐商品跳过来的:等目录加载完再自动打开该商品详情
+    this.openPendingAiProduct()
+
     // 拉取后台维护的场景列表,按 id 合并进 enterprise(TOB)卡片; 完成后刷新场景列表
     loadBackendScenes().then(() => { this.sceneVersion++ })
 
@@ -1231,7 +1583,15 @@ page {
   z-index: 0;
   pointer-events: none;
 }
-.rental-page > * {
+/* ★ 已还原本意：让 .rental-page 直接子元素浮在顶部渐变(::before)之上。
+   新版 WXSS 不支持通配符 * 作子代选择器(报 error at token "*")；改显式类名是唯一
+   既不报错、又不改布局的写法。注意：勿用 `> view`(元素选择器会把 specificity 抬到 0,2,1，
+   盖过弹层自身的 position:fixed → 布局崩)。
+   这里只列真正需要抬升的常驻流量元素：top-tabs / custom-plan-header。
+   其余直接子元素均为 position:fixed 全屏弹层(自带 z-index 999~1250，天然在渐变之上)、
+   或 .main-body(其规则已自带 position:relative + z-index:1)。 */
+.rental-page > .top-tabs,
+.rental-page > .custom-plan-header {
   position: relative;
   z-index: 1;
 }
@@ -1240,36 +1600,25 @@ page {
 /* ===== 顶部 Tab（五个主Tab） - 蓝色框架（下划线） ===== */
 .top-tabs {
   display: flex;
-  background: #ffffff;
-  padding: 88rpx 10rpx 0;
-  border-bottom: 2rpx solid #E8EDF3;
+  background: #EEF4FF;
+  padding: 140rpx 20rpx 0;  /* 左右各留 20rpx：首格左边、末格右边不贴屏幕边，正方形才完整 */
   flex-shrink: 0;
+  /* 刻意不写 border-bottom：选中方块要与下方白色内容区连成一体，有线就割开了 */
 }
 .top-tabs .tab-item {
-  flex: 1;
+  flex: 1;                 /* (750-20×2)/5 = 142rpx 宽 */
+  height: 142rpx;          /* 与格宽 142rpx 相等 → 正方形 */
+  line-height: 142rpx;     /* 垂直居中；不用 flex，<text> 上更稳 */
   text-align: center;
-  padding: 16rpx 0;
-  font-size: 30rpx;
+  font-size: 33rpx;
   font-weight: 600;
-  color: #111827;
-  position: relative;
+  color: #1F2937;
   letter-spacing: 0.5rpx;
-  transition: color 0.25s ease;
+  transition: background 0.25s ease;
 }
-/* 激活态：蓝色文字 + 蓝色下划线 */
+/* 激活态：整格铺白（原为蓝字 + 蓝下划线）。底边无线，视觉上与下方内容区连成一块 */
 .top-tabs .tab-item.active {
-  color: #165DFF;
-  font-weight: 700;
-}
-.top-tabs .tab-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 15%;
-  right: 15%;
-  height: 5rpx;
-  background: linear-gradient(90deg, #165DFF, #6EA8FF);
-  border-radius: 6rpx;
+  background: #FFFFFF;
 }
 
 /* ============================================================ */
@@ -1277,8 +1626,7 @@ page {
 .type-scroll {
   white-space: nowrap;
   padding: 10rpx 16rpx;
-  background: #ffffff;
-  border-bottom: 1rpx solid #F1F5F9;
+  background: transparent;
   flex-shrink: 0;
   height: 60rpx;
   z-index: 1;
@@ -1294,13 +1642,38 @@ page {
   display: inline-block;
   padding: 2rpx 18rpx;
   margin-right: 8rpx;
-  font-size: 20rpx;
+  font-size: 26rpx;
   color: #6B7280;
-  background: #F5F7FA;
+  background: #ffffff;
   border-radius: 24rpx;
   line-height: 1.8;
-  border: 1rpx solid transparent;
+  border: 1rpx solid #E5E7EB;
   transition: all 0.2s ease;
+}
+/* 分类选择：label + 下拉框（对标技能/配件的品牌机型格式） */
+.cat-group {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+.cat-label {
+  font-size: 26rpx;
+  color: #6B7280;
+  white-space: nowrap;
+}
+.cat-picker {
+  display: flex;
+  align-items: center;
+  /* 去掉方框：无背景/描边/圆角，与左侧「综合/价格」同款纯文字 */
+  padding: 6rpx 0;
+  font-size: 26rpx;
+  color: #6B7280;   /* 与「分类」标签同色深，不再用更深的 #1F2937 */
+}
+.cat-arrow {
+  font-size: 18rpx;
+  color: #9CA3AF;
+  margin-left: 8rpx;
 }
 /* 激活态：淡蓝色背景 + 蓝色文字 + 蓝色边框 */
 .type-item.active {
@@ -1312,6 +1685,27 @@ page {
 .type-item:active {
   opacity: 0.7;
 }
+/* 电商排序：综合 / 价格 */
+.sort-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.sort-item {
+  padding: 4rpx 14rpx;
+  font-size: 26rpx;
+  color: #6B7280;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+.sort-item.active {
+  color: #165DFF;
+  font-weight: 600;
+}
+.sort-arrow {
+  font-size: 20rpx;
+  margin-left: 4rpx;
+}
 
 /* ===== 主体 ===== */
 .main-body {
@@ -1321,6 +1715,7 @@ page {
   overflow: hidden;
   z-index: 1;
   position: relative;
+  margin-top: 38rpx;
 }
 
 /* ===== 滚动提示条（轻微淡入，暗示可滑动查看更多） ===== */
@@ -1373,7 +1768,7 @@ page {
   background: #ffffff;
 }
 .brand-item .brand-name {
-  font-size: 24rpx;
+  font-size: 25.1rpx;
   color: #1F2937;
   text-align: center;
   font-weight: 500;
@@ -1383,6 +1778,18 @@ page {
   font-weight: 700;
 }
 
+/* 右侧内容列：顶部放「类别栏」，下为广告/卡片 */
+.content-column {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  background: #ffffff;
+}
 .product-area-wrapper {
   flex: 1;
   min-height: 0;
@@ -1399,13 +1806,13 @@ page {
 .product-flex-wrapper {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 16rpx;
+  justify-content: space-between;
 }
 
 /* ===== 租用/购买 卡片 ===== */
 .product-card {
-  width: calc(50% - 8rpx);
+  width: 48.5%;
+  margin-bottom: 16rpx;
   background: #ffffff;
   border-radius: 16rpx;
   overflow: hidden;
@@ -1668,7 +2075,7 @@ page {
   right: 0;
   bottom: 0;
   background: rgba(0,0,0,0.5);
-  z-index: 999;
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1723,7 +2130,9 @@ page {
 .detail-scroll {
   flex: 1;
   min-height: 0;
-  padding-top: calc(env(safe-area-inset-top) + 96rpx);
+  /* 顶部灰条(.detail-nav)高 safe+86rpx; 这里给 84rpx 让图片上移 2rpx 塞到灰条正下方,
+     消除两者间因 rpx 取整露出的白线(灰条不透明且 z-index 更高, 压住接缝) */
+  padding-top: calc(env(safe-area-inset-top) + 84rpx);
   padding-bottom: 20rpx;
 }
 .detail-swiper {
@@ -1807,6 +2216,35 @@ page {
 .link-tag.warn {
   color: #d97706;
   background: rgba(217, 119, 6, 0.12);
+}
+/* 适配机型(技能/配件详情页):只列机型名。视觉与 .spec-card / .service-area 同一套语言 */
+.adapt-card {
+  margin: 0 30rpx 20rpx;
+  background: #F8FAFC;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+}
+.adapt-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #4A5568;
+  margin-bottom: 16rpx;
+}
+/* 名字标签自动换行。用 margin 而非 gap:小程序对 flex-wrap + gap 的支持不稳 */
+.adapt-list {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: -12rpx;
+}
+.adapt-name {
+  font-size: 24rpx;
+  color: #1A2A3A;
+  background: #FFFFFF;
+  border: 1rpx solid #E5E7EB;
+  border-radius: 10rpx;
+  padding: 8rpx 18rpx;
+  margin: 0 12rpx 12rpx 0;
 }
 .spec-card {
   margin: 0 30rpx 20rpx;
@@ -1993,7 +2431,13 @@ page {
   left: 0;
   right: 0;
   background: #ffffff;
-  padding: 20rpx 24rpx calc(56rpx + env(safe-area-inset-bottom));
+  padding: 20rpx 24rpx;
+  /* #ifdef H5 */
+  padding-bottom: 56rpx;
+  /* #endif */
+  /* #ifndef H5 */
+  padding-bottom: calc(12rpx + env(safe-area-inset-bottom));
+  /* #endif */
   border-top: 2rpx solid #F1F5F9;
   display: flex;
   align-items: center;
@@ -2384,23 +2828,105 @@ page {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+/* ===== 自定义方案(机器页多选 + 方案框) ===== */
+.custom-plan-header { display: flex; align-items: center; justify-content: center; background: #fff; padding: 88rpx 24rpx 0; border-bottom: 2rpx solid #E8EDF3; flex-shrink: 0; }
+.cpp-btns { display: flex; flex-direction: row; align-items: center; gap: 12rpx; }
+.cpp-btn { font-size: 24rpx; color: #165DFF; background: #EAF1FF; border-radius: 28rpx; padding: 10rpx 30rpx; text-align: center; }
+.type-bar { display: flex; align-items: center; gap: 12rpx; border-bottom: 1rpx solid #E7EAF0; }
+.type-bar .type-scroll { flex: 1; }
+.custom-plan-fixed { flex-shrink: 0; margin-left: auto; }
+.type-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
+.type-modal { width: 640rpx; max-height: 70vh; background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx; box-sizing: border-box; }
+.type-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
+.type-modal-title { font-size: 32rpx; font-weight: 700; color: #1F2937; }
+.type-modal-close { font-size: 30rpx; color: #94A3B8; padding: 6rpx 12rpx; }
+.type-grid { display: flex; flex-wrap: wrap; gap: 20rpx; }
+/* 类别内联展开：点「分类」后在排序栏下方就地展开，把产品列表往下推 */
+.type-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin: 8rpx 12rpx 12rpx;
+  padding: 18rpx 18rpx 14rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E7EAF0;
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+.type-inline .type-opt {
+  width: calc(33.33% - 11rpx);
+  padding: 14rpx 0;
+  font-size: 26rpx;
+}
+.type-opt { width: calc(33.33% - 14rpx); text-align: center; padding: 18rpx 0; background: #F1F5F9; border-radius: 14rpx; color: #475569; font-size: 28rpx; box-sizing: border-box; }
+.type-opt.active { background: #EAF1FF; color: #165DFF; font-weight: 600; }
+.product-card { position: relative; }
+.product-card.selected { border-color: #165DFF; box-shadow: 0 0 0 2rpx rgba(22, 93, 255, 0.35); }
+.product-select-btn { position: absolute; top: 12rpx; right: 12rpx; width: 52rpx; height: 52rpx; border-radius: 50%; background: rgba(22, 93, 255, 0.92); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 34rpx; line-height: 1; z-index: 2; }
+.scene-cart-bar { position: fixed; left: 20rpx; right: 20rpx; bottom: calc(env(safe-area-inset-bottom) + 20rpx); background: #fff; border-radius: 20rpx; box-shadow: 0 8rpx 32rpx rgba(15, 23, 42, 0.18); padding: 18rpx 24rpx; z-index: 1100; }
+/* #ifdef MP-WEIXIN */
+.scene-cart-bar { bottom: calc(env(safe-area-inset-bottom) + 2rpx); }
+/* #endif */
+.cart-bar-top { display: flex; justify-content: flex-end; gap: 12rpx; margin-bottom: 12rpx; }
+.scene-cart-empty { font-size: 24rpx; color: #94A3B8; text-align: center; padding: 10rpx 0 18rpx; }
+.cart-items-scroll { white-space: nowrap; margin-bottom: 14rpx; }
+.cart-item { display: inline-flex; flex-direction: column; align-items: center; width: 150rpx; margin-right: 20rpx; }
+.cart-item-img { position: relative; width: 140rpx; height: 120rpx; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.cart-item-img-img { width: 100%; height: 100%; }
+.cart-item-img-icon { font-size: 52rpx; }
+.cart-item-del { position: absolute; top: -6rpx; right: -6rpx; width: 36rpx; height: 36rpx; border-radius: 50%; background: rgba(15, 23, 42, 0.7); color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
+.cart-item-name { font-size: 24rpx; color: #1F2937; margin-top: 8rpx; max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cart-item-price { font-size: 22rpx; color: #165DFF; margin-top: 4rpx; }
+.cart-date-label { font-size: 24rpx; color: #64748B; flex-shrink: 0; }
+.cart-date-end { font-size: 22rpx; color: #94A3B8; }
+.scene-cart-row { display: flex; align-items: center; gap: 16rpx; }
+.scene-cart-count { font-size: 26rpx; font-weight: 700; color: #1F2937; flex-shrink: 0; }
+.scene-cart-days { display: flex; gap: 8rpx; flex: 1; flex-wrap: wrap; }
+.day-chip { font-size: 22rpx; color: #475569; background: #F1F5F9; border-radius: 24rpx; padding: 6rpx 18rpx; }
+.day-chip.active { background: #165DFF; color: #fff; }
+.scene-cart-total { font-size: 32rpx; font-weight: 700; color: #165DFF; flex-shrink: 0; }
+.scene-cart-actions { display: flex; gap: 16rpx; margin-top: 14rpx; }
+.scene-cart-save { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 40rpx; border: 1px solid #CBD5E1; color: #475569; font-size: 28rpx; }
+.scene-cart-submit { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 40rpx; }
+.plan-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
+.plan-modal { width: 640rpx; max-height: 68vh; background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx; box-sizing: border-box; display: flex; flex-direction: column; }
+.plan-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+.plan-modal-title { font-size: 32rpx; font-weight: 700; color: #1F2937; }
+.plan-modal-close { font-size: 30rpx; color: #94A3B8; padding: 6rpx 12rpx; }
+.plan-modal-list { max-height: 50vh; flex: 1; }
+.plan-item { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 12rpx; border-bottom: 1rpx solid #F1F5F9; }
+.plan-item-info { display: flex; flex-direction: column; gap: 6rpx; }
+.plan-item-name { font-size: 26rpx; color: #1F2937; }
+.plan-item-total { font-size: 24rpx; color: #165DFF; font-weight: 600; }
+.plan-item-del { font-size: 24rpx; color: #EF4444; padding: 6rpx 16rpx; }
+.plan-empty { text-align: center; color: #94A3B8; font-size: 26rpx; padding: 40rpx 0; }
+.cart-date-label { font-size: 24rpx; color: #64748B; flex-shrink: 0; }
+.plan-date-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1250; display: flex; align-items: center; justify-content: center; }
+.plan-date-modal { width: 640rpx; background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx; box-sizing: border-box; }
+.plan-date-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+.plan-date-title { font-size: 30rpx; font-weight: 700; color: #1F2937; }
+.plan-date-close { font-size: 30rpx; color: #94A3B8; padding: 6rpx 12rpx; }
+.plan-date-pv { height: 400rpx; }
+.plan-date-ok { margin-top: 24rpx; height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 42rpx; }
 </style>
 
-<!-- 全局：隐藏滚动条，避免滑动线条影响观感 -->
+<!-- ★ 全局：隐藏滚动条（已去通配符 *——新版 WXSS 不支持 `*`/`*::before`，改枚举实际滚动容器 page/scroll-view/uni-scroll-view；本页 scroll-view 均已带 show-scrollbar="false"，此块为兜底） -->
 <style>
 ::-webkit-scrollbar,
-*::-webkit-scrollbar,
+page::-webkit-scrollbar,
+scroll-view::-webkit-scrollbar,
 uni-scroll-view::-webkit-scrollbar,
 uni-scroll-view .uni-scroll-view::-webkit-scrollbar,
-uni-scroll-view .uni-scroll-view *::-webkit-scrollbar,
 .uni-scroll-view::-webkit-scrollbar {
 	width: 0 !important;
 	height: 0 !important;
 	display: none !important;
 }
-*,
-*::before,
-*::after {
+page,
+scroll-view,
+uni-scroll-view,
+.uni-scroll-view {
 	scrollbar-width: none !important;
 	-ms-overflow-style: none !important;
 }

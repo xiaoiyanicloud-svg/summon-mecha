@@ -16,14 +16,21 @@
     <view class="eco-content">
       <!-- ========== 技能市场 ========== -->
       <view v-show="currentTab === 'skill'" class="tab-panel">
+        <!-- v3.4:服务端搜索(接 /api/skill-catalog/search) -->
+        <view class="skill-search">
+          <text class="ss-icon">🔍</text>
+          <input class="ss-input" v-model="skillQuery" placeholder="搜索技能（名称/关键词）" confirm-type="search" @confirm="doSkillSearch" />
+          <text v-if="skillQuery" class="ss-clear" @click="clearSkillSearch">✕</text>
+        </view>
         <view class="grid-3col">
-          <view class="eco-card skill-card" v-for="item in skillCards" :key="item.uid" @click.stop="onSkill(item)">
+          <view class="eco-card skill-card" v-for="item in displayedSkills" :key="item.uid" @click.stop="onSkill(item)">
             <view class="eco-img" :style="{ backgroundColor: item.bg }">
               <image v-if="item.image" class="eco-img-img" :src="item.image" mode="aspectFill"></image>
               <text v-else class="eco-icon">{{ item.icon }}</text>
             </view>
             <text class="eco-name">{{ item.name }}</text>
-            <text class="eco-price" v-if="item.price">¥{{ item.price }}</text>
+            <!-- 价格为空或 0 时不显示, 避免真机无价商品出现"¥0" -->
+            <text class="eco-price" v-if="item.price && String(item.price) !== '0'">¥{{ item.price }}</text>
           </view>
         </view>
         <view class="more-entry" @click="goMoreSkills">
@@ -51,7 +58,7 @@
               <text v-else class="eco-icon">{{ item.icon }}</text>
             </view>
             <text class="eco-name">{{ item.name }}</text>
-            <text class="eco-price">¥{{ item.price }}</text>
+            <text class="eco-price" v-if="item.price && String(item.price) !== '0'">¥{{ item.price }}</text>
           </view>
         </view>
         <view class="more-entry" @click="goMoreAccessoriesList">
@@ -173,8 +180,12 @@
 
 <script>
 import Dongtai from '@/components/shouye/dongtai.vue'
-import { productApi, categoryApi, eventApi } from '@/utils/api'
+import { productApi, categoryApi, eventApi, skillCatalogApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
+import SKILL_LIST, { ECO_SKILL_IDS } from '@/components/jiqi/skill-data'
+
+// tab 数据刷新节流: 5 分钟内重复切 tab 不重拉(与机器页 loadCatalog 的 TTL 策略一致)
+const CATALOG_TTL = 5 * 60 * 1000;
 
 export default {
   name: 'EcoCenter',
@@ -185,33 +196,17 @@ export default {
       accessoryCategory: 'all',
       selectedEvent: null,
       skillCatalog: [],
+      // v3.4:技能搜索(服务端)—— skillResults 为 null 表示"未搜索,显示全部"
+      skillQuery: '',
+      skillResults: null,
       accessoryCatalog: [],
       // 赛事:后台 events 表数据(拉取失败保留 mock 兜底);报名弹窗
       showEventReg: false,
       regEventId: null,
       eventRegForm: { name: '', phone: '' },
 
-      skillList: [
-        { id: 20, name: '智能叠衣', icon: '👕', bg: '#E8F5E9' },
-        { id: 21, name: '全屋扫地', icon: '🧹', bg: '#FFF3E0' },
-        { id: 22, name: '厨房助手', icon: '🍳', bg: '#FFF8E1' },
-        { id: 23, name: '园艺修剪', icon: '🌿', bg: '#E8F5E9' },
-        { id: 24, name: '宠物管家', icon: '🐾', bg: '#FCE4EC' },
-        { id: 25, name: '窗户清洁', icon: '🪟', bg: '#E3F2FD' },
-        { id: 1, name: '旋风回旋斩', icon: '🌀', bg: '#FEF3C7' },
-        { id: 2, name: '雷霆冲撞', icon: '⚡', bg: '#FEF3C7' },
-        { id: 3, name: '弹射飞踢', icon: '💥', bg: '#FEF3C7' },
-        { id: 4, name: 'AI智能讲解', icon: '🗣️', bg: '#E8F0FE' },
-        { id: 5, name: '语音交互', icon: '🎤', bg: '#F0F4FA' },
-        { id: 6, name: '人脸识别', icon: '👤', bg: '#E8F0FE' },
-        { id: 7, name: '物体识别', icon: '🔍', bg: '#F0F4FA' },
-        { id: 8, name: '智能迎宾', icon: '🤝', bg: '#F0F4FA' },
-        { id: 9, name: '多语言翻译', icon: '🌐', bg: '#F0F4FA' },
-        { id: 10, name: '路径规划', icon: '🧭', bg: '#E8F0FE' },
-        { id: 11, name: '智能避障', icon: '🚧', bg: '#F0F4FA' },
-        { id: 12, name: '智能对话', icon: '💬', bg: '#E3F2FD' }
-      ],
-
+      // 技能 mock 已抽到 components/jiqi/skill-data.js(与机器页共用一份, 见 skillCards 计算属性)
+      // 配件 mock 仅本页使用(机器页配件是纯后台数据)
       accessoryList: [
         { id: 1, name: '合金护甲', price: '299', icon: '🛡️', category: 'fight' },
         { id: 2, name: '格斗铲', price: '199', icon: '🔧', category: 'fight' },
@@ -395,17 +390,29 @@ export default {
     };
   },
   computed: {
-    // 技能市场: 优先显示后台 skill 分类拉取的数据, 失败则回退 mock
-    // 技能市场: 后台真实商品 + 静态 mock 共存(真实在前, mock 在后), 用 uid 避免 key 冲突
+    // 技能市场: 后台真实商品在前; mock 兜底展示 ECO_SKILL_IDS 子集(保持历史卡片顺序)。
+    // mock 按名称去重 —— 后台已建同名商品时不再重复展示(后台全量建品后 mock 自然退场, 与机器页策略对齐)
     skillCards() {
       const real = this.skillCatalog.map(p => ({ ...p, uid: 'r' + p.id }));
-      const mock = this.skillList.map(m => ({ ...m, uid: 'm' + m.id }));
+      const realNames = new Set(real.map(p => String(p.name || '').trim()));
+      const mock = ECO_SKILL_IDS
+        .map(id => SKILL_LIST.find(m => m.id === id))
+        .filter(m => m && !realNames.has(m.name))
+        .map(m => ({ ...m, uid: 'm' + m.id }));
       return real.concat(mock);
     },
-    // 配件皮肤: 后台真实商品 + 静态 mock 共存(mock 仍受分类 chips 筛选)
+    // v3.4:搜索中显示搜索结果,否则显示全部(skillResults 为 null = 未搜索)
+    displayedSkills() {
+      if (this.skillResults === null) return this.skillCards
+      return this.skillResults.map(p => ({ ...p, uid: 's' + p.id }))
+    },
+    // 配件皮肤: 后台真实商品 + 静态 mock 共存(mock 仍受分类 chips 筛选, 同样按名称去重)
     accessoryCards() {
       const real = this.accessoryCatalog.map(p => ({ ...p, uid: 'r' + p.id }));
-      const mock = this.filteredAccessoryList.map(m => ({ ...m, uid: 'm' + m.id }));
+      const realNames = new Set(real.map(p => String(p.name || '').trim()));
+      const mock = this.filteredAccessoryList
+        .filter(m => !realNames.has(m.name))
+        .map(m => ({ ...m, uid: 'm' + m.id }));
       return real.concat(mock);
     },
     filteredAccessoryList() {
@@ -472,29 +479,42 @@ export default {
       };
     },
     async loadSkill() {
+      // TTL 内跳过(切 tab 高频触发); 后台建品后最多 5 分钟生效
+      if (Date.now() - (this._skillLoadedAt || 0) < CATALOG_TTL) return;
       try {
         const catsRes = await categoryApi.getCategories({ limit: 200 });
         const cats = (catsRes && Array.isArray(catsRes.data)) ? catsRes.data : [];
         const sc = cats.find(c => c.slug === 'skill' || c.name === '技能');
-        if (!sc) return;
+        if (!sc) {
+          console.warn('[EcoCenter] 后台未找到「技能」分类(slug=skill), 技能市场仅显示兜底 mock');
+          return;
+        }
         const res = await productApi.getProducts({ limit: 200, page: 1, category_id: sc.id });
         const items = (res && Array.isArray(res.data)) ? res.data : [];
         this.skillCatalog = items.map(p => this.mapProduct(p));
+        this._skillLoadedAt = Date.now();
       } catch (e) {
         // 后台拉取失败时保留 mock 兜底, 不置空
+        console.warn('[EcoCenter] 技能商品拉取失败, 使用 mock 兜底', e);
       }
     },
     async loadAccessory() {
+      if (Date.now() - (this._accessoryLoadedAt || 0) < CATALOG_TTL) return;
       try {
         const catsRes = await categoryApi.getCategories({ limit: 200 });
         const cats = (catsRes && Array.isArray(catsRes.data)) ? catsRes.data : [];
         const sc = cats.find(c => c.slug === 'accessory' || c.name === '配件');
-        if (!sc) return;
+        if (!sc) {
+          console.warn('[EcoCenter] 后台未找到「配件」分类(slug=accessory), 配件皮肤仅显示兜底 mock');
+          return;
+        }
         const res = await productApi.getProducts({ limit: 200, page: 1, category_id: sc.id });
         const items = (res && Array.isArray(res.data)) ? res.data : [];
         this.accessoryCatalog = items.map(p => ({ ...this.mapProduct(p), category: '配件' }));
+        this._accessoryLoadedAt = Date.now();
       } catch (e) {
         // 后台拉取失败时保留 mock 兜底, 不置空
+        console.warn('[EcoCenter] 配件商品拉取失败, 使用 mock 兜底', e);
       }
     },
     onSkill(item) {
@@ -503,6 +523,21 @@ export default {
       uni.setStorageSync('skillDetail', data);
       uni.setStorageSync('robotTab', 'skill');
       uni.switchTab({ url: '/pages/robot/index' });
+    },
+    // v3.4:服务端技能搜索(接 /api/skill-catalog/search)
+    async doSkillSearch() {
+      const q = (this.skillQuery || '').trim()
+      if (!q) { this.skillResults = null; return }
+      try {
+        const res = await skillCatalogApi.search(q)
+        this.skillResults = (res && Array.isArray(res.data)) ? res.data : []
+      } catch (e) {
+        uni.showToast({ title: (e && e.message) || '搜索失败', icon: 'none' })
+      }
+    },
+    clearSkillSearch() {
+      this.skillQuery = ''
+      this.skillResults = null
     },
     goMoreSkills() {
       uni.setStorageSync('robotTab', 'skill');
@@ -601,7 +636,7 @@ export default {
 <style scoped>
 /* ===== 基础样式 ===== */
 .eco-bg {
-  background-color: #F0F8FF;
+  background-color: #ffffff;
   border-radius: 24rpx;
   padding: 20rpx 20rpx 12rpx;
   margin-bottom: 24rpx;
@@ -611,7 +646,8 @@ export default {
   position: sticky;
   top: calc(env(safe-area-inset-top) + 149rpx);
   z-index: 850;
-  background: #F0F8FF;
+  /* ⚠ 必须与 .eco-bg 同色: 吸顶滚动时这层会盖在卡片上, 颜色不一致会看出接缝 */
+  background: #ffffff;
   margin: -20rpx -20rpx 0;
   padding: 20rpx 20rpx 8rpx;
   border-radius: 24rpx 24rpx 0 0;
@@ -690,9 +726,6 @@ export default {
   color: #165DFF;
   margin-bottom: 6rpx;
 }
-.skill-card .eco-img {
-  background-color: #F0F4FA !important;
-}
 .more-entry {
   margin-top: 16rpx;
   padding: 20rpx 0;
@@ -737,9 +770,6 @@ export default {
   color: #165DFF;
   border-color: #165DFF;
   background: #F0F7FF;
-}
-.accessory-img {
-  background-color: #F0F4FA !important;
 }
 
 /* ===== 赛事列表 ===== */
@@ -953,4 +983,10 @@ export default {
 .event-reg-sub { font-size: 24rpx; color: #6B7280; margin: 12rpx 0 24rpx; text-align: center; }
 .event-reg-input { height: 84rpx; border: 1px solid #E5E7EB; border-radius: 14rpx; padding: 0 22rpx; font-size: 28rpx; margin-bottom: 18rpx; background: #F8FAFC; }
 .event-reg-btn { height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: #165DFF; border-radius: 42rpx; }
+
+/* ===== 技能搜索(v3.4) ===== */
+.skill-search { display: flex; align-items: center; height: 76rpx; margin: 16rpx 0 8rpx; padding: 0 24rpx; background: #fff; border-radius: 38rpx; }
+.ss-icon { font-size: 30rpx; margin-right: 12rpx; }
+.ss-input { flex: 1; font-size: 28rpx; }
+.ss-clear { font-size: 28rpx; color: #9CA3AF; padding: 0 8rpx; }
 </style>

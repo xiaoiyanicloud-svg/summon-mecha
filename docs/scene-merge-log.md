@@ -301,3 +301,60 @@
   - lang zh/en datagrid 加 `consult-count` 列名；create/edit 的「咨询数」统一改「咨询人数」。
 - 验证：`php -l` 3 文件通过；`route:list` 见 `admin.catalog.scenes.consult-count`；`view:clear`。
 - 提示：刷新后台「场景管理」页面；列表每行「咨询人数」数字框改完即存，无需进编辑页。
+
+### Step 21 — 修复场景租用下单无真实订单 + 订单时间时区错误（done）
+- 问题1：场景租用多机下单后后台无真实订单（用户报）。
+  - 根因：`fangan.vue` 传的场景租用 items 字段名 = `product_id`(433)；但 `checkout.vue` `submitOrder` 组装 `payload.items` 时读 `it.bagistoId || it.id`(563)——multiItems 里只有 `product_id`、无 `bagistoId/id` → product_id 为 undefined → JSON 序列化省略 → 后端 `items.*.product_id => required|exists:products,id` 校验 422 → 前端 catch 转「意向单」→ 后台订单列表看不到。证据：`storage/logs/laravel.log` 的 `TOB_INPUT` 多单 items 无 product_id。
+  - 修复：`checkout.vue` `product_id: it.product_id || it.bagistoId || it.id`（优先读 `it.product_id`）。前端重编译。
+- 问题2：下单时间显示「12 点多」（用户下午 3 点下单）。
+  - 根因：`.env` + `config/app.php` 时区 = `Asia/Kolkata`(印度 UTC+5:30)，北京 15:00 → 后端 12:30。
+  - 修复：`.env` `APP_TIMEZONE=Asia/Shanghai`；`config/app.php` 默认值也改 `Asia/Shanghai`；`config:clear` 清配置缓存。`now()` 验证=北京时间。需重启后端 PHP 服务。旧订单 created_at 已按旧时区存库，新订单起正确。
+
+### Step 22 — 修复「订单页不显示场景租用机型的几台/机型/实付」（done）
+- 现象：场景租用(游客)下单后，前端订单页无「几台 / 什么机型 / 实付多少钱」。
+- 根因：
+  - 场景租用单是**游客单**(`customer_id=null, is_guest=true`)。后端 `customer/orders` 路由用 **`customer` 登录中间件** + `index` 按 `where('customer_id', $customer->id)` 过滤 → 游客单**任何登录态都查不到**（接口层就过滤掉）。故订单页拿不到后端真实单，只能靠本地意向单。
+  - 而 `checkout.vue recordOrderLocally` 对**多机合单**只存 `this.product`(占位"机器人") + `qty:1` + 单机价 → 意向单没有 几台/机型/实付。
+- 修复：`checkout.vue recordOrderLocally` 多机合单时用 `this.multiItems` 组装：`name`=场景·机型1、机型2；`qty`=台数；`price`=每台价×租期(实付总额)；`rentPeriod`=租期。订单页 `mapIntent/orderFields` 正常渲染「租用数量 X 台 / ¥金额」。
+- 说明：游客单**后台可见**(真实)；订单页显示**本地记录**(ZTxxx 单号)。**登录后下单**→订单关联账号→订单页/后台都显示真实单。若需游客订单页也显示后端真实单，需另加后端游客查询接口(按手机号)，暂不做。
+- 前端重编译。
+
+### Step 23 — 场景租用「通用接口」：游客订单查询 + 前端真实单展示（done）
+- 背景：场景租用单已**真实进后端**(product_id 修复 + 重编译，17:13-17:23 订单 412/413/414/678 均落库，items 带 product_id)，但前端订单页仍显示"意向单"(无真实数据)，用户要**通用接口**、不因换场景而异。
+- 根因：游客单 `customer_id=null`。后端 `customer/orders` 用**登录中间件** + `where customer_id=$customer->id` → 游客单在接口层查不到；前端 `loadOrders` 又只在有 token 时调 getOrders。故游客单在订单页只能靠本地意向单。
+- 修复（通用接口，所有场景统一走它）：
+  - 后端 `OrderController@guestIndex`：返回 `customer_id 为空` 的游客单(含 items/grand_total)，无登录可查。
+  - 路由 `GET /api/guest-orders`(api.customer 放行组，游客可访问，无需登录)。
+  - 前端 `orderApi.getGuestOrders`；`index.vue loadOrders` 无 token 时调 guest-orders(有 token 仍走 customer/orders)。
+  - `mapApiOrder` 清洗真实单条目名：「场景名 · 机型【租赁】（租期）」→ **标题只留机型**、使用场景取场景前缀(与上轮意向单一致)。
+  - `checkout.vue`：下单成功不再 `recordOrderLocally`(避免真实单+意向单重复)；本地意向单仅保留异常兜底(recordOrderLocally 方法保留)。
+- 验证：`php -l` 2 文件通过；`route:list` 见 guest-orders；`curl /api/guest-orders` 返回全部游客单(678/412/413/414 等，含 name/grand_total)。
+- 需**重启后端 PHP + 前端重编译**。
+
+### Step 23.1 — 修正「订单页仍显示假意向单」（loadOrders 二选一 bug, done）
+- 现象：用户重编译后订单页仍全部是「ZT 本地意向单」(假数据，机型/金额错)。
+- 根因：`loadOrders` 用「有 token→登录接口 / 无 token→guest 接口」**二选一**；用户有登录 token → 只走 `customer/orders`(按登录用户过滤)，而场景租用单是**游客单**(customer_id=null) → 查不到 → 回落显示旧假意向单。
+- 修正(`index.vue loadOrders`)：
+  - **始终**先调 `guest-orders`(游客真实单)；登录用户再叠加 `customer/orders`(按 id 去重)。
+  - `merged = apiOrders.length ? apiOrders : intents`(真实单优先，避免旧假意向单显示)。
+  - `mapApiOrder.quantity` 用 items 的 `qty_ordered` 总和(修复 items_qty 为 null 导致几台=1)。
+- 前端重编译。
+
+### Step 24 — 修复「登录态新增地址报 email 必填」（done）
+- 现象：登录态确认下单页新增地址，点保存提示「email 字段是必填的」，无法保存。
+- 根因：前端地址表单无 email 输入框，`localToServerPayload` 的 `payload.email` 传空串；后端 `Shop/.../Requests/Customer/AddressRequest.php` 校验 `'email' => ['required']` → 空串不通过 → 报错。（Bagisto 原生规则与表单不匹配，非本轮改动引入）
+- 修复：`AddressRequest` email 由 `['required']` 改为 `['nullable', 'email']`(地址 email 可为空；若填则须为合法 email)。其余字段 `first_name/last_name`(由 splitName 从「收货人」拆分)、`address/city/state/phone` 前端均已传齐。
+- 需**重启后端 PHP 服务**；前端无需重编译(表单本无 email,后端放宽即可)。
+
+### Step 25 — 修复「场景租用下单变租赁意向/不进后台」(booking 产品类型 + 建单死循环, done)
+- 现象：场景方案→场景租用→多机下单→弹「租赁意向」、后台无单；但「租用」单商品正常进后台。
+- 大范围扫描(对比改动前后备份)真因：
+  - **不是** isMulti/前端多机传递(21:29 后端 isMulti=true、建单已生成 order#2841 确认邮件)。
+  - 是**商品 id=8(sku 52)被建成了 `booking`(资源预订)类型**；Bagisto `OrderRepository::createOrderIfNotThenRetry` 对 booking 产品建单抛 `array offset on null`，且 catch 里(L95)**无终止递归**：回滚+无限重试 → 订单永不落库 → 前端等失败转「租赁意向」。日志 3257 条错误每一条都含 `product_id:8 + type:booking`；成功单(17:13)选的是 6+9(均 simple)。
+  - (此前用 curl 复现被"空 body 422"误导、方向跑偏去改 isMulti、重启无效——实际 isMulti 本来正确；真凶是 booking 商品类型 + 建单死循环。)
+- 修复：
+  - **商品 id=8 类型 `booking`→`simple`**(DB 即时生效)——场景租用含它下单成功(验证 200/success,测试单已删)。
+  - `fangan.vue filteredProducts` 剔除 `type==='booking'`(防御其它 booking 产品不显示/不下单)。
+  - `OrderRepository::createOrderIfNotThenRetry` 加**重试上限**(`$retry>=2` 抛异常终止),防任意建单异常无限死循环。
+- 验证：node 发含 id8 多机 → `success:true`(order 已验证后删除)；用户新单 3152(rent)也进后台。
+- 需**前端重编译**(fangan.vue)+ **phpStudy 重启**(OrderRepository/TobOrder 改生效)。id8=simple 为 DB 即时生效，不重启也能进后台。

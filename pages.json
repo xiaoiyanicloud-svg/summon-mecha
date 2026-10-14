@@ -79,6 +79,55 @@
         "navigationBarBackgroundColor": "#ffffff",
         "navigationBarTextStyle": "black"
       }
+    },
+    {
+      "path": "pages/mine/skills",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的技能"
+      }
+    },
+    {
+      "path": "pages/mine/devices",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的设备"
+      }
+    },
+    {
+      "path": "pages/mine/notifications",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "消息通知"
+      }
+    },
+    {
+      "path": "pages/mine/tickets",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的工单"
+      }
+    },
+    {
+      "path": "pages/mine/incidents",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "事故上报"
+      }
+    },
+    {
+      "path": "pages/mine/deploy",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "下发进度"
+      }
+    },
+    {
+      "path": "pages/mine/agent-setup",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "安装 Agent"
+      }
     }
   ],
   "globalStyle": {

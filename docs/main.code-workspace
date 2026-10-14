@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../召唤机甲-全球官网"
+		}
+	],
+	"settings": {
+		"mcpFigma.autoStartWebSocket": true
+	}
+}

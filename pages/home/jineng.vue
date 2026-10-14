@@ -26,7 +26,7 @@
 				<text class="skill-rating">⭐ {{ skillInfo.rating }}</text>
 			</view>
 			<view class="price-row">
-				<text class="price-current">￥{{ skillInfo.price }}/年</text>
+				<text class="price-current">￥{{ skillInfo.price }}</text>
 				<text class="price-original">￥{{ skillInfo.originalPrice }}</text>
 			</view>
 			<text class="skill-desc">{{ skillInfo.desc }}</text>
@@ -52,6 +52,40 @@
 					</view>
 				</view>
 				<view v-if="skillInfo.comments.length === 0" class="empty-tip">暂无评价</view>
+
+				<!-- v3.4:写评价(复用 Bagisto ProductReview;title/comment/rating 必填) -->
+				<view class="write-review" v-if="productId">
+					<text class="wr-title">写评价</text>
+					<view class="wr-stars">
+						<text v-for="n in 5" :key="n" class="wr-star" :class="{ on: n <= reviewRating }" @click="reviewRating = n">★</text>
+					</view>
+					<textarea class="wr-input" v-model="reviewText" placeholder="说说使用感受" maxlength="200" />
+					<view class="wr-btn" @click="submitReview">{{ reviewSubmitting ? '提交中…' : '提交评价' }}</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 5.5 兼容性校验(v3.4) -->
+		<view class="compat-box">
+			<text class="compat-title">兼容性校验</text>
+			<view class="compat-devices" v-if="devices.length">
+				<text
+					v-for="d in devices"
+					:key="d.id"
+					class="compat-device"
+					:class="{ on: pickedDeviceId === d.id }"
+					@click="pickedDeviceId = d.id"
+				>{{ d.sn }}</text>
+			</view>
+			<text v-else class="compat-tip">还没有登记设备，先去「我的设备」登记</text>
+
+			<view class="compat-btn" @click="checkCompat">{{ compatLoading ? '校验中…' : '检查能否安装' }}</view>
+
+			<view v-if="compat" class="compat-result" :class="{ ok: compat.compatible }">
+				<text class="compat-verdict">{{ compat.compatible ? '✅ 兼容' : '⛔ 不兼容' }}</text>
+				<text class="compat-reason">{{ compat.reason }}</text>
+				<text v-if="compat.channels && compat.channels.length" class="compat-channels">可用通道：{{ compat.channels.join(' / ') }}</text>
+				<text v-for="(n, i) in (compat.notes || [])" :key="i" class="compat-note">· {{ n }}</text>
 			</view>
 		</view>
 
@@ -62,7 +96,7 @@
 				<text class="service-label">客服</text>
 			</view>
 			<view class="footer-actions">
-				<button class="btn-price" @click="handlePrice">￥{{ skillInfo.price }}/年</button>
+				<button class="btn-price" @click="handlePrice">￥{{ skillInfo.price }}</button>
 				<button class="btn-buy" @click="handleBuy">立即开通</button>
 			</view>
 		</view>
@@ -70,11 +104,22 @@
 </template>
 
 <script>
+	import { productApi, skillApi, deviceApi, reviewApi } from '@/utils/api'
 	export default {
 		data() {
 			return {
 				currentTab: 0,
 				skillId: '',
+				productId: null,
+				// 兼容性校验(v3.4):选设备 → 后端判定(含"未知"降级提示)
+				devices: [],
+				pickedDeviceId: '',
+				compat: null,
+				compatLoading: false,
+				// 写评价(v3.4)
+				reviewRating: 5,
+				reviewText: '',
+				reviewSubmitting: false,
 				skillInfo: {
 					name: '加载中...',
 					rating: '',
@@ -90,22 +135,90 @@
 		},
 		onLoad(options) {
 			this.skillId = options.skillId || '20'
+			this.productId = options.productId || null
 			this.loadSkillData(this.skillId)
+			this.loadDevices()
 		},
 		methods: {
-			loadSkillData(id) {
+			// v3.4:真实商品数据优先,失败回退 mock(不把 mock 当唯一数据源)
+			async loadSkillData(id) {
+				const pid = this.productId || id
+				try {
+					const res = await productApi.getProductDetail(pid)
+					const p = (res && (res.data || res)) || null
+					if (p && p.name) {
+						this.productId = pid
+						this.skillInfo = {
+							name: p.name,
+							rating: (p.rating || '') + '',
+							price: p.price || 0,
+							originalPrice: p.special_price || 0,
+							desc: p.short_description || '',
+							served: '',
+							images: this.normalizeImages(p.images || []),
+							features: p.description || p.short_description || '',
+							comments: []
+						}
+						this.loadReviews(pid)
+						return
+					}
+				} catch (e) {
+					// 回退到 mock —— 真实数据不可用时页面不能白屏
+				}
 				const data = this.getMockData(id)
-				if (data) {
-					this.skillInfo = data
-				} else {
-					uni.showToast({
-						title: '该技能详情开发中',
-						icon: 'none',
-						duration: 2000
-					})
-					setTimeout(() => {
-						uni.navigateBack()
-					}, 2000)
+				if (data) this.skillInfo = data
+			},
+			normalizeImages(images) {
+				return (images || []).map(i => (typeof i === 'string' ? i : (i && i.url) || '')).filter(Boolean)
+			},
+			// 评价:复用 Bagisto ProductReview 接口
+			async loadReviews(pid) {
+				try {
+					const res = await reviewApi.list(pid)
+					const rows = (res && res.data) || []
+					this.skillInfo = {
+						...this.skillInfo,
+						comments: rows.map(r => ({
+							avatar: '',
+							nick: (r.name || '用户') + '',
+							content: r.comment || '',
+						})),
+					}
+				} catch (e) {}
+			},
+			async loadDevices() {
+				const res = await deviceApi.list().catch(() => ({ data: [] }))
+				this.devices = (res && Array.isArray(res.data)) ? res.data : []
+			},
+			// 提交评价:title/comment/rating 必填(用评论文本作 title 以满足契约)
+			async submitReview() {
+				if (!this.productId) return
+				const text = (this.reviewText || '').trim()
+				if (!text) { uni.showToast({ title: '请填写评价内容', icon: 'none' }); return }
+				this.reviewSubmitting = true
+				try {
+					await reviewApi.create(this.productId, { title: text.slice(0, 40), comment: text, rating: this.reviewRating })
+					uni.showToast({ title: '评价已提交', icon: 'success' })
+					this.reviewText = ''
+					this.loadReviews(this.productId)
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })
+				} finally {
+					this.reviewSubmitting = false
+				}
+			},
+			// 兼容性校验(核心新能力):选设备 → 后端判定
+			async checkCompat() {
+				if (!this.pickedDeviceId) { uni.showToast({ title: '请先选一台设备', icon: 'none' }); return }
+				if (!this.productId) { uni.showToast({ title: '技能信息加载中', icon: 'none' }); return }
+				this.compatLoading = true
+				try {
+					const res = await skillApi.compatibility(this.productId, this.pickedDeviceId)
+					this.compat = (res && res.data) || null
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '校验失败', icon: 'none' })
+				} finally {
+					this.compatLoading = false
 				}
 			},
 			getMockData(id) {
@@ -223,7 +336,7 @@
 			handlePrice() {
 				uni.showModal({
 					title: '价格',
-					content: `「${this.skillInfo.name}」价格：￥${this.skillInfo.price}/年，原价 ￥${this.skillInfo.originalPrice}\n点击「立即开通」即可购买并确认订单。`,
+					content: `「${this.skillInfo.name}」价格：￥${this.skillInfo.price}（一次买断），原价 ￥${this.skillInfo.originalPrice}\n点击「立即开通」即可购买并确认订单。`,
 					showCancel: false
 				})
 			},
@@ -478,4 +591,28 @@
 	}
 	.btn-price:active { opacity: 0.7; }
 	.btn-buy:active { opacity: 0.8; }
+
+	/* 兼容性校验(v3.4) */
+	.compat-box { margin: 20rpx 24rpx; padding: 24rpx; background: #fff; border-radius: 16rpx; }
+	.compat-title { font-size: 28rpx; font-weight: 600; color: #222; }
+	.compat-devices { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
+	.compat-device { margin: 0 16rpx 12rpx 0; padding: 10rpx 24rpx; border: 1rpx solid #ddd; border-radius: 32rpx; font-size: 24rpx; color: #555; }
+	.compat-device.on { border-color: #ff6b00; color: #ff6b00; background: #fff5ee; }
+	.compat-tip { display: block; margin-top: 16rpx; font-size: 24rpx; color: #999; }
+	.compat-btn { margin-top: 16rpx; text-align: center; padding: 18rpx 0; background: #ff6b00; color: #fff; border-radius: 40rpx; font-size: 28rpx; }
+	.compat-result { margin-top: 20rpx; padding: 20rpx; border-radius: 12rpx; background: #fdecec; }
+	.compat-result.ok { background: #eaf7ee; }
+	.compat-verdict { display: block; font-size: 28rpx; font-weight: 600; color: #333; }
+	.compat-reason { display: block; margin-top: 8rpx; font-size: 24rpx; color: #666; }
+	.compat-channels { display: block; margin-top: 8rpx; font-size: 24rpx; color: #ff6b00; }
+	.compat-note { display: block; margin-top: 6rpx; font-size: 22rpx; color: #999; }
+
+	/* 写评价(v3.4) */
+	.write-review { margin-top: 28rpx; padding-top: 24rpx; border-top: 1rpx solid #eee; }
+	.wr-title { font-size: 28rpx; font-weight: 600; color: #222; }
+	.wr-stars { margin-top: 12rpx; }
+	.wr-star { font-size: 44rpx; color: #ddd; margin-right: 8rpx; }
+	.wr-star.on { color: #ffb400; }
+	.wr-input { margin-top: 16rpx; width: 100%; min-height: 120rpx; padding: 16rpx; background: #f7f8fa; border-radius: 12rpx; font-size: 26rpx; box-sizing: border-box; }
+	.wr-btn { margin-top: 16rpx; text-align: center; padding: 18rpx 0; background: #ff6b00; color: #fff; border-radius: 40rpx; font-size: 28rpx; }
 </style>

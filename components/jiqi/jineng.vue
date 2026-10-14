@@ -124,6 +124,8 @@
 </template>
 
 <script>
+import SKILL_LIST from './skill-data'
+
 export default {
   name: 'Jineng',
   props: {
@@ -164,89 +166,15 @@ export default {
       // ===== 技能分类（左侧） =====
       skillCategory: 'all',
 
-      // ===== 技能数据（扩充 brands 和 models） =====
-      skillList: [
-        { id: 1, name: '旋风回旋斩', icon: '🌀', bg: '#FEF3C7', tag: '格斗', 
-          brands: ['宇树', '乐聚', '众擎', '加速进化'], 
-          models: ['G1', 'H1', 'Go2', '夸父', 'T800', 'Booster T1'] },
-        { id: 2, name: '雷霆冲撞', icon: '⚡', bg: '#FEF3C7', tag: '格斗', 
-          brands: ['宇树', '众擎', '智元'], 
-          models: ['G1', 'Go2', 'T800', '远征A1'] },
-        { id: 3, name: '弹射飞踢', icon: '💥', bg: '#FEF3C7', tag: '付费', 
-          brands: ['宇树', '加速进化', '小米'], 
-          models: ['G1', 'H1', 'Booster T1', 'CyberOne'] },
-        { id: 4, name: 'AI智能讲解', icon: '🗣️', bg: '#E8F0FE', tag: '热门', 
-          brands: ['智元', '优必选', '银河通用', '小鹏'], 
-          models: ['远征A1', '远征A2', 'Walker S1', 'Galbot G1', 'IRON'] },
-        { id: 5, name: '语音交互', icon: '🎤', bg: '#F0F4FA', tag: 'AI生成', 
-          brands: ['宇树', '智元', '小米', 'Figure AI'], 
-          models: ['G1', '远征A1', 'CyberOne', 'Figure 01'] },
-        { id: 6, name: '人脸识别', icon: '👤', bg: '#E8F0FE', tag: '免费', 
-          brands: ['宇树', '智元', '优必选', '云深处', '大疆'], 
-          models: ['G1', 'Go2', '远征A1', 'Walker S1', '绝影X30', 'M300'] },
-        { id: 7, name: '物体识别', icon: '🔍', bg: '#F0F4FA', tag: '热门', 
-          brands: ['智元', '宇树', '优必选', '傅利叶', '新松'], 
-          models: ['远征A2', 'G1', 'Walker S1', 'GR-2', '睿可系列'] },
-        { id: 8, name: '智能迎宾', icon: '🤝', bg: '#F0F4FA', tag: '免费', 
-          brands: ['优必选', '智元', '乐聚', '擎朗', '普渡'], 
-          models: ['Walker C1', '远征A1', '夸父', 'T5', '欢乐送'] },
-        { id: 9, name: '多语言翻译', icon: '🌐', bg: '#F0F4FA', tag: '免费', 
-          brands: ['宇树', '智元', '小米', 'Figure AI'], 
-          models: ['G1', '远征A1', 'CyberOne', 'Figure 02'] },
-        { id: 10, name: '路径规划', icon: '🧭', bg: '#E8F0FE', tag: '热门', 
-          brands: ['宇树', '智元', '云深处', '逐际动力', '大疆'], 
-          models: ['Go2', '远征A1', '绝影X30', 'TRON 1', 'M300'] },
-        { id: 11, name: '智能避障', icon: '🚧', bg: '#F0F4FA', tag: '付费', 
-          brands: ['宇树', '智元', '优必选', '大疆', '普渡'], 
-          models: ['G1', '远征A2', 'Walker S1', 'M30T', '贝拉'] },
-        { id: 12, name: '智能对话', icon: '💬', bg: '#E3F2FD', tag: '免费', 
-          brands: ['宇树', '智元', '小米', '优必选', '乐聚'], 
-          models: ['G1', '远征A1', 'CyberOne', 'Walker C1', '夸父'] },
-        { id: 13, name: '舞蹈表演', icon: '💃', bg: '#FCE4EC', tag: '热门', 
-          brands: ['宇树', '乐聚', '众擎', '傅利叶'], 
-          models: ['G1', 'H1', '夸父', 'T800', 'GR-2'] },
-        { id: 14, name: '物品搬运', icon: '📦', bg: '#FFF3E0', tag: '付费', 
-          brands: ['宇树', '智元', '埃斯顿', '节卡', '越疆'], 
-          models: ['Go2', '远征A1', 'ER12', 'Zu 3', 'Dobot Atom'] },
-        { id: 15, name: '环境监测', icon: '🌡️', bg: '#E8F5E9', tag: 'AI生成', 
-          brands: ['宇树', '云深处', '大疆', '七腾'], 
-          models: ['B2', '绝影X30', 'M300', '防爆巡检'] },
-        { id: 16, name: '智能管家', icon: '🏠', bg: '#F0F4FA', tag: '热门', 
-          brands: ['小米', '宇树', '智元', '卧安'], 
-          models: ['CyberOne', 'G1', '远征A1', 'Acemate'] },
-        { id: 17, name: '直播互动', icon: '📹', bg: '#FFF8E1', tag: '免费', 
-          brands: ['宇树', '智元', '小米', '云深处'], 
-          models: ['Go2', '远征A1', 'CyberOne', '绝影X30'] },
-        { id: 18, name: '自动巡检', icon: '🔦', bg: '#E3F2FD', tag: '付费', 
-          brands: ['宇树', '大疆', '七腾', '云深处'], 
-          models: ['B2', 'M300', '防爆巡检', '绝影X20'] },
-        { id: 19, name: '辅助教学', icon: '📚', bg: '#FEF3C7', tag: '免费', 
-          brands: ['智元', '优必选', '乐聚', '傅利叶'], 
-          models: ['远征A1', 'Walker S1', '夸父', 'GR-2'] },
-        { id: 20, name: '智能叠衣', icon: '👕', bg: '#E8F5E9', tag: '热门', 
-          brands: ['宇树', '智元', '小米', '卧安'], 
-          models: ['G1', '远征A1', 'CyberOne', 'onero'] },
-        { id: 21, name: '全屋扫地', icon: '🧹', bg: '#FFF3E0', tag: '免费', 
-          brands: ['宇树', '普渡', '高仙', '云迹'], 
-          models: ['Go2', '欢乐送', '高仙50', '润'] },
-        { id: 22, name: '厨房助手', icon: '🍳', bg: '#FFF8E1', tag: '付费', 
-          brands: ['智元', '宇树', '越疆', '节卡'], 
-          models: ['远征A2', 'G1', 'Dobot Atom', 'Zu 7'] },
-        { id: 23, name: '园艺修剪', icon: '🌿', bg: '#E8F5E9', tag: '免费', 
-          brands: ['宇树', '云深处', '优宝特'], 
-          models: ['Go2', '绝影X30', '行业应用'] },
-        { id: 24, name: '宠物管家', icon: '🐾', bg: '#FCE4EC', tag: '热门', 
-          brands: ['宇树', '小米', '乐聚', '蔚蓝智能'], 
-          models: ['Go2', 'CyberOne', '夸父', '家庭陪伴'] },
-        { id: 25, name: '窗户清洁', icon: '🪟', bg: '#E3F2FD', tag: '付费', 
-          brands: ['宇树', '普渡', '高仙', '云迹'], 
-          models: ['Go2', '贝拉', '高仙商用', '澜'] }
-      ]
+      // ===== 技能数据(单一数据源见 ./skill-data.js, 25 条含 tag/brands/models) =====
+      skillList: SKILL_LIST
     };
   },
   computed: {
     filteredSkillList() {
       // 后台分类商品(传入 items)优先;为空则回退内部 mock
+      // TODO: 后台数据存在时下方品牌/机型/左侧分类筛选不生效(真实商品暂无 tag/brands/models 属性),
+      // 待后台商品补齐属性后在此统一接入筛选
       if (this.items && this.items.length) return this.items;
 
       let list = this.skillList;
@@ -464,7 +392,7 @@ export default {
   background: #ffffff;
 }
 .brand-item .brand-name {
-  font-size: 24rpx;
+  font-size: 26.4rpx;
   color: #1F2937;
   text-align: center;
   font-weight: 500;

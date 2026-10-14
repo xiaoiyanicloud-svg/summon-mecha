@@ -108,7 +108,8 @@
             <view class="product-img-wrap">
               <image v-if="robot.image" class="product-img" :src="robot.image" mode="aspectFill"></image>
               <text v-else class="product-emoji">🤖</text>
-              <text v-if="robot.tag" class="product-tag" :class="robot.tag">{{ robot.tag }}</text>
+              <!-- ★ 修改点：动态 class 使用对象语法，不直接使用中文类名 -->
+              <text v-if="robot.tag" class="product-tag" :class="{'tag-new': robot.tag === '新品', 'tag-hot': robot.tag === '热卖'}">{{ robot.tag }}</text>
             </view>
             <view class="product-info">
               <text class="product-name">{{ robot.title }}</text>
@@ -147,7 +148,7 @@
 </template>
 
 <script>
-import { SCHEME_DB, DEFAULT_SCHEME } from '@/components/jiqi/changjing.vue'
+import { SCHEME_DB, DEFAULT_SCHEME } from '@/components/jiqi/changjing-data.js'
 // ================================================================
 // 机器人库（供各方案推荐引用）
 // ================================================================
@@ -450,9 +451,12 @@ page {
 .product-tag {
   position: absolute; top: 12rpx; left: 12rpx;
   font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 20rpx; color: #fff;
-  background: #FF6B00;
+  background: #FF6B00; /* 默认热卖背景，会被具体类覆盖 */
 }
-.product-tag.新品 { background: #2563EB; }
+/* ★ 修改点：删除 .product-tag.新品，改用英文类名 */
+.product-tag.tag-new { background: #2563EB; }
+.product-tag.tag-hot { background: #FF6B00; }
+
 .product-info { padding: 16rpx 18rpx 10rpx; }
 .product-name { font-size: 28rpx; font-weight: 600; color: #0F172A; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .product-desc { font-size: 22rpx; color: #64748B; margin-top: 6rpx; display: block; }

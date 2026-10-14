@@ -130,15 +130,16 @@
           <view class="data-note">*数据基于行业公开信息及实验室测试推算</view>
         </view>
 
-        <!-- 免费定制 CTA -->
-        <view class="custom-cta" @tap="onConsult">
-          <text>免费定制方案</text>
-        </view>
       </view>
 
       <!-- 底部占位 -->
       <view style="height: 160rpx;"></view>
     </scroll-view>
+
+    <!-- 免费定制 CTA（固定悬浮底部，仅方案定制模式） -->
+    <view class="custom-cta" v-if="activeMode === 'custom'" @tap="onConsult">
+      <text>免费定制方案</text>
+    </view>
 
     <!-- ===== 多机合单底部结算栏 ===== -->
     <view class="scene-cart-bar" v-if="selectedMachines.length > 0">
@@ -191,7 +192,7 @@
 <script>
 import { sceneApi, categoryApi, productApi, tobOrderApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
-import { SCENE_SCHEMES, SCHEME_DB, DEFAULT_SCHEME, sceneProducts } from '@/components/jiqi/changjing.vue'
+import { SCENE_SCHEMES, SCHEME_DB, DEFAULT_SCHEME, sceneProducts } from '@/components/jiqi/changjing-data.js'
 
 export default {
   data() {
@@ -208,7 +209,7 @@ export default {
       scheme: {},
       sceneInfo: {
         name: '商业活动',
-        banner: '/static/hero.png',
+        banner: '/static/hero.jpg',
         desc: '适用于展会、商场、品牌活动的机器人解决方案',
         intro: '提供租赁、购买、定制化服务，满足各类商业活动需求，提升现场互动体验。'
       },
@@ -241,9 +242,9 @@ export default {
       hasMore: true,
       // 案例展示
       cases: [
-        { title: '上海车展机器人互动', image: '/static/case1.png' },
-        { title: '商场导购机器人', image: '/static/case2.png' },
-        { title: '工厂产线自动化', image: '/static/case3.png' }
+        { title: '上海车展机器人互动', image: '/static/zhanguanjd.jpg' },
+        { title: '商场导购机器人', image: '/static/jiudianfw.jpg' },
+        { title: '工厂产线自动化', image: '/static/dianlixj.jpg' }
       ]
     }
   },
@@ -254,6 +255,8 @@ export default {
         const list = this.sceneRobots
           .map(id => this.rentCatalog.find(r => String(r.bagistoId ?? r.id) === String(id)))
           .filter(Boolean)
+          // booking 类型商品在 Bagisto 建单会抛错并无终止重试 → 从场景租用剔除，避免下单变「租赁意向」
+          .filter(r => r.type !== 'booking')
         if (list.length) return list
       }
       return this.allProducts
@@ -332,6 +335,7 @@ export default {
         image: img,
         bagistoId: p.id,
         bagistoPrice: price,
+        type: p.type || '',
       }
     },
     loadScheme(sceneId, title) {
@@ -499,23 +503,29 @@ page {
   left: 0;
   right: 0;
   z-index: 100;
-  height: 88rpx;
+  height: calc(env(safe-area-inset-top) + 88rpx);
   background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
 }
 .nav-left, .nav-right {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 100rpx);
   width: 60rpx;
   height: 60rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.15);
+}
+.nav-left {
+  left: 24rpx;
+}
+.nav-right {
+  right: 24rpx;
 }
 .nav-back {
-  font-size: 48rpx;
+  font-size: 40rpx;
   font-weight: 300;
   color: #1F2937;
 }
@@ -531,7 +541,7 @@ page {
 /* 滚动内容 */
 .page-scroll {
   flex: 1;
-  margin-top: 88rpx;
+  margin-top: 0;
   height: 0; /* 配合flex */
   padding-bottom: 20rpx;
 }
@@ -805,11 +815,15 @@ page {
 .scheme-scene-data-num { display: inline-block; font-size: 24rpx; font-weight: 700; color: #2563EB; }
 .data-note { font-size: 20rpx; color: #94A3B8; margin-top: 16rpx; padding-top: 16rpx; border-top: 1rpx solid #EEF2F7; }
 
-/* 免费定制 CTA */
+/* 免费定制 CTA（固定悬浮底部，与底部边框保持安全距离） */
 .custom-cta {
-  margin: 24rpx 30rpx 0;
+  position: fixed;
+  left: 30rpx;
+  right: 30rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 30rpx);
   height: 88rpx;
   line-height: 88rpx;
+  z-index: 1100;
   text-align: center;
   border-radius: 44rpx;
   font-size: 30rpx;

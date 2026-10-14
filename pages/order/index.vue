@@ -3,10 +3,6 @@
 		<!-- ===== 顶部标题 + 自定义方案入口 ===== -->
 		<view class="page-header">
 			<text class="page-title">我的订单</text>
-			<view class="custom-plan-btn" @click="goCustomPlan">
-				<text class="plan-icon">✨</text>
-				<text class="plan-text">自定义方案</text>
-			</view>
 		</view>
 
 		<!-- ===== 统计卡片 ===== -->
@@ -35,7 +31,6 @@
 				<text class="tab-item" :class="{ active: currentStatus === 'all' }" @click="switchStatus('all')">全部</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'pending' }" @click="switchStatus('pending')">待付款</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'confirm' }" @click="switchStatus('confirm')">待确认</text>
-				<text class="tab-item" :class="{ active: currentStatus === 'execute' }" @click="switchStatus('execute')">待执行</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'active' }" @click="switchStatus('active')">服务中</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'completed' }" @click="switchStatus('completed')">已完成</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'cancelled' }" @click="switchStatus('cancelled')">已取消</text>
@@ -130,25 +125,31 @@
 			switchStatus(status) { this.currentStatus = status },
 			filterByStatus(status) { this.currentStatus = status },
 
-			// ================ 订单数据加载（真实 API + 意向订单） ================
+			// ================ 订单数据加载（以后端真实单为准） ================
 			async loadOrders() {
-				const intents = (uni.getStorageSync('intentOrders') || []).map(i => this.mapIntent(i))
+				// 清理历史本地意向单(旧假数据);订单以后端 guest-orders 真实单为准
+				uni.removeStorageSync('intentOrders')
+				const intents = []
 
 				let apiOrders = []
-				if (uni.getStorageSync('token')) {
-					try {
-						const res = await orderApi.getOrders()
-						const list = (res && res.data) ? res.data : []
-						apiOrders = list.map(o => this.mapApiOrder(o))
-					} catch (e) {
-						apiOrders = []
+				try {
+					// 通用:始终拉游客单(场景租用/游客单真实数据);登录用户再叠加本人订单(按 id 去重)
+					const gg = await orderApi.getGuestOrders()
+					let list = (gg && gg.data) ? gg.data : []
+					if (uni.getStorageSync('token')) {
+						const mine = await orderApi.getOrders()
+						const mList = (mine && mine.data) ? mine.data : []
+						const ids = new Set(list.map(o => o.id))
+						list = [...list, ...mList.filter(o => !ids.has(o.id))]
 					}
+					apiOrders = list.map(o => this.mapApiOrder(o))
+				} catch (e) {
+					apiOrders = []
 				}
 
-				const merged = [...intents, ...apiOrders]
-				// 诚实化:有什么显示什么,不再回退假种子订单
-				this.orders = merged
-				uni.setStorageSync('orderList', merged)
+				// 只看真实单
+				this.orders = apiOrders
+				uni.setStorageSync('orderList', apiOrders)
 				uni.removeStorageSync('orderNeedRefresh')
 			},
 
@@ -163,7 +164,8 @@
 					closed: 'completed',
 					fraud: 'cancelled',
 				}
-				const status = statusMap[o.status] || 'active'
+				// 方案咨询/定制类线索(custom):提交即视为已完成,无需后续操作
+				const status = (o.order_type === 'custom') ? 'completed' : (statusMap[o.status] || 'active')
 				const textMap = {
 					pending: '待付款',
 					confirm: '待确认',
@@ -174,20 +176,30 @@
 				}
 				const firstItem = (o.items && o.items[0]) || {}
 				const amount = (o.grand_total != null) ? Number(o.grand_total).toLocaleString('en-US') : '0'
+				// 场景租用条目名形如「场景名 · 机型【租赁】（租期）」;标题只留机型,使用场景取前缀
+				// 多机合单:拼接所有机型名(不只第一台),如「宇树u2、11、众擎T800」;场景取条目名「场景名 · 」前缀
+				const itemNames = (Array.isArray(o.items) ? o.items : []).map((it) => {
+					const n = (it && it.name) || ''
+					const a = n.split(' · ')
+					return (a.length > 1 ? a.slice(1).join(' · ') : n).replace(/【[^】]*】|[（(][^）)]*[）)]/g, '').trim()
+				}).filter(Boolean)
+				const name = itemNames.join('、') || '机器人订单'
+				const firstRaw = ((o.items && o.items[0] && o.items[0].name) || '')
+				const scene = firstRaw.split(' · ').length > 1 ? firstRaw.split(' · ')[0] : (o.scene || '')
 				return {
 					id: o.id,
 					productId: firstItem.product_id || '',
 					orderNo: o.increment_id || `SO${o.id}`,
-					name: firstItem.name || '机器人订单',
+					name: name || '机器人订单',
 					icon: '🤖',
 					bg: '#F0F4FA',
 					// 真实类型(后端 order_type):页签/详情分类显示的数据源
 					type: o.order_type || 'buy',
 					typeText: ({rent:'租赁',buy:'购买',plan:'方案',custom:'定制',skill:'技能',accessory:'配件'})[o.order_type] || '购买',
 					typeClass: o.order_type || 'buy',
-					scene: firstItem.name || '',
+					scene: scene || '',
 					duration: o.created_at || '',
-					quantity: o.items_qty || 1,
+					quantity: o.items_qty || (Array.isArray(o.items) ? o.items.reduce((s, i) => s + (Number(i.qty_ordered) || 0), 0) : 0) || 1,
 					amount,
 					status,
 					statusText: textMap[status],
@@ -286,8 +298,7 @@
 					}
 				})
 			},
-			goAI() { uni.switchTab({ url: '/pages/ai/index' }) },
-			goCustomPlan() { uni.switchTab({ url: '/pages/ai/index' }) }
+			goAI() { uni.switchTab({ url: '/pages/ai/index' }) }
 		}
 	}
 </script>

@@ -81,6 +81,18 @@
 						<text class="func-icon">📍</text>
 						<text class="func-label">我的地址</text>
 					</view>
+					<view class="func-item" @click="goDevices">
+						<text class="func-icon">🔧</text>
+						<text class="func-label">我的设备</text>
+					</view>
+					<view class="func-item" @click="goSkills">
+						<text class="func-icon">✨</text>
+						<text class="func-label">我的技能</text>
+					</view>
+					<view class="func-item" @click="goNotifications">
+						<text class="func-icon">🔔</text>
+						<text class="func-label">消息通知</text>
+					</view>
 					<view class="func-item" @click="goCooperate">
 						<text class="func-icon">🤝</text>
 						<text class="func-label">合作申请</text>
@@ -96,6 +108,10 @@
 					<view class="func-item" @click="goCustomerService">
 						<text class="func-icon">💬</text>
 						<text class="func-label">客服</text>
+					</view>
+					<view class="func-item" @click="goIncidentReport">
+						<text class="func-icon">🚨</text>
+						<text class="func-label">事故上报</text>
 					</view>
 					<view class="func-item" @click="goSettings">
 						<text class="func-icon">⚙️</text>
@@ -851,13 +867,21 @@
 			// 主页面 - 常用功能
 			// ================================================================
 			goAddress() { this.currentPage = 'address'; },
+			// 设备是独立页面(不是本页的内嵌子视图):它有列表 + 增删 + 技能绑定,体量放不下
+			goDevices() { uni.navigateTo({ url: '/pages/mine/devices' }); },
+			// 我的技能:技能下单后的「开通/绑定/下载」都在这里,是技能那条链路的落点
+			goSkills() { uni.navigateTo({ url: '/pages/mine/skills' }); },
+			// 消息通知:审核/下发/试用到期/退款 都落这里(v3.4)
+			goNotifications() { uni.navigateTo({ url: '/pages/mine/notifications' }); },
 			goCooperate() { this.currentPage = 'cooperate'; },
 			goSupplierCode() { uni.showToast({ title: '供应商邀请码：即将开放', icon: 'none' }); },
 			goPartnerRecommend() {
 				this.currentPage = 'partner';
 				this.loadPartnerFormCache();
 			},
-			goCustomerService() { uni.showToast({ title: '在线客服建设中，敬请期待', icon: 'none' }); },
+			goCustomerService() { uni.navigateTo({ url: '/pages/mine/tickets' }); },
+			// 事故上报:技能在真实机器人上物理执行,出事需要可追溯的上报链(计划 §4.19)
+			goIncidentReport() { uni.navigateTo({ url: '/pages/mine/incidents' }); },
 			goSettings() { this.currentPage = 'settings'; },
 
 			// ================================================================
@@ -2419,15 +2443,12 @@
 	}
 </style>
 
-<!-- 全局样式：隐藏滚动条 -->
+<!-- 全局样式：隐藏滚动条（仅保留 webkit 伪类，删除 * 选择器） -->
 <style>
 	::-webkit-scrollbar {
 		width: 0;
 		height: 0;
 		display: none;
 	}
-	* {
-		scrollbar-width: none;
-		-ms-overflow-style: none;
-	}
+	/* 已移除 * 选择器及 scrollbar-width、-ms-overflow-style 等不支持的属性 */
 </style>

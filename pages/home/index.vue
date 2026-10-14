@@ -17,20 +17,25 @@
 
 				<!-- AI 召唤 -->
 				<view class="ai-center">
+							<image class="ai-center-bg" src="/static/zhaohuan.png" mode="scaleToFill" style="position:absolute;top:0;left:0;width:100%;height:80%;z-index:0;"></image>
 					<view class="ai-content-wrap">
 						<view class="ai-header">
-							<text class="ai-title">AI 召唤</text>
+							<text class="ai-title"><text class="ai-mark">AI</text><text class="ai-rest">召唤</text></text>
 							<text class="badge">50+应用场景</text>
 						</view>
 						<view class="ai-input-row">
-							<input class="input" type="text" v-model="need" placeholder="请输入需求，如：展会接待、酒店配送" />
+							<input class="input" type="text" v-model="need" placeholder="例如：我明天需要一台展会接待机器人" placeholder-class="input-ph-compact" />
 							<button class="btn-generate" @click="handleGenerate">立即召唤</button>
 						</view>
 					</view>
 				</view>
 
 				<!-- Hero -->
-				<view class="hero"></view>
+				<view class="hero">
+						<image class="hero-bg" src="/static/hero.jpg" mode="aspectFill" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;"></image>
+						<!-- 压一层白纱, 让 hero 图退到背景里, 不抢首屏注意力 -->
+						<view class="hero-veil"></view>
+					</view>
 			</view>
 
 			<!-- ===== 场景方案 + 热门品牌 ===== -->
@@ -78,7 +83,7 @@
 				<view class="hot-square right">
 					<view class="brand-top">
 						<view class="brand-image" @click="goBrandBuy">
-							<image src="/static/Hot Brands.png" mode="aspectFill" style="width: 100%; height: 100%; display: block;"></image>
+							<image src="/static/Hot Brands.jpg" mode="aspectFill" style="width: 100%; height: 100%; display: block;"></image>
 							<view class="brand-overlay-title">热门品牌</view>
 							<view class="brand-overlay-sub">精选TOP20</view>
 						</view>
@@ -87,11 +92,11 @@
 					<view class="brand-bottom">
 						<view class="brand-actions">
 							<view class="action-card rental-card" @click="onRent">
-								<image class="action-card-img" src="/static/wyzuyong.png" mode="aspectFill"></image>
+								<image class="action-card-img" src="/static/wyzuyong.jpg" mode="aspectFill"></image>
 								<text class="action-card-title">我要租用</text>
 							</view>
 							<view class="action-card custom-card" @click="onCustom">
-								<image class="action-card-img" src="/static/wydingzhi.png" mode="aspectFill"></image>
+								<image class="action-card-img" src="/static/wydingzhi.jpg" mode="aspectFill"></image>
 								<text class="action-card-title">我要定制</text>
 							</view>
 						</view>
@@ -114,6 +119,26 @@
 
 		<!-- ===== 自定义底部导航栏 ===== -->
 		<CustomTabBar currentPage="/pages/home/index" />
+
+		<!-- ===== 提交成功 · 企微咨询码 ===== -->
+		<view class="custom-modal-mask" v-if="showLeadSuccess" @tap="closeLeadSuccess">
+			<view class="custom-modal" @tap.stop>
+				<view class="modal-close" @tap="closeLeadSuccess">✕</view>
+				<view class="modal-header">
+					<text class="modal-icon">✅</text>
+					<text class="modal-title">已收到您的需求</text>
+					<text class="modal-subtitle">方案专家将在 1 小时内联系您</text>
+				</view>
+				<view class="lead-qr-box">
+					<!-- [WECOM_QR] 企微活码占位：上线前把活码图片放 static/ 并替换为 image 标签 -->
+					<text class="lead-qr-text">企微咨询码（占位）</text>
+				</view>
+				<text class="lead-qr-tip">想立刻聊？微信扫码添加方案专家</text>
+				<view class="modal-footer">
+					<view class="btn-primary" @tap="closeLeadSuccess">知道了</view>
+				</view>
+			</view>
+		</view>
 
 		<!-- ===== 定制弹窗 ===== -->
 		<view class="custom-modal-mask" v-if="showCustomModal" @tap="closeCustomModal">
@@ -166,7 +191,7 @@
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import EcoCenter from '@/components/EcoCenter.vue';
-import { sceneProducts, loadBackendScenes } from '@/components/jiqi/changjing.vue';
+import { sceneProducts, loadBackendScenes } from '@/components/jiqi/changjing-data.js';
 import { tobOrderApi } from '@/utils/api';
 
 	export default {
@@ -182,6 +207,7 @@ import { tobOrderApi } from '@/utils/api';
 				autoPlayTimer: null,
 				currentIndex: 0,
 				showCustomModal: false,
+				showLeadSuccess: false,
 				customForm: {
 					identity: 'enterprise',
 					name: '',
@@ -250,6 +276,9 @@ import { tobOrderApi } from '@/utils/api';
 			closeCustomModal() {
 				this.showCustomModal = false;
 			},
+			closeLeadSuccess() {
+				this.showLeadSuccess = false;
+			},
 			async submitCustom() {
 				const { identity, name, phone, company, wechat, demand } = this.customForm;
 				if (!identity) { uni.showToast({ title: '请选择您的身份', icon: 'none' }); return; }
@@ -272,10 +301,13 @@ import { tobOrderApi } from '@/utils/api';
 					submitted = false;
 					errText = (e && e.message) || '网络异常，请稍后重试';
 				}
-				uni.showToast({ title: submitted ? '已提交，专家将1小时内联系您' : errText, icon: submitted ? 'success' : 'none' });
 				if (submitted) {
 					this.closeCustomModal();
 					this.customForm = { identity: 'enterprise', name: '', phone: '', wechat: '', company: '', demand: '' };
+					// 提交成功后弹出「企微咨询码」窗口，方便用户快速联系官方（复用方案定制流程）
+					this.showLeadSuccess = true;
+				} else {
+					uni.showToast({ title: errText, icon: 'none' });
 				}
 			},
 			handleTouchStart() {
@@ -369,7 +401,6 @@ import { tobOrderApi } from '@/utils/api';
 	}
 	.brand-text:active { opacity: 0.7; }
 	.ai-center {
-		background-image: url('/static/zhaohuan.png');
 		background-size: 100% 80%;
 		background-repeat: no-repeat;
 		border-radius: 16rpx;
@@ -380,7 +411,7 @@ import { tobOrderApi } from '@/utils/api';
 		z-index: 10;
 		overflow: visible;
 	}
-	.ai-content-wrap { margin-top: 56rpx; }
+	.ai-content-wrap { position: relative; z-index: 1; margin-top: 56rpx; }
 	.ai-header {
 		display: flex;
 		align-items: center;
@@ -390,10 +421,31 @@ import { tobOrderApi } from '@/utils/api';
 	.ai-title {
 		font-size: 34rpx;
 		font-weight: 600;
-		background: linear-gradient(135deg, #165DFF, #3B82F6);
+		/* 钉死整行高度, 否则 48rpx 的 AI 会把行盒撑到 29px, 连带把卡片和
+		   下面所有内容往下推 7px.
+		   这里不能直接写原始行高 50rpx: 放大后的 AI 半行距为负、被往上提,
+		   而小字"召唤"的 descent 往基线下方伸得更低, 行盒 = L + 3px.
+		   取 L=44rpx 使行盒 = 23 + 3 = 26px, 与放大前一致 */
+		line-height: 44rpx;
+	}
+	/* "AI" 单独放大, 竖向上深宝蓝 → 下浅亮青蓝.
+	   渐变盒 = 内联元素的字体盒(实测 33px), 比字形本身高, 字形只占其中一段,
+	   所以色标要收进去, 否则字形顶部到不了深宝蓝、底部到不了亮青蓝 */
+	.ai-mark {
+		font-size: 48rpx;
+		font-weight: 800;
+		background: linear-gradient(180deg, #0A2E8F 40%, #4FD8FF 80%);
 		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
 		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		color: transparent;
+	}
+	/* "召唤": 深藏蓝平涂, 厚重压得住 (原来是 135° 亮蓝渐变).
+	   -webkit-text-fill-color 会从父级继承, 必须显式覆盖掉 ai-mark 的 transparent */
+	.ai-rest {
+		margin-left: 8rpx;
+		color: #102F6E;
+		-webkit-text-fill-color: #102F6E;
 	}
 	.badge {
 		background: #B2D4FF;
@@ -418,6 +470,13 @@ import { tobOrderApi } from '@/utils/api';
 		font-size: 28rpx;
 	}
 	.ai-input-row .input::placeholder { color: #9CA3AF; }
+	/* 提示文案 18 字, 28rpx 会撑出输入框被截断; 缩到 22rpx 刚好放得下.
+	   两条选择器分别兜 H5(uni-app 内部节点) 和小程序(placeholder-class) */
+	.input-ph-compact,
+	.ai-input-row .input .uni-input-placeholder {
+		font-size: 22rpx;
+		color: #9CA3AF;
+	}
 	.btn-generate {
 		background: linear-gradient(135deg, #165DFF, #3B82F6);
 		border: none;
@@ -439,12 +498,23 @@ import { tobOrderApi } from '@/utils/api';
 		margin-bottom: -30rpx;
 		position: relative;
 		z-index: 1;
-		background-image: url('/static/hero.png');
 		background-size: cover;
 		background-position: center;
 		background-repeat: no-repeat;
 		background-color: rgba(255, 255, 255, 0.9);
+		overflow: hidden;
 		border-radius: 16rpx 16rpx 0 0;
+	}
+	/* 白纱遮罩: 压掉 hero 图的饱和度与对比度, 使其不抢首屏注意力 */
+	.hero-veil {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(255, 255, 255, 0.2);
+		z-index: 1;
+		pointer-events: none;
 	}
 	.hot-square-container {
 		display: flex;
@@ -661,20 +731,23 @@ import { tobOrderApi } from '@/utils/api';
 		right: 0;
 		z-index: 900;
 		/* 白条固定高度(安全区+135rpx), 高度与logo解耦——logo再大也不会撑高 */
-		height: calc(env(safe-area-inset-top) + 149rpx);
+		height: calc(env(safe-area-inset-top) + 160rpx);
 		background-color: #ffffff;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
 		pointer-events: none;
+		/* 微信端: 强制独立合成层, 避免 fixed 元素被滚动内容覆盖 / 透明度不刷新 */
+		will-change: opacity;
+		transform: translateZ(0);
 	}
 	.top-scroll-logo {
 		width: 240rpx;
 		height: 88rpx;
 		display: block;
 		/* 单纯把图片往下平移, 不占布局, 白条高度不受影响 */
-		transform: translateY(40rpx);
+		transform: translateY(50rpx);
 	}
 	::-webkit-scrollbar { width: 4rpx; height: 4rpx; background: transparent; }
 	::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8rpx; }
@@ -703,6 +776,20 @@ import { tobOrderApi } from '@/utils/api';
 		position: relative;
 		animation: scaleIn 0.3s ease;
 	}
+	/* 提交成功 · 企微咨询码占位 */
+	.lead-qr-box {
+		width: 300rpx;
+		height: 300rpx;
+		margin: 8rpx auto 12rpx;
+		border: 2rpx dashed #94A3B8;
+		border-radius: 16rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: #F8FAFC;
+	}
+	.lead-qr-text { font-size: 24rpx; color: #94A3B8; text-align: center; }
+	.lead-qr-tip { font-size: 22rpx; color: #6B7280; text-align: center; margin-bottom: 24rpx; }
 	.modal-close {
 		position: absolute;
 		top: 16rpx;

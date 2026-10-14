@@ -49,15 +49,15 @@
         </view>
       </view>
 
-      <!-- ===== 租用信息（产品类型/租期/服务时间）仅租用显示 ===== -->
-      <view class="info-card" v-if="product.type === 'rent'">
+      <!-- ===== 租用信息 & 租期选择（产品类型/天数/开始/结束日期）租用或多机显示 ===== -->
+      <view class="info-card" v-if="product.type === 'rent' || multiItems.length">
         <view class="rent-info-row">
           <text class="rent-info-label">产品类型</text>
           <text class="rent-info-value">{{ productTypeLabel }}</text>
         </view>
         <view class="rent-info-row">
           <text class="rent-info-label">租期</text>
-          <text class="rent-info-value">{{ product.rentPeriod || '—' }}</text>
+          <text class="rent-info-value">{{ product.rentPeriod || (rentDays + '天') }}</text>
         </view>
         <view class="rent-info-row" v-if="product.startDate">
           <text class="rent-info-label">服务时间</text>
@@ -192,8 +192,9 @@
 </template>
 
 <script>
-import { cartApi, tobOrderApi, addressApi } from '@/utils/api'
+import { cartApi, tobOrderApi, addressApi, paymentApi } from '@/utils/api'
 import { serverToLocal, localToServerPayload } from '@/utils/address'
+import { TOKEN_KEY } from '@/utils/config'
 
 export default {
   data() {
@@ -246,7 +247,9 @@ export default {
         return perDay * this.rentDays
       }
       const price = parseFloat(String(this.product.price).replace(/,/g, '')) || 0
-      return price * this.qty
+      // 单商品租用也要乘租期天数(机器页 rentPeriod 传「N天」,如 3天);未传则 1 天
+      const days = this.product.type === 'rent' ? (parseInt(this.product.rentPeriod) || 1) : 1
+      return price * this.qty * days
     },
     productTypeLabel() {
       const map = { humanoid: '人形', quadruped: '四足', delivery: '配送', cleaning: '清洁', reception: '迎宾', inspection: '巡检', arm: '机械臂', companion: '陪伴' }
@@ -525,6 +528,22 @@ export default {
     async submitOrder() {
       if (this.submitting) return
 
+      // 技能强制登录:后端 /api/tob-order 对 type=skill 且未登录直接返回 401。
+      // 必须在客户端先拦一道 —— 否则用户填完整页表单才被拒,而且失败会退化成
+      // "意向单"兜底,把"需要登录"这个真实原因彻底掩盖掉。
+      // 项目没有独立登录页,登录在「我的」页面内完成。
+      if (this.product.type === 'skill' && !uni.getStorageSync(TOKEN_KEY)) {
+        uni.showModal({
+          title: '需要先登录',
+          content: '购买技能需要先登录。登录后可在「我的 - 我的设备」绑定机器并使用技能。',
+          confirmText: '去登录',
+          success: (r) => {
+            if (r.confirm) uni.switchTab({ url: '/pages/mine/index' })
+          },
+        })
+        return
+      }
+
       const v = this.form
       if (!v.name.trim()) { uni.showToast({ title: '请输入收货人姓名', icon: 'none' }); return }
       if (!v.phone.trim() || !/^1\d{10}$/.test(v.phone.trim())) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
@@ -560,7 +579,7 @@ export default {
         // 多机合单:整包 items[],后端按行计价建单(共用租期)
         if (this.multiItems.length) {
           payload.items = this.multiItems.map(it => ({
-            product_id: it.bagistoId || it.id,
+            product_id: it.product_id || it.bagistoId || it.id,
             qty: 1,
             price: parseFloat(String(it.price).replace(/,/g, '')) || 0,
             rent_days: this.rentDays,
@@ -573,9 +592,23 @@ export default {
         this.syncAddressToMine()
         uni.hideLoading()
         this.submitting = false
-        // 游客也记一条本地订单,保证「订单」页可见;真实订单已落后台(后台订单处可见)
-        if (!this.hasToken()) this.recordOrderLocally()
+        // 游客订单由 guest-orders 通用接口列表展示(真实数据);不再本地记一条,避免与真实单重复
+        // (本地意向单仅保留在下单异常时由 submitIntentWithError 兜底)
         uni.setStorageSync('orderNeedRefresh', Date.now())
+
+        // 技能下单成功 ≠ 技能可用:后端已自动开通授权,但用户还要选一台设备去启用、
+        // 之后才能下载技能包。所以技能单不能像其它类型一样丢回订单列表了事 ——
+        // 直接把用户送到「我的技能」,那里有绑定设备和下载的完整入口。
+        if (this.product.type === 'skill') {
+          // v3.4:技能单发起支付(支付资质未就绪时后端走 mock 网关,如实提示,不伪造结果)
+          await this.payOrder(res && res.order_id)
+          uni.showToast({ title: '技能已开通', icon: 'success' })
+          setTimeout(() => {
+            uni.redirectTo({ url: '/pages/mine/skills' })
+          }, 800)
+          return
+        }
+
         uni.showToast({ title: (res && res.success) ? '下单成功' : '订单已提交', icon: 'success' })
         setTimeout(() => { uni.switchTab({ url: '/pages/order/index' }) }, 800)
       } catch (e) {
@@ -584,6 +617,32 @@ export default {
       }
     },
 
+    // v3.4:为订单发起支付。资质未就绪时后端返回 mock 网关参数 —— 如实提示,不伪造支付成功。
+    // 资质就绪后网关返回微信参数,这里走 uni.requestPayment(wxpay)。
+    async payOrder(orderId) {
+      if (!orderId) return
+      try {
+        const res = await paymentApi.create(orderId)
+        const params = (res && res.data && res.data.params) || {}
+        if (params.mock) {
+          uni.showToast({ title: '支付资质未就绪（当前为模拟支付）', icon: 'none' })
+          return
+        }
+        // 真实微信支付(资质就绪后生效)
+        uni.requestPayment({
+          provider: 'wxpay',
+          timeStamp: params.timeStamp,
+          nonceStr: params.nonceStr,
+          package: params.package,
+          signType: params.signType,
+          paySign: params.paySign,
+          success: () => uni.showToast({ title: '支付成功', icon: 'success' }),
+          fail: () => uni.showToast({ title: '支付已取消', icon: 'none' }),
+        })
+      } catch (e) {
+        uni.showToast({ title: (e && e.message) || '发起支付失败', icon: 'none' })
+      }
+    },
     // 从 storeAddress 返回的配送费率中挑选第一个可用方法（形如 flatrate_flatrate）
     // 注意：Bagisto 返回的 shippingMethods 是「按承运商编码为键的对象」(如 {flatrate:{rates:[...]}})，需转成数组再遍历
     pickShippingMethod(data) {
@@ -671,17 +730,32 @@ export default {
     // 游客下单后记一条本地订单,保证「订单」页可看到(真实订单已落后台)
     recordOrderLocally() {
       const list = uni.getStorageSync('intentOrders') || []
+      // 多机合单(场景租用):URL 只传 items,主商品(this.product)是占位;用 items 组装机型/台数/实付
+      const isMulti = Array.isArray(this.multiItems) && this.multiItems.length > 0
+      let name = this.product.name
+      let qty = this.qty
+      let price = parseFloat(String(this.product.price).replace(/,/g, '')) || 0
+      let productId = this.product.id || 0
+      let rentPeriod = this.product.rentPeriod || ''
+      if (isMulti) {
+        const names = this.multiItems.map(it => it.name).filter(Boolean)
+        name = names.join('、') || '机器人'
+        qty = this.multiItems.length
+        price = this.multiItems.reduce((s, it) => s + (parseFloat(String(it.price).replace(/,/g, '')) || 0), 0) * (this.rentDays || 1)
+        productId = (this.multiItems[0] && (this.multiItems[0].product_id || this.multiItems[0].bagistoId || this.multiItems[0].id)) || 0
+        rentPeriod = this.rentDays ? this.rentDays + '天' : ''
+      }
       list.unshift({
         id: Date.now(),
-        productId: this.product.id,
-        name: this.product.name,
-        price: this.product.price,
-        qty: this.qty,
+        productId,
+        name,
+        price: String(Math.round(price * 100) / 100),
+        qty,
         icon: this.product.icon || '🤖',
         bg: this.product.bg || '#F0F4FA',
         scene: this.product.scene || '',
         productType: this.product.productType || '',
-        rentPeriod: this.product.rentPeriod || '',
+        rentPeriod,
         startDate: this.product.startDate || '',
         endDate: this.product.endDate || '',
         name2: this.form.name,
@@ -1203,4 +1277,10 @@ export default {
 .multi-price-box { display: flex; align-items: baseline; flex-shrink: 0; }
 .multi-price { font-size: 30rpx; font-weight: 700; color: #165DFF; }
 .multi-unit { font-size: 22rpx; color: #6B7280; }
+.rent-day-chips { display: flex; gap: 12rpx; flex-wrap: wrap; }
+.day-chip { font-size: 24rpx; color: #475569; background: #F1F5F9; border-radius: 24rpx; padding: 8rpx 22rpx; }
+.day-chip.active { background: #165DFF; color: #fff; }
+.date-pill { display: inline-flex; align-items: center; gap: 4rpx; font-size: 26rpx; color: #165DFF; background: #EAF1FF; border-radius: 28rpx; padding: 8rpx 20rpx; }
+.pv-arrow { color: #94A3B8; font-size: 22rpx; margin-left: 4rpx; }
+.date-pv { height: 400rpx; background: #fff; border-radius: 16rpx; }
 </style>
