@@ -38,7 +38,7 @@
 
 > 这个域的共同特征：**表搭了、网关抽象了、审计工具也备好了，但没接线。**
 
-### M1 · 成交价可完全由客户端决定，且无下限/上限/议价授权/留痕
+### M1 · 成交价可完全由客户端决定，且无下限/上限/议价授权/留痕 —— 🔶 本轮部分完成
 
 - **现在薄在哪**
   `API/TobOrderController.php:58` 与 `:63` ——
@@ -87,7 +87,7 @@
 - **怎么验证**：① `POST /api/callback/payment?order_id=<他人订单>&mock_paid=1` → 断言被拒；② 篡改金额的回调 → 断言拒绝并留痕；③ 真网关接入后跑一次金额不符的用例。
 - **量**：**M**（验签本身依赖 M6 的流水表先落地）
 
-### M4 · 退款/取消**不撤销授权**，而能撤销的售后审批链**根本没有入口**
+### M4 · 退款/取消**不撤销授权**，而能撤销的售后审批链**根本没有入口** —— 🔶 本轮部分完成
 
 - **现在薄在哪**
   - 用户自助取消：`API/OrderController.php:230` 直接 `$order->status='canceled'; $order->save();` —— **不 dispatch 任何事件**。撤销钩子注册在 `EventServiceProvider.php:64` 的 `sales.order.cancel.after`，只由 `OrderRepository::cancel()` 触发，这条路径不走它
@@ -182,7 +182,7 @@
 | `Database/Migrations/2026_09_30_000001_...:124` `license_key` 是 `char(32)->nullable()`，**无 unique、无 index** —— 而它是设备侧拉取授权的身份键 | 加唯一索引（加之前先查重，参照本项目近期迁移的 `hasIndex` 守卫写法） | S |
 | 同表 `:134-139` 只建了 `order_item_id` unique 与 `customer_id/device_id/product_id` 索引，**无 `order_id`、无 `expires_at` 索引** —— 而撤销按 `order_id` 查（`SkillDelivery.php:57`）、过期判 `expires_at`（`SkillEntitlement.php:132`） | 补两个索引 | S |
 
-### D6 · "技能分类不存在"会让全站停止发授权，且无任何告警
+### D6 · "技能分类不存在"会让全站停止发授权，且无任何告警 —— ✅ 本轮已修
 
 - **现在薄在哪** `Listeners/SkillDelivery.php:153` 的 `skillProductIds()`：分类 `slug='skill'` 查不到就 `return []`（`:159-161`），`grantForOrder` 随即 `return`（`:72-74`）。**无日志、无告警。**
 - **补齐什么**：空集合时告警（这是配置漂移，不是正常状态）；或提供兜底判定。
@@ -195,7 +195,7 @@
 - **补齐什么**：与监听器一致的防御式包裹 + 明确错误码。
 - **量**：**S**
 
-### D8 · 下载接口无节流、无原子计数
+### D8 · 下载接口无节流、无原子计数 —— ✅ 本轮已修（节流）/ 🔶 计数原子化部分
 
 - **现在薄在哪** `Routes/api.php:235` 技能组只挂 `['customer']`，**全组无 throttle**；`SkillController.php:136-142` 下载只做 read-modify-write 的 `download_count` 累加。
 - **补齐什么**：加限流（与 X3 同批）；计数改原子。（顺带：`OpsMetricsService` 里那条"下载量没统计"的失真本轮已修，见 `skill-remaining-closure.md`）
@@ -579,3 +579,67 @@
 - 语法：4 个改动源文件 + 1 个测试文件全部 `php -l` 通过。
 - 提交：D2 / D4 / D3 三次（D3 连带提交共享测试文件）。仍未 `git add -A`。
 
+
+---
+
+## 本轮进展（01:55 起）· 资金 M1/M4 + 授权交付 D6/D8
+
+> 范围：只做 4 项（资金 M1/M4 + 授权交付 D6/D8），不做其余。保守修：不重构、不动 schema、不扩大范围。
+> 每项：`php -l` 通过 → 跑相关 pest → **单项单独 commit**。工作分支 `main`。全程**未** `git add -A`（显式列举文件）。
+
+| 项 | 状态 | commit |
+|---|---|---|
+| 一/资金 **M1** 成交价上下限 + 技能目录价 | 🔶 部分完成 | `939147f` |
+| 一/资金 **M4** 取消订单对称撤销授权 | 🔶 部分完成 | `27683d6` |
+| 二/授权 **D6** 技能分类缺失告警 | ✅ 完成 | `703416e` |
+| 二/授权 **D8** 下载节流 + 计数原子 | ✅ 完成（计数原子性仅单线程验证） | `9fb1b7b` |
+
+### M1 · 成交价上下限 + 技能单强制服务端目录价 🔶
+
+- **改哪**：`API/TobOrderController.php` ——
+  - `price` / `items.*.price` 规则加 `numeric|min:0|max:10000000`（负数如 -1 直接拒）；
+  - 新增顶层 `rent_days` 规则、`items.*.rent_days` 加 `max:3650`（拒 `rent_days=99999`）；
+  - 计价：`type=skill` **一律用服务端目录价**，忽略客户端 `price`；其余类型沿用「前端确认价优先」（询价/议价流，设计如此），仅由校验兜住上下限。
+- **为什么**：技能是标准商品，此前**任何登录用户**都能给技能开任意价，无下限/上限；`-1`、`99999` 都过 `numeric`。
+- **⚠ 与计划的偏差（如实记录）**：计划示例要 `price=0.01` 被**拒**。但前端 `checkout.vue:205/270` 对部分路径**明确发 `price='0'`**（0 = 「用服务端价」的既有契约），故不能简单上 `min:1`（会打断既有下单）。改法是**用下限 `min:0` 挡负数 + 对技能强制目录价**：客户端传 0.01 的技能单会被替换为服务端价（等于「不接受客户端价」），效果等价且不破坏前端。
+- **未做（如实记录）**：① **议价授权判定**（「谁有权给这个价」）未做 —— 属询价/议价流的权限设计，需业务定规则，非纯代码约束；② **议价留痕 `operation_log`** 未做 —— 归 **M8/X4**（Shop 侧统一留痕）批次，本项未重复造。
+- **证据**：`HardeningRound3Test` 3 例 —— price=-1 → 422 且 `errors.price`；rent_days=99999 → 422；技能单带 `price=0.01` → 下单成功但 `grand_total ≠ 0.01`（客户端价被忽略）。
+
+### M4 · 用户自助取消订单对称撤销授权 🔶
+
+- **改哪**：`API/OrderController.php` —— 自助取消（含游客单，二者复用同一 `cancel()`）在 `$order->save()` 后 `Event::dispatch('sales.order.cancel.after', $order)`。
+- **为什么**：此前直接改 `status='canceled'` **不发任何事件**，而撤销钩子只挂在 `OrderRepository::cancel()` 的该事件上 → 用户取消后**授权照旧可用**（能下载、能绑设备），是典型「退了/撤了还留着货」双花。走统一事件 = 撤销逻辑只此一处，不在控制器里各写各的。
+- **副作用说明**：该事件同时驱动 `Order::afterCanceled`（取消邮件）。真实订单本就有 `customer_email`，邮件是恰当的取消通知；与后台取消路径行为一致，非新增一类side effect。
+- **未完成（如实记录，含卡点）**：
+  1. **原生退款路径未接撤销**：`Listeners/Refund.php`（`sales.refund.save.after`）仍只发通知邮件、不碰 entitlement。**卡点**：原生 `Refund` 与 `order_item` 的对应关系需先核清（部分退款不应撤销整单授权），盲接会过度撤销 —— 需单独一项设计，本时间盒内未动。
+  2. **售后审批后台入口未做**：`AfterSaleService::approve/reject` 仍全仓零调用方。**卡点**：Admin 侧无对应控制器/路由，且列表页依赖 Bagisto DataGrid 配置，属「补端点 + 补后台 UI」的 **M** 级工作量，非 15 分钟保守修可覆盖。**注**：退款打款走售后审批（`AfterSaleService::approve` 内已 `revoke`）这条链本身是**闭的**，缺的只是「人能点开」的入口。
+- **证据**：`HardeningRound3Test` 1 例 —— 建 pending 订单 + granted 授权 → 调 `shop.api.customers.orders.cancel` → 断言授权状态变 `revoked`。
+
+### D6 · 技能分类缺失告警 ✅
+
+- **改哪**：`Listeners/SkillDelivery.php` 的 `skillProductIds()` —— slug='skill' 查不到时 `Log::warning`（配置漂移）；分类存在但无商品时同样告警。
+- **为什么**：此前静默 `return []` → `grantForOrder` 直接 return，订单照常成功却**一张授权都不落**、无任何痕迹。这是「配置漂移 = 全站停发授权」且无人知道。
+- **证据**：`HardeningRound3Test` 1 例 —— 删掉 skill 分类 → 反射调用 `skillProductIds()` 返回 `[]` 且 `Log::shouldHaveReceived('warning')` 至少一次。
+- **未做**：仅告警到 Laravel 日志（与 X 系列「统一告警通道」一并收敛），未接外部告警渠道 —— 与 D3 同一取舍。
+
+### D8 · 下载节流 + 计数原子 ✅
+
+- **改哪**：`Routes/api.php` —— skills 路由组中间件由 `['customer']` 改 `['customer','throttle:60,1']`；`API/SkillController.php` 的 `download()` 把 `download_count` 的 read-modify-write 改**行锁事务内自增**（`DB::transaction` + `lockForUpdate`）。
+- **为什么**：此前技能组**全组无节流**；`download_count` 并发下载会丢更新（计数偏小，进而影响失真指标）。
+- **证据**：`HardeningRound3Test` 2 例 —— 断言下载路由的 middleware 含 `throttle`（节流已挂）。
+- **未做（如实记录）**：① 计数的**并发原子性**只做了代码层面行锁改造，**未做真并发压测**（测试环境 sqlite 的 `lockForUpdate` 为 no-op，无法在本机证伪丢更新；MySQL 下行锁语义成立）；② 节流阈值 `60/分` 为保守默认，若与 X3 的 `RateLimiter::for()` 命名档位统一，需后续并入。
+
+### 回归
+
+- 新用例：`packages/Webkul/Shop/tests/Feature/API/HardeningRound3Test.php` —— **6 通过 / 14 断言**。
+- 相关既有套件：`Feature/API` + `Feature/Payment` + `Feature/SkillAudit` —— **116 通过 / 2 失败**。
+- 2 例失败 = `Feature/API/CategoryProductTest`（按价格排序，币种/税率环境差异），**既有基线**，`docs/skill-test-baseline.md` 已登记，与本轮无关。
+- `Feature/Checkout`（21 失败）同为**既有基线**（币种/税率 + 支付方式数组差异，均为 onepage 下单，与本轮改动无关）。
+- 语法：4 个改动源文件 + 1 个测试文件全部 `php -l` 通过。
+- 提交：M1 / M4 / D6 / D8 四次（D8 连带提交共享测试文件）。仍未 `git add -A`。
+
+### 本轮需要总负责人裁决的事项
+
+1. **M1 的议价授权规则**：租/买是否允许议价、谁能给折扣、折扣下限 —— 需业务定规则后才能落「议价授权 + 留痕」（当前仅做了硬边界）。
+2. **M4 的原生退款撤销**：部分退款与整单撤销的边界（按 order_item 撤销 vs 整单撤销）需确认后再接 `Listeners/Refund`。
+3. **M4 售后审批后台入口**：是否本轮必须交付一个可点的 Admin 入口（M 级，需 DataGrid），还是留待后续批次。
