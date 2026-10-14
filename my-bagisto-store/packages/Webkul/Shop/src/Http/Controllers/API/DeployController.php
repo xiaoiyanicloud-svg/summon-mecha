@@ -100,7 +100,9 @@ class DeployController extends APIController
      */
     public function show(string $taskNo): JsonResponse
     {
-        $task = DeployTask::query()->where('task_no', $taskNo)->first();
+        $customer = auth()->guard('customer')->user();
+
+        $task = $this->findOwnedTask($customer->id, $taskNo);
 
         if (! $task) {
             return response()->json(['message' => '任务不存在。'], 404);
@@ -114,6 +116,13 @@ class DeployController extends APIController
      */
     public function cancel(string $taskNo): JsonResponse
     {
+        $customer = auth()->guard('customer')->user();
+
+        // 先过归属:不是本人的任务直接 404 —— 不给"这个单号存在但你没权限"的差异
+        if (! $this->findOwnedTask($customer->id, $taskNo)) {
+            return response()->json(['message' => '任务不存在。'], 404);
+        }
+
         $task = $this->service->cancel($taskNo);
 
         if (! $task) {
@@ -177,6 +186,30 @@ class DeployController extends APIController
 
                 $q->orWhere('sn', $device->sn);
             })
+            ->first();
+    }
+
+    /**
+     * 按 task_no 取"本人设备"的下发任务 —— show / cancel 的唯一入口(防 IDOR)。
+     *
+     * 下发任务只带 did(设备真相源是 binding),所以归属经 **binding.owner_customer_id 反查**:
+     * 取本人全部 did,任务 did 不在其中即视为不存在。单号规则每天只有约 9000 种组合、
+     * 可被枚举,因此不匹配时返回 404(而非 403)—— 不给"存在与否"的差异信号。
+     */
+    protected function findOwnedTask(int $customerId, string $taskNo): ?DeployTask
+    {
+        $ownedDids = DeviceBinding::query()
+            ->where('owner_customer_id', $customerId)
+            ->pluck('did')
+            ->all();
+
+        if (empty($ownedDids)) {
+            return null;
+        }
+
+        return DeployTask::query()
+            ->where('task_no', $taskNo)
+            ->whereIn('did', $ownedDids)
             ->first();
     }
 
