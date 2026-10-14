@@ -171,15 +171,28 @@ class AgentController extends APIController
 
     /**
      * 上报任务回报,推进状态机。
+     *
+     * ⚠ 必须带 `did` 并**先校验归属再推进**:全局共享密钥下,谁都能拿 task_no 报回报,
+     *   若不校验,等于替别人的任务推进状态机(指令劫持)。归属校验放在 onEvent **之前** ——
+     *   放到之后则状态已被他人任务改完,校验毫无意义。
+     *   (per-device 证书是目标形态,计划 §4.22 F1;此处先把归属一致性补上。)
      */
     public function event(Request $request): JsonResponse
     {
         $payload = $request->validate([
             'task_no'    => ['required', 'string', 'max:40'],
+            'did'        => ['required', 'string', 'max:64'],
             'phase'      => ['required', 'string', 'in:downloading,installing,done,failed,timeout'],
             'error_code' => ['nullable', 'string', 'max:32'],
             'error_msg'  => ['nullable', 'string', 'max:512'],
         ]);
+
+        // 归属:任务必须属于上报者声明的 did。不匹配按"不存在"返回(不泄漏他人任务的存在)
+        $owned = DeployTask::query()->where('task_no', $payload['task_no'])->first();
+
+        if (! $owned || $owned->did !== $payload['did']) {
+            return response()->json(['message' => '任务不存在。'], 404);
+        }
 
         $task = $this->deploy->onEvent(
             $payload['task_no'],

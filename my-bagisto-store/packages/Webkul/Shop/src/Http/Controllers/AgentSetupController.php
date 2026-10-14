@@ -163,7 +163,7 @@ SH;
 
   enroll  → GET  /api/agent/commands?did=<did>   (轮询即心跳,无需单独高频心跳)
           → 按 canonical 串验签,不通过则拒绝安装
-          → POST /api/agent/evt {task_no, phase: downloading|installing|done|failed}
+          → POST /api/agent/evt {task_no, did, phase: downloading|installing|done|failed}
 
 canonical 串 = '|'.join([task_id, skill_id, version, package_hash or '', ts])
 签名 = RSA-SHA256(平台私钥) → 用 platform_public.pem 验签。
@@ -270,7 +270,7 @@ def run(config):
             if not verify(cmd, pubkey_pem):
                 print("[agent] %s 验签失败,拒绝安装" % task_no, flush=True)
                 http("POST", "%s/api/agent/evt" % base,
-                     {"task_no": task_no, "phase": "failed",
+                     {"task_no": task_no, "did": did, "phase": "failed",
                       "error_code": "SIG_INVALID", "error_msg": "签名校验未通过"},
                      headers)
                 continue
@@ -278,9 +278,9 @@ def run(config):
             print("[agent] %s 验签通过 op=%s" % (task_no, cmd.get("operation")), flush=True)
 
             http("POST", "%s/api/agent/evt" % base,
-                 {"task_no": task_no, "phase": "downloading"}, headers)
+                 {"task_no": task_no, "did": did, "phase": "downloading"}, headers)
             http("POST", "%s/api/agent/evt" % base,
-                 {"task_no": task_no, "phase": "installing"}, headers)
+                 {"task_no": task_no, "did": did, "phase": "installing"}, headers)
 
             if cmd.get("package_url"):
                 print("[agent] 下载 %s" % cmd["package_url"], flush=True)
@@ -288,7 +288,7 @@ def run(config):
                 print("[agent] package_url 为空 → dry install(只走状态机)", flush=True)
 
             http("POST", "%s/api/agent/evt" % base,
-                 {"task_no": task_no, "phase": "done"}, headers)
+                 {"task_no": task_no, "did": did, "phase": "done"}, headers)
             print("[agent] %s 完成" % task_no, flush=True)
 
         time.sleep(interval)
