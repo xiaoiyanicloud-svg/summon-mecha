@@ -5,6 +5,7 @@ namespace Webkul\Shop\Listeners;
 use Illuminate\Support\Facades\DB;
 use Webkul\Category\Models\Category;
 use Webkul\Product\Models\ProductProxy;
+use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
@@ -131,15 +132,54 @@ class SkillDelivery
 
         // 已存在说明这次是重试/重复触发 —— 仍然调一次 deliver()(它幂等),
         // 但不要重复生成 license_key。
-        $result = $this->manager
-            ->channel($entitlement->delivery_channel)
-            ->deliver($entitlement, ['device_id' => $deviceId]);
-
-        // 交付结果留痕,方便排查"为什么这单没交付"
         $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
-        $meta['delivery'] = $result->toArray();
+
+        try {
+            $result = $this->manager
+                ->channel($entitlement->delivery_channel)
+                ->deliver($entitlement, ['device_id' => $deviceId]);
+
+            // 交付结果留痕,方便排查"为什么这单没交付"
+            $meta['delivery'] = $result->toArray();
+            $meta['delivery_failed'] = null;
+        } catch (\Throwable $e) {
+            // D3 · 交付失败不能只留在日志里。授权行已经落库(order_item_id 唯一键),
+            // 但状态停在未交付。把失败痕迹写进 meta,让"按订单补发"(redeliver)有据可查;
+            // 再把异常抛回 afterOrderCreated 的 report() 触发告警。
+            // 吞异常仍是刻意的(见类注释第 1 条:不能让建单失败),这里是"吞掉但留痕"。
+            $meta['delivery_failed'] = [
+                'at'      => now()->toDateTimeString(),
+                'class'   => $e::class,
+                'message' => $e->getMessage(),
+            ];
+
+            $entitlement->meta = $meta;
+            $entitlement->save();
+
+            throw $e;
+        }
+
         $entitlement->meta = $meta;
         $entitlement->save();
+    }
+
+    /**
+     * D3 · 按订单补发 —— 给"订单已成功但交付失败"的单子一个可执行入口。
+     *
+     * 依赖 grantForItem 的幂等性:已交付的条目不会重复,失败的条目会被补上。
+     * 返回该订单当前拥有的授权数,便于调用方核对。
+     */
+    public function redeliver(int $orderId): int
+    {
+        $order = OrderProxy::modelClass()::find($orderId);
+
+        if (! $order) {
+            return 0;
+        }
+
+        $this->grantForOrder($order);
+
+        return SkillEntitlement::where('order_id', $orderId)->count();
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Listeners\SkillDelivery;
 use Webkul\Shop\Models\PaymentTransaction;
@@ -100,11 +101,18 @@ class PaymentCallbackController extends APIController
             return response()->json(['message' => '已处理(幂等)。', 'order_id' => $order->id]);
         }
 
-        $order->status = 'processing';
-        $order->save();
+        // D3 · 与建单事件入口统一事务边界:事件路径在 OrderRepository 的建单事务内
+        // dispatch「翻状态(下单即 pending)→ 交付」,回调路径此前是裸 save() 再调,不在事务内。
+        // 现把两者收进同一事务:状态推进与授权发放要么一起提交,要么一起回滚。
+        // 注意 afterOrderCreated 内部吞异常(刻意的 —— 交付失败不应让订单失败),
+        // 所以交付失败不会回滚本事务,只留 meta 痕迹 + 告警;补发走 redeliver()。
+        DB::transaction(function () use ($order) {
+            $order->status = 'processing';
+            $order->save();
 
-        // 触发 v1 既有授权发放(幂等:order_item_id 唯一键兜底)
-        app(SkillDelivery::class)->afterOrderCreated($order);
+            // 触发 v1 既有授权发放(幂等:order_item_id 唯一键兜底)
+            app(SkillDelivery::class)->afterOrderCreated($order);
+        });
 
         return response()->json([
             'message'  => '支付成功,授权已发放。',
