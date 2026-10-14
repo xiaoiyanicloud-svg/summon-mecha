@@ -20,6 +20,19 @@ use Webkul\Shop\Models\SkillVersion;
  */
 class DeployTaskService
 {
+    /**
+     * 熔断**不拦**的操作 —— 它们是熔断的补救手段。
+     *
+     * 熔断的语义是"阻断新下发"(见 KillSwitchService::isBlocked 的 forAction='new')。
+     * 卸载/回滚/回收是事故发生后**往外撤**的动作:若把这三个也拦住,熔断一旦生效,
+     * 连"批量卸载已装的问题技能"都做不了 —— 熔断自己制造了无法收拾的现场。
+     */
+    protected const REMEDIATION_OPS = [
+        DeployTask::OP_UNINSTALL,
+        DeployTask::OP_ROLLBACK,
+        DeployTask::OP_RECLAIM,
+    ];
+
     /** 合法的状态流转(防乱序/防回退)。 */
     protected const TRANSITIONS = [
         'pending'        => ['dispatching', 'pending_online', 'cancelled'],
@@ -54,6 +67,10 @@ class DeployTaskService
         ?string $packageUrl = null,
         ?string $packageHash = null,
     ): DeployTask {
+        // 熔断闸:命中即拒建(不落库)。补救类动作(卸/回滚/回收)放行 —— 见 REMEDIATION_OPS。
+        // 这是 D9「熔断可一键禁用」的硬缺口:此前 isBlocked() 全仓零调用,按钮按下去不下闸。
+        $this->assertNotBlocked($skillId, $operation);
+
         $task = DeployTask::create([
             'task_no'          => $this->newTaskNo(),
             'did'              => $did,
@@ -314,5 +331,25 @@ class DeployTaskService
     protected function newTaskNo(): string
     {
         return 'DT'.now()->format('ymdHis').random_int(1000, 9999);
+    }
+
+    /**
+     * 拒建已被熔断的技能的新下发任务。
+     *
+     * ⚠ 用 app() 惰性解析 KillSwitchService:KillSwitchService 的构造器注入了本服务,
+     *   构造器里互相注入会构成循环依赖。这与 evaluateGrayIfAny() 的取舍一致。
+     *
+     * @throws SkillBlockedException
+     */
+    protected function assertNotBlocked(int $skillId, int $operation): void
+    {
+        // 卸/回滚/回收是熔断的补救动作,放行
+        if (in_array($operation, self::REMEDIATION_OPS, true)) {
+            return;
+        }
+
+        if (app(KillSwitchService::class)->isBlocked($skillId, 'new')) {
+            throw new SkillBlockedException('该技能已被熔断,暂不可下发。');
+        }
     }
 }

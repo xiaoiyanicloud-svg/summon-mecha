@@ -11,6 +11,7 @@ use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
+use Webkul\Shop\Services\Deploy\SkillBlockedException;
 
 /**
  * 下发任务 —— 用户侧(v3.4 步骤 8)。
@@ -73,15 +74,20 @@ class DeployController extends APIController
                     ->value('id');
         }
 
-        $task = $this->service->create(
-            did: $binding->did,
-            skillId: (int) $payload['skill_id'],
-            skillVersionId: $skillVersionId,
-            entitlementId: $entitlement?->id,
-            operation: (int) ($payload['operation'] ?? DeployTask::OP_INSTALL),
-            channel: $payload['channel'] ?? 'agent',
-            createdBy: 'customer:'.$customer->id,
-        );
+        try {
+            $task = $this->service->create(
+                did: $binding->did,
+                skillId: (int) $payload['skill_id'],
+                skillVersionId: $skillVersionId,
+                entitlementId: $entitlement?->id,
+                operation: (int) ($payload['operation'] ?? DeployTask::OP_INSTALL),
+                channel: $payload['channel'] ?? 'agent',
+                createdBy: 'customer:'.$customer->id,
+            );
+        } catch (SkillBlockedException $e) {
+            // 熔断命中 —— 明确 409,不落任何任务(见 DeployTaskService::assertNotBlocked)
+            return response()->json(['message' => $e->getMessage(), 'code' => 'SKILL_BLOCKED'], 409);
+        }
 
         return response()->json([
             'message' => '下发任务已创建。',
