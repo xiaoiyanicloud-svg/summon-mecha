@@ -71,7 +71,7 @@
 - **怎么验证**：建一张技能单**不支付** → `GET .../download` 必须 403/409（现在会成功）；支付回调后再下载 → 成功。**这条测试现在就会红**，正好当验证。
 - **量**：**M**
 
-### M3 · 支付回调信任请求体里的 `order_id`，不验签、不核金额
+### M3 · 支付回调信任请求体里的 `order_id`，不验签、不核金额 —— ✅ 本轮已修（验签按设计推迟）
 
 - **现在薄在哪**
   - `API/PaymentCallbackController.php:85` ——
@@ -97,14 +97,14 @@
 - **怎么验证**：① 下单 → 拿授权 → 后台退款 → 断言授权被 `revoke`；② API 取消订单 → 同上；③ 断言新后台入口能被点开并真的调到 `approve()`。
 - **量**：**M**
 
-### M5 · 退款金额恒为 0，退款单号可能撞号
+### M5 · 退款金额恒为 0，退款单号可能撞号 —— ✅ 本轮已修
 
 - **现在薄在哪** `Services/SkillDelivery/AfterSaleService.php:111` `$outRefundNo = 'RF'.$afterSale->id.now()->format('ymdHis');`；`:114` `$gateway->refund(null, (float) 0, $outRefundNo)`；`:129` `RefundRequest::create([... 'amount' => 0 ...])`
 - **补齐什么**：金额取自该授权对应**订单条目的实付金额**；退款前做「已退金额累计不得超实付」校验；退款单号换成不可碰撞序列（秒级 `ymdHis` 同秒重试会撞）。
 - **怎么验证**：对一笔 999 元技能走完售后 → 断言 `RefundRequest.amount === 999`（不是 0）；同秒连发两次 → 断言单号不同。
 - **量**：**S**
 
-### M6 · 支付流水从不落库（没有幂等键，也没有对账源）
+### M6 · 支付流水从不落库（没有幂等键，也没有对账源）—— ✅ 本轮已修
 
 - **现在薄在哪** `API/PaymentCallbackController.php:56` 只做 `$order->status='processing'; $order->save();` —— `$result->transactionId`（`MockGateway.php:82` 生成的 `MOCKTXN...`）**被丢弃**，全库没有任何支付/交易写入。
   项目自己也承认：`Services/Ops/OpsMetricsService.php:413` 的未接入清单里写着「支付交易号 out_trade_no 从未持久化」。
@@ -138,7 +138,7 @@
 
 ## 二、授权与交付（P0/P1）
 
-### D1 · 自报安装无幂等 + 激活次数竞态 + `max_activations` 形同虚设
+### D1 · 自报安装无幂等 + 激活次数竞态 + `max_activations` 形同虚设 —— ✅ 本轮已修
 
 - **现在薄在哪**
   - `API/SkillController.php:276` `$entitlement->activations = $entitlement->activations + 1;` —— 同一方法内 `:275` 设 `STATUS_ACTIVE`，**没有"已 active 就直接返回"的幂等分支**。连点两次 = 计两次
@@ -489,4 +489,52 @@
 - 上述 4 项涉及目录：`Deploy`、`API`、`Payment`、`SkillAudit` 全绿。
 - `Feature/API/CategoryProductTest`（2 例，按价格排序）失败 —— **既有基线**，`docs/skill-test-baseline.md` 已登记（币种/税率环境差异），与本轮无关。
 - 全程**未** `git add -A`；四次提交均显式列举文件。
+
+---
+
+## 本轮进展（01:52 起）
+
+> 范围：只做 **4 项**（资金 M3/M5/M6 + 授权交付 D1），不做其余。保守修：不重构、除 M6 必须建表外不动 schema、不扩大改动范围。
+> 每项：`php -l` 通过 → 跑相关 pest → **单项单独 commit**。工作分支 `main`。
+
+| 项 | 状态 | commit |
+|---|---|---|
+| 一/资金 **M6** 支付流水落库 + 幂等键 | ✅ 完成 | `1f245c4` |
+| 一/资金 **M3** 回调身份/金额核对 | ✅ 完成（验签按设计推迟） | `b625358` |
+| 一/资金 **M5** 退款金额 + 防撞号 | ✅ 完成 | `8a703fa` |
+| 二/授权 **D1** 自报安装幂等 + 激活原子 | ✅ 完成 | `f2da1d9` |
+
+### M6 · 支付流水落库 + `out_trade_no` 唯一键幂等 ✅
+
+- **改哪**：新增迁移 `2026_10_15_000001_create_payment_transaction_table.php` + 模型 `Shop/Models/PaymentTransaction`；`API/PaymentCallbackController::handle()` 在翻状态前先落一行流水，以 `out_trade_no` 唯一键为幂等锚点（并发撞键 → 取回并按幂等返回）。
+- **为什么必须建表（说明）**：M6 的核心诉求是「落一行支付流水 + 以其唯一键做幂等」。原生 `order_transactions` **装不下**——它的 `invoice_id` 是 NOT NULL，而本项目 TOB 下单管道**根本不建发票**；且其 `transaction_id` **无唯一索引**，不能当幂等键。故新建 Shop 自有表，把 `out_trade_no` 设为唯一键。此为本项**唯一必要的 schema 变更**。
+- **落库字段**：`order_id / out_trade_no / transaction_id / gateway / amount / status / paid_at / raw`。
+- **证据**：`tests/Feature/Payment/PaymentTransactionLedgerTest.php`（3 例：落行且字段正确／重复回调仅一行且订单只推进一次／凭 out_trade_no 反查订单）。
+- **未做**：未接对账 Job（依赖真网关账单，见 M9「现在不做」）——流水已是**可对账的源数据**，但比对逻辑留待资质就绪。
+
+### M3 · 回调只认网关结果 + 金额核对 ✅（验签按设计推迟）
+
+- **改哪**：`PaymentCallbackController::resolveOrder()` **删除**信任请求体 `order_id` 的分支，订单身份**只来自**网关解析出的 `out_trade_no`（解析不出即 404）；新增 `amountMatches()`：`PaymentResult::amount` 必须等于 `order.grand_total`（分/厘容差 0.005），不符返 `409 AMOUNT_MISMATCH`。
+- **为什么**：该回调**不挂鉴权**，原 `order_id` 分支等于「任何人 `?order_id=<他人订单>&mock_paid=1` 即可翻他人订单为已支付」；`PaymentResult::amount` 拿到了却从未参与判定。
+- **⚠ 验签按设计推迟（不伪造）**：当前仍是 mock 网关（成功由参数自报）。真实验签依赖微信资质，届时在 `WechatGateway::handleCallback` 内做——**本处不伪造验签**，仅在类注释里写明推迟。生产侧仍由 `PaymentManager::assertUsableHere` 拒绝一切未声明 `production_safe` 的网关。
+- **证据**：`tests/Feature/Payment/PaymentCallbackHardeningTest.php`（4 例：仅带 order_id 被拒且订单不变／order_id 与合法 out_trade_no 并存时以后者为准／篡改金额 409 且不落流水／金额相符放行）。
+
+### M5 · 退款金额取自实付 + 单号防撞 + 累计校验 ✅
+
+- **改哪**：`AfterSaleService::approve()` 金额取自该授权对应**订单条目实付**（`OrderItem.total`，退化 `price×qty`）；退款前校验「已退金额累计 ≤ 实付」（新增 `paidAmountOf()` / `refundedAmountOf()`）；退款单号由 `'RF'+ymdHis` 改为 `'RF'+ULID`，并**落 `wechat_refund_no`**。
+- **为什么**：此前恒 `refund(null, 0.0)` 且 `RefundRequest.amount` 恒 0——退款账目全为 0，事后无法对账；秒级单号同秒重试会撞。
+- **证据**：`tests/Feature/Payment/RefundAmountTest.php`（3 例：999 元退 999 且落单号／同秒两单号不同／同一订单条目退满后再来被拒且累计不超实付）。
+
+### D1 · 自报安装幂等 + 激活原子自增 + `max_activations` 生效 ✅
+
+- **改哪**：`SkillController::confirmInstall()` 加「已 `active` → 幂等返回既有状态（带 `idempotent:true`）」分支；`activations` 由 read-modify-write 改为**条件原子自增**（`WHERE status != active AND (max 为空 OR activations < max)`，命中 0 行区分「并发已激活」与「已达上限」）；`max_activations` 参与判定（超限 `409 MAX_ACTIVATIONS_REACHED`）。安装事实的 `meta` 写入与计数分离。
+- **为什么**：激活次数是许可与计费的核心账目，此前客户端连点两次=计两次、并发丢更新、`max_activations` 形同虚设（`remainingActivations()` 全仓无写路径调用）。
+- **证据**：`tests/Feature/API/ConfirmInstallIdempotencyTest.php`（4 例：连发两次 activations 只 +1／第二次带幂等标记且状态不变／已用满 409 状态不变／未超限放行）；既有 `SkillBindingSourceTest::confirmInstall` 仍绿。
+- **未做（如实记录）**：`remainingActivations()` 仍未接入读路径展示——本轮只把它关心的 `max_activations` 判定做实，未扩大改动。
+
+### 回归
+
+- 本轮涉及目录 `API`、`Payment`、`Deploy`、`SkillAudit`：**122 通过 / 2 失败**。
+- 2 例失败 = `Feature/API/CategoryProductTest`（按价格排序，币种/税率环境差异），**既有基线**，`docs/skill-test-baseline.md` 已登记，与本轮无关。
+- 全程**未** `git add -A`；四次提交均显式列举文件。M6 迁移已在 `root` 库执行（`migrate --path` DONE）。
 
