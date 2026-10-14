@@ -31,8 +31,15 @@ it('每个指标都带口径说明', function () {
     ] as $group) {
         foreach ($group as $key => $metric) {
             expect($metric)->toHaveKeys(['value', 'basis', 'ready'])
-                ->and($metric['basis'])->not->toBe('', "指标 {$key} 缺口径说明");
+                ->and($metric['basis'])->not->toBe('', "指标 {$key} 缺口径说明")
+                // ⚠ `{{ }}` 不解析 markdown —— `**下单口径**` 会在页面上**原样显示成带星号的文字**。
+                //   口径是给运营读的，里面出现 markdown 标记就是排版缺陷（实测有过）。
+                ->and($metric['basis'])->not->toContain('**');
         }
+    }
+
+    foreach ($service->notConnected() as $row) {
+        expect($row['reason'])->not->toBe('')->and($row['reason'])->not->toContain('**');
     }
 });
 
@@ -61,15 +68,53 @@ it('故意不做的维度被显式列出（而不是从页面上消失）', func
 
     $names = collect($notConnected)->pluck('name')->implode(' | ');
 
-    expect($names)->toContain('下载量')
-        ->and($names)->toContain('浏览量')
+    expect($names)->toContain('曝光量')
         ->and($names)->toContain('净收入')
-        ->and($names)->toContain('对账');
+        ->and($names)->toContain('对账')
+        // ⚠ 「下载量」曾经在这张清单里，理由是"materialized 表没人写，做出来永远是 0"。
+        //   那是**反向失真**：下载另有计数（entitlements.meta.download_count）。
+        //   它现在是 entitlements() 里的真实指标，所以这里反过来锁"不许再回到清单里"。
+        ->and($names)->not->toContain('下载量');
 
     // 每一条都要说明"为什么没有"，否则读者会以为是遗漏
     foreach ($notConnected as $row) {
         expect($row['reason'])->not->toBe('');
     }
+});
+
+it('下载量是真实指标，不是"未接入" —— 统计了的东西不许说成没统计', function () {
+    $entitlements = app(OpsMetricsService::class)->entitlements();
+
+    expect($entitlements)->toHaveKey('downloads')
+        ->and($entitlements['downloads']['ready'])->toBeTrue()
+        ->and($entitlements['downloads']['value'])->toBeInt();
+
+    // 口径必须写明真实边界（只覆盖 App/API 鉴权下载），
+    // 否则读者会以为是"全部下载"或"全部安装"
+    expect($entitlements['downloads']['basis'])->toContain('App')
+        ->and($entitlements['downloads']['basis'])->toContain('人工送达');
+});
+
+it('下载计数确实在写 —— 造一次下载，数字必须跟着动', function () {
+    // 行为级断言：光有指标不够，还要证明它读的那个字段真的有人写。
+    $entitlementId = DB::table('skill_entitlements')->insertGetId([
+        'customer_id'    => 1,
+        'order_id'       => 1,
+        'order_item_id'  => 999999,
+        'product_id'     => 1,
+        'status'         => 'active',
+        'meta'           => json_encode(['download_count' => 7]),
+        'created_at'     => now(),
+        'updated_at'     => now(),
+    ]);
+
+    $before = app(OpsMetricsService::class)->entitlements()['downloads']['value'];
+
+    DB::table('skill_entitlements')->where('id', $entitlementId)->update([
+        'meta' => json_encode(['download_count' => 9]),
+    ]);
+
+    expect(app(OpsMetricsService::class)->entitlements()['downloads']['value'])->toBe($before + 2);
 });
 
 it('看板页把未统计维度的理由也渲染出来', function () {
@@ -78,7 +123,7 @@ it('看板页把未统计维度的理由也渲染出来', function () {
     get(route('admin.dashboard.ops'))
         ->assertOk()
         ->assertSeeText('本页未统计的维度')
-        ->assertSeeText('下载量');
+        ->assertSeeText('曝光量');
 });
 
 it('审核队列深度：用正确的关联列（audit_record 的列名与内容不一致）', function () {

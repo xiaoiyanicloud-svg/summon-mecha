@@ -36,6 +36,10 @@
         .badge.ok { background: #ecfdf5; color: #047857; }
         .row { display: flex; gap: 12px; }
         .row > * { flex: 1; }
+        /* 状态提示：用于在数字之前先把"这份数据的边界"讲清楚 */
+        .notice { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.75; }
+        .notice strong { color: #78350f; }
+        .num { font-size: 18px; font-weight: 600; }
     </style>
 </head>
 <body>

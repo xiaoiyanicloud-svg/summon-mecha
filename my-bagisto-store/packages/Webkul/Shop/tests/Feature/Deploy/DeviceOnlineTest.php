@@ -134,6 +134,14 @@ it('从未心跳过 → 离线（哪怕粘滞列写着 true）', function () {
 });
 
 it('窗口边界：89 秒前算在线，91 秒前算离线', function () {
+    // ⚠ 这条曾经是**闪红测试**，本轮修掉：窗口是 90 秒，而用例用 89 秒造"应当在线"的那台 ——
+    //   从造数据到发 HTTP 断言只要超过 1 秒，它就真的掉出窗口了，断言随机失败。
+    //
+    //   而"随机失败"比"稳定失败"更糟：它会让**真正的回归淹没在噪声里**
+    //   （见 docs/skill-test-baseline.md 的开篇）。冻结时间之后，边界仍然取
+    //   89/91 秒这个**最贴近窗口**的位置，但结论不再取决于这台机器快不快。
+    $this->travelTo(now());
+
     $customer = doCustomer();
 
     [$freshId] = doPairedDevice($customer, lastSeenSecondsAgo: 89);

@@ -20,10 +20,15 @@ use Webkul\Shop\Models\DeviceBinding;
  *   ready      —— 数据源是否已接入。false 时界面显示「未接入」而**不是 0**
  *
  * ⚠ 已被核验否定、**故意不做**的维度（做了只会永远是 0，属于假指标）：
- *   - 下载量：`skill_search_index` 是孤儿物化表，全仓无写入方
- *   - 浏览量：`visits` 依赖未开启的访客统计，且队列无 worker
+ *   - 曝光量 / 浏览量：`visits` 依赖未开启的访客统计，且队列无 worker
  *   - 净收入 / 已收款：真实收款依赖微信支付资质（E1），invoices 恒 0
  *   这些在页面上以「未接入」显式列出，**不是**显示 0。
+ *
+ * ⚠ 反过来的错也犯过一次：**「下载量」曾被列在上面**，理由是"`skill_search_index`
+ *   是孤儿物化表，做出来永远是 0"。但下载另有计数（`entitlements.meta.download_count`，
+ *   见 `downloadCount()`）—— 平台在说"我没统计下载"，而它统计了。
+ *   **"把统计了的说成没统计"和"把没统计的显示成 0"一样会给决策者假事实**，
+ *   只是前者更隐蔽：没人会去怀疑一句"我们没统计"。现已改成真实指标。
  */
 class OpsMetricsService
 {
@@ -76,7 +81,7 @@ class OpsMetricsService
             'skill_items'    => $this->metric($skillItems->count(), '技能类商品的订单行数', true),
             'skill_amount'   => $this->metric(
                 round((float) $skillItems->sum('total'), 2),
-                '技能订单金额（**下单口径**，非已收款 —— 本项目无真实支付）',
+                '技能订单金额（「下单口径」，非已收款 —— 本项目无真实支付）',
                 true
             ),
             'paid_amount'    => $this->metric(null, '已收款金额（依赖微信支付资质 E1；invoices 恒 0，无支付流水）', false),
@@ -163,7 +168,153 @@ class OpsMetricsService
             'total'  => $this->metric(DB::table('skill_entitlements')->count(), '授权总数', true),
             'active' => $this->metric((int) ($byStatus['active'] ?? 0), '有效授权', true),
             'revoked' => $this->metric((int) ($byStatus['revoked'] ?? 0), '已撤销授权', true),
-            'installs' => $this->metric(DB::table('install_record')->count(), '安装记录（人工通道由用户自报）', true),
+            'installs' => $this->metric(DB::table('install_record')->count(), '安装记录（「人工通道由用户自报」，真机 Agent 未接入）', true),
+            'downloads' => $this->metric(
+                $this->downloadCount(),
+                '已下载次数（App 内鉴权下载计数；「仅覆盖 App/API 通道」，人工送达不计数）',
+                true
+            ),
+        ];
+    }
+
+    /**
+     * 累计下载次数。
+     *
+     * ⚠ 这里曾经是错的 —— 而且错的方向和本项目一直警惕的那一类**正好相反**：
+     *   运营总览的「未接入」清单里写着"下载量：skill_search_index 是孤儿物化表，全仓无写入方
+     *   —— 做出来永远是 0"。前半句是真的（那张物化表确实没人写），
+     *   **后半句是假的**：`SkillController::download()` 每完成一次鉴权下载，都会把
+     *   `skill_entitlements.meta.download_count` 加一。
+     *
+     *   也就是说平台在说"我没统计下载"，而它统计了。后果和"没统计显示成 0"一样坏，
+     *   只是方向相反：有人会为此立项去补一个根本不需要补的埋点，
+     *   而开发者问"我的技能被下载过几次"时，得到的回答是"平台没统计"。
+     *
+     *   **真正的边界**（这才是该写进口径的那句话）：只覆盖 App/API 的鉴权下载，
+     *   人工通道送达没有计数。
+     */
+    protected function downloadCount(?int $sellerId = null): int
+    {
+        $query = DB::table('skill_entitlements')->whereNotNull('meta');
+
+        if ($sellerId !== null) {
+            $query->where('seller_id', $sellerId);
+        }
+
+        return (int) $query
+            ->selectRaw("COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(`meta`, '$.download_count')) AS UNSIGNED)), 0) AS c")
+            ->value('c');
+    }
+
+    /**
+     * 单个开发者视角的指标 —— 给开发者门户用。
+     *
+     * ⚠ **参数是非空 `int`，这是刻意的，不要"顺手"改成 `?int $sellerId = null`。**
+     *   本仓库已经踩过同型退化两次：
+     *     - `DeveloperSkillService` 的注释：「`where('seller_id', null)` 在 Laravel 里会退化成
+     *       `is null`，那就正好匹配到**平台自营**商品 —— 是越权，不是空结果」
+     *     - `Admin\Customers\DeveloperController` 统计技能数时按 `$profile->seller_id` 过滤，
+     *       而该列可空 —— seller 为 null 时统计的是全平台自营商品数
+     *   若把"平台口径"也用 null 表达，"这个开发者没有归属主体"就会被**静默解释成
+     *   "给他看平台全站数字"**。用非空 int 让那个状态在类型层面不可表达。
+     *
+     * ⚠ **这里只有"有直挂 seller 列"的指标。**没有直挂列的维度（设备、内容安全、工单、事故）
+     *   不在这个列表里 —— 不是标成"不适用"，而是**根本不出现在返回结果中**。
+     *   列表里出现的每一条，都是"对这个读者真的算得出来、且算的是他自己的"。
+     *   要展示"哪些暂时给不了"，用 `notAvailableForSeller()`（开发者语域）。
+     *
+     * @return array<string, array{value: int|float|null, basis: string, ready: bool}>
+     */
+    public function forSeller(int $sellerId): array
+    {
+        $versions = DB::table('skill_versions')
+            ->where('seller_id', $sellerId)
+            ->selectRaw('status, count(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+
+        // 审核记录挂在 audit_record.skill_id 上，而它存的是 **products.id**
+        // （列名与内容不一致，见 AuditRecord::scopeForVersion 的注释）
+        $productIds = DB::table('products')->where('seller_id', $sellerId)->pluck('id')->all();
+
+        $entByStatus = DB::table('skill_entitlements')
+            ->where('seller_id', $sellerId)
+            ->selectRaw('status, count(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+
+        return [
+            'products' => $this->metric(
+                DB::table('products')->where('seller_id', $sellerId)->count(),
+                '你名下的技能商品数', true
+            ),
+            'versions' => $this->metric(
+                DB::table('skill_versions')->where('seller_id', $sellerId)->count(),
+                '你名下的技能版本数', true
+            ),
+            'published' => $this->metric(
+                (int) ($versions['published'] ?? 0),
+                '已发布的版本数（用户能拿到的只有这些）', true
+            ),
+            'assets' => $this->metric(
+                DB::table('skill_assets')->where('seller_id', $sellerId)->count(),
+                '你上传的交付物文件数', true
+            ),
+            'entitlements' => $this->metric(
+                DB::table('skill_entitlements')->where('seller_id', $sellerId)->count(),
+                '你的技能被授予的授权数（用户下单后自动发放）', true
+            ),
+            'entitlements_active' => $this->metric(
+                (int) ($entByStatus['active'] ?? 0),
+                '其中还有效的授权数', true
+            ),
+            'downloads' => $this->metric(
+                $this->downloadCount($sellerId),
+                '你的技能被下载的次数（「只统计 App/API 的鉴权下载」，人工送达不计）', true
+            ),
+            'audits' => $this->metric(
+                $productIds === [] ? 0 : DB::table('audit_record')->whereIn('skill_id', $productIds)->count(),
+                '你的技能累计产生的审核记录条数', true
+            ),
+            'pending_review' => $this->metric(
+                $this->countPendingHumanReview($sellerId),
+                '已提交、还在等人审的版本数（平台运营在审）', true
+            ),
+        ];
+    }
+
+    /**
+     * 开发者门户里「暂时给不了的数据」—— **用开发者能懂的话说，不是平台运维行话**。
+     *
+     * 与 `notConnected()` 分开写成两份，是因为读者不同：那边写给运营（"E1""invoices 恒 0"
+     * 是行话，运营看得懂），这边写给技能作者（他只关心"我能不能知道有多少人在用"）。
+     * 同一份文案两边复用，等于对其中一边没说人话。
+     *
+     * ⚠ 顺序即渲染顺序：**这一块要排在页面上任何数字之前**。
+     *   一个开发者打开看板，第一眼看到一串 0，会得出"我的技能没人用"；
+     *   而真相可能是"平台压根没在统计这一项"。两者结论相反，长得一样。
+     *
+     * @return array<int, array{name: string, reason: string}>
+     */
+    public function notAvailableForSeller(): array
+    {
+        return [
+            [
+                'name'   => '安装量 / 真机下发情况',
+                'reason' => '平台还没有接入真机 Agent，现在的安装记录只能由用户手工自报，也没有可靠的失败原因回传。所以这一项我们没有数字可给 —— 不是"安装为 0"。',
+            ],
+            [
+                'name'   => '收入 / 结算',
+                'reason' => '平台尚未开通收款通道，也没有结算与分成规则。你的技能被下单不等于你会收到款，具体结算方式要等支付资质到位后才能定。',
+            ],
+            [
+                'name'   => '曝光量 / 浏览量',
+                'reason' => '平台没有开启访客统计，无法告诉你"多少人看过但没买"。',
+            ],
+            [
+                'name'   => '用户评价 / 口碑',
+                'reason' => '评价功能「还没有对外开放」 —— 平台目前没有让用户提交评价的入口。所以这一项不是"还没有人评价"，而是"还收不到评价"，两者不是一回事。',
+            ],
         ];
     }
 
@@ -245,16 +396,23 @@ class OpsMetricsService
      * 列出来而不是藏起来：藏起来的话，看板上"没有这一项"与"这一项是 0"分不清；
      * 而运营需要知道"下载量根本没在统计"，才不会以为"下载量为 0 说明没人用"。
      *
+     * ⚠ 这份清单里**不允许出现与事实相反的理由**。曾经有过一条：
+     *   「下载量：skill_search_index 是孤儿物化表，全仓无写入方 —— 做出来永远是 0」。
+     *   前半句是真的（那张物化表确实没人写），后半句是假的 —— 下载另有计数
+     *   （见 `downloadCount()`）。**把"统计了"说成"没统计"，与把"没统计"显示成 0
+     *   一样会给决策者假事实**，而且更隐蔽：没人会去怀疑一句"我们没统计"。
+     *   现在下载量是 `entitlements()` 里的一个真实指标，理由写在它自己的口径里。
+     *
      * @return array<int, array{name: string, reason: string}>
      */
     public function notConnected(): array
     {
         return [
             ['name' => '净收入 / 已收款', 'reason' => '真实收款依赖微信支付资质（E1）；invoices 恒 0、无支付流水'],
-            ['name' => '下载量', 'reason' => 'skill_search_index 是孤儿物化表，全仓无写入方 —— 做出来永远是 0'],
-            ['name' => '浏览量 / 访客', 'reason' => 'visits 依赖未开启的访客统计，且队列无 worker 消费'],
+            ['name' => '曝光量 / 浏览量', 'reason' => 'visits 依赖未开启的访客统计，且队列无 worker 消费'],
             ['name' => '对账（平台账 vs 微信账）', 'reason' => '两侧都无数据源，且支付交易号 out_trade_no 从未持久化'],
             ['name' => '真机下发成功率', 'reason' => '真机 Agent 未接入，现有数据来自模拟设备'],
+            ['name' => '人工送达的下载次数', 'reason' => '下载计数只在 App/API 的鉴权下载里做；走安装指引人工送达的那部分没有回执'],
         ];
     }
 
@@ -265,11 +423,15 @@ class OpsMetricsService
      *
      * ⚠ 列名陷阱：`audit_record.skill_id` 存的是 **products.id**，`version` 存的是
      *   **skill_versions.id**（见 AuditRecord::scopeForVersion 的注释）。
+     *
+     * seller 过滤**只加在主表 `v` 上**就行：两个子查询都是 `whereColumn` 挂在 v 上的，
+     * 收敛到一处 —— 不必去碰 audit_record 那两列内容不一致的列名。
      */
-    protected function countPendingHumanReview(): int
+    protected function countPendingHumanReview(?int $sellerId = null): int
     {
         return DB::table('skill_versions as v')
             ->where('v.status', 'draft')
+            ->when($sellerId !== null, fn ($q) => $q->where('v.seller_id', $sellerId))
             ->whereExists(fn ($q) => $q->select(DB::raw(1))->from('audit_record as a')
                 ->whereColumn('a.skill_id', 'v.product_id')
                 ->whereColumn('a.version', 'v.id'))
