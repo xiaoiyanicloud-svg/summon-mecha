@@ -58,6 +58,7 @@
   **`database` 驱动**（`QUEUE_CONNECTION=database` + `CACHE_STORE=database`），队列/缓存/原子锁/worker 消费已实测；
   `bootstrap/app.php` 已排 4 条运维任务。**仍未做的只剩部署动作**：`queue:work` / `schedule:work` 常驻进程
   —— 本机没起（实测 19 条 job 积压 25 小时，这是"配好了但没人跑"的样子，不是代码问题）。
+  **怎么起、怎么验证 → [`skill-runbook.md`](./skill-runbook.md)（命令全部本机实测）。**
 - **冻结"交付术语表"**：channel / release_channel / carrier_type 白名单 / pricing_mode vs license_mode ✅ 已完成
 - **设备唯一真相源=binding**：改 v1 三个接口（mine / bind / confirm-install）✅ 已完成
 

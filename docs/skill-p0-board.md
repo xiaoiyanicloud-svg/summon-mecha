@@ -31,7 +31,7 @@
 
 | # | 任务 | 负责 | 人日 | 依赖 | 验收 |
 |---|---|---|---|---|---|
-| T0.1 | **异步底座**：接 Redis + queue worker 常驻 + scheduler 常驻（Windows 计划任务）+ 切 redis 驱动 | 后端A | 2 | — | 定时任务真能跑（试跑一条） |
+| T0.1 | **异步底座**：queue worker 常驻 + scheduler 常驻（Windows 计划任务）<br>⚠ **2026-10-15 就地更正**：原文写「接 Redis +…+ 切 redis 驱动」——**已作废**，落地决策是 `database` 驱动（`.env` 已对齐，见 `skill-dev-steps.md`）。剩下的是**部署动作**，不是代码 | 后端A | 2 | — | 定时任务真能跑（试跑一条）|
 | T0.2 | **冻结交付术语表**：channel / release_channel / carrier_type 白名单 / pricing_mode vs license_mode | 架构 | 0.5 | — | 文档 + 代码注释 |
 | T0.3 | **设备唯一真相源=binding**：改 v1 三接口（mine/bind/confirm-install）读 binding | 后端A | 2 | T0.2 | 三个接口回归通过 |
 | T0.4 | **外部审批并行**（阻断项，外部周期，不占开发工时） | 合规/运营 | 外部 | — | 见下 |

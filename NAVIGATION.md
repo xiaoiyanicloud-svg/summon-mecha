@@ -173,7 +173,17 @@ d:\main
 - 交付通道：代码内 **`app` ≡ 计划 `manual`**；`skill_versions.channel` 是**发布通道**（stable/beta），**≠** `delivery_channels`（交付通道）
 - `skill_assets.carrier_type` 白名单 = **`file/cloud_config/remote_service/api_bundle` + v3.4 扩的 `motion_data/app_package/vendor_package`**（以 `SkillAsset::CARRIER_TYPES` 为准）
 - **设备唯一真相源 = `device_binding`**（下发链路只认它）；`devices` 是用户自报登记。⚠ v1 的 `mine/bind/confirm-install` **尚未**改读 binding（只做了加性回填）
-- `.env`：`QUEUE_CONNECTION=database`、`CACHE_STORE=database`（原 sync/file；**改用 database 驱动而非 Redis**，将来切 Redis 改 2 行 env）。**仍无 scheduler**，故灰度自动回滚靠"设备回报后自驱"，不靠定时任务
+- `.env`：`QUEUE_CONNECTION=database`、`CACHE_STORE=database`（原 sync/file；**改用 database 驱动而非 Redis**，将来切 Redis 改 2 行 env）。⚠ **2026-10-15 更正**：原文写「**仍无 scheduler**」——已失效，`bootstrap/app.php` 排了 4 条 ops 任务，`schedule:list` 实测 9 条；**缺的只是"没人起常驻进程"**（`queue:work` / `schedule:work`）。灰度自动回滚仍是"设备回报后自驱"、不靠定时任务 —— 那是**刻意设计**，不是权宜。见 `docs/skill-runbook.md`
+
+### 静态内容页（隐私政策 / 用户协议 / 关于，2026-10-15）
+- **正文唯一出处 = 后台 CMS**（`cms_pages` / `cms_page_translations`），**前端不写死**。
+  写死会立刻产生第二个正文出处：律师定稿后改了后台，网页端更新了、App 还显示旧条款。
+- **接口**：`GET /api/cms/pages/{slug}` → `Shop/src/Http/Controllers/API/CmsPageController.php`。
+  它是网页端 `/page/{slug}` 的 **JSON 镜像**（同一条频道过滤 + `url_key` 条件），**不比网页多暴露一页**。
+- **前端**：`pages/mine/legal.vue`（`?doc=privacy-policy|terms-of-use`）+ `pages/mine/about.vue`，
+  入口在「我的 → 设置」；API 封装 `utils/api.js` 的 `cmsApi`；版本号唯一出处 `utils/config.js` 的 `APP_VERSION`。
+- ⚠ `CmsPageController` **没有用 `PageRepository`**，是刻意的：那套链式写法会把上一次的查询条件
+  留在仓储实例上，同一容器里连查两页必定查空。类注释里有原始 SQL，**别"修正"回仓储写法**。
 
 ### 问法定位
 - "技能计划 / 改技能" → `docs/skill-supply-plan.md` + `docs/skill-p0-board.md`

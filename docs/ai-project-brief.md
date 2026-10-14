@@ -404,7 +404,12 @@ pages/*.vue
 - 第 3 步:技能包**仍在本地盘**(`SkillAsset::DISK = 'private'`),对象存储未接入
 - 第 5 步:机型库 Admin CRUD 未做(只能改种子 / SQL)
 - 第 7 步:计划里的**微信登录**没有实现,且交付文档未提及
-- 异步底座:队列 / 缓存是 `database` 驱动(非计划里的 Redis),**没有常驻 `queue:work`、没有 `schedule:work`、没有任何定时任务定义**,`jobs` 表有积压任务未消费 —— 因此"试用 20 分钟回收"尚未落地
+- 异步底座:队列 / 缓存是 `database` 驱动(非计划里的 Redis),**没有常驻 `queue:work`、没有 `schedule:work`**,`jobs` 表有积压任务未消费
+  - ⚠ **2026-10-15 就地更正**：本行原文还说「**没有任何定时任务定义**」—— 那句已失效。
+    `bootstrap/app.php` 的 `withSchedule()` 现已排 **4 条 ops 任务**（备案到期 / 工单超时 /
+    事故未结案 / **队列无人消费**），`schedule:list` 实测 9 条。
+    剩余缺口仍成立且只剩一条：**这两条常驻进程本机没起**，所以任务等于不存在。
+    其余行未重新核验。见 [`skill-runbook.md`](./skill-runbook.md)。
 - 第 8 步:计划要求 `EMQX + Go 服务`,实际改成 **HTTP 轮询**(`deploy_gateways.default = 'poll'`),属**未经批准、无留档的架构变更**
 
 **仓库卫生(动 git 前必看)**
