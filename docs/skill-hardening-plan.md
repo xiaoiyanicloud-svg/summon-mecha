@@ -57,7 +57,7 @@
 - **怎么验证**：单测 `price=0.01` / `price=-1` / `rent_days=99999` 三种入参 → 断言拒绝；正常目录价下单 → 断言 `grand_total` 等于服务端价。
 - **量**：**S**（加约束）／若要把技能单摘出去则 **M**
 
-### M2 · 未付款即可拿到技能包（付费墙挂在"建单"而不是"支付成功"）
+### M2 · 未付款即可拿到技能包（付费墙挂在"建单"而不是"支付成功"）—— ✅ 本轮已修
 
 - **现在薄在哪**
   - `packages/Webkul/Sales/src/Repositories/OrderRepository.php:51` `$data['status'] = Order::STATUS_PENDING;`
@@ -205,14 +205,14 @@
 
 ## 三、下发（P0/P1）
 
-### P1 · **熔断按钮按下去不下闸** —— `isBlocked()` 全仓零调用
+### P1 · **熔断按钮按下去不下闸** —— `isBlocked()` 全仓零调用 —— ✅ 本轮已修
 
 - **现在薄在哪** `Services/Deploy/KillSwitchService.php:100` 定义了 `isBlocked()`，**全仓 grep 只命中定义本身**。`DeployTaskService::create()`（`:46`）/`dispatch()`（`:79`）与 `DeployController::store()`（`:28`）**都没有 blocklist 校验**。
 - **补齐什么**：`create()`/`dispatch()` 入口调 `isBlocked($skillId)`，命中即拒建。
 - **怎么验证**：`block_all` 一个技能 → 断言 `POST /api/deploy/tasks` 被拒（现在会成功）。
 - **量**：**S** —— 一处调用，收益最大。这是 D9（熔断可一键禁用）的硬缺口。
 
-### P2 · Agent 三接口不校验归属（共享密钥下的横向越权与指令劫持）
+### P2 · Agent 三接口不校验归属（共享密钥下的横向越权与指令劫持）—— ⚠ 本轮部分完成
 
 - **现在薄在哪**
   - 全局共享密钥：`config/deploy_gateways.php:13` + `Http/Middleware/VerifyAgentKey.php:22-36`（只做 `hash_equals`）+ `AgentController.php:145`（**每台设备拿同一把 key**）
@@ -222,7 +222,7 @@
 - **怎么验证**：用 A 设备的 key 报 B 设备的任务 / `?did=<他人did>` 拉指令 → 断言被拒。
 - **量**：**M**
 
-### P3 · 用户侧 `show`/`cancel` 越权（IDOR），且单号可枚举
+### P3 · 用户侧 `show`/`cancel` 越权（IDOR），且单号可枚举 —— ✅ 本轮已修
 
 - **现在薄在哪** `API/DeployController.php:95-104` `DeployTask::query()->where('task_no', $taskNo)->first();`；`:109-118` `$this->service->cancel($taskNo);` —— **都不带归属过滤**（同文件 `:44`/`:127` 其它接口都走了 `resolveOwnedBinding`，就这两处没有）。
   单号规则 `Services/Deploy/DeployTaskService.php:316` `'DT'.now()->format('ymdHis').random_int(1000,9999)` —— **每天只有约 9000 种组合**。
@@ -442,3 +442,51 @@
 - 「怎么跑起来、怎么验证」→ [`skill-runbook.md`](./skill-runbook.md)
 - 「测试失败哪些是既有的」→ [`skill-test-baseline.md`](./skill-test-baseline.md)
 - **本文**只回答一个问题：**已经做出来的东西，哪里还不够硬。**
+
+---
+
+## 本轮进展（01:45 起）
+
+> 范围：只做 **4 项 P0**（资金 M2 + 下发 P1/P2/P3），不做其余。保守修：不重构、不动 schema、不顺手改无关代码。
+> 每项：`php -l` 通过 → 跑相关 pest → **单项单独 commit**。工作分支 `main`。
+
+| 项 | 状态 | commit |
+|---|---|---|
+| 三/下发 **P1** 熔断接线 | ✅ 完成 | `54c4f65` |
+| 三/下发 **P2** Agent 归属 | ⚠ **部分完成**（见下） | `4a24c66` |
+| 三/下发 **P3** show/cancel IDOR | ✅ 完成 | `1a010ac` |
+| 一/资金 **M2** 付费墙 | ✅ 完成 | `1e1183a` |
+
+### P1 · 熔断 isBlocked 接线 ✅
+
+- **改哪**：`Services/Deploy/DeployTaskService::create()` 插库**之前**调 `KillSwitchService::isBlocked($skillId,'new')`，命中抛新增的 `SkillBlockedException`；`API/DeployController::store()` 捕获 → `409 {code:'SKILL_BLOCKED'}`。
+- **为什么这么改**：闸门必须在插库前（否则留 `pending` 脏任务）；熔断语义是"阻断新下发"，而 **卸载/回滚/回收是熔断的补救动作**，若一并拦住，熔断生效后连批量卸都做不了 → 以 `REMEDIATION_OPS` 放行。
+- **循环依赖**：`KillSwitchService` 构造器注入了 `DeployTaskService`，故用 `app()` 惰性解析（同 `evaluateGrayIfAny`）。
+- **证据**：`tests/Feature/Deploy/KillSwitchTest.php`（3 例：命中拒建 409 且零落库／未熔断放行 201／补救动作放行）；Deploy+API 回归 20 例全绿。
+- **未做**：`dispatch()` 未单独加闸 —— 全仓 `dispatch()` 仅由 `create()` 内部调用（已 grep 确认），闸门在 `create()` 即覆盖。
+
+### P2 · Agent event 归属校验 ⚠ 部分完成
+
+- **已完成的一半**：`API/AgentController::event()` 请求体**必带 `did`**，并在 `onEvent()` **之前**校验 `task.did === did`，不匹配返 404（不泄漏他人任务存在）。若放到 `onEvent` 之后，状态机已被他人任务改完，校验无意义。生成的参考 Agent 脚本（`AgentSetupController`，四处 `evt` 调用 + 契约注释）已同步带上 `did`。
+- **证据**：`tests/Feature/API/AgentEventOwnershipTest.php`（4 例：越权被拒且状态不动／一致放行／缺 did→422／未注册 did→404）。
+- **卡在哪（未做的一半，如实记录）**：验证项里 `commands?did=<他人did> 拉指令 → 被拒` **做不了** —— Agent 三接口共用**一把** `agent.key`（`VerifyAgentKey` 只做 `hash_equals`，身份与设备无关），服务端**无法区分**请求方是真身还是冒充者。要真正隔离必须上 **per-device 证书**，而计划**附二**已明确将其推迟。故本项短期只兑现"归属一致性"（event），跨设备隔离留给证书形态。
+
+### P3 · show/cancel IDOR ✅
+
+- **改哪**：`API/DeployController` 新增 `findOwnedTask()`：经 `device_binding.owner_customer_id` 反查本人全部 `did`，`task.did` 不在其中即视为不存在；`show()`/`cancel()` 改走它，不匹配一律 **404**（与"任务不存在"同码，避免用状态码差异做枚举信号）。
+- **证据**：`tests/Feature/Deploy/DeployTaskOwnershipTest.php`（3 例：越权读 404／越权取消 404 且对方状态不变／本人正常）。
+
+### M2 · 付费墙移到"支付成功" ✅
+
+- **改哪**：新增 `Models/SkillEntitlement::isOrderPaid()`（仅 `processing`/`completed` 为真；订单空/`pending`/`canceled`/`closed` 一律假）；`API/SkillController::download()` 在查找交付物**之前**加此闸 → 未付款 `409`。
+- **为什么这么做**：授权在**建单事务内**就落库（`Listeners/SkillDelivery` 挂 `checkout.order.save.after`），`isUsable()` 仅看撤销/过期 —— 与 `isOrderPaid()` **正交**，不动 `isUsable()`（否则会改到"我的技能"列表的 `usable` 语义）。
+- **关于计划推荐的 ②（"支付成功 → 激活 pending 授权"）**：判定**冗余**并已核对 —— 授权已在建单时落库、`license_key` 当场生成，且支付回调本就重放 `afterOrderCreated`（幂等）；闸门只看订单状态即闭合该洞，无需新增激活动作。
+- **证据**：`tests/Feature/Payment/SkillDownloadPaywallTest.php`（3 例：未付 409／已付放行／状态矩阵）。
+- **未做**：`assets`（只回元信息、无包路径）与 `bindDevice`/`confirmInstall`（不改文件下载）**未**加闸 —— 非"拿到技能包"的路径，按保守原则未扩大改动。
+
+### 回归
+
+- 上述 4 项涉及目录：`Deploy`、`API`、`Payment`、`SkillAudit` 全绿。
+- `Feature/API/CategoryProductTest`（2 例，按价格排序）失败 —— **既有基线**，`docs/skill-test-baseline.md` 已登记（币种/税率环境差异），与本轮无关。
+- 全程**未** `git add -A`；四次提交均显式列举文件。
+
