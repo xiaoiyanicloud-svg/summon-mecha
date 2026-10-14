@@ -232,7 +232,7 @@ Route::group(['prefix' => 'api'], function () {
     /**
      * 我的技能 —— 授权列表与技能包的鉴权下载(文件在 private 盘,无公开 URL)。
      */
-    Route::controller(SkillController::class)->prefix('skills')->middleware(['customer'])->group(function () {
+    Route::controller(SkillController::class)->prefix('skills')->middleware(['customer', 'throttle:60,1'])->group(function () {
         Route::get('mine', 'index')->name('shop.api.skills.mine');
 
         // v3.4 步骤 5:兼容性校验(机型 × 技能通道)

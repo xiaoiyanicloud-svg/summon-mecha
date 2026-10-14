@@ -142,12 +142,22 @@ class SkillController extends APIController
         }
 
         // P0 只记录"下载过一次",不在这里扣 activations —— 激活次数是 P1 设备侧的语义
-        $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
-        $meta['last_download_at'] = now()->toDateTimeString();
-        $meta['last_download_asset'] = $asset->id;
-        $meta['download_count'] = ($meta['download_count'] ?? 0) + 1;
-        $entitlement->meta = $meta;
-        $entitlement->save();
+        // D8:计数改原子 —— 原先是 read-modify-write,并发下载会丢更新(计数偏小)。
+        // 用行锁包住"读 meta → +1 → 写回",使同一授权的并发下载串行化。
+        \Illuminate\Support\Facades\DB::transaction(function () use ($entitlement, $asset) {
+            $locked = SkillEntitlement::whereKey($entitlement->id)->lockForUpdate()->first();
+
+            if (! $locked) {
+                return;
+            }
+
+            $meta = is_array($locked->meta) ? $locked->meta : [];
+            $meta['last_download_at'] = now()->toDateTimeString();
+            $meta['last_download_asset'] = $asset->id;
+            $meta['download_count'] = ($meta['download_count'] ?? 0) + 1;
+            $locked->meta = $meta;
+            $locked->save();
+        });
 
         return Storage::disk(SkillAsset::disk())->download(
             $asset->file_path,
