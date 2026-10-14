@@ -12,6 +12,7 @@ use Webkul\Shop\Http\Controllers\API\AsrController;
 use Webkul\Shop\Http\Controllers\API\CatalogController;
 use Webkul\Shop\Http\Controllers\API\CartController;
 use Webkul\Shop\Http\Controllers\API\CategoryController;
+use Webkul\Shop\Http\Controllers\API\CmsPageController;
 use Webkul\Shop\Http\Controllers\API\EventController;
 use Webkul\Shop\Http\Controllers\API\CompareController;
 use Webkul\Shop\Http\Controllers\API\CoreController;
@@ -57,6 +58,22 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('attributes/{attribute_id}/options', 'getAttributeOptions')->name('shop.api.categories.attribute_options');
 
         Route::get('max-price/{id?}', 'getProductMaxPrice')->name('shop.api.categories.max_price');
+    });
+
+    /**
+     * 静态内容页（隐私政策 / 使用条款 / 关于我们 …）—— uni-app 的只读出口。
+     *
+     * ⚠ 公开路由、**不挂鉴权**：这些页面在网页端 `/page/{slug}` 本来就公开可读，
+     *   这里是那条路由的 JSON 镜像（同样的频道过滤 + `url_key` 取翻译），
+     *   因此**不比网页多暴露一页**。
+     *
+     * 存在的理由：App 不得在自己代码里写死协议正文，否则就有了第二个正文出处 ——
+     * 律师定稿后改了后台，网页端更新了、App 还显示旧条款，没人能发现。
+     */
+    Route::controller(CmsPageController::class)->prefix('cms/pages')->group(function () {
+        Route::get('{slug}', 'show')
+            ->where('slug', '[A-Za-z0-9_-]+')
+            ->name('shop.api.cms.pages.show');
     });
 
     Route::controller(ProductController::class)->prefix('products')->group(function () {

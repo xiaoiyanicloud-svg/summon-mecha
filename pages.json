@@ -128,6 +128,20 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "安装 Agent"
       }
+    },
+    {
+      "path": "pages/mine/legal",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "条款"
+      }
+    },
+    {
+      "path": "pages/mine/about",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "关于"
+      }
     }
   ],
   "globalStyle": {

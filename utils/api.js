@@ -324,3 +324,17 @@ export const addressApi = {
   // 删除地址(后端 9/7 新增 destroy 接口,仅允许删除本人地址)
   deleteAddress: (id) => http.delete(`/api/customer/addresses/${id}`, { loading: false }),
 }
+
+// ==================== 静态内容页(隐私政策 / 用户协议 / 关于) ====================
+/**
+ * ⚠ 正文**不在前端写死** —— 读的是与网页端 `/page/{slug}` 同一份 CMS 内容。
+ *   写死会立刻产生第二个"协议正文出处":律师定稿后改了 CMS,网页端更新了、
+ *   App 还显示旧条款,而没有任何东西能发现这件事。
+ *
+ * 可用 slug 见后端迁移 2026_10_14_000008 的 PAGES 常量。
+ * 当前 privacy-policy / terms-of-use 的正文是**诚实的「尚未定稿」说明**,
+ * 不是条款(律师未定稿)。前端**不要**为它们补任何"看起来像条款"的文案。
+ */
+export const cmsApi = {
+  page: (slug) => http.get(`/api/cms/pages/${slug}`, { loading: false }),
+}

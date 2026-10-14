@@ -503,6 +503,40 @@
 					</view>
 				</view>
 
+				<!-- 条款 / 关于。⚠ 正文不在这几页里写死 ——
+				     隐私政策与用户协议读的是平台后台 CMS,与网页版同源 -->
+				<view class="settings-card">
+					<view class="settings-item" @click="goPrivacyPolicy">
+						<view class="settings-left">
+							<text class="settings-icon">🔒</text>
+							<text class="settings-label">隐私政策</text>
+						</view>
+						<view class="settings-right">
+							<text class="settings-arrow">›</text>
+						</view>
+					</view>
+					<view class="settings-divider"></view>
+					<view class="settings-item" @click="goUserAgreement">
+						<view class="settings-left">
+							<text class="settings-icon">📄</text>
+							<text class="settings-label">用户协议</text>
+						</view>
+						<view class="settings-right">
+							<text class="settings-arrow">›</text>
+						</view>
+					</view>
+					<view class="settings-divider"></view>
+					<view class="settings-item" @click="goAbout">
+						<view class="settings-left">
+							<text class="settings-icon">ℹ️</text>
+							<text class="settings-label">关于</text>
+						</view>
+						<view class="settings-right">
+							<text class="settings-arrow">›</text>
+						</view>
+					</view>
+				</view>
+
 				<!-- 退出登录 -->
 				<view class="settings-card">
 					<view class="settings-item logout-item" @click="handleLogout">
@@ -517,7 +551,7 @@
 				</view>
 
 				<!-- 版本信息 -->
-				<view class="settings-version">v2.1.0</view>
+				<view class="settings-version">{{ appVersion }}</view>
 
 				<view style="height: 40rpx;"></view>
 			</scroll-view>
@@ -584,7 +618,7 @@
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import { authApi, addressApi } from '@/utils/api';
-	import { TOKEN_KEY, CUSTOMER_KEY } from '@/utils/config';
+	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION } from '@/utils/config';
 	import { serverToLocal, localToServerPayload } from '@/utils/address';
 
 	export default {
@@ -595,6 +629,8 @@
 			return {
 				// ===== 主页面数据 =====
 				currentPage: 'main',
+				// 版本号只有一处出处(utils/config.js),设置页与「关于」页共用
+				appVersion: APP_VERSION,
 				userName: '',
 				customerPhone: '未绑定手机',
 				showLoginModal: false,
@@ -883,6 +919,11 @@
 			// 事故上报:技能在真实机器人上物理执行,出事需要可追溯的上报链(计划 §4.19)
 			goIncidentReport() { uni.navigateTo({ url: '/pages/mine/incidents' }); },
 			goSettings() { this.currentPage = 'settings'; },
+			// 隐私政策 / 用户协议:正文读平台后台 CMS,**不前端写死** ——
+			// 与网页端 /page/{slug} 同源,律师定稿后两边一起变,不会各说各话
+			goPrivacyPolicy() { uni.navigateTo({ url: '/pages/mine/legal?doc=privacy-policy' }); },
+			goUserAgreement() { uni.navigateTo({ url: '/pages/mine/legal?doc=terms-of-use' }); },
+			goAbout() { uni.navigateTo({ url: '/pages/mine/about' }); },
 
 			// ================================================================
 			// 地址管理 - 数据持久化
