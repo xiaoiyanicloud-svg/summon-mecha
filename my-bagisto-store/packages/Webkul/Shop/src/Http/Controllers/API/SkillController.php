@@ -122,6 +122,12 @@ class SkillController extends APIController
             return response()->json(['message' => '该技能授权已失效。'], 403);
         }
 
+        // 付费墙:交付物(技能包)以"订单已支付"为前提。授权在建单时就落库,
+        // 若只认 isUsable() 则"建单未付"也能下包 —— 见 SkillEntitlement::isOrderPaid()。
+        if (! $entitlement->isOrderPaid()) {
+            return response()->json(['message' => '订单尚未支付,暂不能下载。'], 409);
+        }
+
         $asset = $this->assetsOf($entitlement)
             ->firstWhere('id', $assetId);
 

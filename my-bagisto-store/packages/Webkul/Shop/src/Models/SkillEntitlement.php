@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Webkul\Product\Models\ProductProxy;
+use Webkul\Sales\Models\Order;
 use Webkul\Sales\Models\OrderItemProxy;
 use Webkul\Sales\Models\OrderProxy;
 
@@ -130,6 +131,27 @@ class SkillEntitlement extends Model
         }
 
         return ! ($this->expires_at && $this->expires_at->isPast());
+    }
+
+    /**
+     * 来源订单是否已支付(processing / completed)。
+     *
+     * ⚠ 授权是在**建单**时就落库的(见 Listeners/SkillDelivery,挂 checkout.order.save.after),
+     *   但交付物(技能包)的付费墙必须以**支付成功**为准 —— 否则"建单未付"即可下包
+     *   (等价于把付费墙挂在建单而不是支付成功)。
+     *
+     * order_id 为空、或订单纯为 pending(未支付)/canceled/closed 的,一律按**未支付**处理:
+     *   宁可拒绝,也不放行。这是下载前的硬闸,与 isUsable() 正交(后者管撤销/过期)。
+     */
+    public function isOrderPaid(): bool
+    {
+        $order = $this->order;
+
+        if (! $order) {
+            return false;
+        }
+
+        return in_array($order->status, [Order::STATUS_PROCESSING, Order::STATUS_COMPLETED], true);
     }
 
     /**
