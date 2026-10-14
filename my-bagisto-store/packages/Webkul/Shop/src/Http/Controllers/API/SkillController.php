@@ -4,6 +4,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
@@ -256,6 +257,32 @@ class SkillController extends APIController
             return response()->json(['message' => '该技能授权已失效。'], 403);
         }
 
+        // D1 幂等:已 active 直接返回既有状态,不再重复计数。
+        // 此前同一方法无"已 active 就返回"的分支,连点两次 = activations +2。
+        if ($entitlement->status === SkillEntitlement::STATUS_ACTIVE) {
+            $meta = (array) $entitlement->meta;
+
+            return response()->json([
+                'message' => '该技能已激活(幂等)。',
+                'data'    => [
+                    'id'               => $entitlement->id,
+                    'status'           => $entitlement->status,
+                    'activations'      => $entitlement->activations,
+                    'device_did'       => $meta['installed_did'] ?? null,
+                    'device_confirmed' => (bool) ($meta['installed_device_confirmed'] ?? false),
+                    'idempotent'       => true,
+                ],
+            ]);
+        }
+
+        // D1 max_activations 硬闸:激活次数是许可与计费的核心账目,不能形同虚设。
+        if ($entitlement->max_activations !== null && $entitlement->activations >= $entitlement->max_activations) {
+            return response()->json([
+                'message' => '激活次数已达上限。',
+                'code'    => 'MAX_ACTIVATIONS_REACHED',
+            ], 409);
+        }
+
         // v3.4 步骤 2：设备归属以 binding 为准（heal=true —— 历史设备在此自愈）
         $customer = auth()->guard('customer')->user();
 
@@ -267,6 +294,45 @@ class SkillController extends APIController
 
         $binding = $resolved['binding'];
 
+        // D1 原子条件自增:仅当"仍非 active 且未超上限"时才 +1 并置 active。
+        // 并发两个请求只有一个命中(affected=1);另一个 affected=0 → 走幂等/超限分支。
+        // 此前是 read-modify-write,并发会丢失更新;且 max_activations 未参与判定。
+        $affected = SkillEntitlement::query()
+            ->where('id', $entitlement->id)
+            ->where('status', '!=', SkillEntitlement::STATUS_ACTIVE)
+            ->where(function ($q) {
+                $q->whereNull('max_activations')
+                    ->orWhereColumn('activations', '<', 'max_activations');
+            })
+            ->update([
+                'status'      => SkillEntitlement::STATUS_ACTIVE,
+                'activations' => DB::raw('activations + 1'),
+            ]);
+
+        if ($affected === 0) {
+            $fresh = $entitlement->fresh();
+
+            // 并发中另一半已把它置为 active → 幂等返回
+            if ($fresh && $fresh->status === SkillEntitlement::STATUS_ACTIVE) {
+                return response()->json([
+                    'message' => '该技能已激活(幂等)。',
+                    'data'    => [
+                        'id'          => $fresh->id,
+                        'status'      => $fresh->status,
+                        'activations' => $fresh->activations,
+                        'idempotent'  => true,
+                    ],
+                ]);
+            }
+
+            return response()->json([
+                'message' => '激活次数已达上限。',
+                'code'    => 'MAX_ACTIVATIONS_REACHED',
+            ], 409);
+        }
+
+        // 安装事实落在 meta(非计数,与上面的原子自增分开写)
+        $entitlement->refresh();
         $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
         $meta['installed_at'] = now()->toDateTimeString();
         $meta['installed_by'] = 'user_reported';
@@ -278,16 +344,15 @@ class SkillController extends APIController
         $meta['installed_device_confirmed'] = (bool) $binding;
 
         $entitlement->meta = $meta;
-        $entitlement->status = SkillEntitlement::STATUS_ACTIVE;
-        $entitlement->activations = $entitlement->activations + 1;
         $entitlement->save();
 
         return response()->json([
             'message' => '已标记为安装完成。',
             'data'    => [
-                'id'         => $entitlement->id,
-                'status'     => $entitlement->status,
-                'device_did' => $binding?->did,
+                'id'          => $entitlement->id,
+                'status'      => $entitlement->status,
+                'activations' => $entitlement->activations,
+                'device_did'  => $binding?->did,
                 // 未确权的设备照样能自报安装（兜底通道），但状态如实标注
                 'device_confirmed' => (bool) $binding,
             ],
