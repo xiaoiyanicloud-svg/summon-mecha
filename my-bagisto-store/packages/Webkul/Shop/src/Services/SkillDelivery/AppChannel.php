@@ -76,10 +76,16 @@ class AppChannel implements DeliveryChannel
             $entitlement->granted_at = now();
         }
 
-        // 有设备才算真正交付完成;没设备就先挂着等用户绑
-        $entitlement->status = $entitlement->device_id
-            ? SkillEntitlement::STATUS_GRANTED
-            : SkillEntitlement::STATUS_PENDING_BIND;
+        // D2 · 状态只允许 pending_bind → granted 单向推进。
+        // 此前无条件覆盖 status,已 active(用户已 confirm-install)的授权会被
+        // 重复触发(支付回调再次 afterOrderCreated)打回 granted —— 状态回退。
+        // 已 active 的不再改动状态;有 revoke/expire 由 canDeliver() 前置拦截。
+        if ($entitlement->status !== SkillEntitlement::STATUS_ACTIVE) {
+            // 有设备才算真正交付完成;没设备就先挂着等用户绑
+            $entitlement->status = $entitlement->device_id
+                ? SkillEntitlement::STATUS_GRANTED
+                : SkillEntitlement::STATUS_PENDING_BIND;
+        }
 
         $entitlement->save();
 
