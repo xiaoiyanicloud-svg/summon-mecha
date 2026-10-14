@@ -148,7 +148,7 @@
 - **怎么验证**：同一 entitlement 连发两次 `confirm-install` → 断言 `activations` 只 +1；`max_activations=1` 时第二次 → 断言被拒。
 - **量**：**S**
 
-### D2 · 重复 `deliver()` 会把已激活状态**打回** granted（状态回退）
+### D2 · 重复 `deliver()` 会把已激活状态**打回** granted（状态回退）—— ✅ 本轮已修
 
 - **现在薄在哪** `Services/SkillDelivery/AppChannel.php:63` `$alreadyDelivered = $entitlement->granted_at !== null;`，`:80-82` **无论 `alreadyDelivered` 是否为真都覆盖 `status`**。
   触发路径真实存在：用户已 `confirm-install`（active）→ 支付回调再次触发 `afterOrderCreated`（`PaymentCallbackController.php:60`）→ 状态被打回 `granted`。
@@ -156,7 +156,7 @@
 - **怎么验证**：active 状态下再跑一次 `deliver()` → 断言状态仍是 active（现在会变 granted）。
 - **量**：**S**
 
-### D3 · 监听器吞异常且无补偿；两条发放入口的事务边界不一致
+### D3 · 监听器吞异常且无补偿；两条发放入口的事务边界不一致 —— 🔶 本轮部分完成
 
 - **现在薄在哪**
   - `Listeners/SkillDelivery.php:41-47` `try { ... } catch (\Throwable $e) { report($e); }` —— 发放失败只记日志，**订单照常成功**
@@ -167,7 +167,7 @@
 - **怎么验证**：故意让 `delivery_channel` 指向不存在的通道 → 下单仍成功，但**断言告警出现**且补发入口能把授权补上。
 - **量**：**M**
 
-### D4 · 自报安装不落 `install_record`（安装事实分裂成两套）
+### D4 · 自报安装不落 `install_record`（安装事实分裂成两套）—— ✅ 本轮已修
 
 - **现在薄在哪** `API/SkillController.php:264-277` 只改 `meta` 与 `status`，**不写 `InstallRecord`**。唯一写入方是 `Services/Deploy/DeployTaskService.php:223` 的 `recordInstall()`（由 Agent 回报触发）。
   下游读点全依赖它：`DeployController.php:133`、`GrayReleaseService.php:117`、`IncidentService.php:357`。
@@ -537,4 +537,45 @@
 - 本轮涉及目录 `API`、`Payment`、`Deploy`、`SkillAudit`：**122 通过 / 2 失败**。
 - 2 例失败 = `Feature/API/CategoryProductTest`（按价格排序，币种/税率环境差异），**既有基线**，`docs/skill-test-baseline.md` 已登记，与本轮无关。
 - 全程**未** `git add -A`；四次提交均显式列举文件。M6 迁移已在 `root` 库执行（`migrate --path` DONE）。
+
+---
+
+## 本轮进展（01:58 起）· 二、授权与交付 D2 / D3 / D4
+
+> 硬时间盒 14 分钟。改动面 4 个源文件 + 1 个新测试文件，**未**重构、未扩大范围。逐项 `php -l` + 跑相关测试 + 单独 commit。全程未 `git add -A`（显式列举文件）。
+
+### D2 · deliver() 状态单向推进 ✅
+
+- **改哪**：`Services/SkillDelivery/AppChannel.php` —— `deliver()` 里 `status` 赋值加守卫：仅当当前状态**非 active** 时才推进到 `granted`/`pending_bind`。
+- **为什么**：此前无条件覆盖 `status`，已 `active`（用户已 `confirm-install`）的授权被重复触发（支付回调再次 `afterOrderCreated`）打回 `granted`，状态回退。`revoke`/`expire` 仍由 `canDeliver()` 前置拦截，不需要在这里判。
+- **证据**：`DeliveryHardeningD234Test` 2 例 —— 已 active 再 deliver 仍 active；未交付的（`granted_at` 为空）仍照常推进到 granted（未误伤正向路径）。
+- **commit**：`fix(交付): deliver() 状态单向推进…（D2）`
+
+### D4 · 自报安装落 install_record ✅
+
+- **改哪**：`Http/Controllers/API/SkillController.php` —— `confirmInstall()` 激活成功后，若 `$binding && $entitlement->skill_version_id`，`InstallRecord::updateOrCreate(['did'=>$binding->did,'skill_version_id'=>…])` 写 `status=installed` + `entitlement_id` + `current_version`。（新增 `use …Models\InstallRecord;`）
+- **为什么**：此前只改 `meta`/`status`，安装事实分裂两套；下游（`GrayReleaseService`/`IncidentService`/`GET devices/{id}/installs`）只读 `install_record`，人工通道用户在灰度回滚、事故影响面里查无此设备。唯一键是 `did+skill_version_id`，故需已确权设备（`binding.did`，heal 后为 `sn_{sn}`）与锁定版本才写。
+- **证据**：`DeliveryHardeningD234Test` 1 例 —— 自报安装后 `install_record` 有行且 `entitlement_id`/`status` 正确。
+- **未做（如实记录）**：`GET devices/{id}/installs` 的 HTTP 断言未纳入本用例（该 GET 在测试环境返回 302，疑似该路由组的鉴权中间件在 `actingAs` 下仍重定向，未深究）；DB 层真相已断言。幂等分支（已 active 早返回）不补写 `install_record` —— 首次激活即写入，后续重复调用无需再写。
+- **commit**：`fix(交付): 自报安装同步落 install_record…（D4）`
+
+### D3 · 失败留痕 + 补发入口 + 统一事务边界 🔶 部分完成
+
+- **改哪**：
+  - `Listeners/SkillDelivery.php` —— `grantForItem()` 的 `deliver()` 包 try/catch：异常时把失败写进 `meta.delivery_failed`（时间/异常类/消息）并 `save()`，**再抛回** `afterOrderCreated` 的 `report()` 触发告警；成功时清空 `delivery_failed`。新增 `public redeliver(int $orderId): int` 补发入口（走 `grantForOrder`，逐条幂等）。
+  - `Http/Controllers/API/PaymentCallbackController.php` —— 回调里「翻状态 + `afterOrderCreated`」收进 `DB::transaction()`，与建单事件入口（`OrderRepository` 建单事务内）统一事务边界。
+- **为什么**：吞异常是刻意的（不能让建单失败），但此前只 `report()` 无任何可补偿痕迹；两条发放入口一个在事务内一个裸 `save()` —— 边界不一致。
+- **证据**：`DeliveryHardeningD234Test` 2 例 —— ①`delivery_channel` 指向不存在通道时 `afterOrderCreated` 不抛异常（订单不受拖累）且 `meta.delivery_failed` 有值；②`redeliver()` 两次均返回 1 且只产生 1 行授权（幂等）。
+- **未完成（如实记录，含卡点）**：
+  1. **「可重试任务」未做**：本机队列为 `database` 驱动且**无常驻 worker**（CLAUDE.md 现状），投递 Job 只会积压。依赖外部前提，按排期原则不排 P0。已用的替代是「meta 留痕 + `redeliver()` 手工补发」。
+  2. **补发的 HTTP 入口未接线**：`redeliver()` 目前只能经 `tinker` / 未来 Admin 控制器调用，尚无路由与按钮（加路由需权限边界设计，超出本轮范围）。
+  3. **告警仅落在 `report()`**（Laravel 日志），未接统一告警通道 —— 与 X 系列横切项（统一告警/错误信封）一并考虑。
+- **commit**：`fix(交付): 发放失败留痕并可补发 + 两条入口统一事务边界（D3，部分）`
+
+### 回归
+
+- 新用例：`packages/Webkul/Shop/tests/Feature/API/DeliveryHardeningD234Test.php` —— **5 通过 / 11 断言**。
+- 相关既有套件：`ConfirmInstallIdempotencyTest` + `Payment/` + `SkillBindingSourceTest` —— **32 通过 / 115 断言**，无回归。
+- 语法：4 个改动源文件 + 1 个测试文件全部 `php -l` 通过。
+- 提交：D2 / D4 / D3 三次（D3 连带提交共享测试文件）。仍未 `git add -A`。
 
