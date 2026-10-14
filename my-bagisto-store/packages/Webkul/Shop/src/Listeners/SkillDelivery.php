@@ -197,13 +197,27 @@ class SkillDelivery
             ->value('id');
 
         if (! $categoryId) {
+            // D6:分类 slug='skill' 查不到 = 配置漂移,不是正常状态 —— 会导致**全站停止发授权**。
+            // 此前静默 return [],订单照常成功但一张授权都不落,没有任何痕迹。
+            \Illuminate\Support\Facades\Log::warning(
+                'SkillDelivery: 技能分类 slug=\'skill\' 不存在,授权发放已停止(配置漂移)。'
+            );
+
             return [];
         }
 
-        return DB::table('product_categories')
+        $productIds = DB::table('product_categories')
             ->where('category_id', $categoryId)
             ->pluck('product_id')
             ->map(fn ($id) => (int) $id)
             ->all();
+
+        if (empty($productIds)) {
+            \Illuminate\Support\Facades\Log::warning(
+                "SkillDelivery: 技能分类(id={$categoryId})下没有任何商品,授权发放将不会命中。"
+            );
+        }
+
+        return $productIds;
     }
 }
