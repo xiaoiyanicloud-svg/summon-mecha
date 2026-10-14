@@ -3,6 +3,8 @@
 namespace Webkul\Shop\Services\SkillDelivery;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Webkul\Sales\Models\OrderItemProxy;
 use Webkul\Shop\Models\AfterSale;
 use Webkul\Shop\Models\RefundRequest;
 use Webkul\Shop\Models\SkillEntitlement;
@@ -106,12 +108,27 @@ class AfterSaleService
                 $this->revokeEntitlement($entitlement);
             }
 
-            // 2) 发起退款
+            // 2) 退款金额取自该订单条目的实付(M5)。
+            //    此前恒传 0、RefundRequest 也恒落 0 —— 退款账目全是 0,事后无法对账。
+            $orderItemId = $afterSale->order_item_id ?: $entitlement?->order_item_id;
+            $paidTotal = $this->paidAmountOf($orderItemId);
+            $alreadyRefunded = $this->refundedAmountOf($orderItemId);
+
+            // 已退金额累计不得超实付
+            if ($paidTotal > 0 && $alreadyRefunded >= $paidTotal - 0.005) {
+                return ['ok' => false, 'message' => '该订单条目已退款,不能重复退款。'];
+            }
+
+            $amount = $paidTotal > 0
+                ? round(min($paidTotal - $alreadyRefunded, $paidTotal), 2)
+                : 0.0;
+
+            // 3) 发起退款。退款单号用 ULID:秒级 `ymdHis` 同秒重试会撞号。
             $gateway = $this->payments->gateway();
-            $outRefundNo = 'RF'.$afterSale->id.now()->format('ymdHis');
+            $outRefundNo = 'RF'.(string) Str::ulid();
 
             try {
-                $result = $gateway->refund(null, (float) 0, $outRefundNo);
+                $result = $gateway->refund(null, (float) $amount, $outRefundNo);
                 $ok = $result['ok'] ?? false;
                 $msg = $result['message'] ?? '';
             } catch (\Throwable $e) {
@@ -127,15 +144,16 @@ class AfterSaleService
             $afterSale->save();
 
             RefundRequest::create([
-                'after_sale_id' => $afterSale->id,
-                'amount'        => 0,
-                'status'        => $ok ? 'success' : 'pending',
+                'after_sale_id'    => $afterSale->id,
+                'wechat_refund_no' => $outRefundNo,
+                'amount'           => $amount,
+                'status'           => $ok ? 'success' : 'pending',
             ]);
 
             return [
                 'ok'      => true,
                 'message' => $ok ? '已退款并冻结授权。' : '已冻结授权,退款待支付资质就绪后补打款。',
-                'data'    => ['id' => $afterSale->id, 'status' => $afterSale->status],
+                'data'    => ['id' => $afterSale->id, 'status' => $afterSale->status, 'amount' => $amount],
             ];
         });
     }
@@ -160,6 +178,46 @@ class AfterSaleService
         $afterSale->save();
 
         return ['ok' => true, 'message' => '已驳回。', 'data' => ['id' => $afterSale->id]];
+    }
+
+    /**
+     * 该订单条目的实付金额(M5)。行 total 是含税/折扣后的应付;退化用 price×qty。
+     */
+    protected function paidAmountOf(?int $orderItemId): float
+    {
+        if (! $orderItemId) {
+            return 0.0;
+        }
+
+        $item = OrderItemProxy::modelClass()::find($orderItemId);
+
+        if (! $item) {
+            return 0.0;
+        }
+
+        $total = (float) $item->total;
+
+        if ($total <= 0) {
+            $total = (float) $item->price * max(1, (int) $item->qty_ordered);
+        }
+
+        return round(max(0.0, $total), 2);
+    }
+
+    /**
+     * 该订单条目**已发起**的退款累计(success + pending,不含被拒)。
+     */
+    protected function refundedAmountOf(?int $orderItemId): float
+    {
+        if (! $orderItemId) {
+            return 0.0;
+        }
+
+        return (float) RefundRequest::query()
+            ->join('after_sale', 'after_sale.id', '=', 'refund_request.after_sale_id')
+            ->where('after_sale.order_item_id', $orderItemId)
+            ->whereIn('refund_request.status', ['success', 'pending'])
+            ->sum('refund_request.amount');
     }
 
     /**
