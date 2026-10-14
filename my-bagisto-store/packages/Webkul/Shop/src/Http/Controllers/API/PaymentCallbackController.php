@@ -12,9 +12,14 @@ use Webkul\Shop\Services\Payment\PaymentManager;
 /**
  * 支付回调(v3.4 步骤 4)。
  *
- * ⚠ 本接口**不挂 customer 鉴权**(回调来自支付网关,不是用户)。生产必须:
- *   - 校验网关签名(微信资质就绪后在 WechatGateway::handleCallback 内做)
- *   - 幂等(同一订单重复回调不重复发授权)
+ * ⚠ 本接口**不挂 customer 鉴权**(回调来自支付网关,不是用户)。已加固:
+ *   - 订单身份**只来自网关解析出的商户订单号**(out_trade_no),不再信任请求体 order_id(M3)
+ *   - 回调金额必须等于订单应付(grand_total),否则拒绝并留 code(M3)
+ *   - 落支付流水 + out_trade_no 唯一键幂等(M6)
+ *
+ * ⚠ **验签按设计推迟**:当前仍是 mock 网关("支付成功"由参数自报,无验签)。
+ *   真实验签在微信资质就绪后于 WechatGateway::handleCallback 内做,**不在这里伪造**;
+ *   生产环境由 `PaymentManager::assertUsableHere` 拒绝任何未声明 production_safe 的网关。
  *
  * 支付成功后:订单置 processing → 触发 v1 既有的授权发放监听逻辑(幂等)。
  */
@@ -43,10 +48,19 @@ class PaymentCallbackController extends APIController
         }
 
         // 从 out_trade_no 反查订单(mock 里 out_trade_no 末段是 order id;真实网关用订单号映射)
-        $order = $this->resolveOrder($request, $result->outTradeNo);
+        $order = $this->resolveOrder($result->outTradeNo);
 
         if (! $order) {
             return response()->json(['message' => '订单未找到。'], 404);
+        }
+
+        // 金额核对(M3):回调金额必须等于订单应付。
+        // 此前 `PaymentResult::amount` 拿到了却从未参与判定 —— 任何人可以自报任意金额。
+        if (! $this->amountMatches($order, $result->amount)) {
+            return response()->json([
+                'message' => '回调金额与订单应付不一致,已拒绝。',
+                'code'    => 'AMOUNT_MISMATCH',
+            ], 409);
         }
 
         // 幂等 + 落流水(M6):以商户订单号 out_trade_no 唯一键为锚点。
@@ -99,30 +113,39 @@ class PaymentCallbackController extends APIController
     }
 
     /**
-     * 从回调负载反查订单。
+     * 从回调负载反查订单 —— **订单身份只来自网关验签结果**,不信任请求体参数。
      *
-     * ⚠ 此前这里是 `preg_match('/(\d+)$/', $outTradeNo)` —— "取结尾的数字当订单 id"。
-     *   两个毛病，都很严重：
-     *   1. **它根本不对**：mock 的商户订单号是 `MOCK{YmdHis}{id}`（无分隔符），
-     *      结尾那串数字是"时间戳+id"连在一起，取出来是个天文数字 → 永远 404。
-     *      也就是说这条 mock 回调链从未真正跑通过（补第一条支付测试时才暴露）。
-     *   2. **它很危险**：换成任何结尾带数字的真实商户订单号，都能被编出一个
-     *      看起来合法的订单 id 出来 —— 而本接口不挂鉴权。
+     * ⚠ 此前这里有一个 `if ($request->filled('order_id')) return Order::find($request->input('order_id'));`
+     *   的分支(M3):本接口**不挂鉴权**,于是任何人 `POST /api/callback/payment?order_id=<他人订单>&mock_paid=1`
+     *   就能把别人的订单翻成已支付。现已**删除该分支** —— 订单只能由网关自己声明的
+     *   商户订单号(out_trade_no)解析得出,解析不出就老实返回 null(404),不猜。
      *
-     *   现在改为**按网关自己声明的格式严格解析**：解析不出就老实返回 null（404），
-     *   而不是猜。真实网关接入时在这里加"商户订单号 → 本平台订单"的映射
-     *   （微信侧应落 `out_trade_no` 到订单，而不是靠字符串反推）。
+     * ⚠ 严格解析而非"取结尾数字":换成任何结尾带数字的真实商户订单号,后者都能编出
+     *   一个看起来合法的订单 id —— 而本接口不挂鉴权。真实网关接入时在这里加
+     *   "商户订单号 → 本平台订单"的映射(微信侧应落 out_trade_no 到订单)。
+     *
+     * ⚠ 验签按设计**推迟**:真网关资质就绪后在 WechatGateway::handleCallback 内做,
+     *   本方法只负责"用网关已经认过的结果反查订单",不伪造验签。
      */
-    protected function resolveOrder(Request $request, string $outTradeNo)
+    protected function resolveOrder(string $outTradeNo)
     {
-        if ($request->filled('order_id')) {
-            return OrderProxy::modelClass()::find($request->input('order_id'));
-        }
-
         if ($orderId = MockGateway::orderIdFrom($outTradeNo)) {
             return OrderProxy::modelClass()::find($orderId);
         }
 
         return null;
+    }
+
+    /**
+     * 回调金额是否与订单应付一致。
+     *
+     * 用分/厘级容差(0.005)吸收浮点表示误差,而不是精确 `===`。
+     * 订单没有应付金额时按"无法核对"处理(视为不匹配 → 拒绝),宁可拒绝也不放行。
+     */
+    protected function amountMatches($order, float $callbackAmount): bool
+    {
+        $expected = (float) $order->grand_total;
+
+        return abs($expected - $callbackAmount) < 0.005;
     }
 }
