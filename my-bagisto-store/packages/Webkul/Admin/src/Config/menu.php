@@ -30,6 +30,13 @@ return [
         'route'      => 'admin.invoices.index',
         'sort'       => 3,
         'icon'       => '',
+    ], [
+        // 售后/退款审批台（B-1）。放在仪表盘组：与告警/总览/发票同属"运营每天要看"的一类。
+        'key'        => 'dashboard.after-sales',
+        'name'       => '售后审批',
+        'route'      => 'admin.after-sales.index',
+        'sort'       => 4,
+        'icon'       => '',
     ],
 
     /**

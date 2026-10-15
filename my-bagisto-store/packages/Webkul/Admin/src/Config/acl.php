@@ -33,6 +33,12 @@ return [
         'name'  => '发票（开票登记）',
         'route' => 'admin.invoices.index',
         'sort'  => 4,
+    ], [
+        // 售后/退款审批台（B-1）
+        'key'   => 'dashboard.after-sales',
+        'name'  => '售后审批',
+        'route' => 'admin.after-sales.index',
+        'sort'  => 5,
     ],
 
     /*

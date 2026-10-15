@@ -5,6 +5,7 @@ use Webkul\Admin\Http\Controllers\DashboardController;
 use Webkul\Admin\Http\Controllers\DataGrid\DataGridController;
 use Webkul\Admin\Http\Controllers\DataGrid\SavedFilterController;
 use Webkul\Admin\Http\Controllers\MagicAIController;
+use Webkul\Admin\Http\Controllers\Ops\AfterSaleController;
 use Webkul\Admin\Http\Controllers\Ops\AlertController;
 use Webkul\Admin\Http\Controllers\Ops\InvoiceController;
 use Webkul\Admin\Http\Controllers\Ops\OverviewController;
@@ -53,6 +54,22 @@ Route::controller(OverviewController::class)->prefix('dashboard')->group(functio
 Route::controller(InvoiceController::class)->prefix('invoices')->group(function () {
     // 只读：没有"标记为已开具"的动作（未接入开票服务商，见控制器注释）
     Route::get('', 'index')->name('admin.invoices.index');
+});
+
+/**
+ * 售后/退款审批台（B-1）。
+ *
+ * 用户侧申请端早就通了（`POST /api/after-sale`），此前缺的是平台端审批入口 ——
+ * `AfterSaleService::approve()` 全仓零调用方，用户点完退款就永远停在"已受理"。
+ *
+ * ⚠ `approve` 是**资金动作**（会调退款网关），走 POST + 详情页二次确认；
+ *   服务端的状态守卫/行锁/金额校验全在 `AfterSaleService` 内。
+ */
+Route::controller(AfterSaleController::class)->prefix('after-sales')->group(function () {
+    Route::get('', 'index')->name('admin.after-sales.index');
+    Route::get('{id}', 'show')->whereNumber('id')->name('admin.after-sales.show');
+    Route::post('{id}/approve', 'approve')->whereNumber('id')->name('admin.after-sales.approve');
+    Route::post('{id}/reject', 'reject')->whereNumber('id')->name('admin.after-sales.reject');
 });
 
 /**
