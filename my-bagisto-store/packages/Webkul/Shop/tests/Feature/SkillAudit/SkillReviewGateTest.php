@@ -97,6 +97,11 @@ function rgSubmittedVersion(): array
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
 
+    // D-5 实名发布前置：本文件锁的是**发布闸门**（审核过没过），而主体资格是闸门**之前**的另一道前置。
+    // 主体若不合格，发布会先被主体资格挡下、根本走不到闸门 —— 那样这些用例就测不到它们要测的东西。
+    // 所以 fixture 里把主体补成合格（实名通过 + 协议已签），**不**弱化前置本身。
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     post(route('shop.dev.skills.store'), ['name' => '抓取技能', 'price' => 199]);
     $productId = (int) DB::table('products')->where('seller_id', $profile->seller_id)->value('id');
 

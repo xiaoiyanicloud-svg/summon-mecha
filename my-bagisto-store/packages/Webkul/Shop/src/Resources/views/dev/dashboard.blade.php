@@ -22,9 +22,9 @@
                 <tr>
                     <th>实名状态</th>
                     <td>
-                        {{-- 如实展示：本轮审核动作属平台端，未做，故停在 pending，不粉饰 --}}
+                        {{-- 如实展示：审核动作属平台端；未通过**不影响**建技能与提审，但**会挡住上架** --}}
                         <span class="badge">{{ $profile->realname_status }}</span>
-                        <span class="muted">（由平台审核，不影响你建技能与提审）</span>
+                        <span class="muted">（由平台审核；未通过不影响你建技能与提审，但不能上架）</span>
                     </td>
                 </tr>
                 <tr>

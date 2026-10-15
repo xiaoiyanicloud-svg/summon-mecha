@@ -80,7 +80,14 @@ function dnOnboarded(string $prefix = 'dn'): array
         'accept_safety_commitment' => 1,
     ]);
 
-    return [$customer, DeveloperProfile::where('customer_id', $customer->id)->firstOrFail()];
+    $profile = DeveloperProfile::where('customer_id', $customer->id)->firstOrFail();
+
+    // D-5 实名发布前置：本文件③要走到**发布**（发布成功 → skill.published 通知），
+    // 而发布要求主体合格（实名通过 + 协议已签）。fixture 默认 pending，这里把实名审过关，
+    // 让通知链路能真的走完 —— 而不是把前置弱化掉。
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
+    return [$customer, $profile->fresh()];
 }
 
 /** 通过门户建一个技能，返回商品 id。 */

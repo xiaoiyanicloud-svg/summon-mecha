@@ -11,6 +11,7 @@ use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Developer\DeveloperSkillService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillAudit\ReviewGate;
+use Webkul\Shop\Services\SkillAudit\SkillPublisher;
 
 /**
  * 开发者门户 · 我的技能 / 版本 / 传包 / 提审 —— v3.4 步骤 9。
@@ -24,6 +25,7 @@ class SkillController extends Controller
     public function __construct(
         protected DeveloperSkillService $skills,
         protected ReviewGate $gate,
+        protected SkillPublisher $publisher,
         protected OperationLogger $ops,
     ) {}
 
@@ -138,7 +140,14 @@ class SkillController extends Controller
             $v->id => $this->gate->evaluate($product->id, $v->id),
         ])->all();
 
-        return view('shop::dev.skills.show', compact('product', 'versions', 'gates'));
+        // 主体资格（任务卡 D-5）—— 判定的**唯一实现**是 SkillPublisher::ownerQualification()，
+        // 门户只调它、不另写一份（两份判定迟早漂移）。上面查版本时已按 seller_id 过滤到本主体，
+        // 一页之内所有版本同属一个 seller，故取一次即可。
+        $ownerQualification = $versions->isNotEmpty()
+            ? $this->publisher->ownerQualification($versions->first())
+            : null;
+
+        return view('shop::dev.skills.show', compact('product', 'versions', 'gates', 'ownerQualification'));
     }
 
     public function storeVersion(Request $request, int $id)

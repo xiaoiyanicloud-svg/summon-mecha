@@ -52,6 +52,11 @@ function spvSkill(): array
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->firstOrFail();
 
+    // D-5 实名发布前置：本文件测的是"发布=真上架"，主体必须是**合格**的（实名通过 + 协议已签），
+    // 否则发布会先被主体资格挡下（fixture 的开发者默认 pending）。这里把该主体的实名审过关，
+    // 让用例聚焦它真正要锁的东西 —— 而不是把前置弱化掉。
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     post(route('shop.dev.skills.store'), ['name' => $name, 'price' => 199])->assertRedirect();
 
     $productId = (int) DB::table('products')->where('seller_id', $profile->seller_id)->value('id');

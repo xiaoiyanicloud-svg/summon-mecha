@@ -177,10 +177,17 @@ class SkillAdminController extends APIController
         $result = $this->publisher->publish($version);
 
         if (! $result['ok']) {
+            // ⚠ 逐个码显式映射 —— **不能只用 default**。此前 default 兜 GATE_NOT_PASSED，
+            //   一旦 SkillPublisher 新增理由码（如期的主体资格码），会被**静默误标**成"闸门没过"，
+            //   语义全错且把排查引向审核台。default 只留作"契约有缺口"的兜底，给一个不撒谎的通用码。
             $code = match ($result['code']) {
-                SkillPublisher::ERR_VERSION_ARCHIVED     => ApiErrorCode::VERSION_ARCHIVED,
-                SkillPublisher::ERR_VERSION_HAS_NO_ASSET => ApiErrorCode::VERSION_HAS_NO_ASSET,
-                default                                  => ApiErrorCode::GATE_NOT_PASSED,
+                SkillPublisher::ERR_VERSION_ARCHIVED      => ApiErrorCode::VERSION_ARCHIVED,
+                SkillPublisher::ERR_VERSION_HAS_NO_ASSET  => ApiErrorCode::VERSION_HAS_NO_ASSET,
+                SkillPublisher::ERR_GATE_NOT_PASSED       => ApiErrorCode::GATE_NOT_PASSED,
+                SkillPublisher::ERR_OWNER_NOT_VERIFIED    => ApiErrorCode::OWNER_NOT_VERIFIED,
+                SkillPublisher::ERR_AGREEMENT_REQUIRED    => ApiErrorCode::AGREEMENT_REQUIRED,
+                SkillPublisher::ERR_OWNER_PROFILE_MISSING => ApiErrorCode::OWNER_PROFILE_MISSING,
+                default                                   => ApiErrorCode::SERVER_ERROR,
             };
 
             return $this->fail($code, $result['message'], 422);

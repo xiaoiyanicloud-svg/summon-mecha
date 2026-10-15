@@ -114,6 +114,28 @@
                 <h3 style="font-size:14px;margin:16px 0 6px">发布闸门</h3>
                 <table>
                     <tr><th style="width:150px">审核层</th><th style="width:110px">结论</th><th>说明</th></tr>
+                    {{--
+                        主体资格（任务卡 D-5）—— 上架的前置之一，与逐层审核**并列**展示。
+                        结论与下一步都取自 SkillPublisher::ownerQualification()（唯一实现），
+                        门户只做呈现，不重算 —— 让开发者**事前**就看得见"还差实名/协议"这道坎。
+                    --}}
+                    @if ($ownerQualification)
+                        <tr>
+                            <td>主体资格<span class="muted">（实名 / 协议）</span></td>
+                            <td>
+                                @if ($ownerQualification['ok'])
+                                    <span class="badge ok">已通过</span>
+                                @elseif ($ownerQualification['code'] === \Webkul\Shop\Services\SkillAudit\SkillPublisher::ERR_OWNER_NOT_VERIFIED)
+                                    <span class="badge">未通过（未实名）</span>
+                                @elseif ($ownerQualification['code'] === \Webkul\Shop\Services\SkillAudit\SkillPublisher::ERR_AGREEMENT_REQUIRED)
+                                    <span class="badge">未通过（未签协议）</span>
+                                @else
+                                    <span class="badge">未通过（归属异常）</span>
+                                @endif
+                            </td>
+                            <td class="muted">{{ $ownerQualification['message'] }}</td>
+                        </tr>
+                    @endif
                     @foreach ($gate['layers'] as $state)
                         <tr>
                             <td>
@@ -148,6 +170,12 @@
                     @endif
                     {{ $gate['message'] }}
                 </p>
+                {{-- 审核层全过 ≠ 一定能上架：主体资格是**另一道**前置，这里明说，别让"可以发布"被误读成"已经能上架" --}}
+                @if ($ownerQualification && ! $ownerQualification['ok'])
+                    <p class="muted" style="margin-top:4px">
+                        ⚠ 主体资格未通过 —— <b>即使审核层全部通过，也不能上架</b>；请先按上一行的提示处理主体资格问题。
+                    </p>
+                @endif
             @endif
 
             {{-- 提审 --}}

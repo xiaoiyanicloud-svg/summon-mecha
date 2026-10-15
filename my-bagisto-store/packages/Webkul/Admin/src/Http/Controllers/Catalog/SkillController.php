@@ -249,15 +249,25 @@ class SkillController extends Controller
         }
 
         // 发布动作走**统一入口** SkillPublisher —— 与 internal.key 的 API 通道共用同一条闸门。
-        // 交付物检查 / 归档检查 / 闸门 / 状态变更都在那里，这里不再重复实现。
+        // 交付物检查 / 归档检查 / 主体资格（D-5）/ 闸门 / 状态变更都在那里，这里不再重复实现。
         $result = $this->publisher->publish($version);
 
         if (! $result['ok']) {
+            // 发布失败要分流：闸门没过 → 去审核台；主体资格不达标 → 留在商品编辑页。
+            // ⚠ 两者**不能合并**：闸门问题运营去审核台能做掉，而"开发者没实名/没签协议"
+            //   运营在审核台里做什么都没用（要等开发者补协议或平台把实名审过）。
+            //   混为一谈会让运营在审核台空转，找一个根本不存在的审核问题。
             $gateBlocked = $result['code'] === SkillPublisher::ERR_GATE_NOT_PASSED;
 
-            session()->flash('error', $gateBlocked
-                ? $result['message'].'　请到「审核台」处理。'
-                : $result['message']);
+            $flash = match ($result['code']) {
+                SkillPublisher::ERR_OWNER_NOT_VERIFIED,
+                SkillPublisher::ERR_AGREEMENT_REQUIRED,
+                SkillPublisher::ERR_OWNER_PROFILE_MISSING => '发布被拒（主体资格问题，不是审核未过）：'.$result['message'],
+                SkillPublisher::ERR_GATE_NOT_PASSED        => $result['message'].'　请到「审核台」处理。',
+                default                                    => $result['message'],
+            };
+
+            session()->flash('error', $flash);
 
             return $gateBlocked
                 ? redirect()->route('admin.catalog.skill-reviews.show', $version->id)

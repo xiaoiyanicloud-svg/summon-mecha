@@ -5,6 +5,7 @@ namespace Webkul\Shop\Services\SkillAudit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Webkul\Product\Repositories\ProductRepository;
+use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\LifecycleNotifier;
 
@@ -29,6 +30,17 @@ class SkillPublisher
     public const ERR_VERSION_ARCHIVED = 'VERSION_ARCHIVED';
     public const ERR_VERSION_HAS_NO_ASSET = 'VERSION_HAS_NO_ASSET';
     public const ERR_GATE_NOT_PASSED = 'GATE_NOT_PASSED';
+
+    /**
+     * 主体资格不达标（任务卡 D-5 · 裁决 Q6）—— 与"闸门没过"是**两回事**，故各自成码：
+     *   OWNER_NOT_VERIFIED    开发者主体实名未通过审核
+     *   AGREEMENT_REQUIRED    开发者协议未签全
+     *   OWNER_PROFILE_MISSING seller_id 有值却查不到开发者主体（归属异常）
+     * ⚠ 调用方**不要**把它们兜成 GATE_NOT_PASSED：那会让运营去审核台找一个根本不存在的审核问题。
+     */
+    public const ERR_OWNER_NOT_VERIFIED = 'OWNER_NOT_VERIFIED';
+    public const ERR_AGREEMENT_REQUIRED = 'AGREEMENT_REQUIRED';
+    public const ERR_OWNER_PROFILE_MISSING = 'OWNER_PROFILE_MISSING';
 
     public function __construct(
         protected ReviewGate $gate,
@@ -55,6 +67,17 @@ class SkillPublisher
 
         if ($version->assets->isEmpty()) {
             return $this->result(false, self::ERR_VERSION_HAS_NO_ASSET, '该版本还没有任何交付物,不能发布。', $version);
+        }
+
+        // 主体资格 —— 未实名 / 协议未签全的主体**不得上架**（任务卡 D-5 · 裁决 Q6）。
+        // 位置刻意在**发布闸门之前**：这是"谁在卖"的问题，比"东西过没过审"更靠前 ——
+        // 主体不合格时连"能不能发布"都不必谈。提审不拦（鼓励供给），只在这里拦。
+        $qualification = $this->ownerQualification($version);
+
+        if (! $qualification['ok']) {
+            // ⚠ code 用 ownerQualification 自己的码，**不能**改写成 GATE_NOT_PASSED ——
+            //   调用方按码分支决定文案与跳转，混码会把"开发者没实名"误报成"审核没过"。
+            return $this->result(false, $qualification['code'], $qualification['message'], $version);
         }
 
         // 发布闸门 —— 未过审一律不放行（平台自营的技能也一样）
@@ -115,6 +138,65 @@ class SkillPublisher
         $this->notifier->skillPublished((int) $version->product_id, (int) $version->id, (string) $version->version);
 
         return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate);
+    }
+
+    /**
+     * 主体资格 —— "这个版本的归属主体够不够格上架"（任务卡 D-5 · 裁决 Q6）。
+     *
+     * 判定顺序：**归属 → 协议 → 实名**。
+     *   - seller_id 为 NULL → 平台自营，跳过（见下方"为什么自营不受限"）；
+     *   - seller_id 有值却查不到 DeveloperProfile → **拒绝**（fail-closed，不留 published 半状态）；
+     *   - 找到主体但协议未签全 → `ERR_AGREEMENT_REQUIRED`；
+     *   - 找到主体但实名未通过 → `ERR_OWNER_NOT_VERIFIED`。
+     *
+     * 为什么是 public 而不是 protected：开发者门户要在技能详情页**事前**把这道前置显示出来
+     * （"还差什么才能上架"）。复用的前提是"只能有一处实现"——门户若自写一份判定，迟早与平台
+     * 真正在执行的那份漂移（`ReviewGate` 的类注释讲的就是这个病）。所以让门户直接调这一处，
+     * 而不是在旁边复制一段。
+     *
+     * @return array{ok: bool, code: string, message: string}
+     */
+    public function ownerQualification(SkillVersion $version): array
+    {
+        // 平台自营不受限：实名与协议约束的是**第三方开发者主体**（DeveloperProfile 挂在 customers 上），
+        // 而自营技能的供给方就是平台自己 —— 平台对自己的资质负责，不存在"开发者未实名"这回事。
+        // 若把 NULL 也拖去查 profile：要么查不到而误拒全部自营技能、要么被当成"未实名"挡下，
+        // 两种结果都会把 M1/M2 的自营供给线整条掐死。
+        if (is_null($version->seller_id)) {
+            return ['ok' => true, 'code' => '', 'message' => '平台自营，不受开发者主体资格限制。'];
+        }
+
+        // ⚠ fail-closed：seller_id **有值**却查不到 profile，绝不能当成"自营"放行。
+        //   本仓踩过 `->where('seller_id', null)` 在 Eloquent 里退化成 `where seller_id is null`
+        //   的坑 —— 那种写法会把"任意开发者"错查成"平台自营"。这里先判过 NULL，再按**非空值**等值查；
+        //   查不到就是归属异常（主体被删 / 数据被破坏），宁可挡住也不放过。
+        $profile = DeveloperProfile::where('seller_id', $version->seller_id)->first();
+
+        if (! $profile) {
+            return [
+                'ok'      => false,
+                'code'    => self::ERR_OWNER_PROFILE_MISSING,
+                'message' => '该技能的主体归属异常（找不到对应的开发者主体），不能上架；请联系平台核查。',
+            ];
+        }
+
+        if (! $profile->hasSignedAllAgreements()) {
+            return [
+                'ok'      => false,
+                'code'    => self::ERR_AGREEMENT_REQUIRED,
+                'message' => '开发者协议尚未签署完整，不能上架；请先到「协议签署」页补齐。',
+            ];
+        }
+
+        if ($profile->realname_status !== DeveloperProfile::REALNAME_APPROVED) {
+            return [
+                'ok'      => false,
+                'code'    => self::ERR_OWNER_NOT_VERIFIED,
+                'message' => '开发者主体实名未通过审核，不能上架；请等待平台审核。',
+            ];
+        }
+
+        return ['ok' => true, 'code' => '', 'message' => '主体资格符合上架要求。'];
     }
 
     /**

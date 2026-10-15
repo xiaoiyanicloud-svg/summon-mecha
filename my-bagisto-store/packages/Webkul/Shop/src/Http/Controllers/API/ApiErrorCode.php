@@ -245,6 +245,19 @@ final class ApiErrorCode
     /** 未通过发布闸门 —— 两条发布通道共用的同一理由码（见 Services\SkillAudit\SkillPublisher） */
     public const GATE_NOT_PASSED = 'GATE_NOT_PASSED';
 
+    /**
+     * 版本所属主体的**实名未通过审核** → 不得上架（任务卡 D-5 · 裁决 Q6）。
+     * 与 GATE_NOT_PASSED 分开登记的意义：运营据此区分"开发者没实名"与"审核没过"，
+     * 否则会被引去审核台找一个并不存在的审核问题。
+     */
+    public const OWNER_NOT_VERIFIED = 'OWNER_NOT_VERIFIED';
+
+    /** 主体协议未签全 → 不得上架。与实名同属"发布前置"，故与 GATE_NOT_PASSED 分开。 */
+    public const AGREEMENT_REQUIRED = 'AGREEMENT_REQUIRED';
+
+    /** 版本的 seller_id 有值却查不到开发者主体 —— 归属异常（fail-closed），**不是**"平台自营"。 */
+    public const OWNER_PROFILE_MISSING = 'OWNER_PROFILE_MISSING';
+
     // ── 语音(契约见 TtsController / AsrController 类注释) ────────────────
 
     public const NO_TEXT = 'NO_TEXT';
