@@ -207,7 +207,7 @@ it('证据链：查不到的环节显式记进 missing，而不是悄悄省略',
         ->and($joined)->toContain('未指明设备');
 });
 
-it('证据链：传了一个「有商品但该用户没买过」的 skill_id → 明确标注这是推断值', function () {
+it('A4 · 授权边界：skill_id 不在自己的授权里 → 报案被拒(不再挂到无关技能版本)', function () {
     $customer = incCustomer();
 
     // 造一个技能商品，但**不给**这个客户授权
@@ -219,14 +219,25 @@ it('证据链：传了一个「有商品但该用户没买过」的 skill_id →
         'severity'    => Incident::SEVERITY_MODERATE,
         'description' => 'x',
         'skill_id'    => $productId,
-    ])->assertStatus(201);
+    ])->assertStatus(422)
+        ->assertJsonPath('code', 'SKILL_NOT_OWNED');
 
-    $incident = Incident::where('customer_id', $customer->id)->first();
-    $joined = implode(' | ', $incident->trace['missing']);
+    expect(Incident::where('customer_id', $customer->id)->count())->toBe(0);
+});
 
-    // ⚠ 这是**刻意设计**的行为：关联没有依据时，不静默断链、也不假装确凿，
-    //   而是把版本标成"推断值"并写进 missing。调查者一眼能看出这条链的强度。
-    //   有了它，"前端把 entitlement id 当成 product id 传"这类错误会自己暴露出来。
+it('证据链：无授权依据时 traceFor 仍把版本标成"推断值"(服务层契约不变)', function () {
+    $customer = incCustomer();
+
+    // 造一个技能商品，但**不给**这个客户授权
+    [$productId] = incSkillFixture(incCustomer());
+
+    // A4 之后这条路径已不再经由 API 触发(API 层先拒),但 traceFor 的兜底契约不变:
+    // 关联没有依据时,不静默断链、也不假装确凿,而是把版本标成"推断值"并写进 missing。
+    $trace = app(\Webkul\Shop\Services\Incident\IncidentService::class)
+        ->traceFor($customer->id, $productId, null);
+
+    $joined = implode(' | ', $trace['missing']);
+
     expect($joined)->toContain('没有此技能的授权记录')
         ->and($joined)->toContain('不一定');
 });

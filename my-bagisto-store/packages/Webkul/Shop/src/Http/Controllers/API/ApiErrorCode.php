@@ -75,6 +75,8 @@ final class ApiErrorCode
     // ── 技能与授权 ───────────────────────────────────────────────────────
 
     public const SKILL_NOT_FOUND = 'SKILL_NOT_FOUND';
+    /** 传了不在**当前客户**授权范围内的 skill_id(工单/报案)。与 DEVICE_NOT_OWNED 同义。 */
+    public const SKILL_NOT_OWNED = 'SKILL_NOT_OWNED';
     public const VERSION_NOT_FOUND = 'VERSION_NOT_FOUND';
     public const ENTITLEMENT_NOT_FOUND = 'ENTITLEMENT_NOT_FOUND';
     /** 授权已撤销 / 已过期 / 已达终态。 */

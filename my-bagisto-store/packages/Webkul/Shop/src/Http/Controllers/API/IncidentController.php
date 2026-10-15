@@ -81,6 +81,21 @@ class IncidentController extends APIController
             }
         }
 
+        // A4 · 授权边界:skill_id 必须落在**当前客户**的授权里。
+        //   与上面 device_id 的校验同源。后果不止脏数据:`IncidentService::traceFor()`
+        //   会按这个 product_id 去查技能版本 / 交付物 sha256 并**固化进证据链** ——
+        //   不校验的话,任何人都能把一次事故"挂"到自己无关的技能版本上,污染定责依据。
+        if (! empty($payload['skill_id'])) {
+            $ownedSkill = DB::table('skill_entitlements')
+                ->where('customer_id', $customer->id)
+                ->where('product_id', $payload['skill_id'])
+                ->exists();
+
+            if (! $ownedSkill) {
+                return $this->fail(ApiErrorCode::SKILL_NOT_OWNED, '该技能不在你的技能列表中。', 422);
+            }
+        }
+
         $incident = $this->incidents->report($customer->id, [
             'skill_id'    => $payload['skill_id'] ?? null,
             'device_id'   => $payload['device_id'] ?? null,

@@ -62,6 +62,13 @@ class TicketController extends APIController
 
         $idempotencyKey = $this->idempotencyKey($request);
 
+        // A4 · 授权边界:skill_id 必须落在**当前客户**的授权里。
+        //   与 device_id 的校验同源(见 IncidentController)。不校验的话,
+        //   "工单/事故挂到无关技能上"就没有任何一道门 —— 而事故证据链正是按 skill_id 固化的。
+        if (! empty($payload['skill_id']) && ! $this->ownsSkill($customer->id, (int) $payload['skill_id'])) {
+            return $this->fail(ApiErrorCode::SKILL_NOT_OWNED, '该技能不在你的技能列表中。', 422);
+        }
+
         // 幂等快路径:键已存在 → 直接返回首次结果(不发 201,因为这次什么都没创建)
         if ($idempotencyKey !== null) {
             $existing = $this->findByIdempotencyKey($customer->id, $idempotencyKey);
@@ -181,6 +188,17 @@ class TicketController extends APIController
             ->where('customer_id', $customerId)
             ->where('idempotency_key', $hashedKey)
             ->first();
+    }
+
+    /**
+     * 该客户是否持有此技能(product_id)的授权。A4。
+     */
+    protected function ownsSkill(int $customerId, int $productId): bool
+    {
+        return DB::table('skill_entitlements')
+            ->where('customer_id', $customerId)
+            ->where('product_id', $productId)
+            ->exists();
     }
 
     /**
