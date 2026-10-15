@@ -307,12 +307,24 @@ class DeployTaskService
     }
 
     /**
-     * 状态流转(带合法性校验,非法流转忽略)。
+     * 状态流转(带合法性校验 + 条件更新)。
+     *
+     * ⚠ 此前是 **check-then-act**:读出 `$task->status` → 校验 → 赋值 → `save()`。
+     *   两个并发回报(设备重发/网络抖动)会双双读到同一个 `from`,双双通过校验,
+     *   双双写库 —— 后写的覆盖先写的,一次流转凭空发生两次(例如 success 之后又被
+     *   另一个请求按旧状态推成 failed)。
+     *
+     * 现在改为**条件更新**:`UPDATE ... WHERE id=? AND status=<期望的从前态>`。
+     *   命中 0 行 = 有人抢先改了状态(或状态本就不合法)→ 本次流转视为未发生,返回 false。
+     *   数据库的行级原子性是唯一裁决者,不依赖"读到的状态还没变"这个假设。
+     *
+     * @return bool  true = 本次流转真的发生了(或 from==to 的幂等短路);false = 被拒
      */
     public function transition(DeployTask $task, string $to): bool
     {
         $from = $task->status;
 
+        // 同状态:幂等短路,不必碰库
         if ($from === $to) {
             return true;
         }
@@ -322,15 +334,33 @@ class DeployTaskService
             return false; // 非法流转 —— 忽略(防乱序/回退)
         }
 
-        $task->status = $to;
+        $attributes = ['status' => $to];
 
         if (in_array($to, ['success', 'failed', 'timeout', 'cancelled'], true)) {
-            $task->completed_at = now();
+            $attributes['completed_at'] = now();
         }
 
-        $task->save();
+        // 把调用方在 transition() 之前已经设到模型上的其它改动(如 onEvent() 先设的
+        // error_code/error_msg)一并纳入本次条件更新 —— 旧实现是 $task->save(),
+        // 会连同这些一起落库;拆成条件更新后若不带上,这些字段会被静默丢弃。
+        $attributes = array_merge($task->getDirty(), $attributes);
 
-        return true;
+        return DB::transaction(function () use ($task, $from, $to, $attributes) {
+            // 条件更新:以"期望的从前态"为条件。Eloquent 会自动带 updated_at。
+            $affected = DeployTask::query()
+                ->whereKey($task->id)
+                ->where('status', $from)
+                ->update($attributes);
+
+            if ($affected === 0) {
+                return false; // 竞态落败 / 状态已被他人改动
+            }
+
+            // 同步内存态:让调用方手里的对象与库一致(否则后续 buildCommand/落库会用到旧值)
+            $task->forceFill($attributes)->syncOriginal();
+
+            return true;
+        });
     }
 
     /**

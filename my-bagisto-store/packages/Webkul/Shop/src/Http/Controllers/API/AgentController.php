@@ -235,6 +235,10 @@ class AgentController extends APIController
         //   此前这里不过滤投递标记、每轮把该 did 的全部任务重新返回一遍:
         //   设备在"取到指令"与"回报"之间重启,重启后的第一次轮询又会把同一条指令取走 —— 重装。
         //   取走后一直没有回报的,由 `ops:timeout-deploy-tasks` 兜底转 timeout(不是无限等)。
+        //
+        // ⚠ 每设备每轮**只发一条**(P7):此前一次返回该 did 的全部待执行任务,设备可能
+        //   并行起多个安装 —— 而同一台物理机的技能装/卸本就应该串行。限 1 条后,设备
+        //   一轮取走一条;取走的那条带上投递标记后即退出本查询,下一轮才轮到下一条。
         $tasks = DeployTask::query()
             ->where('did', $did)
             ->where(function ($q) {
@@ -244,6 +248,7 @@ class AgentController extends APIController
                     });
             })
             ->orderBy('id')
+            ->limit(1)
             ->get();
 
         $commands = [];
