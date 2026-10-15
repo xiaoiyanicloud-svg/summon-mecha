@@ -25,6 +25,7 @@ use Webkul\Shop\Http\Controllers\API\Dev\ProfileController as DevProfileControll
 use Webkul\Shop\Http\Controllers\API\DeviceController;
 use Webkul\Shop\Http\Controllers\API\GrayReleaseController;
 use Webkul\Shop\Http\Controllers\API\IncidentController;
+use Webkul\Shop\Http\Controllers\API\InvoiceController;
 use Webkul\Shop\Http\Controllers\API\OnepageController;
 use Webkul\Shop\Http\Controllers\API\OrderController;
 use Webkul\Shop\Http\Controllers\API\ProductController;
@@ -266,6 +267,14 @@ Route::group(['prefix' => 'api'], function () {
 
         // 留痕必须登录:留的是"谁确认的",没有主体就无从留起。
         Route::post('acknowledge', 'acknowledge')->middleware(['customer', 'throttle:write'])->name('shop.api.risk.acknowledge');
+    });
+
+    /**
+     * B-15 · 发票（开票登记，用户侧）。Admin 侧只有只读台账，这里是唯一的用户入口。
+     */
+    Route::controller(InvoiceController::class)->prefix('invoices')->middleware(['customer'])->group(function () {
+        Route::get('', 'index')->name('shop.api.invoices.index');
+        Route::post('', 'store')->middleware('throttle:write')->name('shop.api.invoices.store');
     });
 
     /**

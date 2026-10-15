@@ -187,41 +187,79 @@
 					<view class="stat-divider"></view>
 					<view class="stat-item">
 						<text class="stat-num" style="color:#f59e0b;">{{ invoiceStats.pending }}</text>
-						<text class="stat-label">待开票</text>
+						<text class="stat-label">待开具</text>
 					</view>
 					<view class="stat-divider"></view>
 					<view class="stat-item">
 						<text class="stat-num" style="color:#22c55e;">{{ invoiceStats.done }}</text>
-						<text class="stat-label">已开票</text>
+						<text class="stat-label">已开具</text>
 					</view>
 				</view>
 				<view class="invoice-list">
-					<view class="invoice-card" v-for="(item, index) in invoiceList" :key="index">
+					<!-- 真实开票登记(后端 /api/invoices)。此前这里是 5 张写死的 INV-2026-00x 假发票 -->
+					<view class="invoice-card" v-for="item in invoiceList" :key="item.id">
 						<view class="invoice-header">
-							<text class="invoice-id">{{ item.id }}</text>
-							<text class="invoice-status" :class="item.status">{{ item.statusText }}</text>
+							<text class="invoice-id">#{{ (item.order_numbers && item.order_numbers.length) ? item.order_numbers.join(' / ') : item.id }}</text>
+							<text class="invoice-status" :class="item.status">{{ item.status_label }}</text>
 						</view>
 						<view class="invoice-body">
 							<text class="invoice-amount">¥{{ item.amount }}</text>
-							<text class="invoice-date">{{ item.date }}</text>
+							<text class="invoice-date">{{ item.created_at }}</text>
 						</view>
 						<view class="invoice-footer">
-							<text class="invoice-type">{{ item.type }}</text>
+							<text class="invoice-type">{{ item.type_label }}{{ item.tax_no ? ' · ' + item.tax_no : '' }}</text>
 							<view class="invoice-actions">
-								<text class="action-btn" v-if="item.status === 'pending'" @tap="applyInvoice(item)">去开票</text>
-								<text class="action-btn" v-else-if="item.status === 'done'" @tap="downloadInvoice(item)">下载</text>
+								<text class="action-btn" v-if="item.status === 'applied'" @tap="applyInvoice(item)">补开票信息</text>
 								<text class="action-btn" v-else @tap="viewInvoice(item)">查看</text>
 							</view>
 						</view>
 					</view>
-					<view class="empty-state" v-if="invoiceList.length === 0">
+					<view class="empty-state" v-if="!invoiceLoading && !invoiceError && invoiceList.length === 0">
 						<text class="empty-icon">🧾</text>
 						<text class="empty-text">暂无开票记录</text>
 					</view>
+					<view class="empty-state" v-if="invoiceLoading">
+						<text class="empty-text">加载中…</text>
+					</view>
+					<view class="empty-state" v-if="invoiceError" @tap="loadInvoices">
+						<text class="empty-text">加载失败：{{ invoiceError }}（点此重试）</text>
+					</view>
 				</view>
-				<view class="btn-apply-invoice" @tap="applyNewInvoice">+ 申请开票</view>
+				<view class="btn-apply-invoice" @tap="openApplyInvoice">+ 申请开票</view>
 				<view style="height: 40rpx;"></view>
 			</scroll-view>
+
+			<!-- 申请开票弹窗(B-15):选一笔已支付订单 + 填抬头/税号 -->
+			<view v-if="showInvoiceModal" class="inv-mask" @tap="closeInvoiceModal">
+				<view class="inv-modal" @tap.stop="noop">
+					<text class="inv-modal-title">申请开票</text>
+					<view class="inv-field">
+						<text class="inv-field-label">选择订单</text>
+						<picker mode="selector" :range="paidOrderLabels" @change="onPickOrder">
+							<view class="inv-field-value">{{ pickedOrderLabel || (paidOrdersLoading ? '加载订单中…' : '请选择已支付订单') }}</view>
+						</picker>
+					</view>
+					<view class="inv-field">
+						<text class="inv-field-label">抬头类型</text>
+						<view class="inv-type-row">
+							<text class="inv-type" :class="{ on: invoiceForm.type === 'personal' }" @tap="invoiceForm.type = 'personal'">个人</text>
+							<text class="inv-type" :class="{ on: invoiceForm.type === 'company' }" @tap="invoiceForm.type = 'company'">企业</text>
+						</view>
+					</view>
+					<view class="inv-field">
+						<text class="inv-field-label">发票抬头</text>
+						<input class="inv-input" v-model="invoiceForm.title" placeholder="个人姓名 / 公司名称" />
+					</view>
+					<view class="inv-field" v-if="invoiceForm.type === 'company'">
+						<text class="inv-field-label">税号</text>
+						<input class="inv-input" v-model="invoiceForm.tax_no" placeholder="纳税人识别号" />
+					</view>
+					<view class="inv-modal-footer">
+						<view class="inv-cancel" @tap="closeInvoiceModal">取消</view>
+						<view class="inv-confirm" @tap="submitInvoice">{{ invoiceSubmitting ? '提交中…' : '提交' }}</view>
+					</view>
+				</view>
+			</view>
 		</view>
 
 		<!-- ============================================================ -->
@@ -623,7 +661,7 @@
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import StateView from '@/components/StateView.vue';
-	import { authApi, addressApi } from '@/utils/api';
+	import { authApi, addressApi, invoiceApi, orderApi } from '@/utils/api';
 	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION } from '@/utils/config';
 	import { serverToLocal, localToServerPayload } from '@/utils/address';
 
@@ -645,7 +683,7 @@
 				loginForm: { email: '', password: '' },
 				registerForm: { name: '', email: '', password: '', confirmPassword: '' },
 				couponCount: 4,
-				invoiceCount: 3,
+				// invoiceCount 改为 computed(取自真实 invoiceList.length)——不再写死 "3笔"
 
 				// ===== 优惠券数据 =====
 				couponTab: 'all',
@@ -657,15 +695,16 @@
 					{ id: 5, name: '新人专享券', amount: '10', condition: '无门槛', expire: '2026-08-20', status: 'available' },
 				],
 
-				// ===== 开票中心数据 =====
-				invoiceStats: { total: 5, pending: 2, done: 3 },
-				invoiceList: [
-					{ id: 'INV-2026-001', amount: '3,600', date: '2026-08-05', type: '电子发票', status: 'pending', statusText: '待开票' },
-					{ id: 'INV-2026-002', amount: '1,200', date: '2026-08-03', type: '增值税专用发票', status: 'done', statusText: '已开票' },
-					{ id: 'INV-2026-003', amount: '2,400', date: '2026-07-28', type: '电子发票', status: 'done', statusText: '已开票' },
-					{ id: 'INV-2026-004', amount: '800', date: '2026-07-20', type: '电子发票', status: 'void', statusText: '已作废' },
-					{ id: 'INV-2026-005', amount: '4,800', date: '2026-07-15', type: '增值税专用发票', status: 'pending', statusText: '待开票' },
-				],
+				// ===== 开票中心数据(B-15:全部来自后端 /api/invoices,不再写死假发票) =====
+				invoiceList: [],
+				invoiceLoading: false,
+				invoiceError: '',
+				// 申请开票弹窗
+				showInvoiceModal: false,
+				invoiceSubmitting: false,
+				invoiceForm: { order_id: '', type: 'personal', title: '', tax_no: '' },
+				paidOrders: [],
+				paidOrdersLoading: false,
 
 				// ===== 地址管理数据 =====
 				addressList: [],
@@ -737,6 +776,27 @@
 			};
 		},
 		computed: {
+			// 开票中心:B-15 —— 卡片上的"笔数"与统计都从真实列表算,不再写死
+			invoiceCount() {
+				return this.invoiceList.length;
+			},
+			invoiceStats() {
+				const list = this.invoiceList || [];
+				return {
+					total: list.length,
+					pending: list.filter(i => i.status === 'applied').length,
+					done: list.filter(i => i.status === 'issued').length,
+				};
+			},
+			paidOrderLabels() {
+				return (this.paidOrders || []).map(o => `${o.increment_id || o.id}  ¥${o.grand_total}`);
+			},
+			pickedOrderLabel() {
+				const id = this.invoiceForm.order_id;
+				if (!id) return '';
+				const o = (this.paidOrders || []).find(x => x.id === id);
+				return o ? `${o.increment_id || o.id}  ¥${o.grand_total}` : '';
+			},
 			filteredCoupons() {
 				if (this.couponTab === 'all') return this.couponList;
 				return this.couponList.filter(item => item.status === this.couponTab);
@@ -810,7 +870,8 @@
 							return;
 						}
 						this.couponCount = 5;
-						this.invoiceCount = 3;
+						// 登录/注册后拉真实开票记录(B-15)——invoiceCount 现在是 computed
+						this.loadInvoices();
 						this.showLoginModal = false;
 						this.loginForm = { email: '', password: '' };
 						this.registerForm = { name: '', email: '', password: '', confirmPassword: '' };
@@ -871,7 +932,8 @@
 							return;
 						}
 						this.couponCount = 5;
-						this.invoiceCount = 3;
+						// 登录/注册后拉真实开票记录(B-15)——invoiceCount 现在是 computed
+						this.loadInvoices();
 						this.showLoginModal = false;
 						this.registerForm = { name: '', email: '', password: '', confirmPassword: '' };
 						uni.showToast({ title: '注册成功', icon: 'success' });
@@ -894,7 +956,7 @@
 			// 主页面 - 双卡片
 			// ================================================================
 			goCoupon() { this.currentPage = 'coupon'; },
-			goInvoice() { this.currentPage = 'invoice'; },
+			goInvoice() { this.currentPage = 'invoice'; this.loadInvoices(); },
 
 			// ================================================================
 			// 主页面 - 订单
@@ -1115,14 +1177,90 @@
 			},
 
 			// ================================================================
-			// 开票中心 - 方法
+			// 开票中心 - 方法(B-15:接后端 /api/invoices)
 			// ================================================================
-			applyInvoice(item) { uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' }); },
-			downloadInvoice(item) { uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' }); },
-			viewInvoice(item) { uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' }); },
-			applyNewInvoice() {
-				// 诚实化:开票通道未接后端,不再假装申请成功
-				uni.showToast({ title: '开票功能开发中，敬请期待', icon: 'none' });
+			async loadInvoices() {
+				this.invoiceLoading = true;
+				this.invoiceError = '';
+				try {
+					const res = await invoiceApi.list();
+					this.invoiceList = (res && Array.isArray(res.data)) ? res.data : [];
+				} catch (e) {
+					this.invoiceError = (e && e.message) || '加载失败';
+					this.invoiceList = [];
+				} finally {
+					this.invoiceLoading = false;
+				}
+			},
+			// 该笔订单的开票信息可补充(applied);点了直接带出该订单预填
+			applyInvoice(item) {
+				const oid = (item.order_ids && item.order_ids[0]) || '';
+				this.invoiceForm = {
+					order_id: oid,
+					type: item.type || 'personal',
+					title: item.title || '',
+					tax_no: item.tax_no || '',
+				};
+				this.showInvoiceModal = true;
+				if (!this.paidOrders.length) this.loadPaidOrders();
+			},
+			viewInvoice(item) {
+				// 已开具的只读展示;真实发票文件未接入 → 不假装能下载
+				uni.showModal({
+					title: '发票信息',
+					content: `状态：${item.status_label}\n抬头：${item.title}\n税号：${item.tax_no || '未填写'}\n金额：¥${item.amount}`,
+					showCancel: false,
+				});
+			},
+			openApplyInvoice() {
+				this.invoiceForm = { order_id: '', type: 'personal', title: '', tax_no: '' };
+				this.showInvoiceModal = true;
+				this.loadPaidOrders();
+			},
+			closeInvoiceModal() {
+				this.showInvoiceModal = false;
+			},
+			noop() {},
+			async loadPaidOrders() {
+				this.paidOrdersLoading = true;
+				try {
+					const res = await orderApi.getOrders();
+					const rows = (res && Array.isArray(res.data)) ? res.data : [];
+					// 只有已支付订单能开票(与后端判定一致)
+					this.paidOrders = rows.filter(o => o.status === 'processing' || o.status === 'completed');
+				} catch (e) {
+					console.warn('[mine] 可开票订单加载失败', e);
+					this.paidOrders = [];
+				} finally {
+					this.paidOrdersLoading = false;
+				}
+			},
+			onPickOrder(e) {
+				const idx = Number(e.detail.value);
+				const o = this.paidOrders[idx];
+				if (o) this.invoiceForm.order_id = o.id;
+			},
+			async submitInvoice() {
+				const f = this.invoiceForm;
+				if (!f.order_id) { uni.showToast({ title: '请选择要开票的订单', icon: 'none' }); return; }
+				if (!f.title.trim()) { uni.showToast({ title: '请填写发票抬头', icon: 'none' }); return; }
+				if (f.type === 'company' && !f.tax_no.trim()) { uni.showToast({ title: '企业抬头请填写税号', icon: 'none' }); return; }
+				this.invoiceSubmitting = true;
+				try {
+					const res = await invoiceApi.apply({
+						order_id: f.order_id,
+						type: f.type,
+						title: f.title.trim(),
+						tax_no: f.type === 'company' ? f.tax_no.trim() : null,
+					});
+					uni.showToast({ title: (res && res.message) || '已提交', icon: 'success' });
+					this.showInvoiceModal = false;
+					await this.loadInvoices();
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '提交失败', icon: 'none' });
+				} finally {
+					this.invoiceSubmitting = false;
+				}
 			},
 
 			// ================================================================
@@ -1277,7 +1415,7 @@
 				uni.removeStorageSync(TOKEN_KEY);
 				uni.removeStorageSync(CUSTOMER_KEY);
 				this.couponCount = 0;
-				this.invoiceCount = 0;
+				this.invoiceList = [];
 				uni.showToast({ title: '已退出', icon: 'success' });
 				this.currentPage = 'main';
 			}
@@ -1727,17 +1865,13 @@
 		padding: 2rpx 14rpx;
 		border-radius: 12rpx;
 	}
-	.invoice-status.pending {
+	.invoice-status.applied {
 		background: #fef3c7;
 		color: #d97706;
 	}
-	.invoice-status.done {
+	.invoice-status.issued {
 		background: #d1fae5;
 		color: #065f46;
-	}
-	.invoice-status.void {
-		background: #f1f5f9;
-		color: #6B7A8A;
 	}
 	.invoice-body {
 		display: flex;
@@ -1792,6 +1926,101 @@
 	}
 	.btn-apply-invoice:active {
 		opacity: 0.8;
+	}
+
+	/* ===== 申请开票弹窗(B-15) ===== */
+	.inv-mask {
+		position: fixed;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.45);
+		z-index: 9999;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.inv-modal {
+		width: 640rpx;
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 40rpx 32rpx 24rpx;
+		box-sizing: border-box;
+	}
+	.inv-modal-title {
+		display: block;
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #1A2A3A;
+		text-align: center;
+		margin-bottom: 24rpx;
+	}
+	.inv-field {
+		margin-bottom: 22rpx;
+	}
+	.inv-field-label {
+		display: block;
+		font-size: 24rpx;
+		color: #6B7A8A;
+		margin-bottom: 10rpx;
+	}
+	.inv-field-value {
+		padding: 20rpx 24rpx;
+		background: #f5f8fc;
+		border-radius: 12rpx;
+		font-size: 26rpx;
+		color: #1A2A3A;
+	}
+	.inv-input {
+		width: 100%;
+		padding: 20rpx 24rpx;
+		background: #f5f8fc;
+		border-radius: 12rpx;
+		font-size: 26rpx;
+		box-sizing: border-box;
+	}
+	.inv-type-row {
+		display: flex;
+		gap: 20rpx;
+	}
+	.inv-type {
+		flex: 1;
+		text-align: center;
+		padding: 18rpx 0;
+		border: 1rpx solid #e2e8f0;
+		border-radius: 12rpx;
+		font-size: 26rpx;
+		color: #6B7A8A;
+	}
+	.inv-type.on {
+		border-color: #4291F6;
+		color: #4291F6;
+		background: #eef5ff;
+	}
+	.inv-modal-footer {
+		display: flex;
+		gap: 20rpx;
+		margin-top: 28rpx;
+	}
+	.inv-cancel {
+		flex: 1;
+		text-align: center;
+		padding: 22rpx 0;
+		border: 1rpx solid #e2e8f0;
+		border-radius: 40rpx;
+		font-size: 28rpx;
+		color: #6B7A8A;
+	}
+	.inv-confirm {
+		flex: 2;
+		text-align: center;
+		padding: 22rpx 0;
+		background: #4291F6;
+		color: #ffffff;
+		border-radius: 40rpx;
+		font-size: 28rpx;
+		font-weight: 600;
 	}
 
 	/* ================================================================ */

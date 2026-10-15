@@ -329,6 +329,16 @@ export function summonStream(q, handlers = {}, history = []) {
   // #endif
 }
 
+// ==================== 发票(开票登记,B-15 · 计划 §4.18) ====================
+// 用户侧唯一的开票入口。Admin 侧只有只读台账,没有用户填单的地方。
+// ⚠ 当前只到"登记":支付成功时后端已自动落一条(抬头=订单姓名、税号空),
+//   这里做的是补全抬头类型/抬头/税号。真实开具(税控/PDF)未接入 —— 别在页面上假装能下载。
+export const invoiceApi = {
+  list: () => http.get('/api/invoices', { loading: false }),
+  // data: { order_id(必填), type: 'personal'|'company', title, tax_no?(企业必填) }
+  apply: (data) => http.post('/api/invoices', data, { loading: true, loadingText: '提交中...' }),
+}
+
 // ==================== 收货地址 ====================
 export const addressApi = {
   getAddresses: () => http.get('/api/customer/addresses', { loading: false }),
