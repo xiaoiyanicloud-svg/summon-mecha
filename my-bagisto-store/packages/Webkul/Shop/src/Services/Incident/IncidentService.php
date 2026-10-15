@@ -2,8 +2,10 @@
 
 namespace Webkul\Shop\Services\Incident;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 use Webkul\Shop\Models\Incident;
 use Webkul\Shop\Models\SkillAsset;
@@ -46,26 +48,52 @@ class IncidentService
 
         $trace = $this->traceFor($customerId, $productId, $deviceId);
 
-        $incident = Incident::create([
-            'incident_no'       => $this->generateNo($customerId),
-            'skill_id'          => $productId,
-            'skill_version_id'  => $trace['resolved']['skill_version_id'] ?? null,
-            'device_binding_id' => $trace['resolved']['device_binding_id'] ?? null,
-            'customer_id'       => $customerId,
-            'severity'          => $data['severity'],
-            'occurred_at'       => $data['occurred_at'] ?? now(),
-            'description'       => $data['description'],
-            'evidence'          => $data['evidence'] ?? null,
-            // ⚠ 默认"尚未认定"——不预设责任方。报案时通常还不知道是谁的责任，
-            //   为了填满字段而猜一个，等于往追溯里掺假。
-            'responsibility'    => Incident::RESPONSIBILITY_UNKNOWN,
-            'trace'             => $trace,
-            'status'            => Incident::STATUS_REPORTED,
-        ]);
+        // A2 · 单号是秒级时间戳,同一客户同一秒连报两次会撞 `uk_incident_no` → 500。
+        //   号里已加随机后缀(suffix 让碰撞概率可忽略),这里再兜一层:
+        //   万一真撞了,唯一索引会抛 —— 捕获后换一个号重来,而不是把 500 甩给报案人。
+        //   (报案是主操作;不能因为内部编号撞车而让"刚出过事的人"再报一遍。)
+        $attempts = 0;
+
+        while (true) {
+            try {
+                $incident = Incident::create([
+                    'incident_no'       => $this->generateNo($customerId),
+                    'skill_id'          => $productId,
+                    'skill_version_id'  => $trace['resolved']['skill_version_id'] ?? null,
+                    'device_binding_id' => $trace['resolved']['device_binding_id'] ?? null,
+                    'customer_id'       => $customerId,
+                    'severity'          => $data['severity'],
+                    'occurred_at'       => $data['occurred_at'] ?? now(),
+                    'description'       => $data['description'],
+                    'evidence'          => $data['evidence'] ?? null,
+                    // ⚠ 默认"尚未认定"——不预设责任方。报案时通常还不知道是谁的责任，
+                    //   为了填满字段而猜一个，等于往追溯里掺假。
+                    'responsibility'    => Incident::RESPONSIBILITY_UNKNOWN,
+                    'trace'             => $trace,
+                    'status'            => Incident::STATUS_REPORTED,
+                ]);
+
+                break;
+            } catch (QueryException $e) {
+                if (! $this->isDuplicateKey($e) || ++$attempts >= 5) {
+                    throw $e;
+                }
+            }
+        }
 
         $this->alertIfEscalated($incident);
 
         return $incident;
+    }
+
+    /**
+     * 唯一键冲突(MySQL 1062 / SQLite 唯一约束)。
+     */
+    protected function isDuplicateKey(QueryException $e): bool
+    {
+        return ($e->errorInfo[1] ?? null) === 1062
+            || str_contains($e->getMessage(), 'Duplicate entry')
+            || str_contains($e->getMessage(), 'UNIQUE constraint failed');
     }
 
     /**
@@ -394,21 +422,19 @@ class IncidentService
     }
 
     /**
-     * 生成工单号。
+     * 生成事故编号。
      *
-     * `incident_no` 有唯一索引。同一用户同一秒连报两次会撞 —— 撞了就加后缀重试。
-     * 不用随机数：随机撞了更难查，且不可复现。
+     * A2:此前是 `while (Incident::where('incident_no', $no)->exists())` ——
+     * **check-then-act,非原子**:两个并发请求可能都查到"不存在"、都取同一个号,
+     * 后插入的那个撞 `uk_incident_no` → 500。现在改成"时间戳 + 客户 + 随机后缀",
+     * 唯一的兜底交给数据库唯一索引(见 `report()` 的 catch-retry)。
+     *
+     * ⚠ 用随机而不是自增后缀:自增后缀在并发下反而**更容易**撞(两个请求都从 -1 开始试),
+     *   而且不必要地多一次"查一下有没有"的往返 —— 那正是原来的病根。
      */
     protected function generateNo(int $customerId): string
     {
-        $base = 'I'.now()->format('ymdHis').'-'.$customerId;
-        $no = $base;
-        $suffix = 1;
-
-        while (Incident::where('incident_no', $no)->exists()) {
-            $no = $base.'-'.(++$suffix);
-        }
-
-        return $no;
+        // `I` + ymdHis(12) + `-` + 客户号 + `-` + 6 位随机 ≤ 32,列长 40 够放
+        return 'I'.now()->format('ymdHis').'-'.$customerId.'-'.Str::upper(Str::random(6));
     }
 }

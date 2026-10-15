@@ -35,6 +35,7 @@ class SupportTicket extends Model
 
     protected $fillable = [
         'ticket_no',
+        'idempotency_key',
         'customer_id',
         'developer_id',
         'skill_id',
