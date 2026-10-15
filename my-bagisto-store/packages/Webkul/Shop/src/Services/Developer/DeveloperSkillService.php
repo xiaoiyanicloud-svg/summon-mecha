@@ -138,7 +138,11 @@ class DeveloperSkillService
                 'products.sku',
                 'product_flat.name',
                 'product_flat.price',
-                'product_flat.status'
+                'product_flat.status',
+                // 编辑表单要回显这两项 —— 一并在这条"带归属过滤"的查询里取，
+                // 免得控制器为了拿简介/详情再裸查一次 flat（那会绕开 seller 过滤）。
+                'product_flat.short_description',
+                'product_flat.description'
             )
             ->first();
     }
@@ -215,6 +219,48 @@ class DeveloperSkillService
             'locale'               => $this->defaultLocaleCode(),
             'categories'           => $this->skillCategoryIds(),
         ], $product->id);
+
+        Event::dispatch('catalog.product.update.after', $product->fresh());
+
+        return $product->fresh();
+    }
+
+    /**
+     * 修改我自己的技能的基础信息（名称 / 简介 / 详情 / 价格）。不属于我 → null。
+     *
+     * ⚠ 可改字段是**白名单**：`status`（上下架）、`seller_id`（归属）、`sku` 一个都不在
+     *   payload 里。改价是开发者对自己商品的运营动作；改归属、改 SKU、上架是**平台动作**，
+     *   绝不能让开发者顺着一个表单夹带进来。（请求体里带了也会被 validate 丢掉，双保险。）
+     *
+     * ⚠ 事件三步与 createSkill 一致，一步都不能省：product_flat 是
+     *   `catalog.product.update.after` 里 flatIndexer 刷出来的，不派发就只改了 EAV，
+     *   列表/详情读 flat 仍是旧值 —— 本项目踩过这个坑。
+     *
+     * `categories` 也要显式带上：AbstractType::update 在 `categories` 缺失时会 sync 成空数组，
+     * 漏传会把技能从「技能」分类里摘掉（不是报错，是静默丢数据）。
+     */
+    public function updateSkill(DeveloperProfile $profile, int $productId, array $data): ?object
+    {
+        // 归属过滤在查询层，不在这里判
+        $product = $this->findOwnedSkill($profile, $productId);
+
+        if (! $product) {
+            return null;
+        }
+
+        // ⚠ 有意不重算 `url_key`：改名是"把填错的字改对"，不该顺带把商品 URL（slug）换掉 ——
+        //   已发布的技能一旦换 URL，外部链接就断了。缺省即保留原值。
+        Event::dispatch('catalog.product.update.before', $productId);
+
+        $this->products->update([
+            'name'              => $data['name'],
+            'short_description' => $data['short_description'] ?? '',
+            'description'       => $data['description'] ?? '',
+            'price'             => $data['price'] ?? 0,
+            'channel'           => core()->getDefaultChannelCode(),
+            'locale'            => $this->defaultLocaleCode(),
+            'categories'        => $this->skillCategoryIds(),
+        ], $productId);
 
         Event::dispatch('catalog.product.update.after', $product->fresh());
 

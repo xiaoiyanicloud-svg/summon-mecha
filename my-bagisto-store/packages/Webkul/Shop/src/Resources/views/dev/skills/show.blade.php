@@ -3,7 +3,10 @@
 @section('title', $product->name.' · 开发者中心')
 
 @section('content')
-    <h1>{{ $product->name }}</h1>
+    <h1>
+        {{ $product->name }}
+        <a class="btn ghost small" href="{{ route('shop.dev.skills.edit', $product->id) }}" style="margin-left:10px;vertical-align:middle">编辑信息</a>
+    </h1>
     <p class="muted">
         SKU: {{ $product->sku }} ｜ 定价：￥{{ number_format((float) $product->price, 2) }} ｜
         <span class="badge {{ $product->status ? 'ok' : '' }}">{{ $product->status ? '已上架' : '未上架' }}</span>
@@ -78,6 +81,52 @@
                     <button type="submit" class="btn small">上传</button>
                 </div>
             </form>
+
+            {{--
+                发布闸门 —— 回答开发者真正的问题："还差什么才能上架"。
+                内容全部来自 `ReviewGate::evaluate()`，此处只做呈现，不重算。
+                ⚠ 未接入的层显示"未接入"，不是"通过"：没审 ≠ 通过。
+            --}}
+            @php($gate = $gates[$version->id] ?? null)
+            @if ($gate)
+                <h3 style="font-size:14px;margin:16px 0 6px">发布闸门</h3>
+                <table>
+                    <tr><th style="width:150px">审核层</th><th style="width:110px">结论</th><th>说明</th></tr>
+                    @foreach ($gate['layers'] as $state)
+                        <tr>
+                            <td>
+                                {{ $state['label'] }}
+                                @unless ($state['required'])
+                                    <span class="muted">（不参与闸门）</span>
+                                @endunless
+                            </td>
+                            <td>
+                                @if (! $state['available'])
+                                    <span class="badge">未接入</span>
+                                @elseif ($state['result'] === \Webkul\Shop\Models\AuditRecord::RESULT_PASS)
+                                    <span class="badge ok">通过</span>
+                                @else
+                                    <span class="badge">{{ $state['result_label'] }}</span>
+                                @endif
+                            </td>
+                            <td class="muted">
+                                {{ $state['reason_detail'] ?: ($state['reason_category'] ?: '—') }}
+                                @if ($state['suggestion'])
+                                    <div>建议：{{ $state['suggestion'] }}</div>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </table>
+                <p class="muted" style="margin-top:8px">
+                    @if ($gate['ok'])
+                        <span class="badge ok">可以发布</span>
+                    @else
+                        <span class="badge">还不能发布</span>
+                    @endif
+                    {{ $gate['message'] }}
+                </p>
+            @endif
 
             {{-- 提审 --}}
             <form method="POST" action="{{ route('shop.dev.versions.submit', $version->id) }}" style="margin-top:14px">

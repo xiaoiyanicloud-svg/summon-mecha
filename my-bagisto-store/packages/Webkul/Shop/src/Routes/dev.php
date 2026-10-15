@@ -64,6 +64,12 @@ Route::controller(SkillController::class)->prefix($devPrefix)->middleware('devel
     Route::post('skills', 'store')->name('shop.dev.skills.store');
     Route::get('skills/{id}', 'show')->whereNumber('id')->name('shop.dev.skills.show');
 
+    // 改信息走独立的两条：edit 渲染表单（GET），update 落库（PUT）。
+    // update 与 show 共用 `skills/{id}` 路径、靠 HTTP 方法区分；whereNumber 保证
+    // 静态段（create / 数字外的 id）不会被当作 id 抢匹配。
+    Route::get('skills/{id}/edit', 'edit')->whereNumber('id')->name('shop.dev.skills.edit');
+    Route::put('skills/{id}', 'update')->whereNumber('id')->name('shop.dev.skills.update');
+
     Route::post('skills/{id}/versions', 'storeVersion')->whereNumber('id')->name('shop.dev.skills.versions.store');
 
     Route::post('versions/{versionId}/upload', 'upload')->whereNumber('versionId')->name('shop.dev.versions.upload');

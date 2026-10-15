@@ -5,9 +5,12 @@ namespace Webkul\Shop\Http\Controllers\Dev;
 use Illuminate\Http\Request;
 use Webkul\Shop\Http\Controllers\Controller;
 use Webkul\Shop\Models\DeveloperProfile;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Developer\DeveloperSkillService;
+use Webkul\Shop\Services\Ops\OperationLogger;
+use Webkul\Shop\Services\SkillAudit\ReviewGate;
 
 /**
  * 开发者门户 · 我的技能 / 版本 / 传包 / 提审 —— v3.4 步骤 9。
@@ -18,7 +21,11 @@ use Webkul\Shop\Services\Developer\DeveloperSkillService;
  */
 class SkillController extends Controller
 {
-    public function __construct(protected DeveloperSkillService $skills) {}
+    public function __construct(
+        protected DeveloperSkillService $skills,
+        protected ReviewGate $gate,
+        protected OperationLogger $ops,
+    ) {}
 
     public function index(Request $request)
     {
@@ -53,6 +60,58 @@ class SkillController extends Controller
             ->with('success', '技能已创建（未上架）。接下来创建版本并上传技能包。');
     }
 
+    public function edit(Request $request, int $id)
+    {
+        // 归属过滤在 skillSummary 的查询层完成；不属于我 → null → 404
+        $product = $this->skills->skillSummary($this->profile($request), $id);
+
+        if (! $product) {
+            abort(404);
+        }
+
+        return view('shop::dev.skills.edit', compact('product'));
+    }
+
+    public function update(Request $request, int $id)
+    {
+        $payload = $request->validate([
+            'name'              => ['required', 'string', 'max:191'],
+            'price'             => ['required', 'numeric', 'min:0'],
+            'short_description' => ['nullable', 'string', 'max:500'],
+            'description'       => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $profile = $this->profile($request);
+
+        // 留痕要能回答"从什么改成了什么"，所以改之前先取一份旧值
+        // （skillSummary 同样带归属过滤；拿不到就当 null，不阻断本次更新）
+        $before = $this->skills->skillSummary($profile, $id);
+
+        $product = $this->skills->updateSkill($profile, $id, $payload);
+
+        if (! $product) {
+            abort(404);
+        }
+
+        // 改价是"涉及钱的操作"，必须留痕（operation_log 的唯一入口是 OperationLogger）
+        $this->ops->log(
+            OperationLog::ACTOR_SELLER,
+            $profile->seller_id,
+            'skill.update',
+            'product',
+            $id,
+            [
+                // before 取改前的 flat 值，after 直接取本次提交值 —— 不依赖模型属性解析，读到的就是落库的那个数
+                'before' => ['name' => $before->name ?? null, 'price' => $before->price ?? null],
+                'after'  => ['name' => $payload['name'], 'price' => $payload['price']],
+            ]
+        );
+
+        return redirect()
+            ->route('shop.dev.skills.show', $id)
+            ->with('success', '技能信息已更新。');
+    }
+
     public function show(Request $request, int $id)
     {
         $profile = $this->profile($request);
@@ -72,7 +131,14 @@ class SkillController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('shop::dev.skills.show', compact('product', 'versions'));
+        // 逐层闸门状态 —— 复用 `ReviewGate`（"能不能发布"的唯一定义处），
+        // 门户里**不另写一份判定**：两份判定迟早会不一致，而开发者读到的必须是平台真正在执行的那份。
+        // 未接入的层由 ReviewGate 如实报「未接入」，不会伪装成"已通过"。
+        $gates = $versions->mapWithKeys(fn ($v) => [
+            $v->id => $this->gate->evaluate($product->id, $v->id),
+        ])->all();
+
+        return view('shop::dev.skills.show', compact('product', 'versions', 'gates'));
     }
 
     public function storeVersion(Request $request, int $id)
