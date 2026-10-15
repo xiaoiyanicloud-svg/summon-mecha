@@ -4,8 +4,10 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Webkul\Shop\Models\GrayRelease;
 use Webkul\Shop\Models\RollbackRecord;
+use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\GrayReleaseService;
 
 /**
@@ -28,11 +30,20 @@ class GrayReleaseController extends APIController
     public function store(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'skill_version_id'   => ['required', 'integer'],
+            'skill_version_id'   => [
+                'required',
+                'integer',
+                // 必须指向一个**已发布**的版本:草稿/归档版本的灰度没有意义 ——
+                // 它压根不会被下发,于是指标恒为 0、评估恒 0、回滚靶子恒空,
+                // 而平台端看到的却是一条"正在灰度"的记录。
+                Rule::exists('skill_versions', 'id')->where('status', SkillVersion::STATUS_PUBLISHED),
+            ],
             'strategy'           => ['nullable', 'array'],
             'strategy.percent'   => ['nullable', 'integer', 'min:1', 'max:100'],
             'strategy.whitelist' => ['nullable', 'array'],
             'batch_no'           => ['nullable', 'string', 'max:40'],
+        ], [
+            'skill_version_id.exists' => '技能版本不存在或尚未发布。',
         ]);
 
         $release = $this->gray->start(
@@ -74,8 +85,13 @@ class GrayReleaseController extends APIController
 
         $payload = $request->validate([
             'installs'  => ['required', 'integer', 'min:0'],
-            'successes' => ['required', 'integer', 'min:0'],
+            // 跨字段:成功数不可能超过安装数。缺这条时 `GrayReleaseService::recordMetric()`
+            // 会算出 >100% 的 success_rate,而成功率又是自动回滚的判据 —— 一个脏计数
+            // 能把灰度判成"健康"或"该回滚",两种都是错的。
+            'successes' => ['required', 'integer', 'min:0', 'lte:installs'],
             'failures'  => ['required', 'integer', 'min:0'],
+        ], [
+            'successes.lte' => '成功数不能大于安装数。',
         ]);
 
         $result = $this->gray->recordMetric(

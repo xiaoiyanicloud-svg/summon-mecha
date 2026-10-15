@@ -4,6 +4,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\DeployTask;
@@ -35,7 +36,9 @@ class DeployController extends APIController
             'skill_id'         => ['required', 'integer'],
             'skill_version_id' => ['nullable', 'integer'],
             'entitlement_id'   => ['nullable', 'integer'],
-            'operation'        => ['nullable', 'integer', 'in:1,2,3,4,5'],
+            // ⚠ 白名单必须与 DeployTask::OP_* 对齐,**不写字面量**:
+            //   此前写死 'in:1,2,3,4,5',漏了 OP_RECLAIM=6 → 合法的「试用到期回收」被挡死。
+            'operation'        => ['nullable', 'integer', Rule::in(DeployTask::OPERATIONS)],
             'channel'          => ['nullable', 'string', 'in:agent,manual'],
         ]);
 
