@@ -4,9 +4,12 @@ namespace Webkul\Core\Exceptions;
 
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as BaseHandler;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class Handler extends BaseHandler
@@ -16,6 +19,12 @@ class Handler extends BaseHandler
      */
     public function register(): void
     {
+        // X2 · 统一 JSON 错误信封。放在**最前**:本方法在 provider boot 阶段执行,
+        // 而 `bootstrap/app.php` 的 withExceptions 回调是之后追加的 —— 数组靠后 = 优先级更低。
+        // 实测:APP_DEBUG=false 时,下面的 Bagisto 原生回调会遮蔽 withExceptions 的任何注册,
+        // 所以统一信封必须在**这一层**、且在本方法开头注册,才能同时覆盖 debug 开/关。
+        $this->registerUnifiedJsonEnvelope();
+
         if (config('app.debug')) {
             return;
         }
@@ -27,6 +36,77 @@ class Handler extends BaseHandler
         $this->handleValidationException();
 
         $this->handleServerException();
+    }
+
+    /**
+     * X2 · 统一 JSON 错误信封(仅作用于 API 消费方)。
+     *
+     * 只接管"会落到默认渲染"的异常:控制器自己 catch 并返回的结构不受影响。
+     * ⚠ 作用域刻意收窄:只对 `api/*` 路径或 `Accept: application/json` 生效,
+     *   web/后台表单请求仍走 Laravel/Bagisto 默认渲染(重定向回带 errors),
+     *   否则一次后台表单校验失败会被改成裸 JSON —— 那是大面积回归。
+     */
+    protected function registerUnifiedJsonEnvelope(): void
+    {
+        $wantsJson = fn (Request $request) => $request->expectsJson() || $request->is('api/*');
+
+        $this->renderable(function (ValidationException $e, Request $request) use ($wantsJson) {
+            if (! $wantsJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'code'    => 'VALIDATION_ERROR',
+                'message' => $e->getMessage(),
+                'errors'  => $e->errors(),
+            ], 422);
+        });
+
+        // ModelNotFoundException 会被 prepareException 先转成 NotFoundHttpException,
+        // 故这里处理后者(同时也覆盖"未知路由"的 404)。不回显异常消息 → 不泄漏模型类名。
+        $this->renderable(function (NotFoundHttpException $e, Request $request) use ($wantsJson) {
+            if (! $wantsJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'code'    => 'NOT_FOUND',
+                'message' => '请求的资源不存在。',
+            ], 404);
+        });
+
+        $this->renderable(function (AuthenticationException $e, Request $request) use ($wantsJson) {
+            if (! $wantsJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'code'    => 'UNAUTHENTICATED',
+                'message' => '未认证或登录已过期。',
+            ], 401);
+        });
+
+        // 兜底:仅接管**非 HTTP** 的未捕获异常;HTTP 异常(405/419…)继续 fall-through,
+        // 保持其既有语义(交给下方 Bagisto 原生回调 / Laravel 默认渲染)。
+        $this->renderable(function (Throwable $e, Request $request) use ($wantsJson) {
+            if (! $wantsJson($request)) {
+                return null;
+            }
+
+            if ($e instanceof HttpExceptionInterface || $e instanceof HttpResponseException) {
+                return null;
+            }
+
+            // 生产(APP_DEBUG=false)隐藏细节,不回显异常消息/堆栈
+            $message = config('app.debug')
+                ? $e->getMessage()
+                : '服务器内部错误,请稍后重试。';
+
+            return response()->json([
+                'code'    => 'SERVER_ERROR',
+                'message' => $message,
+            ], 500);
+        });
     }
 
     /**

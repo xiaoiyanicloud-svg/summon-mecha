@@ -92,5 +92,16 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        /**
+         * X2 · 全局异常渲染 —— 统一 JSON 错误信封。
+         *
+         * ⚠ 这里**故意留空**。本项目实际的异常处理器是 `Webkul\Core\Exceptions\Handler`
+         *   (见 `packages/Webkul/Core/src/Exceptions/Handler.php`),它在 provider boot 阶段
+         *   就把自己的 renderable 回调注册进了 `$renderCallbacks`;而 `withExceptions` 的
+         *   回调是**之后**(handler 首次解析时)追加的 —— 数组靠后 = 优先级更低。
+         *   实测:APP_DEBUG=false 时,Bagisto 的回调会**完全遮蔽**这里注册的任何回调。
+         *
+         *   所以统一信封注册在 `Core\Exceptions\Handler::register()` 的最前面(它才是
+         *   真正优先的那一层),在此重复一份会造成两处同源逻辑。
+         */
     })->create();
