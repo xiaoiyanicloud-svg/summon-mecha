@@ -59,6 +59,15 @@ class DeviceBinding extends Model
      */
     public const ONLINE_WINDOW_SECONDS = 90;
 
+    /**
+     * `national_code`(工信部「一机一码」)的格式(B-19)。
+     *
+     * ⚠ 平台**无法**向工信部核验这个码的真伪 —— 没有那个外部通道(同 `verify_status` 的处境)。
+     *   这里只做**形状**校验(字母数字/连字符、8–40 位)、以及跨设备的**唯一性**(一机一码)。
+     *   格式对 ≠ 码是真的;录错一个字符平台也发现不了。别把校验通过说成"已核验"。
+     */
+    public const NATIONAL_CODE_PATTERN = '/^[A-Za-z0-9-]{8,40}$/';
+
     protected $fillable = [
         'did',
         'national_code',

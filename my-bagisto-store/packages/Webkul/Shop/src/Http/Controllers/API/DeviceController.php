@@ -69,12 +69,28 @@ class DeviceController extends APIController
             'sn'           => ['required', 'string', 'max:64'],
             'product_id'   => ['nullable', 'integer'],
             'display_name' => ['nullable', 'string', 'max:191'],
+            // B-19:一机一码(工信部编码)。可选 —— 拿到就录,拿不到不拦登记。
+            'national_code' => ['nullable', 'string', 'max:40'],
         ]);
 
         $sn = trim($payload['sn']);
 
         if ($sn === '') {
             return $this->fail(ApiErrorCode::DEVICE_SN_REQUIRED, '请填写设备 SN。', 422);
+        }
+
+        // B-19:一机一码的录入与校验。平台无法向工信部核验真伪(无外部通道),
+        //   只保证两件事:形状合法、且**全局唯一**(一机一码的本义)。
+        $national = $this->validateNationalCode($payload['national_code'] ?? null);
+
+        if (! $national['ok']) {
+            return $this->fail(ApiErrorCode::DEVICE_NATIONAL_CODE_INVALID, '一机一码格式不正确(应为 8–40 位字母、数字或连字符)。', 422);
+        }
+
+        $nationalCode = $national['code'];
+
+        if ($nationalCode !== null && DeviceBinding::query()->where('national_code', $nationalCode)->exists()) {
+            return $this->fail(ApiErrorCode::DEVICE_NATIONAL_CODE_DUPLICATE, "一机一码 {$nationalCode} 已被其他设备占用。", 422);
         }
 
         // 同一账号下 SN 不能重复。这里显式查一次是为了给前端一句人话,
@@ -102,7 +118,7 @@ class DeviceController extends APIController
         // ⚠ 吞异常:这只是"补建绑定",失败不应影响"登记设备"这条主链路
         //   (与 Listeners/SkillDelivery 同样的防御姿态)。
         try {
-            app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)->ensureForDevice($device);
+            app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)->ensureForDevice($device, $nationalCode);
         } catch (\Throwable $e) {
             report($e);
         }
@@ -150,7 +166,34 @@ class DeviceController extends APIController
         $payload = $request->validate([
             'product_id'   => ['nullable', 'integer'],
             'display_name' => ['nullable', 'string', 'max:191'],
+            // B-19:补录一机一码(登记时漏填的,这里可补)
+            'national_code' => ['nullable', 'string', 'max:40'],
         ]);
+
+        // B-19:补录一机一码 —— 形状 + 全局唯一,与登记同一套判据。
+        // ⚠ 只写真相源(binding),不写 devices:该列本就在 binding 上(计划 §3.2)。
+        $nationalCode = null;
+        $hasNationalInput = array_key_exists('national_code', $payload) && trim((string) $payload['national_code']) !== '';
+
+        if ($hasNationalInput) {
+            $national = $this->validateNationalCode($payload['national_code']);
+
+            if (! $national['ok']) {
+                return $this->fail(ApiErrorCode::DEVICE_NATIONAL_CODE_INVALID, '一机一码格式不正确(应为 8–40 位字母、数字或连字符)。', 422);
+            }
+
+            $nationalCode = $national['code'];
+
+            // 别的设备占了同一个码 → 拒(排除自己已占的那条)
+            $taken = DeviceBinding::query()
+                ->where('national_code', $nationalCode)
+                ->where('devices_id', '!=', $device->id)
+                ->exists();
+
+            if ($taken) {
+                return $this->fail(ApiErrorCode::DEVICE_NATIONAL_CODE_DUPLICATE, "一机一码 {$nationalCode} 已被其他设备占用。", 422);
+            }
+        }
 
         if (array_key_exists('display_name', $payload)) {
             $device->display_name = $payload['display_name'];
@@ -161,6 +204,14 @@ class DeviceController extends APIController
         }
 
         $device->save();
+
+        if ($hasNationalInput) {
+            $binding = app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)->ensureForDevice($device);
+            if ($binding) {
+                $binding->national_code = $nationalCode;
+                $binding->save();
+            }
+        }
 
         // X4 · 设备改动留痕(改机型会影响兼容性判定,值得留痕)
         $this->oplog->log(
@@ -360,6 +411,28 @@ class DeviceController extends APIController
     }
 
     /**
+     * 规范化并校验一机一码(B-19)。
+     *
+     * 统一大写后再校验 —— 一机一码是标识符,大小写不同不该被当成两台机器(同一码只准占一次)。
+     *
+     * @return array{ok: bool, code: ?string}  ok=false 表示形状非法;code=null 表示本次未提供
+     */
+    private function validateNationalCode(?string $raw): array
+    {
+        if ($raw === null || trim($raw) === '') {
+            return ['ok' => true, 'code' => null];
+        }
+
+        $code = strtoupper(trim($raw));
+
+        if (! preg_match(DeviceBinding::NATIONAL_CODE_PATTERN, $code)) {
+            return ['ok' => false, 'code' => null];
+        }
+
+        return ['ok' => true, 'code' => $code];
+    }
+
+    /**
      * 统一的输出结构 —— 设备 + 它已获得的技能。
      */
     protected function format(Device $device): array
@@ -374,6 +447,9 @@ class DeviceController extends APIController
             'sn'            => $device->sn,
             'display_name'  => $device->display_name,
             'bind_status'   => $device->bind_status,
+            // 一机一码(B-19)。存在真相源 device_binding 上,不在 devices(登记视图)上。
+            // ⚠ 平台无法核验其真伪 —— 只是"用户录了且未与其它设备重复",别读成"已核验"。
+            'national_code' => $binding?->national_code,
             // ⚠ 核验状态必须透出:平台无法验证这台机器真实存在,
             //   界面要如实标注「未核验」,不能让用户以为平台已经连上了他的机器人
             'verify_status' => $device->verify_status,

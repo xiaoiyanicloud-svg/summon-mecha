@@ -68,6 +68,10 @@ final class ApiErrorCode
     public const DEVICE_NOT_REGISTERED = 'DEVICE_NOT_REGISTERED';
     public const DEVICE_SN_REQUIRED = 'DEVICE_SN_REQUIRED';
     public const DEVICE_SN_DUPLICATE = 'DEVICE_SN_DUPLICATE';
+    /** 一机一码(B-19):格式不合法(工信部编码为字母数字,长度受限)。 */
+    public const DEVICE_NATIONAL_CODE_INVALID = 'DEVICE_NATIONAL_CODE_INVALID';
+    /** 一机一码(B-19):该码已被别的设备占用 —— "一机一码"意味着全局唯一。 */
+    public const DEVICE_NATIONAL_CODE_DUPLICATE = 'DEVICE_NATIONAL_CODE_DUPLICATE';
     /** 设备真相源(binding)缺失,需重新登记设备。 */
     public const DEVICE_BINDING_MISSING = 'DEVICE_BINDING_MISSING';
     public const DEVICE_NOT_OWNED = 'DEVICE_NOT_OWNED';

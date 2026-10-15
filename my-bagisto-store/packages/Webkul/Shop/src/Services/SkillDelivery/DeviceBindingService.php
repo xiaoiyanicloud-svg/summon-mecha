@@ -26,14 +26,17 @@ class DeviceBindingService
      * 用户登记设备后,确保存在一条对应的 binding,并回填 devices.binding_id。
      *
      * 幂等:同一 device 重复调用不会产生第二条 binding。
+     *
+     * @param  string|null  $nationalCode  一机一码(B-19)。非空时录入到 binding;
+     *                                     null 表示本次未提供,不覆盖已有值。
      */
-    public function ensureForDevice(Device $device): ?DeviceBinding
+    public function ensureForDevice(Device $device, ?string $nationalCode = null): ?DeviceBinding
     {
         if (! $device->exists) {
             return null;
         }
 
-        return DB::transaction(function () use ($device) {
+        return DB::transaction(function () use ($device, $nationalCode) {
             // 已回填过 binding_id 的,直接取回
             if ($device->binding_id) {
                 $existing = DeviceBinding::find($device->binding_id);
@@ -65,6 +68,11 @@ class DeviceBindingService
                     $binding->bound_at = $device->bound_at ?: now();
                 }
 
+                // B-19:录入一机一码(用户在登记/补录时提供)。不覆盖为 null。
+                if ($nationalCode !== null) {
+                    $binding->national_code = $nationalCode;
+                }
+
                 $binding->save();
             } else {
                 // 人工登记来源的 did:sn_{sn}(计划 §3.2 约定)
@@ -75,6 +83,7 @@ class DeviceBindingService
                     [
                         'source'            => DeviceBinding::SOURCE_MANUAL,
                         'sn'                => $device->sn,
+                        'national_code'     => $nationalCode,
                         'model_id'          => $this->resolveModelId($device),
                         'owner_customer_id' => $device->customer_id,
                         'devices_id'        => $device->id,
