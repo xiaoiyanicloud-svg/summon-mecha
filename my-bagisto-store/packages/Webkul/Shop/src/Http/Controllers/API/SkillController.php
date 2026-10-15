@@ -222,22 +222,52 @@ class SkillController extends APIController
         $entitlement->save();
 
         // 重跑交付,让状态从 pending_bind 走到 granted
-        $result = app(\Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager::class)
-            ->channel($entitlement->delivery_channel)
-            ->deliver($entitlement, ['device_id' => $device->id]);
+        //
+        // ⚠ D7 防御式 try/catch(与 Listeners\SkillDelivery 一致):
+        //   `channel()` 在通道未注册(配置写错 / config/skill_delivery.php 被改)时抛
+        //   InvalidArgumentException,`deliver()` 还会因磁盘缺件 / 厂商接口报错而抛。
+        //   此时上面的绑定**已经落库**,放任异常冒泡只会得到一个 500 ——
+        //   前端把它当请求失败,用户以为"没绑上",于是反复重绑;
+        //   真正的原因(通道没注册)谁也看不到。
+        try {
+            $delivery = app(\Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager::class)
+                ->channel($entitlement->delivery_channel)
+                ->deliver($entitlement, ['device_id' => $device->id])
+                ->toArray();
+
+            $deliveryFailed = false;
+        } catch (\Throwable $e) {
+            report($e);
+
+            $delivery = null;
+            $deliveryFailed = true;
+        }
+
+        $data = [
+            'id'               => $entitlement->id,
+            'device_id'        => $device->id,
+            'device_sn'        => $device->sn,
+            // 真相源信息：did 是下发链路的唯一凭据；device_confirmed 表示是否已确权
+            'device_did'       => $binding?->did,
+            'device_confirmed' => (bool) $binding,
+            'status'           => $entitlement->fresh()->status,
+            'delivery'         => $delivery,
+        ];
+
+        if ($deliveryFailed) {
+            // 绑定确实成了(库已改),所以措辞必须说"已绑定,但…"——
+            // 报成整体失败会让用户重复绑定,报成成功又会让用户以为技能装好了。
+            return $this->fail(
+                ApiErrorCode::SKILL_DELIVERY_FAILED,
+                '已绑定到设备 '.$device->sn.',但技能下发未成功,可稍后在技能页重试。',
+                200,
+                ['data' => $data],
+            );
+        }
 
         return response()->json([
             'message' => '已绑定到设备 '.$device->sn.'。',
-            'data'    => [
-                'id'               => $entitlement->id,
-                'device_id'        => $device->id,
-                'device_sn'        => $device->sn,
-                // 真相源信息：did 是下发链路的唯一凭据；device_confirmed 表示是否已确权
-                'device_did'       => $binding?->did,
-                'device_confirmed' => (bool) $binding,
-                'status'           => $entitlement->fresh()->status,
-                'delivery'         => $result->toArray(),
-            ],
+            'data'    => $data,
         ]);
     }
 

@@ -101,12 +101,17 @@ class DeviceController extends APIController
             report($e);
         }
 
-        // 登记后可自动认领:把该用户此前"待指派"的技能授权落到这台设备上
-        $this->claimPendingEntitlements($customer->id, $device);
+        // 登记后可自动认领:把该用户此前"待指派"的技能授权落到这台设备上。
+        // 认领里每条都有 try/catch(见 claimPendingEntitlements),不会把登记整体打成 500。
+        $claim = $this->claimPendingEntitlements($customer->id, $device);
 
         return response()->json([
-            'message' => '设备已登记。',
+            // 有技能没下来就直说 —— 否则用户看到"已登记"、却发现技能页还是"待安装",无从判断
+            'message' => $claim['failed'] > 0
+                ? "设备已登记,但有 {$claim['failed']} 个技能未能自动下发,可稍后在技能页重试。"
+                : '设备已登记。',
             'data'    => $this->format($device->fresh(['product', 'entitlements.product'])),
+            'claim'   => $claim,
         ], 201);
     }
 
@@ -248,8 +253,10 @@ class DeviceController extends APIController
      *
      * 只在该用户名下且 device_id 为空的授权上生效 —— 多台设备时不会互相抢。
      * 认领后重跑一次交付,让状态从 pending_bind 走到 granted。
+     *
+     * @return array{claimed:int, failed:int} 下发成功 / 失败的条数
      */
-    protected function claimPendingEntitlements(int $customerId, Device $device): void
+    protected function claimPendingEntitlements(int $customerId, Device $device): array
     {
         $pending = SkillEntitlement::query()
             ->where('customer_id', $customerId)
@@ -258,18 +265,38 @@ class DeviceController extends APIController
             ->get();
 
         if ($pending->isEmpty()) {
-            return;
+            return ['claimed' => 0, 'failed' => 0];
         }
 
         $manager = app(\Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager::class);
+
+        $claimed = 0;
+        $failed = 0;
 
         foreach ($pending as $entitlement) {
             $entitlement->device_id = $device->id;
             $entitlement->save();
 
-            $manager->channel($entitlement->delivery_channel)
-                ->deliver($entitlement, ['device_id' => $device->id]);
+            // ⚠ D7 防御式 try/catch,与 Listeners\SkillDelivery 同一姿态 —— 而且这里
+            //   **必须逐条兜住**,不能让一条失败拖垮整批:
+            //     · `channel()` 在通道未注册(配置写错)时抛 InvalidArgumentException;
+            //     · `deliver()` 还会因磁盘缺件 / 厂商接口报错而抛。
+            //   此时授权**已经落库**指向本设备。若放任异常冒泡,`store()` 会返回 500,
+            //   而设备其实已经建好了 —— 用户以为登记失败,于是重复登记,账号里堆出一串同 SN 设备。
+            //   所以:失败写日志 + 计数,继续处理下一条,最后如实回报。
+            try {
+                $manager->channel($entitlement->delivery_channel)
+                    ->deliver($entitlement, ['device_id' => $device->id]);
+
+                $claimed++;
+            } catch (\Throwable $e) {
+                report($e);
+
+                $failed++;
+            }
         }
+
+        return ['claimed' => $claimed, 'failed' => $failed];
     }
 
     /**
