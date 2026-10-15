@@ -19,6 +19,7 @@ use Webkul\Shop\Services\Payment\PaymentManager;
  *   - 订单身份**只来自网关解析出的商户订单号**(out_trade_no),不再信任请求体 order_id(M3)
  *   - 回调金额必须等于订单应付(grand_total),否则拒绝并留 code(M3)
  *   - 落支付流水 + out_trade_no 唯一键幂等(M6)
+ *   - 幂等判定在事务内、对被改的订单行加写锁(lockForUpdate),并发重发不会双双读到 pending(M7)
  *
  * ⚠ **验签按设计推迟**:当前仍是 mock 网关("支付成功"由参数自报,无验签)。
  *   真实验签在微信资质就绪后于 WechatGateway::handleCallback 内做,**不在这里伪造**;
@@ -98,27 +99,60 @@ class PaymentCallbackController extends APIController
             }
         }
 
-        // 幂等:已支付则直接返回
-        if (in_array($order->status, ['processing', 'completed'], true)) {
-            return response()->json(['message' => '已处理(幂等)。', 'order_id' => $order->id]);
-        }
+        // M7 · 幂等判定移进事务 + 订单行锁(真幂等,不是 check-then-act)。
+        //
+        // 此前是事务**外**的 check-then-act:先读 `in_array($order->status, [processing, completed])`
+        // 再写,中间既无锁也无事务 —— 两个并发回调**都**读到 pending,**都**进 afterOrderCreated。
+        // 兜底只有 skill_entitlements.order_item_id 唯一键,而那个唯一约束异常被
+        // SkillDelivery 的 try/catch 吞掉(见该类注释第 1 条:吞是刻意的)→ 结果可能是
+        // "订单状态翻成 processing,但本次交付没落"。
+        //
+        // 现在:`SELECT ... FOR UPDATE` 先取订单行的写锁,后到的回调**必须等**先到的提交,
+        // 等到的就是 processing/completed → 走幂等分支。"翻状态 + 交付"仍在同一事务内
+        // (D3 已统一两条入口的边界),所以要么一起提交、要么一起回滚。
+        //
+        // ⚠ 为什么锁订单行而不是只靠流水唯一键:out_trade_no 唯一键只保证"流水只有一行",
+        //   它挡不住第二次回调继续往下翻状态/再交付 —— 需要锁住被改的那行本身。
+        $outcome = DB::transaction(function () use ($order) {
+            $locked = OrderProxy::modelClass()::query()
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->first();
 
-        // D3 · 与建单事件入口统一事务边界:事件路径在 OrderRepository 的建单事务内
-        // dispatch「翻状态(下单即 pending)→ 交付」,回调路径此前是裸 save() 再调,不在事务内。
-        // 现把两者收进同一事务:状态推进与授权发放要么一起提交,要么一起回滚。
-        // 注意 afterOrderCreated 内部吞异常(刻意的 —— 交付失败不应让订单失败),
-        // 所以交付失败不会回滚本事务,只留 meta 痕迹 + 告警;补发走 redeliver()。
-        DB::transaction(function () use ($order) {
-            $order->status = 'processing';
-            $order->save();
+            if (! $locked) {
+                return ['order' => null, 'processed' => false];
+            }
+
+            // 幂等:已支付则不改不交付
+            if (in_array($locked->status, ['processing', 'completed'], true)) {
+                return ['order' => $locked, 'processed' => false];
+            }
+
+            $locked->status = 'processing';
+            $locked->save();
 
             // 触发 v1 既有授权发放(幂等:order_item_id 唯一键兜底)
-            app(SkillDelivery::class)->afterOrderCreated($order);
+            app(SkillDelivery::class)->afterOrderCreated($locked);
+
+            return ['order' => $locked, 'processed' => true];
         });
+
+        $order = $outcome['order'];
+
+        if (! $order) {
+            return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单未找到。', 404);
+        }
+
+        if (! $outcome['processed']) {
+            return response()->json(['message' => '已处理(幂等)。', 'order_id' => $order->id]);
+        }
 
         // M8 · 资金动作留痕:此前 Shop 侧(含支付回调翻状态)一处都不写 operation_log,
         // 出事要追责时查无此人。回调由网关触发、无登录用户,故记 SYSTEM。
         // 用 log()(非 logOrFail):留痕是旁路,不应因审计表写不进去而回滚一笔已成功的支付。
+        //
+        // ⚠ 写在事务**外**且只在"本次真的处理了"时写:幂等重放不该再留一条痕
+        //   (否则审计里同一次支付会出现多条,反而看不出真实处理次数)。
         $this->oplog->log(
             OperationLog::ACTOR_SYSTEM,
             null,

@@ -90,36 +90,48 @@ class AfterSaleService
 
     /**
      * 通过售后 → 冻结授权 + 走退款。
+     *
+     * M7 · 事务边界:此前「冻结授权 + 调外部网关 + 落 RefundRequest」全挤在一个事务里,
+     * 而**外部退款网关的调用不可回滚** —— 钱已经退出去,后面 `RefundRequest::create`
+     * 一旦抛错,整个事务回滚:账上既没有退款单、授权也没真正记为已退,钱却出去了。
+     * 现在拆成三段:
+     *   ① 事务内:状态守卫(行锁)+ 金额校验 + 冻结授权 + 落「退款中」记录 → 提交
+     *   ② 事务外:调网关(钱出去这一步不放在事务里)
+     *   ③ 事务内:回写终态(`settleRefund()`,也是将来网关回调/对账轮询的唯一入口)
+     * 这样"钱是否出去"与"账本怎么写"不再互相绑架:任何一段失败都留下可核对的中间态。
      */
     public function approve(int $afterSaleId, ?int $reviewerId = null): array
     {
-        $afterSale = AfterSale::find($afterSaleId);
+        // ── 阶段①:事务内准备(守卫 + 冻结 + 落「退款中」),提交后才动钱 ──
+        $prepared = DB::transaction(function () use ($afterSaleId, $reviewerId) {
+            // 状态守卫移进事务 + 行锁:此前守卫在事务外,两个并发 approve 都能读到
+            // 旧状态并通过(退款是资金级重复,必须挡住)。
+            $afterSale = AfterSale::query()
+                ->whereKey($afterSaleId)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $afterSale) {
-            return ['ok' => false, 'message' => '售后单不存在。'];
-        }
+            if (! $afterSale) {
+                return ['ok' => false, 'message' => '售后单不存在。'];
+            }
 
-        if (in_array($afterSale->status, [AfterSale::STATUS_APPROVED, AfterSale::STATUS_REFUNDED], true)) {
-            return ['ok' => false, 'message' => '该售后单已处理。'];
-        }
+            if (in_array($afterSale->status, [AfterSale::STATUS_APPROVED, AfterSale::STATUS_REFUNDED], true)) {
+                return ['ok' => false, 'message' => '该售后单已处理。'];
+            }
 
-        return DB::transaction(function () use ($afterSale, $reviewerId) {
             $entitlement = $afterSale->entitlement_id
                 ? SkillEntitlement::find($afterSale->entitlement_id)
                 : null;
 
-            // 1) 冻结授权(先冻结,与退款解耦——即使打款失败也不能再用)
-            if ($entitlement) {
-                $this->revokeEntitlement($entitlement);
-            }
-
-            // 2) 退款金额取自该订单条目的实付(M5)。
+            // 1) 退款金额取自该订单条目的实付(M5)。
             //    此前恒传 0、RefundRequest 也恒落 0 —— 退款账目全是 0,事后无法对账。
             $orderItemId = $afterSale->order_item_id ?: $entitlement?->order_item_id;
             $paidTotal = $this->paidAmountOf($orderItemId);
             $alreadyRefunded = $this->refundedAmountOf($orderItemId);
 
-            // 已退金额累计不得超实付
+            // 已退金额累计不得超实付。
+            // ⚠ 这个校验放在**冻结授权之前**:此前冻结在前、校验在后,被拒的退单一样把
+            //   授权冻掉了(校验失败 return 不会回滚事务,revoke 已经落库)。
             if ($paidTotal > 0 && $alreadyRefunded >= $paidTotal - 0.005) {
                 return ['ok' => false, 'message' => '该订单条目已退款,不能重复退款。'];
             }
@@ -128,35 +140,29 @@ class AfterSaleService
                 ? round(min($paidTotal - $alreadyRefunded, $paidTotal), 2)
                 : 0.0;
 
-            // 3) 发起退款。退款单号用 ULID:秒级 `ymdHis` 同秒重试会撞号。
-            $gateway = $this->payments->gateway();
-            $outRefundNo = 'RF'.(string) Str::ulid();
-
-            try {
-                $result = $gateway->refund(null, (float) $amount, $outRefundNo);
-                $ok = $result['ok'] ?? false;
-                $msg = $result['message'] ?? '';
-            } catch (\Throwable $e) {
-                // 资质未就绪时 mock 也会走通;真实网关异常不应让整单回滚(先冻结授权是对的)
-                report($e);
-                $ok = false;
-                $msg = $e->getMessage();
+            // 2) 冻结授权(先冻结,与退款解耦——即使打款失败也不能再用)
+            if ($entitlement) {
+                $this->revokeEntitlement($entitlement);
             }
 
-            $afterSale->status = $ok ? AfterSale::STATUS_REFUNDED : AfterSale::STATUS_APPROVED;
+            // 3) 落「退款中」记录。退款单号用 ULID:秒级 `ymdHis` 同秒重试会撞号。
+            $outRefundNo = 'RF'.(string) Str::ulid();
+
+            $afterSale->status = AfterSale::STATUS_APPROVED;
             $afterSale->reviewer_id = $reviewerId;
             $afterSale->reviewed_at = now();
             $afterSale->save();
 
-            RefundRequest::create([
+            $refund = RefundRequest::create([
                 'after_sale_id'    => $afterSale->id,
                 'wechat_refund_no' => $outRefundNo,
                 'amount'           => $amount,
-                'status'           => $ok ? 'success' : 'pending',
+                'status'           => RefundRequest::STATUS_PENDING, // 退款中,等网关回执
             ]);
 
             // M8 · 退款/售后审批留痕。此前 Shop 侧资金动作一处都不写 operation_log。
-            // 这是"钱出去"的动作,用 logOrFail():审计写不进去就整个回滚,不留无痕退款。
+            // 这是"钱即将出去"的动作,用 logOrFail():审计写不进去就整个回滚,
+            // 而且**此时钱还没出去**,回滚是安全的(这正是 logOrFail 该待的位置)。
             $this->oplog->logOrFail(
                 OperationLog::ACTOR_ADMIN,
                 $reviewerId,
@@ -164,18 +170,121 @@ class AfterSaleService
                 'after_sale',
                 $afterSale->id,
                 [
+                    'phase'          => 'initiated',
                     'entitlement_id' => $afterSale->entitlement_id,
                     'order_item_id'  => $afterSale->order_item_id,
                     'amount'         => $amount,
                     'refund_no'      => $outRefundNo,
-                    'refunded'       => $ok,
+                    'refund_id'      => $refund->id,
+                ]
+            );
+
+            return [
+                'ok'            => true,
+                'refund_id'     => $refund->id,
+                'after_sale_id' => $afterSale->id,
+                'amount'        => $amount,
+                'out_refund_no' => $outRefundNo,
+            ];
+        });
+
+        if (! ($prepared['ok'] ?? false)) {
+            return $prepared;
+        }
+
+        // ── 阶段②:事务外调网关。钱一旦出去,就不能再靠"回滚事务"把它拿回来 ──
+        try {
+            $gateway = $this->payments->gateway();
+            $result = $gateway->refund(null, (float) $prepared['amount'], $prepared['out_refund_no']);
+            $ok = $result['ok'] ?? false;
+            $msg = $result['message'] ?? '';
+        } catch (\Throwable $e) {
+            // 资质未就绪时 mock 也会走通;真实网关异常不应让整单回滚(先冻结授权是对的)
+            report($e);
+            $ok = false;
+            $msg = $e->getMessage();
+        }
+
+        // ── 阶段③:回写终态 ──
+        return $this->settleRefund($prepared['refund_id'], $ok, $msg);
+    }
+
+    /**
+     * M7 · 退款终态回写 —— 事务外打完款之后调;将来网关异步回调 / 对账轮询也走这里。
+     *
+     * 幂等:只有 `pending`(退款中)才写终态,重复回执不会再改一次,
+     * 也不会让同一个售后单被结算两遍。
+     *
+     * ⚠ 这里用 `log()` 而不是 `logOrFail()`:钱**已经**出去了,此时若因为审计表写不进去
+     *   而回滚状态回写,只会让"钱出去了但账本还停在退款中"——那是更坏的账。
+     */
+    public function settleRefund(int $refundId, bool $ok, ?string $message = null): array
+    {
+        return DB::transaction(function () use ($refundId, $ok, $message) {
+            $refund = RefundRequest::query()
+                ->whereKey($refundId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $refund) {
+                return ['ok' => false, 'message' => '退款单不存在。'];
+            }
+
+            $afterSale = $refund->after_sale_id
+                ? AfterSale::query()->whereKey($refund->after_sale_id)->lockForUpdate()->first()
+                : null;
+
+            $amount = (float) $refund->amount;
+
+            // 幂等:已是终态 → 按既有结果返回,不重复改
+            if ($refund->status !== RefundRequest::STATUS_PENDING) {
+                return [
+                    'ok'      => true,
+                    'message' => '该退款单已是终态,按幂等返回。',
+                    'data'    => [
+                        'id'            => $afterSale?->id,
+                        'status'        => $afterSale?->status,
+                        'amount'        => $amount,
+                        'refund_status' => $refund->status,
+                    ],
+                ];
+            }
+
+            $refund->status = $ok ? RefundRequest::STATUS_SUCCESS : RefundRequest::STATUS_FAILED;
+            $refund->callback_at = now();
+            $refund->save();
+
+            if ($afterSale) {
+                $afterSale->status = $ok ? AfterSale::STATUS_REFUNDED : AfterSale::STATUS_APPROVED;
+                $afterSale->save();
+            }
+
+            $this->oplog->log(
+                OperationLog::ACTOR_ADMIN,
+                $afterSale?->reviewer_id,
+                'after_sale.refund_settled',
+                'after_sale',
+                $afterSale?->id,
+                [
+                    'refund_id'     => $refund->id,
+                    'refund_no'     => $refund->wechat_refund_no,
+                    'amount'        => $amount,
+                    'refund_status' => $refund->status,
+                    'message'       => $message,
                 ]
             );
 
             return [
                 'ok'      => true,
-                'message' => $ok ? '已退款并冻结授权。' : '已冻结授权,退款待支付资质就绪后补打款。',
-                'data'    => ['id' => $afterSale->id, 'status' => $afterSale->status, 'amount' => $amount],
+                'message' => $ok
+                    ? '已退款并冻结授权。'
+                    : '已冻结授权,退款未成功(待支付资质就绪后重打款)。',
+                'data'    => [
+                    'id'            => $afterSale?->id,
+                    'status'        => $afterSale?->status,
+                    'amount'        => $amount,
+                    'refund_status' => $refund->status,
+                ],
             ];
         });
     }
@@ -237,7 +346,7 @@ class AfterSaleService
     }
 
     /**
-     * 该订单条目**已发起**的退款累计(success + pending,不含被拒)。
+     * 该订单条目**已发起**的退款累计(success + pending,不含 failed/被拒)。
      */
     protected function refundedAmountOf(?int $orderItemId): float
     {
@@ -248,7 +357,7 @@ class AfterSaleService
         return (float) RefundRequest::query()
             ->join('after_sale', 'after_sale.id', '=', 'refund_request.after_sale_id')
             ->where('after_sale.order_item_id', $orderItemId)
-            ->whereIn('refund_request.status', ['success', 'pending'])
+            ->whereIn('refund_request.status', RefundRequest::COUNTED_STATUSES)
             ->sum('refund_request.amount');
     }
 
