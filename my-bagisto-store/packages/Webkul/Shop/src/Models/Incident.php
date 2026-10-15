@@ -112,6 +112,19 @@ class Incident extends Model
         'insurance_claim'   => 'array',
     ];
 
+    /**
+     * 处置记录(append-only,A5)。
+     *
+     * ⚠ 处置记录**不再**读写 `handling_log` 那一列(见 `IncidentHandlingLog` 类注释:
+     *   整列读改写会丢并发记录)。该列只为兼容历史数据保留。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function handlingEntries()
+    {
+        return $this->hasMany(IncidentHandlingLog::class, 'incident_id')->orderBy('id');
+    }
+
     public function severityLabel(): string
     {
         return self::SEVERITY_LABELS[$this->severity] ?? ($this->severity ?: '未填');

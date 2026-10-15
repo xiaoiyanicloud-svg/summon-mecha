@@ -99,12 +99,13 @@ it('定责：写了说明 → 落库，并追加处理日志', function () {
     ])->assertRedirect();
 
     $fresh = $incident->fresh();
+    $entries = $fresh->handlingEntries;
 
     expect($fresh->responsibility)->toBe(Incident::RESPONSIBILITY_DEVELOPER)
         ->and($fresh->status)->toBe(Incident::STATUS_ATTRIBUTED)
-        ->and($fresh->handling_log)->toHaveCount(1)
-        ->and($fresh->handling_log[0]['admin_id'])->toBe($admin->id)
-        ->and($fresh->handling_log[0]['note'])->toContain('急停保护');
+        ->and($entries)->toHaveCount(1)
+        ->and($entries[0]->admin_id)->toBe($admin->id)
+        ->and($entries[0]->note)->toContain('急停保护');
 });
 
 it('结案：不写结论 → 被拒', function () {
@@ -150,11 +151,11 @@ it('处理日志是追加而不是覆盖（历史不能被抹掉）', function (
         'note'   => '第二步：联系厂商确认固件',
     ]);
 
-    $log = $incident->fresh()->handling_log;
+    $entries = $incident->fresh()->handlingEntries;
 
-    expect($log)->toHaveCount(2)
-        ->and($log[0]['note'])->toContain('第一步')
-        ->and($log[1]['note'])->toContain('第二步');
+    expect($entries)->toHaveCount(2)
+        ->and($entries[0]->note)->toContain('第一步')
+        ->and($entries[1]->note)->toContain('第二步');
 });
 
 it('处理动作留痕到 operation_log', function () {

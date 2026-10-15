@@ -159,8 +159,12 @@ class IncidentService
      * ⚠ **定责必须有说明**：把责任判给某一方是会影响真金白银与法律关系的判断，
      *   没有书面依据的"已定责"等于没定。
      *
-     * ⚠ 处理日志写 `handling_log`，**不写 `evidence`** —— 后者是报案人提交的证据，
-     *   两者的可见范围不同（见迁移 `2026_10_14_000005` 的说明）。
+     * ⚠ 处理日志写 `incident_handling_log`(append-only)，**不写 `evidence`** —— 后者是
+     *   报案人提交的证据，两者的可见范围不同（见迁移 `2026_10_14_000005` 的说明）。
+     *
+     * A5:此前处置记录写 `incident.handling_log` 一列,每次「读出整列 → 追加 → 整列写回」——
+     *   两名管理员并发处置时后写覆盖先写,一条记录消失。现在每次处置**插一行**,物理上不可覆盖;
+     *   状态推进本身也用行锁串行化(否则 status/resolved_at 一样会被并发覆盖)。
      */
     public function advance(
         Incident $incident,
@@ -178,19 +182,26 @@ class IncidentService
             $payload['resolved_at'] = now();
         }
 
-        // 只在真的有动作时留一条 —— 单纯改状态也要留，否则"谁改的"查不出来
-        $log = (array) ($incident->handling_log ?? []);
-        $log[] = array_filter([
-            'at'             => now()->toDateTimeString(),
-            'admin_id'       => auth()->guard('admin')->id(),
-            'status'         => $status,
-            'responsibility' => $responsibility,
-            'note'           => $note,
-        ], fn ($v) => $v !== null && $v !== '');
+        DB::transaction(function () use ($incident, $payload, $status, $responsibility, $note) {
+            // 行锁:把对同一事故的并发处置串起来,避免后写覆盖先写
+            $locked = Incident::query()->whereKey($incident->id)->lockForUpdate()->first();
 
-        $payload['handling_log'] = $log;
+            if (! $locked) {
+                return;
+            }
 
-        $incident->update($payload);
+            $locked->update($payload);
+
+            // append-only:每次处置插一行,不整列重写
+            DB::table('incident_handling_log')->insert([
+                'incident_id'    => $locked->id,
+                'admin_id'       => auth()->guard('admin')->id(),
+                'status'         => $status,
+                'responsibility' => $responsibility,
+                'note'           => $note,
+                'created_at'     => now(),
+            ]);
+        });
     }
 
     /**

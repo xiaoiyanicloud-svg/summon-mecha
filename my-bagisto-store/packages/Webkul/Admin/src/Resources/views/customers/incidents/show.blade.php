@@ -103,18 +103,18 @@
             {{-- 处理日志 --}}
             <div class="box-shadow rounded bg-white p-4 dark:bg-gray-900">
                 <p class="mb-3 font-semibold text-gray-800 dark:text-white">处理记录（内部）</p>
-                @forelse ((array) $incident->handling_log as $entry)
+                @forelse ($incident->handlingEntries as $entry)
                     <div class="mb-2 rounded border border-gray-200 px-3 py-2 text-xs dark:border-gray-700">
                         <div class="text-gray-500">
-                            {{ $entry['at'] ?? '' }}
-                            @if (! empty($entry['admin_id'])) · 管理员 #{{ $entry['admin_id'] }} @endif
-                            @if (! empty($entry['status'])) · {{ \Webkul\Shop\Models\Incident::STATUS_LABELS[$entry['status']] ?? $entry['status'] }} @endif
-                            @if (! empty($entry['responsibility']))
-                                · 定责：{{ \Webkul\Shop\Models\Incident::RESPONSIBILITY_LABELS[$entry['responsibility']] ?? $entry['responsibility'] }}
+                            {{ optional($entry->created_at)->toDateTimeString() }}
+                            @if ($entry->admin_id) · 管理员 #{{ $entry->admin_id }} @endif
+                            @if ($entry->status) · {{ \Webkul\Shop\Models\Incident::STATUS_LABELS[$entry->status] ?? $entry->status }} @endif
+                            @if ($entry->responsibility)
+                                · 定责：{{ \Webkul\Shop\Models\Incident::RESPONSIBILITY_LABELS[$entry->responsibility] ?? $entry->responsibility }}
                             @endif
                         </div>
-                        @if (! empty($entry['note']))
-                            <div class="mt-1 whitespace-pre-wrap text-gray-800 dark:text-gray-100">{{ $entry['note'] }}</div>
+                        @if ($entry->note)
+                            <div class="mt-1 whitespace-pre-wrap text-gray-800 dark:text-gray-100">{{ $entry->note }}</div>
                         @endif
                     </div>
                 @empty
