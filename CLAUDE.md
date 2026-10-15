@@ -41,7 +41,7 @@
 - **D6** 物理安全三层责任:开发者承诺 / 沙盒受控执行 / 用户分级告知留痕
 - **D7** 开发者门户独立于 Bagisto Admin
 - **D8** AI 三层备案等合规是外部审批,阶段 0 并行前置
-- **D9** 熔断 kill switch 可一键禁用已安装设备
+- **D9** 熔断 kill switch 可一键禁用已安装设备（⚠ **生效范围**见下方「现状口径」：对**离线设备**要等其下次上线；**人工通道**安装的当前无法自动卸载）
 - **D10** 虚拟商品售后规则:试用不退 / 未下发可退 / 已激活可申诉
 - **D11** 事故处理机制:上报 + 责任追溯 + 责任保险
 
@@ -76,7 +76,10 @@
 - **前端** uni-app(Options API):`pages/`、`components/`、`utils/api.js`(唯一 API 入口)、`utils/request.js`
 - **后端** Bagisto:`my-bagisto-store/packages/Webkul/Shop/src/`(`Routes/api.php`、`Http/Controllers/API/`、`Services/<业务域>/`、`Database/Migrations/`)
 - **扩展优先走配置注册表**:`config/{skill_delivery,deploy_gateways,payment_gateways,skill_builders,skill_importers,developer_portal}.php`
-- **现状提醒**:队列/缓存是 `database` 驱动,**没有常驻 worker、没有 scheduler**,别假设定时任务存在
+- **现状提醒**:队列/缓存是 `database` 驱动。**scheduler 代码已注册 6 条定时任务**(`bootstrap/app.php` 的 `withSchedule`),但**常驻进程未起**;`queue:work` 同理 —— **没起就等于不存在**,别假设定时任务在跑。
+  (2026-10-16 更正:此前本文件写"没有 scheduler",那句话会让接手的人以为定时任务不存在,已按事实改写。)
+- **现状口径（对外表述必须与代码一致）**:当前**唯一真能跑通的交付通道是「下载 + 人工安装」(`manual`)**;Agent 通道**平台侧已就绪**(签名限时下载 + 包指纹,见 `Services/Deploy/`),但**设备端 Agent 未接真机(E7)**。对外**不要**说"一键下发已打通""覆盖所有机型""跨品牌开箱即用"。
+- **中立清单格式**:文档写的是 `manifest.yaml`,但 `symfony/yaml` **未安装**,实际**只有 `manifest.json` 可用**(`ManifestParser` 对 `.yaml` 会回落报错)。改格式前先看这条。
 - **进度**以 [docs/skill-dev-steps.md](docs/skill-dev-steps.md) 的【进度快照】为准;`NAVIGATION.md` 有过期描述,以代码为准
 - **改动总览**以 [docs/skill-changes-summary.md](docs/skill-changes-summary.md) 为准(白话+表格;含未做/待决策,让后来者一眼看懂这几天改了什么)
 
