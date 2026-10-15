@@ -2,7 +2,9 @@
 
 namespace Webkul\Shop\Services\Deploy;
 
+use Illuminate\Support\Facades\DB;
 use Webkul\Shop\Models\DeployTask;
+use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\SkillVersion;
 
@@ -31,6 +33,21 @@ class DeployTaskService
         DeployTask::OP_UNINSTALL,
         DeployTask::OP_ROLLBACK,
         DeployTask::OP_RECLAIM,
+    ];
+
+    /**
+     * 「未终态」—— 还可能被继续推进的状态集合。
+     *
+     * 建任务的幂等判定**只看这批**:同一台设备、同一个版本、同一个操作,只要上一条还没落地,
+     * 就不该再建第二条。反过来,上一条已经 success/failed/timeout/cancelled 之后再建一条是
+     * **合法**的(装失败了要能重来),所以终态一律不进判定。
+     */
+    protected const OPEN_STATUSES = [
+        'pending',
+        'dispatching',
+        'downloading',
+        'installing',
+        'pending_online',
     ];
 
     /** 合法的状态流转(防乱序/防回退)。 */
@@ -71,23 +88,108 @@ class DeployTaskService
         // 这是 D9「熔断可一键禁用」的硬缺口:此前 isBlocked() 全仓零调用,按钮按下去不下闸。
         $this->assertNotBlocked($skillId, $operation);
 
-        $task = DeployTask::create([
-            'task_no'          => $this->newTaskNo(),
-            'did'              => $did,
-            'channel'          => $channel,
-            'skill_id'         => $skillId,
-            'skill_version_id' => $skillVersionId,
-            'entitlement_id'   => $entitlementId,
-            'operation'        => $operation,
-            'status'           => 'pending',
-            'package_url'      => $packageUrl,
-            'package_hash'     => $packageHash,
-            'created_by'       => $createdBy,
-        ]);
+        // 幂等 + 事务边界,两个问题一次解决:
+        //
+        //   1. **幂等**:迁移 `create_deploy_and_audit_tables.php` 写着「幂等由应用层保证」,
+        //      而应用层此前没有做 —— 双击一次下发就落两条任务,设备取指令时两条都拿到,
+        //      同一个版本装两遍。现在对 (did, skill_version_id, operation) 的**未终态**记录短路。
+        //      终态不进判定:失败之后重来一次是合法动作,不能挡。
+        //
+        //   2. **事务**:create → dispatch 此前不是事务,崩在中间会留下一条永远没人推进的
+        //      `pending` —— 设备看不到它(只取 dispatching/pending_online),用户那边的
+        //      "下发中"也永远不结束。
+        //
+        // ⚠ 并发下"查了再建"仍然是 check-then-act,故拿**设备那一行**做互斥:
+        //   锁 device_binding 而不是 deploy_task —— 首次下发时 deploy_task 里**还没有行**,
+        //   `SELECT ... FOR UPDATE` 对不存在的行不产生任何锁,两个并发请求会双双"查无重复"
+        //   然后各建一条,等于没锁。
+        return DB::transaction(function () use (
+            $did, $skillId, $skillVersionId, $entitlementId, $operation,
+            $channel, $createdBy, $packageUrl, $packageHash
+        ) {
+            $this->lockDevice($did);
 
-        $this->dispatch($task);
+            $existing = $this->findOpenTask($did, $skillVersionId, $operation);
 
-        return $task->fresh();
+            if ($existing) {
+                return $existing;
+            }
+
+            $task = DeployTask::create([
+                'task_no'          => $this->newTaskNo(),
+                'did'              => $did,
+                'channel'          => $channel,
+                'skill_id'         => $skillId,
+                'skill_version_id' => $skillVersionId,
+                'entitlement_id'   => $entitlementId,
+                'operation'        => $operation,
+                'status'           => 'pending',
+                'package_url'      => $packageUrl,
+                'package_hash'     => $packageHash,
+                'created_by'       => $createdBy,
+            ]);
+
+            $this->dispatch($task);
+
+            return $task->fresh();
+        });
+    }
+
+    /**
+     * 以设备为粒度串行化建任务 —— create() 的幂等互斥点。
+     *
+     * 设备没登记过 binding 时 `first()` 返回 null(加锁落空),此时退化为"无锁短路":
+     * 宁可少一层保护,也不给一条查不到设备的下发凭空造一条 binding。
+     */
+    protected function lockDevice(string $did): void
+    {
+        DeviceBinding::query()->where('did', $did)->lockForUpdate()->first();
+    }
+
+    /**
+     * 找"同设备 + 同版本 + 同操作"的未终态任务(create() 的去重靶子)。
+     *
+     * skill_version_id 可空 —— 空值也参与判定,且必须用 whereNull,否则 `= null` 恒假、
+     * 去重对"无版本下发"整批失效。
+     */
+    protected function findOpenTask(string $did, ?int $skillVersionId, int $operation): ?DeployTask
+    {
+        return DeployTask::query()
+            ->where('did', $did)
+            ->where('operation', $operation)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->when(
+                $skillVersionId === null,
+                fn ($q) => $q->whereNull('skill_version_id'),
+                fn ($q) => $q->where('skill_version_id', $skillVersionId),
+            )
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * 记一次"这条指令已经投递给设备了"(投递标记)。
+     *
+     * 与 `DeviceBinding::markSeen()` 是**两件事**:那个记"这台设备来过"
+     * (last_online_at,给在线判定用);这个记"**这一条任务**已经交到设备手上了"。
+     * 只有后者能回答"设备重启后又来拉指令,该不该把这条再给它一次"。
+     *
+     * 用条件更新:并发下只有一方能写上,先到的不被后到的覆盖首次投递时间。
+     */
+    public function markDelivered(DeployTask $task): void
+    {
+        if ($task->delivered_at !== null) {
+            return;
+        }
+
+        $at = now();
+
+        DeployTask::query()
+            ->whereKey($task->id)
+            ->whereNull('delivered_at')
+            ->update(['delivered_at' => $at]);
+
+        $task->delivered_at = $at;
     }
 
     /**

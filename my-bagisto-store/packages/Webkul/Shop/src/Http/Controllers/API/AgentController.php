@@ -227,18 +227,29 @@ class AgentController extends APIController
         $binding->markSeen('agent');
         $binding->save();
 
-        // 待执行指令:dispatching(已下发待取)与 pending_online(曾因离线挂起)
+        // 待执行指令,两条来源:
+        //   · pending_online —— 曾因离线挂起,**从未投递过**(delivered_at 恒为 NULL),上线就该给它;
+        //   · dispatching 且**未投递** —— 已下发但还没被取走。
+        //
+        // ⚠ dispatching 且 delivered_at 非空 = 「已经交到这台设备手上、在等它回报」。
+        //   此前这里不过滤投递标记、每轮把该 did 的全部任务重新返回一遍:
+        //   设备在"取到指令"与"回报"之间重启,重启后的第一次轮询又会把同一条指令取走 —— 重装。
+        //   取走后一直没有回报的,由 `ops:timeout-deploy-tasks` 兜底转 timeout(不是无限等)。
         $tasks = DeployTask::query()
             ->where('did', $did)
-            ->whereIn('status', ['dispatching', 'pending_online'])
+            ->where(function ($q) {
+                $q->where('status', 'pending_online')
+                    ->orWhere(function ($q2) {
+                        $q2->where('status', 'dispatching')->whereNull('delivered_at');
+                    });
+            })
             ->orderBy('id')
             ->get();
 
         $commands = [];
         foreach ($tasks as $t) {
-            if ($t->status === 'pending_online') {
-                $this->deploy->transition($t, 'dispatching');
-            }
+            $this->deploy->transition($t, 'dispatching');
+            $this->deploy->markDelivered($t);
             $commands[] = $this->deploy->buildCommand($t);
         }
 

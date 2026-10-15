@@ -20,6 +20,12 @@ class GrayReleaseService
 
     protected const ROLLBACK_THRESHOLD = 80.0; // 成功率 < 80% 回滚
 
+    /**
+     * 灰度的终态 —— 到了这里就不该再有"回滚"这个动作(已经 rollback 过,或本来就没问题)。
+     * `aborted` = 已回滚;`done` = 灰度正常走完、全量发布 —— 两者都不该被重复 abort。
+     */
+    protected const TERMINAL_STATUSES = ['aborted', 'done'];
+
     public function __construct(protected DeployTaskService $deploy) {}
 
     /**
@@ -69,9 +75,15 @@ class GrayReleaseService
         }
 
         if ($rate < self::ROLLBACK_THRESHOLD) {
-            $this->abort($release, "成功率 {$rate}% < ".self::ROLLBACK_THRESHOLD.'%,自动回滚');
+            // affected 走 abort() 的返回值:已经是终态时它返回 0(守卫命中),
+            // 此时**没有**新回滚发生 —— 若这里不带上这个数,响应会谎报"刚回滚了"。
+            $affected = $this->abort($release, "成功率 {$rate}% < ".self::ROLLBACK_THRESHOLD.'%,自动回滚');
 
-            return ['action' => 'rollback', 'reason' => "成功率 {$rate}% 低于回滚阈值"];
+            return [
+                'action'           => 'rollback',
+                'reason'           => "成功率 {$rate}% 低于回滚阈值",
+                'affected_devices' => $affected,
+            ];
         }
 
         if ($rate < self::PAUSE_THRESHOLD) {
@@ -107,6 +119,18 @@ class GrayReleaseService
      */
     public function abort(GrayRelease $release, string $reason = '', string $trigger = 'auto'): int
     {
+        // 幂等守卫:灰度已是终态就直接返回,**不再回滚一次**。
+        //
+        // 重复调用是**常态**而不是异常:
+        //   · 自驱路径 —— 每次设备回报都走 evaluateFromRecords → evaluate → 阈值命中 → abort。
+        //     阈值是"当前成功率",一旦跌下去,后续每一条回报都会再命中一次;
+        //   · 平台端 —— 运维看到告警后可能手动再点一次 abort。
+        // 此前没有这道判断,第二次调用会**再建一整轮回滚任务**(每条都是真下发)+ 再写一条
+        // rollback_record,affected_devices 还会把同一批设备重复计数。
+        if (in_array($release->status, self::TERMINAL_STATUSES, true)) {
+            return 0;
+        }
+
         $release->status = 'aborted';
         $release->save();
 

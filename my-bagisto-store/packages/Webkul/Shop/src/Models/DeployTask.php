@@ -37,6 +37,7 @@ class DeployTask extends Model
         'status',
         'retry_count',
         'next_retry_at',
+        'delivered_at',
         'package_url',
         'package_hash',
         'signature',
@@ -50,6 +51,7 @@ class DeployTask extends Model
         'operation'       => 'integer',
         'retry_count'     => 'integer',
         'next_retry_at'   => 'datetime',
+        'delivered_at'    => 'datetime',
         'completed_at'    => 'datetime',
     ];
 }
