@@ -4,7 +4,6 @@ namespace Webkul\Shop\Services\Deploy;
 
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\GrayRelease;
-use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\RollbackRecord;
 use Webkul\Shop\Models\SkillVersion;
 
@@ -138,18 +137,33 @@ class GrayReleaseService
         //   连带 KillSwitchService 按 product 匹配失效。必须从版本反查 product_id。
         $productId = (int) (SkillVersion::find($release->skill_version_id)?->product_id ?? 0);
 
-        $updated = InstallRecord::query()
+        // 回滚靶子 = **本次灰度真正成功下发过**的设备。
+        //
+        // 为什么不再按 install_record.status='updated' 找(原实现):
+        //   `updated` 只在"同 product 已有旧版已装记录"时才写(见 DeployTaskService::isUpgrade())。
+        //   **首装**该技能的设备落的是 `installed`,永远进不了 updated 集合 —— 于是对首装设备
+        //   推坏版本后 abort(),找到的靶子是**空的**:坏版本原地留着、affected=0,而灰度却
+        //   报告"已回滚"。这是"回滚靶子可能是空的"这条缺口的根因。
+        //
+        // 改从 deploy_task 反查才对准真实靶子:谁**成功装上/升级到**这个版本,谁就得回滚。
+        //   · 只认 operation=OP_INSTALL —— 装与升级同属此操作;ENABLE/DISABLE 不改安装事实;
+        //   · 只认 status='success' —— failed/timeout/未终结的设备上根本没有这个版本,无需回滚;
+        //   · 同一设备可能有多条成功记录(重装),按 did 去重,只回滚一次。
+        $targets = DeployTask::query()
             ->where('skill_version_id', $release->skill_version_id)
-            ->where('status', 'updated')
-            ->get();
+            ->where('operation', DeployTask::OP_INSTALL)
+            ->where('status', 'success')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('did');
 
         $count = 0;
-        foreach ($updated as $rec) {
+        foreach ($targets as $task) {
             $this->deploy->create(
-                did: $rec->did,
+                did: $task->did,
                 skillId: $productId,
                 skillVersionId: $release->skill_version_id,
-                entitlementId: $rec->entitlement_id,
+                entitlementId: $task->entitlement_id,
                 operation: DeployTask::OP_ROLLBACK,
                 channel: 'agent',
                 createdBy: 'gray_rollback',
