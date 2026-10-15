@@ -143,6 +143,10 @@ final class ApiErrorCode
     public const AGENT_CHANNEL_NOT_CONFIGURED = 'AGENT_CHANNEL_NOT_CONFIGURED';
     public const ENROLL_TOKEN_INVALID = 'ENROLL_TOKEN_INVALID';
     public const ENROLL_TOKEN_EXPIRED = 'ENROLL_TOKEN_EXPIRED';
+    /** per-device 凭据无效/已吊销/已过期(§4.22 F1)。 */
+    public const AGENT_CREDENTIAL_INVALID = 'AGENT_CREDENTIAL_INVALID';
+    /** 设备身份与请求的 did 不一致(per-device 身份下不可冒充他人)。 */
+    public const AGENT_IDENTITY_MISMATCH = 'AGENT_IDENTITY_MISMATCH';
     public const GRAY_RELEASE_NOT_FOUND = 'GRAY_RELEASE_NOT_FOUND';
     public const KILL_SWITCH_NOT_ENGAGED = 'KILL_SWITCH_NOT_ENGAGED';
 

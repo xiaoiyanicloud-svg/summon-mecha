@@ -9,7 +9,20 @@ return [
     // 默认用 HTTP 轮询(可立刻上线,零 infra);EMQX/Go 就绪后切 'mqtt'
     'default' => env('AGENT_GATEWAY', 'poll'),
 
-    // Agent 接入接口的共享密钥(未配置则 agent 路由组整体 503)
+    // Agent 接入鉴权模式(§4.22 F1)—— 三档渐进切换:
+    //   shared —— 只认共享密钥(旧行为,回退用)
+    //   auto   —— 有 per-device 凭据就认凭据,否则退回共享密钥(**当前默认,过渡态**)
+    //   device —— 只认 per-device 凭据,共享密钥被拒(共享密钥「明确弃用」的目标态)
+    'agent_auth_mode' => env('AGENT_AUTH_MODE', 'auto'),
+
+    // per-device 凭据(证书/secret)的有效期(天)
+    'device_credential' => [
+        'ttl_days' => (int) env('AGENT_DEVICE_CRED_TTL_DAYS', 365),
+    ],
+
+    // ⚠ 过渡期共享密钥。目标是弃用:
+    //   agent_auth_mode=device 后本值不再被接受;届时可整体删除本键。
+    //   per-device 凭据由 DeviceCredentialService 在 enroll 时签发(每设备一份,可单独吊销)。
     'agent_key' => env('AGENT_KEY'),
 
     'gateways' => [

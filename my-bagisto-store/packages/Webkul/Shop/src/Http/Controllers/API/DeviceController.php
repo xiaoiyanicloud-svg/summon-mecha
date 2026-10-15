@@ -11,6 +11,7 @@ use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Services\Ops\OperationLogger;
+use Webkul\Shop\Services\Deploy\DeviceCredentialService;
 use Webkul\Shop\Services\SkillDelivery\DeviceBindingService;
 
 /**
@@ -332,6 +333,46 @@ class DeviceController extends APIController
                 'command'    => "curl -fsSL {$base}/agent/setup.sh | bash -s -- --token {$plain}",
             ],
         ]);
+    }
+
+    /**
+     * 吊销某台设备的 per-device Agent 凭据(§4.22 F1 / B-12)。
+     *
+     * 换机 / 疑似泄露时**单独吊销这一台** —— 不影响其它设备。吊销后该设备的证书与 secret
+     * 一律失效,且中间件**不回退共享密钥**(否则吊销形同虚设)。吊销后需重新取安装 token 配对。
+     */
+    public function revokeAgentCredential(int $id): JsonResponse
+    {
+        $customer = auth()->guard('customer')->user();
+
+        $device = $this->findOwned($customer->id, $id);
+
+        if (! $device) {
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在。', 404);
+        }
+
+        $binding = ($device->binding_id ? DeviceBinding::find($device->binding_id) : null)
+            ?: DeviceBinding::query()->where('sn', $device->sn)->first();
+
+        if (! $binding) {
+            return $this->fail(ApiErrorCode::DEVICE_BINDING_MISSING, '设备绑定尚未建立。', 422);
+        }
+
+        if (! app(DeviceCredentialService::class)->revoke($binding)) {
+            return $this->fail(ApiErrorCode::AGENT_CREDENTIAL_INVALID, '该设备当前没有可吊销的凭据。', 404);
+        }
+
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'device.agent_credential_revoke',
+            'device',
+            $device->id,
+            ['sn' => $device->sn],
+            request()->ip(),
+        );
+
+        return response()->json(['message' => '设备凭据已吊销,需重新配对。']);
     }
 
     /**

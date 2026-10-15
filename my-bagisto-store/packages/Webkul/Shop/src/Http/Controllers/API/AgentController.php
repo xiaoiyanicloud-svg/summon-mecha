@@ -8,13 +8,14 @@ use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Services\Deploy\AgentGatewayManager;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
+use Webkul\Shop\Services\Deploy\DeviceCredentialService;
 use Webkul\Shop\Services\Deploy\IllegalTaskTransitionException;
 
 /**
  * Agent 接入接口 —— v3.4 步骤 8(计划 §5.2)。
  *
  * 供设备端 Agent(或本地模拟器)调用:注册换 DID → 心跳 → 上报任务回报 → 拉取指令。
- * 鉴权为共享密钥(agent.key);生产应升级 per-device 证书(§4.22 F1)。
+ * 鉴权:per-device 凭据优先(证书签名 / 独立 secret),共享密钥为过渡形态(§4.22 F1 / B-12)。
  *
  * ── 契约(P9)· 机器消费者一律走 X1 信封 ──
  *   Agent 不是 UI,是**机器消费者**:它按结构解析、按码分支,没有"人看着办"的余地。
@@ -91,19 +92,17 @@ class AgentController extends APIController
     }
 
     /**
-     * 引导换身份:用一次性 enrollment token 换 DID + 共享密钥。
+     * 引导换身份:用一次性 enrollment token 换 DID + **per-device 凭据**(§4.22 F1)。
      *
-     * ⚠ 这是"共享密钥 Agent 接口"与"per-device token 安装命令"之间的接缝:
-     *   enroll 之前设备什么都没有,只能凭一次性 token;enroll 之后才拿到 X-Agent-Key。
-     *   生产应把回传的 agent_key 换成 per-device 证书(计划 §4.22 F1),此处即替换点。
+     * ⚠ 这是"共享密钥 Agent 接口"与"per-device 凭据"之间的接缝:
+     *   enroll 之前设备什么都没有,只能凭一次性 token;enroll 之后才拿到自己的凭据。
+     *   生产形态是 per-device 证书 + mTLS(B-12):这里**签发**每设备一张证书 + 一份独立
+     *   secret,服务端只存哈希/指纹(见 {@see DeviceCredentialService})。
+     *   过渡期仍一并回 `agent_key`(共享密钥)—— 待 `agent_auth_mode=device` 后弃用。
      */
     public function enroll(Request $request): JsonResponse
     {
         $agentKey = config('deploy_gateways.agent_key');
-
-        if (blank($agentKey)) {
-            return $this->fail(ApiErrorCode::AGENT_CHANNEL_NOT_CONFIGURED, 'Agent 通道未启用(未配置 AGENT_KEY)。', 503);
-        }
 
         $payload = $request->validate([
             'token' => ['required', 'string', 'max:128'],
@@ -143,13 +142,33 @@ class AgentController extends APIController
 
         $binding->save();
 
+        // 签发 per-device 凭据(每设备一份,可单独吊销)。签发失败即整个 enroll 失败 ——
+        // 宁可不配对,也不回一份"没有凭据"的假成功。
+        try {
+            $credential = app(DeviceCredentialService::class)->issue($binding);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->fail(ApiErrorCode::AGENT_CREDENTIAL_INVALID, '设备凭据签发失败,请重试。', 500);
+        }
+
+        $authMode = (string) config('deploy_gateways.agent_auth_mode', 'auto');
+
         return $this->ok([
             'did'               => $binding->did,
             'sn'                => $binding->sn,
+            // ── per-device 凭据(目标形态)──
+            'device_secret'     => $credential['secret'],
+            'certificate_pem'   => $credential['certificate_pem'],
+            'private_key_pem'   => $credential['private_key_pem'],
+            'ca_pem'            => $credential['ca_pem'],
+            'credential_expires_at' => $credential['expires_at'],
+            // ── 共享密钥(过渡期保留,待 auth_mode=device 弃用)──
             'agent_key'         => $agentKey,
+            'auth_mode'         => $authMode,
             'server_url'        => rtrim(config('app.url'), '/'),
             'server_public_key' => app(\Webkul\Shop\Services\Deploy\SigningService::class)->publicKeyPem(),
-            'auth_hint'         => '后续请求带 X-Agent-Key 头。',
+            'auth_hint'         => '后续请求带 X-Agent-Did + X-Agent-Secret(或 X-Agent-Cert/Signature);X-Agent-Key 为过渡形态。',
         ], '已配对。');
     }
 
@@ -159,6 +178,10 @@ class AgentController extends APIController
     public function heartbeat(Request $request): JsonResponse
     {
         $payload = $request->validate(['did' => ['required', 'string', 'max:64']]);
+
+        if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
+            return $denied;
+        }
 
         $binding = DeviceBinding::query()->where('did', $payload['did'])->first();
         if (! $binding) {
@@ -189,6 +212,11 @@ class AgentController extends APIController
             'error_code' => ['nullable', 'string', 'max:32'],
             'error_msg'  => ['nullable', 'string', 'max:512'],
         ]);
+
+        // per-device 身份下,上报者必须就是该设备本人(共享受限时 agent.did 为 null,跳过)。
+        if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
+            return $denied;
+        }
 
         // 归属:任务必须属于上报者声明的 did。不匹配按"不存在"返回(不泄漏他人任务的存在)
         $owned = DeployTask::query()->where('task_no', $payload['task_no'])->first();
@@ -229,6 +257,10 @@ class AgentController extends APIController
     {
         $payload = $request->validate(['did' => ['required', 'string', 'max:64']]);
         $did = $payload['did'];
+
+        if ($denied = $this->rejectIdentityMismatch($request, $did)) {
+            return $denied;
+        }
 
         $binding = DeviceBinding::query()->where('did', $did)->first();
         if (! $binding) {
@@ -271,5 +303,24 @@ class AgentController extends APIController
         }
 
         return $this->ok($commands);
+    }
+
+    /**
+     * per-device 身份一致性闸(§4.22 F1 / B-12)。
+     *
+     * 中间件在**证书/secret 形态**下已把真身 did 注进 `agent.did`;此时请求体/查询里的 did
+     * 必须与之相等 —— 否则就是"拿着 A 的凭据冒充 B 的 did"(共享密钥时代无法防的缺口)。
+     * 共享密钥形态下 `agent.did` 为 null(真身未知),不做此校验(旧行为保留,由各控制器
+     * 自身的归属校验兜底)。
+     */
+    protected function rejectIdentityMismatch(Request $request, string $did): ?JsonResponse
+    {
+        $bound = $request->attributes->get('agent.did');
+
+        if ($bound !== null && $bound !== '' && $bound !== $did) {
+            return $this->fail(ApiErrorCode::AGENT_IDENTITY_MISMATCH, '设备身份与请求的 did 不一致。', 403);
+        }
+
+        return null;
     }
 }

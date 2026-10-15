@@ -234,6 +234,9 @@ Route::group(['prefix' => 'api'], function () {
 
         // v3.4 步骤 8:签发一次性 Agent 安装 token(供 agent-setup 页展示安装命令)
         Route::post('{id}/agent-token', 'agentToken')->name('shop.api.devices.agent-token');
+
+        // §4.22 F1(B-12):吊销该设备的 per-device Agent 凭据(换机/疑似泄露时单独吊销)
+        Route::delete('{id}/agent-credential', 'revokeAgentCredential')->name('shop.api.devices.agent-credential.revoke');
     });
 
     /**
