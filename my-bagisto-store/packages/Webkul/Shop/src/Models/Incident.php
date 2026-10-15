@@ -81,6 +81,30 @@ class Incident extends Model
         self::STATUS_CLOSED        => '已结案',
     ];
 
+    /**
+     * 合法状态流转表（A6）。
+     *
+     * 为什么需要它:此前 `advance()` 只校验"目标状态在枚举里",不校验"当前→目标是否合法"。
+     * 于是 `closed → reported` 这种把已结案的案子打回"待受理"的跳跃能落库,
+     * 且 `resolved_at` 不会被清 —— SLA 统计(`isOpen()` / 超时口径)随之失真。
+     *
+     * 表的方向:
+     *   - 主线**只能向前**:reported → investigating → attributed → resolved → closed;
+     *   - 但允许**有限回退**(重新打开/退回重查),因为现实里确实会:
+     *     resolved/closed → investigating(重开),attributed → investigating(退回补查)。
+     *     回退时 `resolved_at` 会被清空(见 `IncidentService::advance()`),让 SLA 口径回到"未结"。
+     *   - 不允许从终态直接跳回 reported —— 那等于把已投入的处理记录"归零",没有业务含义。
+     *
+     * ⚠ 同状态视为合法(幂等):运营可能只为了补一句处置说明/改定责而重复提交同一状态。
+     */
+    public const STATUS_TRANSITIONS = [
+        self::STATUS_REPORTED      => [self::STATUS_INVESTIGATING, self::STATUS_ATTRIBUTED, self::STATUS_RESOLVED, self::STATUS_CLOSED],
+        self::STATUS_INVESTIGATING => [self::STATUS_ATTRIBUTED, self::STATUS_RESOLVED, self::STATUS_CLOSED],
+        self::STATUS_ATTRIBUTED    => [self::STATUS_INVESTIGATING, self::STATUS_RESOLVED, self::STATUS_CLOSED],
+        self::STATUS_RESOLVED      => [self::STATUS_INVESTIGATING, self::STATUS_CLOSED],
+        self::STATUS_CLOSED        => [self::STATUS_INVESTIGATING],
+    ];
+
     protected $fillable = [
         'incident_no',
         'skill_id',
@@ -148,6 +172,30 @@ class Incident extends Model
     public function isOpen(): bool
     {
         return ! in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED], true);
+    }
+
+    /**
+     * 从当前状态可以流转到哪些状态（不含"保持原状"）。
+     *
+     * @return string[]
+     */
+    public function allowedTransitions(): array
+    {
+        return self::STATUS_TRANSITIONS[$this->status] ?? [];
+    }
+
+    /**
+     * 当前 → $target 是否是一次合法流转（A6）。
+     *
+     * 同状态永远合法（幂等:只补说明/改定责）。
+     */
+    public function canTransitionTo(string $target): bool
+    {
+        if ($target === $this->status) {
+            return true;
+        }
+
+        return in_array($target, $this->allowedTransitions(), true);
     }
 
     /**

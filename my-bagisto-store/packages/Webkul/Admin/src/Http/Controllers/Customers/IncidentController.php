@@ -76,6 +76,18 @@ class IncidentController extends Controller
         $responsibility = $data['responsibility'] ?? null;
         $note = $data['note'] ?? null;
 
+        // A6 · 状态机:先挡非法流转,再谈细则。此前只校验"目标在枚举里"不校验方向,
+        //   于是一个已结案的案子能被打回"待受理",而 resolved_at 不会被清 → SLA 口径失真。
+        if (! $incident->canTransitionTo($data['status'])) {
+            session()->flash('error', sprintf(
+                '不能从「%s」直接流转到「%s」。',
+                $incident->statusLabel(),
+                Incident::STATUS_LABELS[$data['status']] ?? $data['status'],
+            ));
+
+            return redirect()->route('admin.customers.incidents.show', $id);
+        }
+
         // ① 定责必须写说明
         $isAttributing = $responsibility !== null
             && $responsibility !== Incident::RESPONSIBILITY_UNKNOWN

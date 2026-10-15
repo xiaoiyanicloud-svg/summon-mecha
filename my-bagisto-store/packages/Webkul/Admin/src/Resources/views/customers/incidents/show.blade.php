@@ -142,6 +142,8 @@
                     <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">处理状态</label>
                     <select name="status" class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
                         @foreach (\Webkul\Shop\Models\Incident::STATUS_LABELS as $value => $label)
+                            {{-- A6 · 只列出当前状态与合法流转目标,不给出点了会被拒的选项 --}}
+                            @continue($incident->status !== $value && ! $incident->canTransitionTo($value))
                             <option value="{{ $value }}" @selected($incident->status === $value)>{{ $label }}</option>
                         @endforeach
                     </select>

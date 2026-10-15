@@ -165,6 +165,12 @@ class IncidentService
      * A5:此前处置记录写 `incident.handling_log` 一列,每次「读出整列 → 追加 → 整列写回」——
      *   两名管理员并发处置时后写覆盖先写,一条记录消失。现在每次处置**插一行**,物理上不可覆盖;
      *   状态推进本身也用行锁串行化(否则 status/resolved_at 一样会被并发覆盖)。
+     *
+     * A6:此前只校验"目标状态在枚举里",不校验方向 —— `closed → reported` 也能落库。
+     *   现在按 `Incident::STATUS_TRANSITIONS` 校验合法流转,并在**状态回退**时清空
+     *   `resolved_at`(否则一个从"已结案"被打回"调查中"的案子,还挂着结案时间,SLA 统计失真)。
+     *
+     * @throws IllegalIncidentTransitionException 当前→目标不在合法流转表里
      */
     public function advance(
         Incident $incident,
@@ -172,22 +178,38 @@ class IncidentService
         ?string $responsibility = null,
         ?string $note = null,
     ): void {
-        $payload = ['status' => $status];
-
-        if ($responsibility !== null) {
-            $payload['responsibility'] = $responsibility;
+        // A6 · 先在事务外挡一次(最常见的调用来自受理台,尽早失败、文案友好);
+        //   事务内加锁后再校验一次,兜住"校验通过后、拿锁前"状态已被并发改动的窗口。
+        if (! $incident->canTransitionTo($status)) {
+            throw new IllegalIncidentTransitionException($incident->status, $status);
         }
 
-        if (in_array($status, [Incident::STATUS_RESOLVED, Incident::STATUS_CLOSED], true)) {
-            $payload['resolved_at'] = now();
-        }
-
-        DB::transaction(function () use ($incident, $payload, $status, $responsibility, $note) {
+        DB::transaction(function () use ($incident, $status, $responsibility, $note) {
             // 行锁:把对同一事故的并发处置串起来,避免后写覆盖先写
             $locked = Incident::query()->whereKey($incident->id)->lockForUpdate()->first();
 
             if (! $locked) {
                 return;
+            }
+
+            // 拿到锁后再校验:并发下"当前状态"可能已经变了(例如另一名管理员刚结了案)
+            if (! $locked->canTransitionTo($status)) {
+                throw new IllegalIncidentTransitionException($locked->status, $status);
+            }
+
+            $payload = ['status' => $status];
+
+            if ($responsibility !== null) {
+                $payload['responsibility'] = $responsibility;
+            }
+
+            if (in_array($status, [Incident::STATUS_RESOLVED, Incident::STATUS_CLOSED], true)) {
+                // 首次进入终态时写时间;已是终态则**保留原时间**(别把结案时间刷成"再点一次"的时刻,
+                // 否则 resolved → closed 这类流转会悄悄改写 SLA 口径)。
+                $payload['resolved_at'] = $locked->resolved_at ?? now();
+            } else {
+                // 回退到未结状态 —— 必须清 resolved_at,否则"已重新打开"的案子还带着结案时间。
+                $payload['resolved_at'] = null;
             }
 
             $locked->update($payload);
