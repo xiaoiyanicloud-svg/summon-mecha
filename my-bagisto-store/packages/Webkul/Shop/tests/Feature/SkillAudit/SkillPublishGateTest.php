@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Models\AuditRecord;
@@ -89,6 +90,12 @@ function spgVersion(string $status = SkillVersion::STATUS_DRAFT): SkillVersion
 
 function spgAsset(SkillVersion $version, string $name = 'spg-demo.skill'): SkillAsset
 {
+    // ⚠ 2026-10-16：文件类交付物必须**真的落在盘上**。发布现在要过"可交付性"前置
+    //   （`SkillPublisher` 的 ASSET_FILE_MISSING）—— 只写一行 skill_assets 记录、
+    //   磁盘上什么都没有的夹具，在现实里不存在（包总是上传落盘后才发布的）。
+    //   夹具照现实来，闸门才测得准。
+    Storage::disk(SkillAsset::disk())->put('skills/'.$name, 'demo-package');
+
     return SkillAsset::create([
         'skill_version_id' => $version->id,
         'seller_id'        => null,
@@ -118,6 +125,8 @@ function spgUrl(SkillVersion $version): string
 }
 
 beforeEach(function () {
+    // 交付物走假盘：发布要校验文件真实存在（见 spgAsset 注释）。
+    Storage::fake(SkillAsset::disk());
     config(['skill_delivery.upload_key' => 'test-internal-key']);
 });
 

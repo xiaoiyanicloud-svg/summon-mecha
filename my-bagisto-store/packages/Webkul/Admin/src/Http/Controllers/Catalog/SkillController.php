@@ -263,6 +263,9 @@ class SkillController extends Controller
                 SkillPublisher::ERR_OWNER_NOT_VERIFIED,
                 SkillPublisher::ERR_AGREEMENT_REQUIRED,
                 SkillPublisher::ERR_OWNER_PROFILE_MISSING => '发布被拒（主体资格问题，不是审核未过）：'.$result['message'],
+                // 交付物文件缺失 —— 同样**不是**审核问题：运营在审核台做什么都没用，
+                // 要去商品编辑页重传该交付物，故与主体资格一样留在原地（不跳审核台）。
+                SkillPublisher::ERR_ASSET_FILE_MISSING     => '发布被拒（交付物文件在存储上不存在，不是审核未过）：'.$result['message'],
                 SkillPublisher::ERR_GATE_NOT_PASSED        => $result['message'].'　请到「审核台」处理。',
                 default                                    => $result['message'],
             };

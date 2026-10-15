@@ -242,6 +242,15 @@ final class ApiErrorCode
     public const VERSION_ARCHIVED = 'VERSION_ARCHIVED';
     public const VERSION_HAS_NO_ASSET = 'VERSION_HAS_NO_ASSET';
 
+    /**
+     * 声明为文件的交付物在存储上取不到 → 不得上架（见 `SkillPublisher::ERR_ASSET_FILE_MISSING`）。
+     *
+     * ⚠ 与 `SKILL_ASSET_FILE_MISSING` 分开：那个是**下载时**发现文件没了（用户已经买了、
+     *   要人工介入）；这个是**发布前置**就挡住了（还没卖出去，运营自己重传即可）。
+     *   同一个现象、完全不同的处置路径，不能共用一个码。
+     */
+    public const ASSET_FILE_MISSING = 'ASSET_FILE_MISSING';
+
     /** 未通过发布闸门 —— 两条发布通道共用的同一理由码（见 Services\SkillAudit\SkillPublisher） */
     public const GATE_NOT_PASSED = 'GATE_NOT_PASSED';
 

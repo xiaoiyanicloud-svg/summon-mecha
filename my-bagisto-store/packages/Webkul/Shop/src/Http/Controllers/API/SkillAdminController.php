@@ -183,6 +183,7 @@ class SkillAdminController extends APIController
             $code = match ($result['code']) {
                 SkillPublisher::ERR_VERSION_ARCHIVED      => ApiErrorCode::VERSION_ARCHIVED,
                 SkillPublisher::ERR_VERSION_HAS_NO_ASSET  => ApiErrorCode::VERSION_HAS_NO_ASSET,
+                SkillPublisher::ERR_ASSET_FILE_MISSING    => ApiErrorCode::ASSET_FILE_MISSING,
                 SkillPublisher::ERR_GATE_NOT_PASSED       => ApiErrorCode::GATE_NOT_PASSED,
                 SkillPublisher::ERR_OWNER_NOT_VERIFIED    => ApiErrorCode::OWNER_NOT_VERIFIED,
                 SkillPublisher::ERR_AGREEMENT_REQUIRED    => ApiErrorCode::AGREEMENT_REQUIRED,

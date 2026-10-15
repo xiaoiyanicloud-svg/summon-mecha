@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Webkul\Customer\Models\Customer;
 use Webkul\Product\Repositories\ProductRepository;
@@ -81,6 +82,12 @@ function spqPublishableVersion(int $productId, ?int $sellerId): SkillVersion
         'status'       => SkillVersion::STATUS_IN_REVIEW,
         'license_mode' => 'per_device',
     ]);
+
+    // ⚠ 2026-10-16：文件类交付物必须真的落盘 —— 发布现在先过"可交付性"前置
+    //   （SkillPublisher::ERR_ASSET_FILE_MISSING）。本文件测的是**主体资格**，
+    //   若夹具的文件不存在，发布会先报"文件缺失"而走不到主体资格那一步，
+    //   这些用例就测不到它们要测的东西（真实流程里包总是上传落盘后才发布的）。
+    Storage::disk(SkillAsset::disk())->put('skills/spq.skill', 'demo-package');
 
     SkillAsset::create([
         'skill_version_id' => $version->id,
@@ -167,6 +174,8 @@ function spqPublish(int $versionId)
 }
 
 beforeEach(function () {
+    // 交付物走假盘：发布要校验文件真实存在（见 spqPublishableVersion 注释）。
+    Storage::fake(SkillAsset::disk());
     config(['skill_delivery.upload_key' => 'test-internal-key']);
 });
 

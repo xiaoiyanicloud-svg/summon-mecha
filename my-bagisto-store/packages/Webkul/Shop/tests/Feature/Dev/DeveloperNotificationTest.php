@@ -200,6 +200,10 @@ it('发布成功 → 开发者收到 skill.published 通知', function () {
 
     // 过闸门（L0 + L2 都过）且带交付物的版本
     $version = dnVersion($productId, $profile->seller_id);
+    // ⚠ 2026-10-16：文件类交付物必须真的落盘 —— 发布现在先过"可交付性"前置
+    //   （SkillPublisher::ERR_ASSET_FILE_MISSING）。本用例要走完整条发布链发通知，
+    //   夹具的包若不在盘上，发布会先被挡住（现实里包总是上传落盘后才发布的）。
+    Storage::disk(SkillAsset::disk())->put('skills/dn-pub.skill', 'demo-package');
     SkillAsset::create([
         'skill_version_id' => $version->id,
         'seller_id'        => $profile->seller_id,

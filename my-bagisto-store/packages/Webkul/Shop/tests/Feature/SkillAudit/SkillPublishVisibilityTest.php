@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Webkul\Customer\Models\Customer;
 use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\DeveloperProfile;
@@ -76,6 +77,11 @@ function spvPublishableVersion(int $productId, ?int $sellerId): SkillVersion
         'license_mode' => 'per_device',
     ]);
 
+    // ⚠ 2026-10-16：文件类交付物必须真的落盘 —— 发布现在先过"可交付性"前置
+    //   （SkillPublisher::ERR_ASSET_FILE_MISSING）。本文件测的是"发布 = 真上架"，
+    //   夹具若指向一个不存在的文件，发布会先被文件缺失挡住，测不到可售与可见性。
+    Storage::disk(SkillAsset::disk())->put('skills/spv.skill', 'demo-package');
+
     SkillAsset::create([
         'skill_version_id' => $version->id,
         'seller_id'        => $sellerId,
@@ -109,6 +115,8 @@ function spvSearchIds(string $q): array
 }
 
 beforeEach(function () {
+    // 交付物走假盘：发布要校验文件真实存在（见 spvPublishableVersion 注释）。
+    Storage::fake(SkillAsset::disk());
     config(['skill_delivery.upload_key' => 'test-internal-key']);
 });
 

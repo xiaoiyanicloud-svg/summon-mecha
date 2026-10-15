@@ -2,10 +2,12 @@
 
 namespace Webkul\Shop\Services\SkillAudit;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Models\DeveloperProfile;
+use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\LifecycleNotifier;
 
@@ -30,6 +32,16 @@ class SkillPublisher
     public const ERR_VERSION_ARCHIVED = 'VERSION_ARCHIVED';
     public const ERR_VERSION_HAS_NO_ASSET = 'VERSION_HAS_NO_ASSET';
     public const ERR_GATE_NOT_PASSED = 'GATE_NOT_PASSED';
+
+    /**
+     * 声明为文件类载体的交付物在盘上取不到（2026-10-16）。
+     *
+     * 与 `ERR_VERSION_HAS_NO_ASSET` 是**两回事**：那条是"一件交付物都没有"，
+     * 这条是"有交付物记录，但东西给不出去" —— 落盘失败 / 对象存储没切好 / 文件被清掉。
+     * 拆成两个码的理由与 OWNER_* 那组一致：运营据此决定去哪修（补交付物 vs 重新上传文件），
+     * 混成一个码会把排查引到错的地方。
+     */
+    public const ERR_ASSET_FILE_MISSING = 'ASSET_FILE_MISSING';
 
     /**
      * 主体资格不达标（任务卡 D-5 · 裁决 Q6）—— 与"闸门没过"是**两回事**，故各自成码：
@@ -67,6 +79,32 @@ class SkillPublisher
 
         if ($version->assets->isEmpty()) {
             return $this->result(false, self::ERR_VERSION_HAS_NO_ASSET, '该版本还没有任何交付物,不能发布。', $version);
+        }
+
+        // 可交付性 —— "有交付物" ≠ "交付物拿得到"（2026-10-16）。
+        //   一个 `carrier_type=file` 却不在盘上的版本此前照样能发布上架：用户付钱后走鉴权下载
+        //   （`API\SkillController::download` 用的就是这一对判据）拿到"文件缺失" ——
+        //   钱收了、东西给不出去，是交易事故，不是展示问题。
+        //   位置刻意在"有没有东西"之后、"谁在卖"之前：先看**有没有**，再看**给不给得出**，
+        //   最后才看**谁在卖**。反过来的话，未实名 + 文件缺失会报成"实名问题"，运营照那个方向
+        //   把实名审过了，再点发布才发现真正的原因是文件没了 —— 白跑一趟。
+        // ⚠ 判空必须用 isNotEmpty()：`if ($collection)` 恒为真（PHP 里**任何对象**都 truthy），
+        //   用错会把每一个版本都拦下来 —— 本卡第一版就踩了这一下。
+        $missing = $this->missingAssetFiles($version);
+
+        if ($missing->isNotEmpty()) {
+            $detail = $missing
+                ->map(fn (SkillAsset $asset) => '交付物 #'.$asset->id.'（'
+                    .($asset->file_name ?: basename((string) $asset->file_path)).'，路径 '
+                    .($asset->file_path ?: '未记录').'）')
+                ->implode('；');
+
+            return $this->result(
+                false,
+                self::ERR_ASSET_FILE_MISSING,
+                "该版本声明为文件的交付物在存储上不存在：{$detail}。请重新上传该交付物后再发布。",
+                $version
+            );
         }
 
         // 主体资格 —— 未实名 / 协议未签全的主体**不得上架**（任务卡 D-5 · 裁决 Q6）。
@@ -138,6 +176,26 @@ class SkillPublisher
         $this->notifier->skillPublished((int) $version->product_id, (int) $version->id, (string) $version->version);
 
         return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate);
+    }
+
+    /**
+     * 声明为文件类载体、但存储上取不到的那些交付物（发布前置用）。
+     *
+     * ⚠ 判据一律用 `SkillAsset::isFile()` / `fileExists()` —— C 端鉴权下载
+     *   （`API\SkillController::download`）判的就是这一对。平台侧若另写一套，
+     *   两套判据迟早对不上，而对不上的那次就是"发布放行了、用户下不到"。
+     *
+     * 非文件类载体（cloud_config / remote_service / api_bundle）**不参与**本判定：
+     *   它们按设计就不落盘，只有 payload（见 `AssetUploadService` 的非文件分支）——
+     *   把它们也算进来会把本来正常的版本全部拦死。
+     *
+     * @return Collection<int, SkillAsset>
+     */
+    protected function missingAssetFiles(SkillVersion $version): Collection
+    {
+        return $version->assets
+            ->filter(fn (SkillAsset $asset) => $asset->isFile() && ! $asset->fileExists())
+            ->values();
     }
 
     /**

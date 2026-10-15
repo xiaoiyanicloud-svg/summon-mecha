@@ -46,16 +46,46 @@ class AuditService
             $reasons[] = RejectionReason::TECH_FORMAT.':'.implode(' / ', $m['errors']);
         }
 
-        // 1.5) schema 落库 —— 补齐**所有通道**（含开发者门户）。
+        // 1.5) 开发者**声明的字段**落库 —— 补齐**所有通道**（含开发者门户）。
         //   submitLayer0 是门户 / internal.key / 运营后台三条通道的**唯一漏斗**，
-        //   写在这一处即全覆盖；写进控制器必然漏掉某条 —— 此前只有 Admin 导入路径写
-        //   `manifest_schema`，于是开发者技能出事故时，IncidentService 读到的"证据快照"
-        //   这一项恒为 NULL（正好是最该有、却又最缺的一条）。
-        //   ⚠ 只写这一列：source_format / imported_meta 归导入器所有，这里不碰；
-        //   ⚠ manifest 缺 schema 时**不写**（保持原值 NULL），别把空串写进去冒充有值。
+        //   写在这一处即全覆盖；写进控制器必然漏掉某条。此前只有 Admin **导入路径**写这几列，
+        //   于是开发者提交的技能恒为 NULL，代价不是"少几个字段"，而是**功能直接失效**：
+        //     · `delivery_channels` 恒 NULL → TrialService 的"必须声明 agent 通道"硬闸永不过
+        //       → 开发者技能**永远不能试用**（D4 变成了自营专属）；
+        //     · `risk_level` 恒 NULL → RiskDisclosureService 读不到等级，风险告知退化成"未分级"；
+        //     · `manifest_schema`（本次之前已在写）—— 出事故时 IncidentService 读的"证据快照"。
+        //   ⚠ 写入规则：**有值才写**（覆盖为最新声明）；无值时**不写** ——
+        //     别用空值把已有声明抹掉（整改后重提审的包若少写了某项，不该清掉上一次的合法声明）。
+        //   ⚠ 只写这几列：source_format / imported_meta 归导入器所有，这里不碰。
+        $declared = [];
+
         $schema = $manifest['schema'] ?? null;
         if (is_string($schema) && $schema !== '') {
-            SkillVersion::where('id', $version)->update(['manifest_schema' => $schema]);
+            $declared['manifest_schema'] = $schema;
+        }
+
+        // delivery_channels 是 json 列（模型 cast array）；空数组与 NULL 一样"没声明"，不写。
+        $channels = $manifest['delivery_channels'] ?? null;
+        if (is_array($channels) && $channels !== []) {
+            $declared['delivery_channels'] = array_values($channels);
+        }
+
+        // safety 可能是畸形值（非数组）—— 取不到字符串就当作"没声明"，绝不写 null 进去。
+        $safety = $manifest['safety'] ?? null;
+        $riskLevel = is_array($safety) ? ($safety['risk_level'] ?? null) : null;
+        if (is_string($riskLevel) && $riskLevel !== '') {
+            $declared['risk_level'] = $riskLevel;
+        }
+
+        // ⚠ D3 红线：定价一律走 `pricing_mode`（buyout），**绝不**写 `license_mode='perpetual'`；
+        //   两列正交 —— license_mode 是"授权范围"（per_device…），pricing_mode 是"怎么卖"。
+        $pricingMode = $manifest['pricing_mode'] ?? null;
+        if (is_string($pricingMode) && $pricingMode !== '') {
+            $declared['pricing_mode'] = $pricingMode;
+        }
+
+        if ($declared !== []) {
+            SkillVersion::where('id', $version)->update($declared);
         }
 
         // 2) 内容安全 —— 走 ContentSafety 层（v3.4 步骤 6）。
