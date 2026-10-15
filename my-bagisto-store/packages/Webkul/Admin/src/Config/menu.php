@@ -22,6 +22,14 @@ return [
         'route'      => 'admin.dashboard.ops',
         'sort'       => 2,
         'icon'       => '',
+    ], [
+        // 开票登记（M9）。刻意放这里而不是 sales 下：sales 里已有一个原生的「发票」
+        // （Bagisto 的订单发货单），两个同名的"发票"挨着放必然被读混。
+        'key'        => 'dashboard.invoices',
+        'name'       => '发票（开票登记）',
+        'route'      => 'admin.invoices.index',
+        'sort'       => 3,
+        'icon'       => '',
     ],
 
     /**

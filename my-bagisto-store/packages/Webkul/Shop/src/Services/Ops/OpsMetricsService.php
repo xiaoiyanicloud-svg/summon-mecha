@@ -21,8 +21,14 @@ use Webkul\Shop\Models\DeviceBinding;
  *
  * ⚠ 已被核验否定、**故意不做**的维度（做了只会永远是 0，属于假指标）：
  *   - 曝光量 / 浏览量：`visits` 依赖未开启的访客统计，且队列无 worker
- *   - 净收入 / 已收款：真实收款依赖微信支付资质（E1），invoices 恒 0
+ *   - 净收入 / 已收款、结算、提现、对账：真实收款依赖微信支付资质（E1），
+ *     当前支付/退款流水来自 mock 网关（`payment_transaction` 有记录，但没有真实资金进出）
  *   这些在页面上以「未接入」显式列出，**不是**显示 0。
+ *
+ * ⚠ 「发票」曾经也可以列在上面（表建了、没人写）—— **M9 起不能了**：
+ *   支付成功会真的落一条开票登记记录（`Services/Billing/InvoiceService`），
+ *   所以它现在是 `trade()` 里的真实指标。**"统计了的东西不许说成没统计"** ——
+ *   这与下面「下载量」那段是同一枚硬币的两面。
  *
  * ⚠ 反过来的错也犯过一次：**「下载量」曾被列在上面**，理由是"`skill_search_index`
  *   是孤儿物化表，做出来永远是 0"。但下载另有计数（`entitlements.meta.download_count`，
@@ -84,7 +90,12 @@ class OpsMetricsService
                 '技能订单金额（「下单口径」，非已收款 —— 本项目无真实支付）',
                 true
             ),
-            'paid_amount'    => $this->metric(null, '已收款金额（依赖微信支付资质 E1；invoices 恒 0，无支付流水）', false),
+            'paid_amount'    => $this->metric(null, '已收款金额（真实收款依赖微信支付资质 E1；当前支付流水来自 mock 网关，不是真实资金）', false),
+            'invoices'       => $this->metric(
+                DB::table('invoice')->count(),
+                '开票登记条数（支付成功后自动登记；「真实开具」未接入开票服务商，见发票台账）',
+                true
+            ),
         ];
     }
 
@@ -408,9 +419,11 @@ class OpsMetricsService
     public function notConnected(): array
     {
         return [
-            ['name' => '净收入 / 已收款', 'reason' => '真实收款依赖微信支付资质（E1）；invoices 恒 0、无支付流水'],
+            ['name' => '净收入 / 已收款', 'reason' => '真实收款依赖微信支付资质（E1）。当前支付/退款流水来自 mock 网关：payment_transaction 有记录，但没有真实资金进出 —— 净收入＝已收款−已退款，两侧都不是真钱，算出来是假账'],
+            ['name' => '结算（平台 ↔ 开发者分成）', 'reason' => '平台尚无结算与分成规则，也没有真实收款通道（E1）—— 结算金额无从算起。settlement 表已建，代码未做（M9 只做了发票）'],
+            ['name' => '提现（开发者/商户提现）', 'reason' => '提现依赖结算结果与真实资金通道（E1），平台当前也没有资金托管能力。withdrawal 表已建，代码未做（M9 只做了发票）'],
+            ['name' => '对账（平台账 vs 微信账）', 'reason' => '微信侧账单要等支付资质（E1）：拿不到渠道账单，就没有可比的另一侧。平台侧已具备对账锚点 —— 支付流水 payment_transaction.out_trade_no 是唯一键（M6）'],
             ['name' => '曝光量 / 浏览量', 'reason' => 'visits 依赖未开启的访客统计，且队列无 worker 消费'],
-            ['name' => '对账（平台账 vs 微信账）', 'reason' => '两侧都无数据源，且支付交易号 out_trade_no 从未持久化'],
             ['name' => '真机下发成功率', 'reason' => '真机 Agent 未接入，现有数据来自模拟设备'],
             ['name' => '人工送达的下载次数', 'reason' => '下载计数只在 App/API 的鉴权下载里做；走安装指引人工送达的那部分没有回执'],
         ];

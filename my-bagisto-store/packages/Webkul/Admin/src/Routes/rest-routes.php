@@ -6,6 +6,7 @@ use Webkul\Admin\Http\Controllers\DataGrid\DataGridController;
 use Webkul\Admin\Http\Controllers\DataGrid\SavedFilterController;
 use Webkul\Admin\Http\Controllers\MagicAIController;
 use Webkul\Admin\Http\Controllers\Ops\AlertController;
+use Webkul\Admin\Http\Controllers\Ops\InvoiceController;
 use Webkul\Admin\Http\Controllers\Ops\OverviewController;
 use Webkul\Admin\Http\Controllers\TinyMCEController;
 use Webkul\Admin\Http\Controllers\User\AccountController;
@@ -40,6 +41,18 @@ Route::controller(AlertController::class)->prefix('alerts')->group(function () {
  */
 Route::controller(OverviewController::class)->prefix('dashboard')->group(function () {
     Route::get('ops', 'index')->name('admin.dashboard.ops');
+});
+
+/**
+ * 开票登记台账（M9）。
+ *
+ * ⚠ 与原生 `admin.sales.invoices.*`（Bagisto 的订单发货单，表 `invoices`）**不是一回事**：
+ *   那张表是电商口径的"订单已开票"，本页是中国的税务发票/开票登记（表 `invoice`）。
+ *   路由名刻意不挂在 `sales.` 下，免得两个"发票"在同一个菜单里撞车。
+ */
+Route::controller(InvoiceController::class)->prefix('invoices')->group(function () {
+    // 只读：没有"标记为已开具"的动作（未接入开票服务商，见控制器注释）
+    Route::get('', 'index')->name('admin.invoices.index');
 });
 
 /**

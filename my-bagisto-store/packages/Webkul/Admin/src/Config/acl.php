@@ -27,6 +27,12 @@ return [
         'name'  => '运营总览',
         'route' => 'admin.dashboard.ops',
         'sort'  => 3,
+    ], [
+        // 开票登记台账（M9；表 `invoice`，与原生 `invoices` 不是一回事）
+        'key'   => 'dashboard.invoices',
+        'name'  => '发票（开票登记）',
+        'route' => 'admin.invoices.index',
+        'sort'  => 4,
     ],
 
     /*

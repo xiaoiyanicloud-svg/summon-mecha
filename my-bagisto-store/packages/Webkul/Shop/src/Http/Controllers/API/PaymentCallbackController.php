@@ -8,6 +8,7 @@ use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Listeners\SkillDelivery;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\PaymentTransaction;
+use Webkul\Shop\Services\Billing\InvoiceService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\Payment\MockGateway;
 use Webkul\Shop\Services\Payment\PaymentManager;
@@ -20,6 +21,7 @@ use Webkul\Shop\Services\Payment\PaymentManager;
  *   - 回调金额必须等于订单应付(grand_total),否则拒绝并留 code(M3)
  *   - 落支付流水 + out_trade_no 唯一键幂等(M6)
  *   - 幂等判定在事务内、对被改的订单行加写锁(lockForUpdate),并发重发不会双双读到 pending(M7)
+ *   - 支付成功后**在同一事务内**登记开票(M9):已支付订单不会「交付了但查无开票记录」
  *
  * ⚠ **验签按设计推迟**:当前仍是 mock 网关("支付成功"由参数自报,无验签)。
  *   真实验签在微信资质就绪后于 WechatGateway::handleCallback 内做,**不在这里伪造**;
@@ -120,12 +122,12 @@ class PaymentCallbackController extends APIController
                 ->first();
 
             if (! $locked) {
-                return ['order' => null, 'processed' => false];
+                return ['order' => null, 'processed' => false, 'invoice' => null];
             }
 
             // 幂等:已支付则不改不交付
             if (in_array($locked->status, ['processing', 'completed'], true)) {
-                return ['order' => $locked, 'processed' => false];
+                return ['order' => $locked, 'processed' => false, 'invoice' => null];
             }
 
             $locked->status = 'processing';
@@ -134,7 +136,18 @@ class PaymentCallbackController extends APIController
             // 触发 v1 既有授权发放(幂等:order_item_id 唯一键兜底)
             app(SkillDelivery::class)->afterOrderCreated($locked);
 
-            return ['order' => $locked, 'processed' => true];
+            // M9 · 开票登记 —— **刻意放在同一个事务里**(不是另开一段,也不是出事务后再做)。
+            //
+            // 与 M7-2 的退款网关正好相反:那里是"外部调用不可回滚 → 必须移出事务";
+            // 这里是**本地库写,可回滚**,没有"钱出去了账没落"的风险。
+            // 而"订单已支付"与"该订单的账目记录都在"是同一个业务断言:一笔已交付却
+            // 查无开票登记的订单,与 D3 那类"主链路成功、旁路静默缺失"是同一形状的缺陷。
+            // 所以要么一起提交、要么一起回滚;失败不吞(吞掉就变成静默缺失)。
+            //
+            // ⚠ 依赖:上面那把订单行锁也是开票幂等的承重墙(见 InvoiceService 类注释)。
+            $invoice = app(InvoiceService::class)->issueForOrder($locked);
+
+            return ['order' => $locked, 'processed' => true, 'invoice' => $invoice];
         });
 
         $order = $outcome['order'];
@@ -164,6 +177,8 @@ class PaymentCallbackController extends APIController
                 'transaction_id' => $result->transactionId,
                 'amount'         => $result->amount,
                 'gateway'        => $gateway->key(),
+                // M9:本次支付顺带登记的开票记录(游客单为 null,见 InvoiceService)
+                'invoice_id'     => $outcome['invoice']?->id,
             ],
             $request->ip()
         );
