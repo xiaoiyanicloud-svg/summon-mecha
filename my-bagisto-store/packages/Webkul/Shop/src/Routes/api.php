@@ -386,6 +386,8 @@ Route::group(['prefix' => 'api'], function () {
         Route::post('heartbeat', 'heartbeat')->name('shop.api.agent.heartbeat');
         Route::post('evt', 'event')->name('shop.api.agent.event');
         Route::get('commands', 'commands')->name('shop.api.agent.commands');
+        // §4.22 F1(B-13):Agent 自更新工件(只提供更高版本,防降级)
+        Route::get('self-update', 'selfUpdate')->name('shop.api.agent.self-update');
     });
 
     /**

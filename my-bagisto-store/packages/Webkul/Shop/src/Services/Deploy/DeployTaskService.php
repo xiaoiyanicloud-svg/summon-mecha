@@ -94,10 +94,17 @@ class DeployTaskService
         ?string $createdBy = 'system',
         ?string $packageUrl = null,
         ?string $packageHash = null,
+        bool $allowDowngrade = false,
     ): DeployTask {
         // 熔断闸:命中即拒建(不落库)。补救类动作(卸/回滚/回收)放行 —— 见 REMEDIATION_OPS。
         // 这是 D9「熔断可一键禁用」的硬缺口:此前 isBlocked() 全仓零调用,按钮按下去不下闸。
         $this->assertNotBlocked($skillId, $operation);
+
+        // 版本单调闸(§4.22 F1 / B-13):**安装**时拒绝低于本机已装版本的包。
+        // 回滚(OP_ROLLBACK)是显式的向下动作,不过这闸;allowDowngrade 供平台受控场景显式放行。
+        if ($operation === DeployTask::OP_INSTALL && ! $allowDowngrade) {
+            $this->assertNotDowngrade($did, $skillVersionId);
+        }
 
         // 幂等 + 事务边界,两个问题一次解决:
         //
@@ -620,5 +627,69 @@ class DeployTaskService
         if (app(KillSwitchService::class)->isBlocked($skillId, 'new')) {
             throw new SkillBlockedException('该技能已被熔断,暂不可下发。');
         }
+    }
+
+    /**
+     * 版本单调闸(§4.22 F1 / B-13):拒绝**低于**本机已装版本的安装。
+     *
+     * ⚠ 这是服务端能兑现的那一半(平台自己不制造降级指令)。端侧应凭**签名元数据**独立
+     *   再判一次(Uptane/TUF)—— 那部分待真机 Agent 实现。
+     *
+     * @throws DowngradeRejectedException
+     */
+    protected function assertNotDowngrade(string $did, ?int $skillVersionId): void
+    {
+        if (! $skillVersionId) {
+            return;
+        }
+
+        $target = SkillVersion::find($skillVersionId);
+
+        if (! $target || blank($target->version)) {
+            return;
+        }
+
+        $installed = $this->installedVersionForProduct($did, (int) $target->product_id);
+
+        if ($installed !== null && AgentVersion::isDowngrade($installed, (string) $target->version)) {
+            throw new DowngradeRejectedException($installed, (string) $target->version);
+        }
+    }
+
+    /**
+     * 该 did 在**同一 product** 下已装(installed/updated,不含 rolled_back)的最高版本。
+     *
+     * install_record 只有 skill_version_id,版本号取自其 `current_version`(回退到关联版本)。
+     */
+    protected function installedVersionForProduct(string $did, int $productId): ?string
+    {
+        $versionIds = SkillVersion::query()->where('product_id', $productId)->pluck('id');
+
+        if ($versionIds->isEmpty()) {
+            return null;
+        }
+
+        $records = InstallRecord::query()
+            ->where('did', $did)
+            ->whereIn('skill_version_id', $versionIds)
+            ->whereIn('status', ['installed', 'updated'])
+            ->get();
+
+        $highest = null;
+
+        foreach ($records as $record) {
+            $version = $record->current_version
+                ?: optional(SkillVersion::find($record->skill_version_id))->version;
+
+            if (blank($version)) {
+                continue;
+            }
+
+            if ($highest === null || version_compare((string) $version, (string) $highest, '>')) {
+                $highest = (string) $version;
+            }
+        }
+
+        return $highest;
     }
 }

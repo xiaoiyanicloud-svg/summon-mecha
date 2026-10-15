@@ -127,6 +127,8 @@ cfg = {
     "server_url": server,
     "did": data["did"],
     "agent_key": data["agent_key"],
+    # per-device 凭据(§4.22 F1 / B-12)—— 有则优先于共享 agent_key。
+    "device_secret": data.get("device_secret"),
     "public_key": str(pathlib.Path(install_dir) / "platform_public.pem"),
     "public_key_inline": data.get("server_public_key"),
     "poll_interval": 5,
@@ -197,6 +199,9 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+
+# 参考 Agent 自身版本(§4.22 F1 自更新 / B-13)。真机 Agent 应把它随心跳上报。
+AGENT_VERSION = "0.1.0"
 
 
 def http(method, url, payload=None, headers=None):
@@ -287,10 +292,36 @@ def evt(base, payload, headers):
         denied(payload.get("phase"), body.get("code"), body.get("message"))
 
 
+def check_self_update(base, did, headers):
+    """向平台问一次 Agent 自更新工件(§4.22 F1 / B-13)。
+
+    ⚠ 真机 Agent 的"下载 → 验签 → 替换 → 失败回滚"是**设备侧**行为,本参考实现**没做**
+       (无真机,未验证)。这里只**打印**平台回的工件,证明端云契约通、且服务端只给更高版本。
+    """
+    try:
+        resp = http("GET", "%s/api/agent/self-update?did=%s&agent_version=%s"
+                    % (base, did, AGENT_VERSION), headers=headers)
+    except Exception as e:
+        print("[agent] 自更新查询失败(忽略): %s" % e, flush=True)
+        return
+
+    data = resp.get("data") or {}
+    if data.get("update_available"):
+        print("[agent] 有新版 Agent %s(签名已下发;验签/替换待真机)" % data.get("version"), flush=True)
+    else:
+        print("[agent] Agent 自更新:%s" % data.get("reason"), flush=True)
+
+
 def run(config):
     base = config["server_url"].rstrip("/")
     did = config["did"]
-    headers = {"X-Agent-Key": config["agent_key"]}
+
+    # 鉴权:优先 per-device 凭据(§4.22 F1 / B-12),否则退回共享密钥(过渡)。
+    # ⚠ 证书形态(用设备私钥对每个请求签名)是目标形态 —— 待真机 Agent 实现。
+    if config.get("device_secret"):
+        headers = {"X-Agent-Did": did, "X-Agent-Secret": config["device_secret"]}
+    else:
+        headers = {"X-Agent-Key": config["agent_key"]}
 
     pubkey_pem = config.get("public_key_inline")
     if not pubkey_pem and config.get("public_key"):
@@ -298,7 +329,9 @@ def run(config):
             pubkey_pem = f.read()
 
     interval = int(config.get("poll_interval", 5))
-    print("[agent] 启动 did=%s server=%s" % (did, base), flush=True)
+    print("[agent] 启动 did=%s server=%s version=%s" % (did, base, AGENT_VERSION), flush=True)
+
+    check_self_update(base, did, headers)
 
     while True:
         try:

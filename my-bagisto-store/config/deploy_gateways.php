@@ -25,6 +25,15 @@ return [
     //   per-device 凭据由 DeviceCredentialService 在 enroll 时签发(每设备一份,可单独吊销)。
     'agent_key' => env('AGENT_KEY'),
 
+    // Agent 自更新工件(§4.22 F1 / B-13)—— 平台当前发布的最新 Agent 版本。
+    // 未配置(version/url/hash 任一为空)时 /api/agent/self-update 恒回 NOT_CONFIGURED。
+    // ⚠ 服务端**只提供更高版本**(防降级);下载/替换/失败回滚是设备侧行为,待真机。
+    'agent_latest' => [
+        'version' => env('AGENT_LATEST_VERSION'),
+        'url'     => env('AGENT_LATEST_URL'),
+        'hash'    => env('AGENT_LATEST_HASH'),
+    ],
+
     'gateways' => [
         // HTTP 轮询:设备主动拉指令(真传输,当前默认)
         'poll' => [

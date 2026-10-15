@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Services\Deploy\AgentGatewayManager;
+use Webkul\Shop\Services\Deploy\AgentSelfUpdateService;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
 use Webkul\Shop\Services\Deploy\DeviceCredentialService;
 use Webkul\Shop\Services\Deploy\IllegalTaskTransitionException;
@@ -41,6 +42,7 @@ class AgentController extends APIController
             'sn'         => ['required', 'string', 'max:64'],
             'model_code' => ['nullable', 'string', 'max:64'],
             'vendor_code' => ['nullable', 'string', 'max:32'],
+            'agent_version' => ['nullable', 'string', 'max:32'],
         ]);
 
         $sn = $payload['sn'];
@@ -78,6 +80,12 @@ class AgentController extends APIController
         // 标记"这台机器已跑起 Agent" —— 用户侧据此显示"已配对"
         $meta = is_array($binding->meta) ? $binding->meta : [];
         $meta['agent_enrolled_at'] = now()->toDateTimeString();
+
+        if (! empty($payload['agent_version'])) {
+            $meta['agent_version'] = $payload['agent_version'];
+            $meta['agent_version_seen_at'] = now()->toDateTimeString();
+        }
+
         $binding->meta = $meta;
 
         $binding->save();
@@ -177,7 +185,10 @@ class AgentController extends APIController
      */
     public function heartbeat(Request $request): JsonResponse
     {
-        $payload = $request->validate(['did' => ['required', 'string', 'max:64']]);
+        $payload = $request->validate([
+            'did'           => ['required', 'string', 'max:64'],
+            'agent_version' => ['nullable', 'string', 'max:32'],
+        ]);
 
         if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
             return $denied;
@@ -190,6 +201,10 @@ class AgentController extends APIController
 
         // 心跳就是这台设备刚连上来的证据（其余三处握手/配对/取指令同理）
         $binding->markSeen('agent');
+
+        // 顺带上报 Agent 自身版本(§4.22 F1 自更新 / B-13)—— 平台据此判断该不该推新。
+        $this->rememberAgentVersion($binding, $payload['agent_version'] ?? null);
+
         $binding->save();
 
         return $this->ok(['did' => $binding->did, 'online' => true], 'ok');
@@ -322,5 +337,61 @@ class AgentController extends APIController
         }
 
         return null;
+    }
+
+    /**
+     * Agent 自更新工件(§4.22 F1 / B-13)。
+     *
+     * 设备带上自身 did + 当前版本,取一份**已签名**的最新工件;服务端**只提供更高版本**
+     * (防降级,见 {@see AgentSelfUpdateService})。工件的下载/验签/替换/失败回滚是**设备侧**
+     * 行为 —— 待真机验证;本接口只保证"平台告诉设备装什么、怎么验"。
+     *
+     * ⚠ 不提供"强制降级"入口:自更新的语义只能是"向上",向下的动作只有显式回滚(OP_ROLLBACK)。
+     */
+    public function selfUpdate(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'did'           => ['nullable', 'string', 'max:64'],
+            'agent_version' => ['nullable', 'string', 'max:32'],
+        ]);
+
+        if (! empty($payload['did']) && ($denied = $this->rejectIdentityMismatch($request, $payload['did']))) {
+            return $denied;
+        }
+
+        $binding = ! empty($payload['did'])
+            ? DeviceBinding::query()->where('did', $payload['did'])->first()
+            : $request->attributes->get('agent.binding');
+
+        // 上报即记录(去重:只在版本变化时落库)
+        if ($binding && ! empty($payload['agent_version'])) {
+            $this->rememberAgentVersion($binding, $payload['agent_version']);
+            $binding->save();
+        }
+
+        $current = $payload['agent_version']
+            ?? ($binding && is_array($binding->meta) ? ($binding->meta['agent_version'] ?? null) : null);
+
+        return $this->ok(app(AgentSelfUpdateService::class)->offerFor($current), 'ok');
+    }
+
+    /**
+     * 把设备上报的 Agent 版本记进 binding.meta(仅当版本变化 —— 心跳频繁,不做无谓写)。
+     */
+    protected function rememberAgentVersion(DeviceBinding $binding, ?string $version): void
+    {
+        if (blank($version)) {
+            return;
+        }
+
+        $meta = is_array($binding->meta) ? $binding->meta : [];
+
+        if (($meta['agent_version'] ?? null) === $version) {
+            return;
+        }
+
+        $meta['agent_version'] = $version;
+        $meta['agent_version_seen_at'] = now()->toDateTimeString();
+        $binding->meta = $meta;
     }
 }

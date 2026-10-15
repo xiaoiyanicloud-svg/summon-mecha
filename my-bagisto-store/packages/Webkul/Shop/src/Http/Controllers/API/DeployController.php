@@ -12,6 +12,7 @@ use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
+use Webkul\Shop\Services\Deploy\DowngradeRejectedException;
 use Webkul\Shop\Services\Deploy\SkillBlockedException;
 
 /**
@@ -90,6 +91,14 @@ class DeployController extends APIController
         } catch (SkillBlockedException $e) {
             // 熔断命中 —— 明确 409,不落任何任务(见 DeployTaskService::assertNotBlocked)
             return $this->fail(ApiErrorCode::SKILL_BLOCKED, $e->getMessage(), 409);
+        } catch (DowngradeRejectedException $e) {
+            // 版本单调闸(§4.22 F1 / B-13)—— 拒绝向设备装更旧的版本。
+            return $this->fail(ApiErrorCode::AGENT_DOWNGRADE_REJECTED, $e->getMessage(), 409, [
+                'data' => [
+                    'installed_version' => $e->installedVersion,
+                    'target_version'    => $e->targetVersion,
+                ],
+            ]);
         }
 
         return response()->json([

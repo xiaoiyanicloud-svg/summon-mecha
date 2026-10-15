@@ -147,6 +147,8 @@ final class ApiErrorCode
     public const AGENT_CREDENTIAL_INVALID = 'AGENT_CREDENTIAL_INVALID';
     /** 设备身份与请求的 did 不一致(per-device 身份下不可冒充他人)。 */
     public const AGENT_IDENTITY_MISMATCH = 'AGENT_IDENTITY_MISMATCH';
+    /** 拒绝降级:目标版本低于本机已装(§4.22 F1 版本单调 / B-13)。 */
+    public const AGENT_DOWNGRADE_REJECTED = 'AGENT_DOWNGRADE_REJECTED';
     public const GRAY_RELEASE_NOT_FOUND = 'GRAY_RELEASE_NOT_FOUND';
     public const KILL_SWITCH_NOT_ENGAGED = 'KILL_SWITCH_NOT_ENGAGED';
 
