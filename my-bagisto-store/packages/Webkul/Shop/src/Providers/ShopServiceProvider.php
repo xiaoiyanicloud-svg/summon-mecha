@@ -134,6 +134,22 @@ class ShopServiceProvider extends ServiceProvider
                     'message' => '提交过于频繁,请稍后再试。',
                 ], 429));
         });
+
+        // 举报档(加固 §四 A1) —— 比 write 更紧:5/分。
+        //   举报是**唯一**的用户侧违规通道,但它同时也是一条能把任意文本送进后台的入口,
+        //   且举报对象是任意技能(不像工单只对自己的东西)。30/分 对滥用太松,
+        //   而正常用户一分钟报 5 条违禁技能已经远超日常;去重(同对象只受理一条)
+        //   挡的是重复,这一档挡的是"换个对象接着刷"。
+        RateLimiter::for('report', function (Request $request) {
+            $customerId = $request->user('customer')?->id;
+
+            return Limit::perMinute(5)
+                ->by($customerId ? 'customer:'.$customerId : 'ip:'.$request->ip())
+                ->response(fn () => response()->json([
+                    'code'    => 'RATE_LIMITED',
+                    'message' => '举报提交过于频繁,请稍后再试。',
+                ], 429));
+        });
     }
 
     /**

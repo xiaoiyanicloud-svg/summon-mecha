@@ -192,6 +192,11 @@ final class ApiErrorCode
     public const REVIEW_NOT_APPROVED = 'REVIEW_NOT_APPROVED';
     public const REVIEW_TRANSLATE_FAILED = 'REVIEW_TRANSLATE_FAILED';
 
+    // ── 举报（加固 §四 A1）────────────────────────────────────────────────
+
+    /** 举报对象（技能/评价）不存在 —— 举报必须落在真实对象上 */
+    public const REPORT_TARGET_NOT_FOUND = 'REPORT_TARGET_NOT_FOUND';
+
     // ── 版本(后台) ──────────────────────────────────────────────────────
 
     public const VERSION_ARCHIVED = 'VERSION_ARCHIVED';

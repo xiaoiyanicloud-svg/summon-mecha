@@ -33,6 +33,7 @@ use Webkul\Shop\Http\Controllers\API\SceneController;
 use Webkul\Shop\Http\Controllers\API\SkillAdminController;
 use Webkul\Shop\Http\Controllers\API\SkillCatalogController;
 use Webkul\Shop\Http\Controllers\API\SkillController;
+use Webkul\Shop\Http\Controllers\API\SkillReportController;
 use Webkul\Shop\Http\Controllers\API\SkillSupplyController;
 use Webkul\Shop\Http\Controllers\API\SummonAiController;
 use Webkul\Shop\Http\Controllers\API\SummonController;
@@ -288,6 +289,17 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('categories', 'categories')->name('shop.api.skill-catalog.categories');
         Route::get('tags', 'tags')->name('shop.api.skill-catalog.tags');
         Route::get('search', 'search')->name('shop.api.skill-catalog.search');
+    });
+
+    /**
+     * 加固计划 §四 A1 · 举报（用户侧）—— 违规技能唯一的用户侧通道。
+     *
+     * 与工单/事故的差别：**不要求持有被举报的技能**（详见 SkillReport 模型注释）。
+     * 写入口挂 `report` 档（比 `write` 更紧）：它既是合规通道，也是一条能往后台
+     * 灌文本的入口，去重之外还需要一道量的闸门。
+     */
+    Route::controller(SkillReportController::class)->prefix('skill-reports')->middleware(['customer'])->group(function () {
+        Route::post('', 'store')->middleware('throttle:report')->name('shop.api.skill-reports.store');
     });
 
     /**

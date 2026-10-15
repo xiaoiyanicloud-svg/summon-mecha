@@ -149,6 +149,12 @@ return [
         'sort'       => 9,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.skill-reports',
+        'name'       => '举报处置台',
+        'route'      => 'admin.catalog.skill-reports.index',
+        'sort'       => 10,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.attributes',
         'name'       => 'admin::app.components.layouts.sidebar.attributes',
         'route'      => 'admin.catalog.attributes.index',

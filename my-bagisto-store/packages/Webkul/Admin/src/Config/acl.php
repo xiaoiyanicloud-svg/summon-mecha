@@ -290,6 +290,17 @@ return [
         'route' => 'admin.catalog.content-security.show',
         'sort'  => 1,
     ], [
+        // 举报处置台（加固 §四 A1）
+        'key'   => 'catalog.skill-reports',
+        'name'  => '举报处置台',
+        'route' => 'admin.catalog.skill-reports.index',
+        'sort'  => 11,
+    ], [
+        'key'   => 'catalog.skill-reports.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.catalog.skill-reports.show',
+        'sort'  => 1,
+    ], [
         'key'   => 'catalog.attributes',
         'name'  => 'admin::app.acl.attributes',
         'route' => 'admin.catalog.attributes.index',

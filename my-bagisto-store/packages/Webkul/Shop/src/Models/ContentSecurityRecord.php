@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * ⚠ **`target_id` 指向什么，由 `target_type` 决定**（表只有一列 id，没有多态约束）：
  *   - `skill_meta` → **`skill_versions.id`**（提审时扫的是"这个版本的元信息"）
  *   - `review` / `icon` / `preview` → 对应业务对象各自的 id
+ *   - `skill_report` → **`skill_report.id`**（用户举报的正文；举报单本身也要过词表）
  *   查之前先确认 target_type，别默认它是 skill_id。
  *
  * 与 `audit_record` 的关系：`audit_record` 记的是**准入判定**（过/不过），
@@ -41,6 +42,12 @@ class ContentSecurityRecord extends Model
     public const DISPOSITION_ACTIONED = 'actioned';
 
     public const TARGET_SKILL_META = 'skill_meta';
+
+    /** `skill_report.id` —— 用户举报的正文（见加固计划 §四 A1） */
+    public const TARGET_SKILL_REPORT = 'skill_report';
+
+    /** `skill_review.id` —— 用户评价的标题/正文 */
+    public const TARGET_REVIEW = 'review';
 
     protected $fillable = [
         'target_type',

@@ -17,6 +17,7 @@ use Webkul\Admin\Http\Controllers\Catalog\ProductController;
 use Webkul\Admin\Http\Controllers\Catalog\SceneController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillCategoryController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillController;
+use Webkul\Admin\Http\Controllers\Catalog\SkillReportController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillReviewController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillTagController;
 
@@ -206,6 +207,18 @@ Route::prefix('catalog')->group(function () {
         Route::get('', 'index')->name('admin.catalog.content-security.index');
         Route::get('{id}', 'show')->whereNumber('id')->name('admin.catalog.content-security.show');
         Route::post('{id}/dispose', 'dispose')->whereNumber('id')->name('admin.catalog.content-security.dispose');
+    });
+
+    /**
+     * 举报处置台（加固计划 §四 A1）。
+     *
+     * 与审核台（skill-reviews）不是一回事：审核台审的是**技能版本准入**（skill_versions），
+     * 本台处置的是**用户举报**（skill_report）—— 技能上线之后唯一的用户侧违规通道。
+     */
+    Route::controller(SkillReportController::class)->prefix('skill-reports')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.skill-reports.index');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.catalog.skill-reports.show');
+        Route::post('{id}/dispose', 'dispose')->whereNumber('id')->name('admin.catalog.skill-reports.dispose');
     });
 
     /**
