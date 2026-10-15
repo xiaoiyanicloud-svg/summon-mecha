@@ -56,7 +56,7 @@ class DeployTaskService
         'dispatching'    => ['downloading', 'installing', 'success', 'failed', 'timeout', 'pending_online', 'cancelled'],
         'downloading'    => ['installing', 'success', 'failed', 'timeout', 'cancelled'],
         'installing'     => ['success', 'failed', 'timeout'],
-        'pending_online' => ['dispatching', 'success', 'failed', 'cancelled'],
+        'pending_online' => ['dispatching', 'success', 'failed', 'timeout', 'cancelled'],
         'success'        => [],
         'failed'         => [],
         'timeout'        => [],

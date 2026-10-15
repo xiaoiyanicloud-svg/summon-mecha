@@ -90,6 +90,26 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('ops:alert-queue-backlog')
             ->hourlyAt(40)
             ->withoutOverlapping();
+
+        /**
+         * P6 · 下发任务的服务端超时兜底。
+         *
+         * 下发任务离开"进行中"只有两条路:设备回报,或被取消 —— 而设备是随时会掉线的
+         * 外部实体。没有这条兜底,给长期离线设备下发的任务会**永久**停在 pending_online,
+         * 用户界面永远"下发中"(既不成功也不失败,且无人知晓)。
+         *
+         * 跑得比阈值勤一档(默认在途阈值 30min → 每 10 分钟扫一次):
+         * 超时判定不需要秒级精度,但也不能让任务多挂一整个扫描周期。
+         * 两个阈值都可用命令参数覆盖(--pending-hours / --inflight-minutes)。
+         *
+         * ⚠ 为什么不在这里给**灰度**也排一个自动评估任务:
+         *   灰度的推进信号是"设备回报",事件驱动(evaluateFromRecords)比轮询**更准也更快**。
+         *   项目此前已有 scheduler,仍刻意不给灰度加定时任务 —— 那是拿错误的模型覆盖正确的设计
+         *   (详见 DeployTaskService::evaluateGrayIfAny 的说明)。此处同理,只排下发超时扫描。
+         */
+        $schedule->command('ops:timeout-deploy-tasks')
+            ->everyTenMinutes()
+            ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions) {
         /**
