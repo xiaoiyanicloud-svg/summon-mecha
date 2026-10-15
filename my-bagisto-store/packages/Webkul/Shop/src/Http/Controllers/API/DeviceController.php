@@ -4,12 +4,14 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Webkul\Product\Models\ProductProxy;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Services\Ops\OperationLogger;
+use Webkul\Shop\Services\SkillDelivery\DeviceBindingService;
 
 /**
  * 我的设备 —— 用户登记/管理自己实际拥有的机器。
@@ -193,8 +195,16 @@ class DeviceController extends APIController
             return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在。', 404);
         }
 
-        $device->bind_status = Device::STATUS_REVOKED;
-        $device->save();
+        // D1 · 一次事务写两处真相:登记视图(`devices`)与唯一真相源(`device_binding`)。
+        // 此前只改 `devices.bind_status` —— 界面显示"已解绑",而下发链路**只认 binding**
+        // (见 `DeployTaskService::dispatch()`),于是同一台机器"平台说解绑了、却还能收到下发"。
+        // 两处必须一起翻,任一失败一起回滚,不留半解绑的分叉态。
+        DB::transaction(function () use ($device) {
+            $device->bind_status = Device::STATUS_REVOKED;
+            $device->save();
+
+            app(DeviceBindingService::class)->unbind($device);
+        });
 
         // X4 · 解绑留痕:谁在何时把哪台设备解绑了 —— 这是事故复盘时的高频问题。
         $this->oplog->log(

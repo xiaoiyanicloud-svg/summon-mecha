@@ -210,11 +210,18 @@ class DeployTaskService
     {
         $gateway = $this->gateways->gateway();
 
-        // 设备**从未登记**(没有 binding):等它上线是等不到的 —— 这条路只可能是
-        // 配错了 did 或给了别人的设备。直接判失败并标 NOT_BOUND,不挂起 24 小时
-        // 让用户对着"下发中"干等。
-        if (! DeviceBinding::query()->where('did', $task->did)->exists()) {
-            $this->failWith($task, DeployTask::ERR_NOT_BOUND, '设备未登记(找不到设备绑定记录)。');
+        // 设备**未绑定**(从未登记,或已被用户解绑):等它上线是等不到的 —— 这条路只可能是
+        // 配错了 did、给了别人的设备,或设备已被解绑。直接判失败并标 NOT_BOUND,
+        // 不挂起 24 小时让用户对着"下发中"干等。
+        //
+        // ⚠ D1:下发链路**只认 `device_binding.bind_status`**。此前这里只查"binding 是否存在",
+        //   于是设备解绑（`DeviceBindingService::unbind()` 置 `unbound`）后仍能收到下发 ——
+        //   界面已解绑、平台却还认它已确权。必须按 `bound` 判定。
+        if (! DeviceBinding::query()
+            ->where('did', $task->did)
+            ->where('bind_status', DeviceBinding::BIND_STATUS_BOUND)
+            ->exists()) {
+            $this->failWith($task, DeployTask::ERR_NOT_BOUND, '设备未绑定或已解绑(找不到有效的设备绑定记录)。');
 
             return;
         }

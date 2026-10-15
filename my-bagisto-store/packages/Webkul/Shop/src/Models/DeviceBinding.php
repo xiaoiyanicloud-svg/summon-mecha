@@ -38,6 +38,19 @@ class DeviceBinding extends Model
     public const SOURCE_MANUAL = 'manual';
 
     /**
+     * `bind_status` 取值 —— 迁移 2026_10_13_000002 里写的三种状态。
+     *
+     * ⚠ 下发链路（`DeployTaskService::dispatch()`）**只认 `bound`**：
+     *   解绑后本表置 `unbound`，链路必须据此判定"设备已不确权"，
+     *   否则会留下"界面已解绑、平台仍能下发"的分叉（D1）。
+     */
+    public const BIND_STATUS_BOUND = 'bound';
+
+    public const BIND_STATUS_UNBOUND = 'unbound';
+
+    public const BIND_STATUS_TRANSFERRING = 'transferring';
+
+    /**
      * "在线"的判定窗口（秒）。
      *
      * 为什么是 90：设备端 Agent 是主动轮询拉指令的（`HttpPollAgentGateway`），

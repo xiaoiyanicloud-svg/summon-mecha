@@ -78,7 +78,7 @@ class DeviceBindingService
                         'model_id'          => $this->resolveModelId($device),
                         'owner_customer_id' => $device->customer_id,
                         'devices_id'        => $device->id,
-                        'bind_status'       => 'bound',
+                        'bind_status'       => DeviceBinding::BIND_STATUS_BOUND,
                         'bound_at'          => $device->bound_at ?: now(),
                     ]
                 );
@@ -92,6 +92,36 @@ class DeviceBindingService
 
             return $binding;
         });
+    }
+
+    /**
+     * 解绑设备 —— 把**真相源** `device_binding` 置为 `unbound`（D1）。
+     *
+     * 为什么必须做：`devices.bind_status` 只是登记视图，下发链路**只认 binding**
+     *   （见 `DeployTaskService::dispatch()`）。此前解绑只改 devices，于是出现
+     *   "界面已解绑、下发链路仍认它"的分叉。本方法把真相源同步过来。
+     *
+     * ⚠ 只改绑定状态，**不回收授权**：技能授权归 `skill_entitlements` 管，回收走订单取消那条路
+     *   （见 `DeviceController::destroy()` 注释）。`owner_customer_id` 也保留 ——
+     *   它是"谁曾经绑过这台设备"的追溯凭据，解绑不该抹掉归属历史。
+     *
+     * 幂等：binding 不存在直接返回；已是 `unbound` 再调一次不产生副作用。
+     */
+    public function unbind(Device $device): void
+    {
+        $binding = $this->bindingFor($device);
+
+        if (! $binding) {
+            return;
+        }
+
+        if ($binding->bind_status === DeviceBinding::BIND_STATUS_UNBOUND) {
+            return;
+        }
+
+        $binding->bind_status = DeviceBinding::BIND_STATUS_UNBOUND;
+        $binding->unbound_at = now();
+        $binding->save();
     }
 
     /**
