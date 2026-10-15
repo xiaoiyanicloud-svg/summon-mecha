@@ -144,7 +144,7 @@
 </template>
 
 <script>
-import { orderApi, ticketApi } from '@/utils/api'
+import { orderApi, ticketApi, invoiceApi, reviewApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
 import NavBar from '@/components/NavBar.vue'
@@ -267,6 +267,9 @@ import NavBar from '@/components/NavBar.vue'
 					snCode: d.sn_code || '',
 					deliveryMethod: d.delivery_method || '',
 					skillStatus: item.skill_status || '',
+					// B-20:评价要落在商品上 —— 后端订单条目的 product_id(没有就不能评价)
+					productId: item.product_id != null ? item.product_id : null,
+					productName: item.name || '',
 				}
 			},
 
@@ -311,8 +314,24 @@ import NavBar from '@/components/NavBar.vue'
 					}
 				})
 			},
-			extendRent() { uni.showToast({ title: '续租申请已提交', icon: 'success' }) },
-			applyReturn() { uni.showToast({ title: '归还申请已提交', icon: 'success' }) },
+			// B-20:续租/归还此前只 toast「已提交」不调后端 —— 是假动作。
+			// 平台当前**没有**独立的续租/归还后端(租期生命周期未落地),但有一条真实且可追溯的
+			// 人工通道:客服工单(M3「人工通道闭环」)。这里落到工单,用户能在「我的工单」追进度。
+			// ⚠ 措辞不假装"续租/归还已办成" —— 只说"申请已提交为工单"。
+			extendRent() {
+				this.openServiceTicket({
+					title: '续租申请',
+					placeholder: '请说明希望续租的时长',
+					tag: '续租申请',
+				})
+			},
+			applyReturn() {
+				this.openServiceTicket({
+					title: '归还申请',
+					placeholder: '请说明归还原因与期望时间',
+					tag: '归还申请',
+				})
+			},
 			reportRepair() {
 				// B-20:此前这里直接 toast「报修提交成功」——**不调任何后端**,是假动作。
 				// 现在落到真实客服工单(category=device),用户能在「我的工单」里追进度。
@@ -355,10 +374,156 @@ import NavBar from '@/components/NavBar.vue'
 					},
 				})
 			},
-			viewContract() { uni.showToast({ title: '查看电子合同', icon: 'none' }) },
-			contactService() { uni.showToast({ title: '客服已接入', icon: 'none' }) },
-			applyInvoice() { uni.showToast({ title: '申请开票', icon: 'none' }) },
-			evaluate() { uni.showToast({ title: '评价页面', icon: 'none' }) },
+			// B-20:平台当前**没有**电子合同能力(无模板/在线签署/存证)。在此之前它只 toast
+			// 「查看电子合同」假装能看 —— 现在如实说明,并给一个真实出口(客服工单)。
+			// 别为它造一份"看起来像合同"的空壳:空壳比"没有"更坏。
+			viewContract() {
+				uni.showModal({
+					title: '电子合同',
+					content: '该订单暂无电子合同。平台尚未接入电子合同（在线签署 / 存证）能力，如需书面协议请联系客服。',
+					confirmText: '联系客服',
+					cancelText: '知道了',
+					success: (r) => { if (r.confirm) this.contactService() },
+				})
+			},
+			contactService() {
+				this.openServiceTicket({
+					title: '联系服务商',
+					placeholder: '请描述你遇到的问题',
+					tag: '联系服务商',
+				})
+			},
+
+			// B-20:开发票接 B-15 的 /api/invoices(真实后端,只到"登记"为止)。
+			// 分两步收集抬头类型 / 抬头 / 税号(企业必填),与企业票口径一致。
+			applyInvoice() {
+				const orderId = this.order && this.order.id
+				if (!orderId) { uni.showToast({ title: '暂不可开票', icon: 'none' }); return }
+				if (!this.ensureLoggedIn('开发票')) return
+
+				uni.showActionSheet({
+					itemList: ['个人', '企业'],
+					success: (r) => this.promptInvoiceTitle(r.tapIndex === 1 ? 'company' : 'personal'),
+				})
+			},
+			promptInvoiceTitle(type) {
+				uni.showModal({
+					title: type === 'company' ? '企业抬头' : '发票抬头',
+					editable: true,
+					placeholderText: '请输入发票抬头',
+					success: (r) => {
+						if (!r.confirm) return
+						const title = (r.content || '').trim()
+						if (!title) { uni.showToast({ title: '请填写发票抬头', icon: 'none' }); return }
+						if (type === 'company') this.promptInvoiceTaxNo(title)
+						else this.submitInvoice('personal', title, null)
+					},
+				})
+			},
+			promptInvoiceTaxNo(title) {
+				uni.showModal({
+					title: '纳税人识别号',
+					editable: true,
+					placeholderText: '请输入企业税号',
+					success: (r) => {
+						if (!r.confirm) return
+						const taxNo = (r.content || '').trim()
+						if (!taxNo) { uni.showToast({ title: '企业抬头请填写税号', icon: 'none' }); return }
+						this.submitInvoice('company', title, taxNo)
+					},
+				})
+			},
+			async submitInvoice(type, title, taxNo) {
+				try {
+					const res = await invoiceApi.apply({
+						order_id: this.order.id,
+						type,
+						title,
+						tax_no: type === 'company' ? taxNo : null,
+					})
+					uni.showToast({ title: (res && res.message) || '已提交', icon: 'success' })
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })
+				}
+			},
+
+			// B-20:评价接原生 ProductReview 接口(与技能详情页同一套)。此前只 toast「评价页面」。
+			evaluate() {
+				const productId = this.order && this.order.productId
+				if (!productId) { uni.showToast({ title: '该订单暂不支持评价', icon: 'none' }); return }
+				if (!this.ensureLoggedIn('评价')) return
+
+				uni.showActionSheet({
+					itemList: ['5 星 · 非常满意', '4 星 · 满意', '3 星 · 一般', '2 星 · 不满意', '1 星 · 很差'],
+					success: (r) => this.promptReview(productId, 5 - r.tapIndex),
+				})
+			},
+			promptReview(productId, rating) {
+				uni.showModal({
+					title: '写评价',
+					editable: true,
+					placeholderText: '说说这台机器 / 这个技能用起来怎么样',
+					success: async (r) => {
+						if (!r.confirm) return
+						const comment = (r.content || '').trim()
+						if (!comment) { uni.showToast({ title: '请填写评价内容', icon: 'none' }); return }
+						try {
+							await reviewApi.create(productId, { title: comment.slice(0, 40), comment, rating })
+							uni.showToast({ title: '评价已提交', icon: 'success' })
+						} catch (e) {
+							uni.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })
+						}
+					},
+				})
+			},
+
+			// 需要登录才可写的动作统一用它挡一道(项目没有独立登录页,登录在「我的」里)。
+			// @return boolean —— 已登录返回 true,未登录返回 false(并已弹去登录)
+			ensureLoggedIn(actionLabel) {
+				if (uni.getStorageSync(TOKEN_KEY)) return true
+				uni.showModal({
+					title: actionLabel,
+					content: `该操作需要先登录。前往「我的」登录？`,
+					confirmText: '去登录',
+					success: (r) => { if (r.confirm) uni.switchTab({ url: '/pages/mine/index' }) },
+				})
+				return false
+			},
+
+			// 续租 / 归还 / 联系服务商共用:生成一条真实客服工单(不假装动作已办成)。
+			// 平台没有独立的续租/归还后端,工单是当前唯一真实且可追溯的人工通道。
+			openServiceTicket({ title, placeholder, tag }) {
+				if (!this.ensureLoggedIn(title)) return
+
+				uni.showModal({
+					title,
+					editable: true,
+					placeholderText: placeholder,
+					success: async (r) => {
+						if (!r.confirm) return
+						const desc = (r.content || '').trim()
+						if (!desc) { uni.showToast({ title: '请填写内容', icon: 'none' }); return }
+
+						const orderNo = (this.order && this.order.orderNo) || ''
+						const orderName = (this.order && this.order.name) || ''
+						try {
+							await ticketApi.create({
+								category: 'other',
+								content: `【${tag}】订单 ${orderNo}${orderName ? ' · ' + orderName : ''}\n${desc}`,
+							})
+							uni.showModal({
+								title: '已提交',
+								content: '客服会在「我的工单」里回复你。',
+								confirmText: '查看工单',
+								cancelText: '知道了',
+								success: (m) => { if (m.confirm) uni.navigateTo({ url: '/pages/mine/tickets' }) },
+							})
+						} catch (e) {
+							uni.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })
+						}
+					},
+				})
+			},
 			reorder() {
 				const params = {
 					robotName: this.order.name,
