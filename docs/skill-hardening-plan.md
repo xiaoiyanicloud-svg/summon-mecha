@@ -28,9 +28,9 @@
 
 | # | 现在薄在哪 | 补齐什么 | 怎么验证 | 量 |
 |---|---|---|---|---|
-| **X1 统一错误信封** | `API/APIController.php` 全文 33 行只有 `guestKey()`，**没有任何 `ok()/fail()` helper**。33 个控制器里失败返回至少有 **8 种结构**：`{message}` 裸（`DeviceController.php:71`）／`{message,code}`（`Dev/DeveloperSkillController.php:62`）／`{success:false,message}`（`EventController.php:46`）／`{success:false,code,message}`（`TtsController.php:250`）／`{message,errors}`（`CustomerController.php:116`）／`{data,message}`（`CartController.php:206`）／`{message:''}` 空串 401（`AuthenticateCustomer.php:24`）／`abort(404)`（`WishlistController.php:102`） | 在 `APIController` 加 `ok()/fail(string $code, string $message, int $status, array $extra)`，34 个控制器统一改用；错误码登记成一张表（新文件或常量类）。**注意 `TtsController/AsrController` 已有的 `reject($code,$message)` 就是项目自己的正确样板**，照它统一即可，不要另发明 | 写一条结构断言：遍历 `Route::getRoutes()` 里 `api/*` 的全部路由，对每条注入一次必失败的请求，断言响应体含 `code` 且状态码 ∈ 4xx/5xx。**这条测试写出来的当天就会红一片**，红的就是要改的清单 | M |
-| **X2 全局异常渲染** | `bootstrap/app.php:94` 的钩子是**空的**：`->withExceptions(function (Exceptions $exceptions) { // })`。于是 ValidationException / ModelNotFound / 未捕获异常全部走 Laravel 默认渲染，没有统一出口 | 在 `withExceptions` 里统一映射：`ValidationException` → `{code:'VALIDATION_ERROR', message, errors}` 422；`ModelNotFoundException` → 404；`AuthenticationException` → 401；`Throwable` → 500（生产隐藏细节，`APP_DEBUG=false`） | 三条：① 故意传非法参数 → 断言 `code` 与 422；② 访问不存在的模型 → 断言 404 且**不泄漏类名**；③ `curl /up` 全绿时打一个必炸路由，断言生产模式下响应体不含堆栈 | S |
-| **X3 限流与防刷** | 全仓 `throttle` **只出现 1 次**（`Routes/api.php:372`，仅开发者取 token）。**全裸的**：`login`（`CustomerController.php:32` 直接 `attempt()`，无锁定无验证码）、`register`、`tob-order`、`summon`/`summon-ai`/`summon-stream`、`asr`、`tts`、`callback/payment` | 在 `bootstrap/app.php` 用 `RateLimiter::for()` 定义 `login`/`sms`/`ai`/`write` 四档，挂到上述路由。登录额外加**失败计数锁定**（不是只限速：限速挡不住慢速撞库） | 脚本连打 `login` 30 次 → 断言第 N 次起返回 429（或锁定错误码）；连打 `tts` → 断言额度不被无限消耗 | M |
+| **X1 统一错误信封** ✅ | `API/APIController.php` 全文 33 行只有 `guestKey()`，**没有任何 `ok()/fail()` helper**。33 个控制器里失败返回至少有 **8 种结构**：`{message}` 裸（`DeviceController.php:71`）／`{message,code}`（`Dev/DeveloperSkillController.php:62`）／`{success:false,message}`（`EventController.php:46`）／`{success:false,code,message}`（`TtsController.php:250`）／`{message,errors}`（`CustomerController.php:116`）／`{data,message}`（`CartController.php:206`）／`{message:''}` 空串 401（`AuthenticateCustomer.php:24`）／`abort(404)`（`WishlistController.php:102`） | 在 `APIController` 加 `ok()/fail(string $code, string $message, int $status, array $extra)`，34 个控制器统一改用；错误码登记成一张表（新文件或常量类）。**注意 `TtsController/AsrController` 已有的 `reject($code,$message)` 就是项目自己的正确样板**，照它统一即可，不要另发明 | 写一条结构断言：遍历 `Route::getRoutes()` 里 `api/*` 的全部路由，对每条注入一次必失败的请求，断言响应体含 `code` 且状态码 ∈ 4xx/5xx。**这条测试写出来的当天就会红一片**，红的就是要改的清单 | M |
+| **X2 全局异常渲染** ✅ | `bootstrap/app.php:94` 的钩子是**空的**：`->withExceptions(function (Exceptions $exceptions) { // })`。于是 ValidationException / ModelNotFound / 未捕获异常全部走 Laravel 默认渲染，没有统一出口 | 在 `withExceptions` 里统一映射：`ValidationException` → `{code:'VALIDATION_ERROR', message, errors}` 422；`ModelNotFoundException` → 404；`AuthenticationException` → 401；`Throwable` → 500（生产隐藏细节，`APP_DEBUG=false`） | 三条：① 故意传非法参数 → 断言 `code` 与 422；② 访问不存在的模型 → 断言 404 且**不泄漏类名**；③ `curl /up` 全绿时打一个必炸路由，断言生产模式下响应体不含堆栈 | S |
+| **X3 限流与防刷** ✅ | 全仓 `throttle` **只出现 1 次**（`Routes/api.php:372`，仅开发者取 token）。**全裸的**：`login`（`CustomerController.php:32` 直接 `attempt()`，无锁定无验证码）、`register`、`tob-order`、`summon`/`summon-ai`/`summon-stream`、`asr`、`tts`、`callback/payment` | 在 `bootstrap/app.php` 用 `RateLimiter::for()` 定义 `login`/`sms`/`ai`/`write` 四档，挂到上述路由。登录额外加**失败计数锁定**（不是只限速：限速挡不住慢速撞库） | 脚本连打 `login` 30 次 → 断言第 N 次起返回 429（或锁定错误码）；连打 `tts` → 断言额度不被无限消耗 | M |
 
 ---
 
@@ -112,7 +112,7 @@
 - **怎么验证**：回调两次 → 断言流水表只有一行、订单只被推进一次；断言能凭 `out_trade_no` 反查到订单。
 - **量**：**M**
 
-### M7 · 并发与事务边界（三条小口，但都在资金路径上）
+### M7 · 并发与事务边界（三条小口，但都在资金路径上）—— ✅ 本轮已修
 
 | 薄在哪 | 补齐什么 | 量 |
 |---|---|---|
@@ -120,14 +120,14 @@
 | `AfterSaleService.php:99` **在 `DB::transaction` 内调用外部网关** `:114` `$gateway->refund(...)` —— 钱已退但后续 `RefundRequest::create` 抛错会让事务回滚 | 先落「退款中」记录并提交，**事务外**调网关，回调/轮询回写终态 | M |
 | `OnepageController.php:158` 把业务校验失败包成 **500**：`catch (\Exception $e) { return response()->json(['message' => $e->getMessage()], 500); }` —— 而 `validateOrder()` 抛的是"账号被停用 / 未选地址"这类**用户可纠正**的错误 | 业务校验返 4xx（422/409）+ code；500 只留真正未预期异常。**这条必须与 X1 同批**，否则前端会把可纠正错误当服务端故障重试 | S |
 
-### M8 · 资金动作完全不写 `operation_log`（工具备好了没人用）
+### M8 · 资金动作完全不写 `operation_log`（工具备好了没人用）—— ✅ 本轮已修
 
 - **现在薄在哪** `Services/Ops/OperationLogger.php:57` 的 `logOrFail()` 注释明确点名「金融放款」场景 —— **全仓零调用**。`operation_log` 的 11 个写入点**全在 Admin**；Shop 侧（支付回调翻状态、下单、取消、退款审批、授权发放/撤销）**一处都没有**。
 - **补齐什么**：退款审批、订单状态变更、授权发放/撤销 接 `OperationLogger`；金额类用 `logOrFail()`（写不进去就失败 —— 这是它能存在的唯一意义）。
 - **怎么验证**：走一遍退款 → 断言 `operation_log` 有对应行且带金额与操作者。
 - **量**：**S**
 
-### M9 · 结算 / 提现 / 对账 / 发票：四张表，零代码
+### M9 · 结算 / 提现 / 对账 / 发票：四张表，零代码 —— 🔶 本轮部分完成（仅发票；结算/提现/对账未做）
 
 - **现在薄在哪** `Database/Migrations/2026_10_14_000001_create_ops_safety_tables.php` 的 `:110`（settlement）`:126`（withdrawal）`:140`（reconciliation）`:155`（invoice）—— 全仓无模型、无服务、无控制器、无 Job。
 - **补齐什么**：**只有「发票」这一项现在就该做**（用户买完要开票，是 M1 可售的组成部分）。结算/提现/对账依赖真支付资质与分账主体（E1），**维持未做但要在文档里标成"未实现"，而不是让页面显示 0**（本项目的既有立场）。
@@ -175,7 +175,7 @@
 - **怎么验证**：自报安装一次 → 断言 `install_record` 有行，且 `GET devices/{id}/installs` 能看到。
 - **量**：**S**
 
-### D5 · 表约束缺位
+### D5 · 表约束缺位 —— ✅ 本轮已修
 
 | 薄在哪 | 补齐什么 | 量 |
 |---|---|---|
@@ -189,7 +189,7 @@
 - **怎么验证**：把分类 slug 改掉 → 断言告警出现（而不是静默不发授权）。
 - **量**：**S**
 
-### D7 · 直接调 `deliver()` 的地方没兜异常
+### D7 · 直接调 `deliver()` 的地方没兜异常 —— ✅ 本轮已修
 
 - **现在薄在哪** `API/SkillController.php:207-209`、`API/DeviceController.php:264-272`（在 `store()` 主链路里，未包 try/catch）。`SkillDeliveryManager::channel()` 对未注册通道抛 `InvalidArgumentException` → **设备登记/绑定接口 500**。
 - **补齐什么**：与监听器一致的防御式包裹 + 明确错误码。
@@ -230,7 +230,7 @@
 - **怎么验证**：A 用户拿 B 的 `task_no` 调 `show` 与 `cancel` → 断言 404。
 - **量**：**S**
 
-### P4 · 幂等缺失（三条，都指向"重复执行"）
+### P4 · 幂等缺失（三条，都指向"重复执行"）—— ✅ 本轮已修
 
 | 薄在哪 | 补齐什么 | 量 |
 |---|---|---|
@@ -238,48 +238,48 @@
 | `AgentController.php:218-232` 每次返回该设备**全部** `dispatching/pending_online`，**无"已投递"标记** → 设备回报前重启会重装 | 加投递标记（markSeen 已有，但未参与判定） | S |
 | `GrayReleaseService.php:108-145` 的 `abort()` **无"已 aborted"守卫** → 重复调用再建一轮回滚任务 + `rollback_record` | 加终态判断 | S |
 
-### P5 · 灰度回滚的靶子可能是空的
+### P5 · 灰度回滚的靶子可能是空的 —— ✅ 本轮已修
 
 - **现在薄在哪** `Services/Deploy/GrayReleaseService.php:117-120` 只找 `status='updated'`；而 `updated` 依赖同 product 存在**旧版已装记录**（`DeployTaskService.php:256-260` + `isUpgrade()` `:268-288`）。**首次安装该技能 → 记 `installed` → 永远进不了 `$updated`。**
 - **补齐什么**：靶子按**本次灰度 `deploy_task` 的 success 反查**，而不是按 `updated` 状态。
 - **怎么验证**：对一台**首装**设备推坏版本 → 触发 abort → 断言回滚任务真的发给了那台设备（现在 affected=0，坏版本原地留下且不报错）。
 - **量**：**S**
 
-### P6 · `pending_online` 无超时回收；三列是死列
+### P6 · `pending_online` 无超时回收；三列是死列 —— ✅ 本轮已修
 
 - **现在薄在哪** `bootstrap/app.php:53-93` 的 `withSchedule` **只有 4 条 `ops:*`**；全仓**没有任何 deploy/gray 相关的定时任务**。`retry_count` / `next_retry_at` 除迁移与模型外**零命中**；`timeout` 只能由设备上报触发（`DeployTaskService.php:144`），**无服务端兜底**。且 `create()` → `dispatch()`（`:71`）非事务，崩在中间会留 `pending`。
 - **补齐什么**：加定时任务扫描 `pending_online` 与 `dispatching/downloading/installing` 超时未回报的，置 `timeout`。**给长期离线的设备下发 → 现在会永久 `pending_online`，用户界面永远"下发中"。**
 - **怎么验证**：造一条 24 小时前的 `pending_online` → 跑命令 → 断言转成 `timeout` 且用户可见。
 - **量**：**M**
 
-### P7 · 状态流转是 check-then-act；同设备并发双任务无串行化
+### P7 · 状态流转是 check-then-act；同设备并发双任务无串行化 —— ✅ 本轮已修
 
 - **现在薄在哪** `DeployTaskService.php:193-215` 读 status → 改 → save，**无 `lockForUpdate`、无事务、无乐观锁**；`dispatch()`（`:79-97`）的 isOnline 判定与 dispatch 之间是 TOCTOU；`AgentController.php:218-222` 一次返回该 did **全部**待执行任务，无串行。
 - **补齐什么**：流转用事务 + 条件更新（命中 0 行即视为非法流转）；`commands` 每设备每轮**限 1 条**。
 - **怎么验证**：并发发两个流转请求 → 断言只有一个生效；断言设备一轮只拿到一条指令。
 - **量**：**M**
 
-### P8 · 参数校验：白名单漏了 `operation=6`（回收）
+### P8 · 参数校验：白名单漏了 `operation=6`（回收）—— ✅ 本轮已修
 
 - **现在薄在哪** `API/DeployController.php:33-38` `operation` 写死 `'in:1,2,3,4,5'`，但 `Models/DeployTask.php:27` 有 `OP_RECLAIM=6`，迁移 `create_deploy_and_audit_tables.php:32` 注释也写「6回收」→ **合法回收被参数校验挡死**。
   另：`GrayReleaseController.php:75-79` 三个计数各 `min:0`，**无 `successes <= installs` 跨字段校验**（`GrayReleaseService.php:53` 能算出 >100%）；`:30-36` 不校验 `skill_version_id` 存在且已发布。
 - **补齐什么**：`operation` **与 `OP_*` 常量对齐**（不要再手写字面量）；加 `lte:installs`；`store` 校验版本已发布。
 - **量**：**S**
 
-### P9 · 机器消费者拿不到统一错误码；非法流转被静默吞成 200
+### P9 · 机器消费者拿不到统一错误码；非法流转被静默吞成 200 —— ✅ 本轮已修
 
 - **现在薄在哪** `AgentController.php:232` 成功只返 `['data'=>...]`（其余接口是 `{message,data}`）；失败仅中文 message，无 code。`DeployTaskService.php:146-148`/`:202-203` 非法流转返回 false/原任务，而 `AgentController.php:191-195` **仍返 200 'ok'** → **对已 success 的任务报 failed，服务端丢弃但回 200，端云状态永久分叉且无告警。**
 - **补齐什么**：统一信封（X1）；非法回报返**明确错误码**。Agent 是机器消费者，结构不一致比 UI 更致命。
 - **量**：**S**（X1 的同一批）
 
-### P10 · 审计留痕不足以复盘"谁何时给哪台设备推了什么"
+### P10 · 审计留痕不足以复盘"谁何时给哪台设备推了什么" —— ✅ 本轮已修
 
 - **现在薄在哪** `rollback_record` 表定义（`create_blocklist_developer_tables.php:47-55`）**无 `created_by`、无 IP**；`KillSwitchService::engage()` `:33` 把 `$createdBy` **写死 `'admin'`**，而 `SkillSupplyController.php:187-192` 不传 → **恒记 admin，实际调用方丢失**（熔断是 D9 的安全动作）；`Services/Deploy` 目录 `grep Log::|logger(` **零命中**。
 - **补齐什么**：相关表落操作者 + IP；`engage()` 显式传调用方；熔断/灰度/回滚接 `operation_log`（与 M8 同批）。
 - **怎么验证**：以不同管理员身份按熔断 → 断言 `operation_log` 记的是真实身份。
 - **量**：**S**
 
-### P11 · 异常态被压平：dry install 报"成功"；`download_failed` 只存在于注释
+### P11 · 异常态被压平：dry install 报"成功"；`download_failed` 只存在于注释 —— ✅ 本轮已修
 
 - **现在薄在哪** `AgentSetupController.php:285-288` `package_url` 为空时**走 dry install**，随后 `:290-291` 直接报 `done` → 服务端落 `success` + `installed`，**无任何标记**。
   `DeployTaskService.php:12-17` 的状态图写了 `download_failed→重试→failed`，但 `TRANSITIONS`（`:24-34`）与 map（`:139-145`）**都没有这个状态** → 下载失败落成泛化 `failed`。
@@ -292,7 +292,7 @@
 
 ## 四、售后（P1/P2）
 
-### A1 · 评价与举报两个域**只有空表，零代码**
+### A1 · 评价与举报两个域**只有空表，零代码** —— ✅ 本轮已修
 
 - **现在薄在哪** `Database/Migrations/2026_10_14_000002_...:147-183` 建了 `skill_review`、`skill_report`，但全仓**无模型、无控制器、无路由、无前端**。迁移自己坐实：`2026_10_14_000007_fix_skill_review_status_default.php:21`「⚠ 现状：skill_review 表 0 行、全仓零代码引用（表建了但功能未做）」。
   本轮实测复核：**`skill_review` 确实零写入方**。
@@ -301,14 +301,14 @@
 - **怎么验证**：举报一个技能 → 断言落 `skill_report` 并在 Admin 处置台可见；重复举报 → 断言去重/限流。
 - **量**：**L**（可拆：举报 **M**，评价 **M**）
 
-### A2 · 单号生成竞态 —— 重复提交/并发直接 500
+### A2 · 单号生成竞态 —— 重复提交/并发直接 500 —— ✅ 本轮已修
 
 - **现在薄在哪** `API/TicketController.php:55` `'ticket_no' => 'T'.now()->format('ymdHis').$customer->id`；`Services/Incident/IncidentService.php:402-412` 用 `while (Incident::where('incident_no',$no)->exists())` 生成 —— **check-then-act，非原子**。唯一键在 `create_support_ticket_tables.php:31`、`create_ops_safety_tables.php:86`。
 - **补齐什么**：号里加随机/序列 + **唯一索引兜底并 `catch` 冲突重试**；引入客户端 `Idempotency-Key`（同 key 直接返回首次结果）。
 - **怎么验证**：同一用户同一秒连发两次开工单 → 断言第二次**不 500**（现在会 500 —— 弱网重试、双击是最常见的真实行为）。
 - **量**：**S**
 
-### A3 · 售后审批 check-then-act → **重复退款**
+### A3 · 售后审批 check-then-act → **重复退款** —— ✅ 本轮已修
 
 - **现在薄在哪** `Services/SkillDelivery/AfterSaleService.php:89-99` 状态守卫在**事务外**，事务内不再重读加锁：
   ```php
@@ -321,7 +321,7 @@
 - **怎么验证**：两个并发 `approve` → 断言只退一次款（这是**资金级**重复，必须与 M5 同批）。
 - **量**：**S**
 
-### A4 · `skill_id` 归属不校验（工单 + 事故）—— 削弱事故证据链
+### A4 · `skill_id` 归属不校验（工单 + 事故）—— 削弱事故证据链 —— ✅ 本轮已修
 
 - **现在薄在哪** `API/TicketController.php:51` 与 `API/IncidentController.php:62` 的 `skill_id` 都只有 `nullable|integer`，**无归属校验**。反证：同一控制器 `IncidentController.php:73-85` **对 `device_id` 做了归属校验**（`DEVICE_NOT_OWNED`），对 `skill_id` 没有。
   后果不止是脏数据：`IncidentService.php:192-234` 的 `traceFor()` 会按该 `product_id` 去查版本与交付物 sha256 并**固化进证据链** —— **可以把一次事故"挂"到与自己无关的技能版本上**，污染定责依据。
@@ -329,19 +329,19 @@
 - **怎么验证**：传他人 `product_id` 报案 → 断言被拒。
 - **量**：**S**
 
-### A5 · 事故处理记录读-改-写（处置留痕会丢）
+### A5 · 事故处理记录读-改-写（处置留痕会丢）—— ✅ 本轮已修
 
 - **现在薄在哪** `Services/Incident/IncidentService.php:154-165`：读出 `handling_log` → `$log[] = ...` → 整列写回。两名管理员并发处置 → **后写覆盖先写，一条处置记录凭空消失**（经典 lost update）。
 - **补齐什么**：行锁后修改，或把处置记录落到**独立 append-only 表**（每行一条，不整列重写）。后者更好 —— 审计日志本来就不该是"可覆盖的一列"。
 - **量**：**S**
 
-### A6 · 事故状态无状态机，`resolved_at` 不清空
+### A6 · 事故状态无状态机，`resolved_at` 不清空 —— ✅ 本轮已修
 
 - **现在薄在哪** `Admin/Http/Controllers/Customers/IncidentController.php:70-100` 只校验 `status` 在枚举内，**不校验当前→目标是否合法**。`IncidentService::advance()`（`:149-151`）在 resolved/closed 时写 `resolved_at`，**重新打开时不清**。
 - **补齐什么**：定义合法流转表并在 `advance()`/`handle()` 校验；状态回退时清 `resolved_at`（否则 SLA 统计失真）。
 - **量**：**S**
 
-### A7 · 前端：**故障被伪装成"你没有数据"**
+### A7 · 前端：**故障被伪装成"你没有数据"** —— ✅ 本轮已修
 
 - **现在薄在哪**
   - `pages/mine/tickets.vue:75` `const res = await ticketApi.list().catch(() => ({ data: [] }))` —— `pages/mine/incidents.vue:179-183` 同款（devices/skills 同样）
@@ -350,14 +350,14 @@
 - ⚠ 这是客服排障中最贵的误判类型：「用户说没看到工单」其实是 500。**与 X1/X2 是同一个根因的两端。**
 - **量**：**M**（19 页一起做，见 X6）
 
-### A8 · 工单/事故的详情接口在 App 里**没有入口**
+### A8 · 工单/事故的详情接口在 App 里**没有入口** —— ✅ 本轮已修
 
 - **现在薄在哪** `Routes/api.php:294`（tickets.show）`:306`（incidents.show）与 `utils/api.js:129,142` 的 `detail()` **都已存在**，但列表项 `tickets.vue:34-40`、`incidents.vue:92-101` **没有任何点击跳转**。
 - **补齐什么**：列表项加跳转 + 详情页（消费已存在的接口）。
 - **后果**：**客服回复了，用户永远看不到**；事故的 `responsibility`（责任认定）也无从查看 —— **工单闭环的最后一公里是断的**。
 - **量**：**S**
 
-### A9 · 其余校验与限流缺口
+### A9 · 其余校验与限流缺口 —— ✅ 本轮已修
 
 | 薄在哪 | 补齐什么 | 量 |
 |---|---|---|
@@ -371,14 +371,14 @@
 
 ## 五、其余（横切与前端，X1–X3 见第 0 节）
 
-### X4 · 审计留痕：Shop 侧**零留痕**，11 个写入点全在 Admin
+### X4 · 审计留痕：Shop 侧**零留痕**，11 个写入点全在 Admin —— ✅ 本轮已修
 
 - **现在薄在哪** `OperationLogger` 的 11 个调用点全在 Admin（`Catalog/SkillController.php:205,272`、`Customers/IncidentController.php:102` 等）。**Shop 侧以下动作一处都没有**：支付回调翻状态、下单/取消、退款审批、设备登记/绑定（D1 设备真相源）、技能下载/绑定/确认安装、**熔断 kill switch（D9）**、灰度/回滚、用户报案。
 - **补齐什么**：所有写动作接 `OperationLogger`；高价值动作用 `logOrFail()`。
 - **后果**：出事要追责时，「谁按了熔断、谁回滚了灰度、谁改绑了设备」**查无此人**，且**历史无法补**。
 - **量**：**M**
 
-### X5 · `SummonAiController` 绕过配置注册表直读 `env()`
+### X5 · `SummonAiController` 绕过配置注册表直读 `env()` —— ✅ 本轮已修
 
 - **现在薄在哪** `API/SummonAiController.php:71-73` 与 `:145-147` 直接 `env('COZE_BASE_URL')` / `env('COZE_PAT')` / `env('COZE_BOT_ID')`。这是 Shop src 里**唯一**的直接 `env()` 调用。`config/summon.php` 只登记了 `summon.ai_enabled`，`COZE_*` 不在任何注册表 —— **违背 CLAUDE.md「扩展优先走配置注册表」**。
 - **后果**：生产执行 `php artisan config:cache` 后，config 文件外的 `env()` **一律返回 null** → AI 召唤整条链路静默失效，**无报错**。
@@ -386,7 +386,7 @@
 - **怎么验证**：`php artisan config:cache` 后访问 AI 召唤 → 断言仍工作（现在会挂）。
 - **量**：**S**
 
-### X6 · 前端三态覆盖
+### X6 · 前端三态覆盖 —— ✅ 本轮已修
 
 - **现在薄在哪** 19 页里，模板带持久 loading 分支的只有 **7 页**，其中有 error 分支的**只有 1 页**（`mine/legal.vue:19` —— 本轮新加的）。
   - **有 loading 无 error（6 页）**：`mine/devices.vue`、`mine/incidents.vue`、`mine/notifications.vue`、`mine/skills.vue`、`mine/tickets.vue`、`order/order-detail.vue`
@@ -394,20 +394,20 @@
 - **补齐什么**：抽一个 `<state-view :loading :error :empty>` 组件，逐页接入。
 - **量**：**M**
 
-### X7 · 静默吞错 ≥ 15 处
+### X7 · 静默吞错 ≥ 15 处 —— ✅ 本轮已修
 
 - **现在薄在哪** 显式 `catch(() => ({ data: [] }))` 8 处（`mine/incidents.vue:180-182` 三连发、`mine/tickets.vue:75`、`mine/notifications.vue:70`、`mine/skills.vue:169`、`home/jineng.vue:190`、`components/EcoCenter.vue:593`）；`catch(e){ x = [] }` 7 处（`order/index.vue:146`、`ai/index.vue:361`、`mine/devices.vue:191,199`、`mine/agent-setup.vue:138`、`mine/index.vue:939`、`order/checkout.vue:355`）。
 - **补齐什么**：吞错处改为置 `loadError`，交给 X6 的 error 态；确需降级的加 `console.warn` + 埋点。
 - **量**：**S**（与 X6 同批）
 
-### X8 · `request.js` 丢字段级错误、把超时并进网络异常
+### X8 · `request.js` 丢字段级错误、把超时并进网络异常 —— ✅ 本轮已修
 
 - **现在薄在哪** `utils/request.js:100-106` 只取 `body.message || body.error`，**`body.errors` 被丢** → 后端 422 的字段级错误，用户只看到笼统的 `The given data was invalid.`；`:108-113` 把 `uni.request` 的 `fail`（**含超时**）一律写成"网络异常，请确认后端服务已启动" → 超时被误诊。
 - **补齐什么**：补 `body.errors` 合并进提示；区分 `errMsg.includes('timeout')`。
 - **另**：`pages/mine/index.vue:1017` 直接 `uni.request(` 绕过了封装，建议收回。
 - **量**：**S**
 
-### X9 · 12 个页面各抄一份 `.nav-bar`
+### X9 · 12 个页面各抄一份 `.nav-bar` —— ✅ 本轮已修
 
 - **现在薄在哪** 逐字雷同的导航栏出现在 12 个页面（`home/jineng.vue:4`、`home/rmfangan.vue:4`、`mine/*.vue:4` 共 9 页、`order/order-detail.vue:4`…），已出现 2–3 种变体；另有 15 处 `goBack()` 定义。
 - **补齐什么**：抽 `components/NavBar.vue`。**纯整洁性收益，优先级最低** —— 排在所有安全/资金项之后。
@@ -643,3 +643,102 @@
 1. **M1 的议价授权规则**：租/买是否允许议价、谁能给折扣、折扣下限 —— 需业务定规则后才能落「议价授权 + 留痕」（当前仅做了硬边界）。
 2. **M4 的原生退款撤销**：部分退款与整单撤销的边界（按 order_item 撤销 vs 整单撤销）需确认后再接 `Listeners/Refund`。
 3. **M4 售后审批后台入口**：是否本轮必须交付一个可点的 Admin 入口（M 级，需 DataGrid），还是留待后续批次。
+
+---
+
+## 本轮进展（2026-10-15 · 加固十轮，31 commit）
+
+> **范围**：基准 `4f00bb7` 之后的 **31 个提交**（`4f00bb7..d9ca9d4`），把本文清单里除「已拍板推迟」外的条目**逐条兑现**。
+> 口径：每个提交 `php -l` + 跑相关 pest 后**单独 commit**，正文记录改动与证据；除必须的 schema（M9 开票登记、P4 投递标记、P10 审计列、A1 迁移、A3 退款单唯一键、D5 索引）外**不重构、不扩大范围**。
+> 工作分支 `main`；全程**未** `git add -A`（每个提交显式列举文件）。
+
+| 域 | 项 | commit | 一句话改了什么 | 未做 / 遗留 |
+|---|---|---|---|---|
+| 资金 | **M7** | `c30760c` / `4a6b4e7` | 支付回调幂等从 check-then-act 改**事务内订单行锁**（真幂等）；退款打款移出事务（三段式：守卫+冻结→提交→事务外调网关→回写终态）。OnepageController 业务校验失败 500→4xx（与 X1 同批） | — |
+| 资金 | **M8** | `238587c` | 支付回调翻状态 / 授权发放撤销 / 售后审批接 `OperationLogger`；**资金出账用 `logOrFail()`**（写不进则回滚），非资金用 `log()`（旁路） | — |
+| 资金 | **M9** | `08a3406` | 支付成功**同事务**登记开票（`Models/Invoice` + `InvoiceService`）+ 只读后台开票台账；运营总览把结算/提现/对账标「未接入」（不许渲染成 0） | 真实开具（税控/PDF）、用户填抬头税号入口、人工补开；**结算 / 提现 / 对账**按计划不做（依赖真支付资质与分账主体） |
+| 授权交付 | **D5** | `fc0c736` | `skill_entitlements` 补 `license_key` 唯一键 + `order_id` / `expires_at` 索引（`hasIndex` 守卫、down 对称；加键前已实测库内无重复） | `expires_at` 单项是面向后续巡检/对账的前置索引（当前无该查询），确认永不需要可单删 |
+| 授权交付 | **D7** | `ba9ae3b` | `bindDevice` / `claimPendingEntitlements` 直调 `deliver()` 补防御式兜底（前者 200 + `SKILL_DELIVERY_FAILED`，后者逐条 try/catch 返回 `{claimed,failed}`） | — |
+| 下发 | **P4** | `7c72db1` | 建任务按 `(did,skill_version_id,operation)` 未终态去重（锁 `device_binding` 行）+ 新增 `delivered_at` 投递标记 + 灰度 `abort()` 终态守卫；`create→dispatch` 收进同事务 | — |
+| 下发 | **P5** | `275bd97` | 灰度回滚靶子改按**本次 `deploy_task` success（`OP_INSTALL`）反查**，首装（installed）与升级（updated）都覆盖 | — |
+| 下发 | **P6** | `e5814b1` | 新增 `ops:timeout-deploy-tasks`（`pending_online` 24h / 在途 30min，带 `--dry-run`）；`TRANSITIONS` 补 `pending_online→timeout` 出口；挂 `withSchedule */10` | **刻意不给灰度排定时任务**（信号是设备回报，事件驱动更准，见 `evaluateGrayIfAny`） |
+| 下发 | **P7** | `a7b941e` | `transition()` 改**条件更新**（`WHERE status=<从前态>`，命中 0 行即视为未发生）；`commands()` 每设备每轮**限 1 条** | — |
+| 下发 | **P8** | `c7adf29` | `operation` 校验改 `Rule::in(DeployTask::OPERATIONS)`（与 `OP_*` 常量对齐，回收 6 放行）；灰度 `metrics` 加 `lte:installs`；`store` 校验版本存在且已发布 | — |
+| 下发 | **P9** | `c57c534` | `AgentController` 出口统一 `ok()/fail()` 信封；非法流转抛 `IllegalTaskTransitionException` → 409 `TASK_TRANSITION_INVALID`（不再静默回 200） | — |
+| 下发 | **P10** | `ab030b3` | `rollback_record` 补 `created_by`/`ip`、`skill_blocklist` 补 `ip`；`engage()` 默认 `'admin'`→`'internal'`（不编造身份）；熔断/灰度/回滚接 `operation_log` | 调用方可经 `X-Internal-Operator` 自报身份，**服务端无法验证该自称**（已在代码注明诚实边界） |
+| 下发 | **P11** | `56ecc0b` | 空跑落 `ERR_PKG_MISSING` 并从灰度分子分母一并剔除；`download_failed` 进状态机；**从未登记**→`NOT_BOUND`、**离线**→`OFFLINE` | — |
+| 售后 | **A1** | `969f625`（举报）/ `99e4305`（评价） | `skill_report` + `skill_review` 落写入方与处置台。举报：**不要求持有**、`throttle:report` 5/分、命中违禁词**不拦只落档**；评价：**买了才能评 + 一人一技能一条**、**先审后发**（带图转人工） | — |
+| 售后 | **A2** | `889c231` | 单号加随机后缀 + 唯一键冲突 catch 重试；工单引入客户端 `Idempotency-Key`（sha256）同键回放首次结果 | — |
+| 售后 | **A3** | `b6eb29f` | `apply()` 收进事务 + 授权行 `lockForUpdate`；`refund_request.after_sale_id` 加唯一键 | 计划建议唯一键落 `after_sale(customer_id,entitlement_id,status)`，**本仓刻意不加**（会挡死「退款失败可再发起」，见迁移注释） |
+| 售后 | **A4** | `907d2e8` | 工单/事故 `skill_id` 加归属校验（新增 `SKILL_NOT_OWNED`），与 `device_id` 一致 | **行为变更**：原「传没买过的 `skill_id` → 201 标推断值」改为 **422 被拒** |
+| 售后 | **A5** | `4de98c4` | 事故处置记录改 `incident_handling_log` **append-only 表**（一行一条，只插不改），消除读改写 lost update | — |
+| 售后 | **A6** | `fd6469e` | `Incident::STATUS_TRANSITIONS` 状态机 + `canTransitionTo()`；回退到未结状态**清 `resolved_at`**；新增 `IllegalIncidentTransitionException` | — |
+| 售后 | **A7** | `7ca7968` | （随 X6）tickets/incidents/devices/skills 四页 `catch(()=>({data:[]}))` 改置 `loadError`，交 `StateView` error 态 | 前端未编译实测，见下 |
+| 售后 | **A8** | `be27695` | 新增 `ticket-detail.vue` / `incident-detail.vue` 两页 + 列表项跳转（消费既有 `detail()` 接口，不改后端） | 前端未编译实测，见下 |
+| 售后 | **A9** | `927758d` | 工单 `category` 收敛枚举 + 接附件（**收链接不收文件**）；事故 `occurred_at` 加 `before_or_equal:now`；评价 `title/comment`/附件加上限；受理台 `oplog` payload 并入 `note` 摘要 | 附件只收链接（无面向用户的对象存储 + 内容安全扫描，不开文件口子） |
+| 横切 §0 | **X1** | `4a6b4e7` | `APIController` 加 `ok()/fail()/reject()` + `ApiErrorCode` 常量类（~100 码，唯一事实源，取值**保留历史字面量**）；26 控制器 84 处失败结构统一（含 `abort(404)` / 裸 `{message}`）。含 M7 | `AuthenticateCustomer` 的 401 **仍返回空 `message`**（保守保留，未改） |
+| 横切 §0 | **X2** | `18423d2` | `Core\Exceptions\Handler` 注册统一异常信封（Validation→422 / NotFound→404 / Auth→401 / 其余→500，生产隐藏细节），**作用域仅 `api/*` 或 `expectsJson()`** | 统一信封只能注册在 **Handler 层**（Bagisto 原生 renderable 会遮蔽 `withExceptions`，已实测记录） |
+| 横切 §0 | **X3** | `d9b6685` | `RateLimiter` 三档：`login` 20/分（email+IP）、`ai` 60/分、`write` 30/分；登录失败 **5 次锁 15 分钟**（429 `ACCOUNT_LOCKED`） | 计划里的 **`sms` 档未做**（全仓无短信验证码路由，不为不存在的功能造档位） |
+| 其余 | **X4** | `9acb598` | Shop 侧写动作接 `OperationLogger`（`incident.report` / `device.*` / `skill.*` / `order.create\|cancel`），一律 `log()` 非 `logOrFail` | — |
+| 其余 | **X5** | `27e83a1` | 新建 `config/summon_ai.php` 登记 Coze 三键；`SummonAiController` 改读 `config()`。修前 `config:cache` 后 `env()` 返回 null → AI 召唤**静默失效** | — |
+| 其余 | **X6** | `7ca7968` | 新增 `<StateView :loading :error :empty>` 三态组件并接入主路径页面（含 A7 四页） | 前端**无 HBuilderX / 无 `package.json`**，未编译实测，仅 `node --check` 静态校验 |
+| 其余 | **X7** | `7b2980c` | 15 处吞错清理：11 处随 X6 置 `loadError`，4 处置错误标记；「有意降级」补 `console.warn` | 同 X6，未编译实测 |
+| 其余 | **X8** | `d4034e5` | `request.js` 新增 `extractErrorMessage()` 合并 `body.errors` 字段级错误；`fail` 区分超时（`isTimeout`） | **未收回** `mine/index.vue` 直连 `uni.request`（经核实是腾讯地图第三方地理编码，收回反而打断；计划里只是"建议"，经核实不采纳） |
+| 其余 | **X9** | `d9ca9d4` | 抽 `components/NavBar.vue`（`variant` 表达皮肤），**14 页**收敛；保留 6 页空状态返回按钮仍在用的 `goBack` | 未编译实测 |
+
+### 回归
+
+本轮 31 个提交各自跑过相关 pest（`my-bagisto-store/packages/Webkul/Shop`）。各提交正文登记的新增用例（摘录）：
+
+| commit | 新增 / 关键用例 |
+|---|---|
+| `18423d2` X2 · `d9b6685` X3 · `238587c` M8 | `HardeningRound4Test` 12 例（三改动齐备后全绿）；X3 另有 `tools/api-regression.sh` 7/7 |
+| `4a6b4e7` X1+M7 | `ErrorEnvelopeX1Test` 8 例 / 26 断言 |
+| `fc0c736` D5 | `EntitlementIndexD5Test` 7 例 / 12 断言 |
+| `ba9ae3b` D7 | `DeliveryGuardD7Test` 4 例 / 17 断言（含**变异验证**：去掉 try/catch 立刻 500） |
+| `c30760c` M7 | `PaymentCallbackIdempotencyTest` 3 + `RefundTransactionBoundaryTest` 5；`Feature/Payment` 31 通过 |
+| `08a3406` M9 | Shop 5 + Admin 5；`Payment` 31、`Admin OpsOverviewTest` 10 |
+| `7c72db1` P4 | `DeployIdempotencyTest` 6 |
+| `275bd97` P5 | `GrayRollbackTargetTest` 4 |
+| `e5814b1` P6 | `DeployTimeoutReclaimTest` 5 |
+| `a7b941e` P7 | `DeployTransitionSerializationTest` 5 |
+| `c7adf29` P8 | `DeployParamValidationP8Test` 8 例 / 15 断言 |
+| `c57c534` P9 | `AgentErrorContractP9Test` 9 例 / 33 断言 |
+| `ab030b3` P10 | `DeployAuditTrailP10Test` 9 例 / 34 断言 |
+| `56ecc0b` P11 | `DeployAnomalyStateP11Test` 9 例 / 24 断言 |
+| `969f625` A1 举报 | 17 例（Shop 9 + Admin 8） |
+| `99e4305` A1 评价 | 15 例（Shop 8 + Admin 7）；`api-regression.sh` 7/7 |
+| `889c231` A2 | `TicketIncidentIdempotencyTest` 6 |
+| `b6eb29f` A3 | `AfterSaleApprovalRaceTest` 3；`Payment` 34、`HardeningRound4` 12 |
+| `907d2e8` A4 | `SkillOwnershipGuardTest` 5 + `IncidentReportTest` 15 |
+| `4de98c4` A5 | `IncidentHandlingLogTest` 3 + Admin `IncidentHandlingTest` 11 |
+| `fd6469e` A6 | Shop 状态机 4 + Admin 受理台 3；既有 29 例无回归 |
+| `927758d` A9 | Shop 8 + Admin 2 |
+| `9acb598` X4 | `ShopAuditTrailX4Test` 7 例 |
+| `27e83a1` X5 | `SummonAiConfigX5Test` 2 例（含 `config:cache` 真机探针） |
+
+- **既有基线失败**：`Feature/API/CategoryProductTest`（2 例，按价格排序，币种/税率环境差异）+ `Feature/Checkout`（21 例）+ Admin `Catalog/*` / `ReviewTest` 等 —— 均**改动前既有**，`docs/skill-test-baseline.md` 已登记，与本轮无关（多个提交用 `git stash` 前后对比确认失败数一致）。
+- **本机限制**：pest 全量跑到中途会触发 60 秒超时（控制器 `set_time_limit` 是进程级的），故按**目录 / 文件分进程**跑，未跑一次性全量。
+- **前端（X6~X9、A7/A8）**：本项目为 HBuilderX / uni-app，**无 `package.json`、无 npm build/lint**，无法在本机编译 H5 —— 仅做 `node --check`（`<script>`）+ 模板标签配平**静态校验**，**未编译实测**。
+- 全程**未** `git add -A`；31 个提交均显式列举文件。相关迁移（`2026_10_15_000003`~`000009` 等）已在库执行（`migrate` DONE）。
+
+### 本轮需要总负责人裁决的事项
+
+**未做 / 待裁决（不得视为完成）**
+
+1. **M1 议价授权规则** —— 租/买是否允许议价、谁能给折扣、折扣下限。当前只做了硬边界（`min:0` 挡负数 + 技能单强制服务端目录价）与 `rent_days` 上限，**「议价授权 + 留痕」未做**（需业务先定规则）。
+2. **M4 原生退款撤销边界 + 售后审批后台入口** —— ① `Listeners/Refund`（`sales.refund.save.after`）**仍未接撤销**：部分退款与整单撤销的边界（按 order_item 撤销 vs 整单撤销）未定，盲接会过度撤销；② `AfterSaleService::approve/reject`（其 `revoke` 链本身是闭的）**仍无可点的 Admin 入口**（需补控制器 + DataGrid，M 级）。
+3. **P2 per-device 证书** —— Agent 三接口仍共用**一把** `agent.key`（`VerifyAgentKey` 只做 `hash_equals`），服务端**无法区分请求方真身与冒充者**；本轮只兑现了 `event` 的**归属一致性**（必带 `did` 并校验），**跨设备隔离留待证书形态**（附二已推迟）。
+4. **D8 真并发压测** —— 计数 `download_count` 已改**行锁事务内自增**，但**未做真并发压测**：本机 sqlite 的 `lockForUpdate` 是 no-op，无法在本机证伪丢更新（MySQL 下行锁语义成立）。
+5. **M9 结算 / 提现 / 对账** —— 依赖真支付资质与分账主体（E1），**维持未做**，且**以「未接入」呈现而非渲染成 0**（附二立场）。
+
+**已按保守值实现、可推翻的口径（请复核）**
+
+| 项 | 本轮采用的保守口径 | 说明 |
+|---|---|---|
+| M9 开票 | **开票登记失败 → 整个回调回滚（500）** | 「订单已支付」与「账目都在」视为同一业务断言；属本地库写、可回滚，故留在事务内（与 M7-2 的**退款网关移出事务**刻意相反） |
+| A1 举报 | **不要求持有该技能**即可举报 | 与 A4 工单/事故的 `skill_id` 归属校验**刻意相反**：要求持有 = 把最该被举报的技能保护起来 |
+| A1 评价 | **「买了才能评」+「一人一技能一条」** | 评价是公开内容，无门槛会变刷分/拉踩战场；靠库级唯一键 `uk_skill_review_customer_skill` 兜底 |
+| P11 落码 | **`NOT_BOUND` 落在「从未登记」**（区别于「已登记但离线」的 `OFFLINE`） | 从未登记的设备等不到上线，直接 `failed`，不让用户对着「下发中」干等 24h |
+| P6 灰度 | **不给灰度排定时任务** | 灰度推进信号是设备回报，事件驱动比定时更准；不拿错误模型覆盖正确设计 |
+| X1 | **`AuthenticateCustomer` 的 401 仍返回空 `message`** | 保守保留原状，未纳入本轮统一 |

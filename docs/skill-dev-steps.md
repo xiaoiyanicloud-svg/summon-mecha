@@ -11,6 +11,7 @@
 > 依据各步交付说明 + **代码实测核验**（迁移/表/路由/种子/Pest 均已跑过，非仅凭文档）。
 > 详见 [step2-3](./skill-dev-step2-3.md)、[step4](./skill-dev-step4.md)、[step5](./skill-dev-step5.md)、[step6](./skill-dev-step6.md)、[step7](./skill-dev-step7.md)、[step8](./skill-dev-step8.md)、[step9](./skill-dev-step9.md)、**[剩余闭环清单](./skill-remaining-closure.md)**。
 > **一句话**：**代码主体已铺到第 9 步**；真正卡住上线的是**外部审批/支付资质**与**几处未做的后台 UI 和对象存储**。
+> **工程颗粒度补齐（加固十轮）已于 2026-10-15 完成**（基准 `4f00bb7` 之后 31 commit：X1–X9 横切与前端 / M7–M9 / D5·D7 / P4–P11 / A1–A9），详见 [skill-hardening-plan.md](./skill-hardening-plan.md) 的「本轮进展（2026-10-15 · 加固十轮，31 commit）」节（含各项 commit、未做与待裁决）。
 
 | 步 | 状态 | 已完成 | 未完成（缺口） |
 |---|---|---|---|
