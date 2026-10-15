@@ -264,7 +264,13 @@ L2 通过 → **两条发布路径都过闸门** → 上架 → 客户端可见 
 | ④ 技能信息可编辑 | ✅ **完成** | Claude Code 执行（任务卡 D-1）+ 我验收：`Feature/Dev` **34 例通过**（29 旧 + 5 新）；Admin Catalog **38 例通过**。边界覆盖：跨租户改他人技能 404、未登录跳登录、负价被拦、请求体夹带 `status` 被丢弃、`product_flat` 同步刷新（证明事件三步真的派发了） |
 | ② 状态真相源收敛 + ⑤ 提审前置收紧 | ✅ **完成** | `5c96f8f`。新增 `SkillVersionState`（显式迁移白名单，无 `draft→published`）；状态写入**下沉到 `AuditService`**（门户 / internal.key / 运营后台三条通道的唯一漏斗，故平台自营路径也自动落 `in_review`，队列口径自然统一）；审核台队列由 `draft` 改为 `in_review|rejected`；新增 `skill:backfill-version-status` 回填历史。实测 `SkillAudit`+`Dev` 79 例全绿，失败集与基线完全一致 |
 | ⑥ 撤回提审 + 开发者下架 | ✅ **完成** | `00f2f7c`。**含一处空动作修复**：见 §2.7 —— "发布"原先不改商品可售性，市场根本搜不到；现由 `SkillPublisher` 在同事务内置商品可售（走事件三步 + 显式带分类）。下架 = 商品置不可售、理由必填留痕、**已售授权不动**（Q3）。接口级验收：发布前搜不到 / 发布后能搜到 |
-| ⑦ 开发者通知 + 实名发布前置（Q4/Q6） | ⏸ **下一批** | 通知需生产+读侧同开（读侧 `NotificationController` 硬过滤 `recipient_type='customer'`）；实名前置为发布动作的前置校验（自营 `seller_id` 为 NULL 不受限） |
+| ⑦ 开发者通知 | ✅ **完成** | `a563ef2`。生产端挂 `AuditService::submitLayer0/recordLayer2` 与 `SkillPublisher::publish`（事务提交后），全包 `safe()`；读侧门户收件箱 + 未读角标，可见范围收敛成 `Notification::scopeDeveloperInbox()` 一处。实测 Dev 48 + SkillAudit 49 = 97 例全绿 |
+| 实名发布前置（Q6） | ✅ **完成** | `a104fbd`。`SkillPublisher::ownerQualification()` 置于**闸门之前**（"谁在卖"比"东西过没过审"更靠前）；自营 `seller_id` NULL 不受限；`seller_id` 有值查不到主体 → **fail-closed**；协议未签全 / 实名未过各自独立错误码。连带修：API 侧 `default` 兜底会把新码误标成 `GATE_NOT_PASSED`（已逐个显式映射）；开发者总览页那句"实名不影响你建技能与提审"落地后已成假话（已改）。实测 SkillAudit 55 + Dev 48 = 103 例全绿 |
+| 待清理（两行，下一卡顺带） | 📌 | ① `views/dev/onboarding/form.blade.php` 同主题文案只提"不影响提审"、未提"不能上架"；② `Models/DeveloperProfile.php` 类注释仍写"入驻审核 UI 本轮未做"，而该 UI 早就在 `Admin\Customers\DeveloperController` |
+
+> **第 1 层（近期闭环）①–⑦ 已全部完成。** 端到端验收链已打通：
+> 入驻 → 签协议 → 建技能 → 改技能 → 建版本 → 传包 → 提审 → **门户看到逐层闸门** → 驳回 → **收到通知** →
+> 改完再提 → 通过 → **实名合格才可发布** → **市场搜得到** → 下架（已售授权不动）。
 
 ### 已验证的"零新增失败"口径（可复用的验收方法）
 
