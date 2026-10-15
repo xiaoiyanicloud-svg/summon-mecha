@@ -322,7 +322,12 @@ import { tobOrderApi } from '@/utils/api';
 				this.currentIndex = e.detail.current;
 			},
 			async refreshScenes() {
-				try { await loadBackendScenes() } catch (e) {}
+				try {
+					await loadBackendScenes()
+				} catch (e) {
+					// 后台场景拉不到 → 回退本地场景(页面不空屏是**有意**的降级);留 warn 不静默
+					console.warn('[home] 后台场景加载失败,回退本地场景', e)
+				}
 				// 首页「场景方案」= 后台设为热门的场景；无热门时回退全部场景（避免空屏）
 				const hot = sceneProducts.filter(s => s.is_hot);
 				this.schemes = hot.length ? hot : sceneProducts;

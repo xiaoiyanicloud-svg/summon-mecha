@@ -590,7 +590,10 @@ export default {
             this.eventList = list.map(e => ({ ...e, fav: false }))
           }
         })
-        .catch(() => { /* 保留 mock 兜底 */ })
+        .catch((e) => {
+          // 保留 mock 兜底(页面不白屏),但留 warn —— 否则"后台赛事一直不来"这件事没人知道
+          console.warn('[EcoCenter] 赛事列表加载失败,保留本地兜底', e)
+        })
     },
 
     registerEvent(item) {

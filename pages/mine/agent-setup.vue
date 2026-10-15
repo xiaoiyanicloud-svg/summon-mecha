@@ -23,6 +23,7 @@
 						@click="pickDevice(d)"
 					>{{ d.sn }}{{ d.agent_paired ? '（已配对）' : '' }}</text>
 				</view>
+				<view class="bind-btn add" v-else-if="deviceLoadError" @click="loadDevices">设备没加载出来，点此重试</view>
 				<view class="bind-btn add" v-else @click="goDevices">还没有设备，先去登记</view>
 
 				<view class="cmd-box" v-if="installCommand" @click="copy(installCommand)">
@@ -87,6 +88,7 @@ export default {
 		return {
 			picked: 'unitree',
 			devices: [],
+			deviceLoadError: '',
 			pickedDevice: 0,
 			installCommand: '',
 			brands: [
@@ -132,10 +134,15 @@ export default {
 		goBack() { uni.navigateBack({ delta: 1 }) },
 		goDevices() { uni.redirectTo({ url: '/pages/mine/devices' }) },
 		async loadDevices() {
+			this.deviceLoadError = ''
 			try {
 				const res = await deviceApi.list()
 				this.devices = (res && Array.isArray(res.data)) ? res.data : []
 			} catch (e) {
+				// ⚠ 故障 ≠「还没有设备」:原来把失败吞成空数组,页面就显示"还没有设备，先去登记"。
+				//   现在置错误标记,由模板的错误提示承载(可点重试)。
+				console.warn('[agent-setup] 设备列表加载失败', e)
+				this.deviceLoadError = (e && e.message) || '加载失败'
 				this.devices = []
 			}
 		},

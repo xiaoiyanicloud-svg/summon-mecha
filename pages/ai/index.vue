@@ -359,6 +359,8 @@ export default {
         const list = uni.getStorageSync('summon_conversations');
         this.conversations = Array.isArray(list) ? list : [];
       } catch (e) {
+        // 本地历史对话读取失败:退化为空列表(不阻断对话),但留 warn 不静默
+        console.warn('[ai] 历史对话读取失败', e);
         this.conversations = [];
       }
     },

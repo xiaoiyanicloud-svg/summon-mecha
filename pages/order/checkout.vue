@@ -352,7 +352,10 @@ export default {
             this.addressList = list
             this.selectAddress(list.find(a => a.isDefault) || list[0] || null)
           })
-          .catch(() => {
+          .catch((e) => {
+            // 双模式(登录走接口 / 游客走本地):接口失败时回退本地已存地址是**有意**的降级,
+            // 但留 warn —— 否则"接口一直挂、用户一直用旧地址"没人能发现。
+            console.warn('[checkout] 地址接口失败,回退本地地址', e)
             const list = this.readAddressList()
             this.addressList = list
             this.selectAddress(list.find(a => a.isDefault) || list[0] || null)

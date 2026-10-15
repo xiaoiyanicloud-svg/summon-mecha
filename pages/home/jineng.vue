@@ -77,6 +77,7 @@
 					@click="pickedDeviceId = d.id"
 				>{{ d.sn }}</text>
 			</view>
+			<text v-else-if="deviceLoadError" class="compat-tip" style="color:#cf1322" @click="loadDevices">设备列表没加载出来，点此重试</text>
 			<text v-else class="compat-tip">还没有登记设备，先去「我的设备」登记</text>
 
 			<view class="compat-btn" @click="checkCompat">{{ compatLoading ? '校验中…' : '检查能否安装' }}</view>
@@ -113,6 +114,7 @@
 				productId: null,
 				// 兼容性校验(v3.4):选设备 → 后端判定(含"未知"降级提示)
 				devices: [],
+				deviceLoadError: '',
 				pickedDeviceId: '',
 				compat: null,
 				compatLoading: false,
@@ -163,7 +165,8 @@
 						return
 					}
 				} catch (e) {
-					// 回退到 mock —— 真实数据不可用时页面不能白屏
+					// 回退到 mock —— 真实数据不可用时页面不能白屏。留 warn,免得连错都不知道。
+					console.warn('[jineng] 技能详情接口失败,回退 mock', e)
 				}
 				const data = this.getMockData(id)
 				if (data) this.skillInfo = data
@@ -184,11 +187,23 @@
 							content: r.comment || '',
 						})),
 					}
-				} catch (e) {}
+				} catch (e) {
+					// 评价拉不到只影响「用户评价」一栏,不阻断详情 —— 留 warn 不静默
+					console.warn('[jineng] 评价加载失败', e)
+				}
 			},
 			async loadDevices() {
-				const res = await deviceApi.list().catch(() => ({ data: [] }))
-				this.devices = (res && Array.isArray(res.data)) ? res.data : []
+				this.deviceLoadError = ''
+				try {
+					const res = await deviceApi.list()
+					this.devices = (res && Array.isArray(res.data)) ? res.data : []
+				} catch (e) {
+					// ⚠ 故障 ≠「还没有登记设备」:原来把失败吞成空数组,页面就显示"还没有设备"。
+					//   现在置错误标记,由模板的错误提示承载(可点重试)。
+					console.warn('[jineng] 设备列表加载失败', e)
+					this.deviceLoadError = (e && e.message) || '加载失败'
+					this.devices = []
+				}
 			},
 			// 提交评价:title/comment/rating 必填(用评论文本作 title 以满足契约)
 			async submitReview() {
