@@ -123,6 +123,13 @@
       }
     },
     {
+      "path": "pages/mine/after-sales",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "售后记录"
+      }
+    },
+    {
       "path": "pages/mine/incident-detail",
       "style": {
         "navigationStyle": "custom",

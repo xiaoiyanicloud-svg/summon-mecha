@@ -89,6 +89,10 @@
 						<text class="func-icon">✨</text>
 						<text class="func-label">我的技能</text>
 					</view>
+					<view class="func-item" @click="goAfterSales">
+						<text class="func-icon">🧾</text>
+						<text class="func-label">售后记录</text>
+					</view>
 					<view class="func-item" @click="goNotifications">
 						<text class="func-icon">🔔</text>
 						<text class="func-label">消息通知</text>
@@ -978,6 +982,8 @@
 			goDevices() { uni.navigateTo({ url: '/pages/mine/devices' }); },
 			// 我的技能:技能下单后的「开通/绑定/下载」都在这里,是技能那条链路的落点
 			goSkills() { uni.navigateTo({ url: '/pages/mine/skills' }); },
+			// B-8:售后单列表只有入口才有意义 —— 此前 skillApi.afterSales() 封装好了却零消费方
+			goAfterSales() { uni.navigateTo({ url: '/pages/mine/after-sales' }); },
 			// 消息通知:审核/下发/试用到期/退款 都落这里(v3.4)
 			goNotifications() { uni.navigateTo({ url: '/pages/mine/notifications' }); },
 			goCooperate() { this.currentPage = 'cooperate'; },
