@@ -9,6 +9,7 @@ use Webkul\Shop\Services\ContentSafety\ContentSafetyManager;
 use Webkul\Shop\Services\ContentSafety\ContentScanRecorder;
 use Webkul\Shop\Services\LifecycleNotifier;
 use Webkul\Shop\Services\SkillPackage\ManifestValidator;
+use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
 
 /**
  * 审核服务 —— 三层准入 —— v3.4 步骤 6(计划 §4.8/§4.21)。
@@ -28,6 +29,7 @@ class AuditService
         protected ContentScanRecorder $scanRecorder,
         protected SkillVersionState $states,
         protected LifecycleNotifier $notifier,
+        protected PackageFingerprint $fingerprint,
     ) {}
 
     /**
@@ -120,7 +122,12 @@ class AuditService
 
         $result = empty($reasons) ? AuditRecord::RESULT_PASS : AuditRecord::RESULT_REJECT;
 
-        $this->record($skillId, $version, AuditRecord::LAYER_MACHINE, $result, $reasons);
+        // 包指纹 —— "**判决当时看到的是哪一份包**"（任务卡 D-7 · ⑨）。
+        // 落在这里而不是版本表上：版本表会被后续上传覆盖，等于没记。
+        // ⚠ 取的是**此刻**的指纹（= 审核员面前那份包）；发布时拿它跟当时的指纹比。
+        $this->record($skillId, $version, AuditRecord::LAYER_MACHINE, $result, $reasons, null, [
+            'package_fingerprint' => $this->fingerprint->forVersion($version),
+        ]);
 
         // 提交审核 = 版本进入终态判定（**一次迁移**，不再两跳）：
         //   - L0 通过 → in_review（进入后续 L1/L2 与发布流程）；
@@ -189,6 +196,9 @@ class AuditService
             'reason_category' => $reasonCategory,
             'reason_detail'   => $detail,
             'suggestion'      => $suggestion,
+            // 包指纹 —— 人审看的必须是**这份字节流**（任务卡 D-7 · ⑨）。
+            // 与 L0 同理：记录"判决当时的那一份"，发布时据此比对。只加不改既有键。
+            'package_fingerprint' => $this->fingerprint->forVersion($version),
         ]);
 
         // L2 驳回 / 待补充 → 版本落 rejected；L2 通过**不写状态** —— 保持 in_review，

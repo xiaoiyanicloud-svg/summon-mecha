@@ -267,6 +267,22 @@ final class ApiErrorCode
     /** 版本的 seller_id 有值却查不到开发者主体 —— 归属异常（fail-closed），**不是**"平台自营"。 */
     public const OWNER_PROFILE_MISSING = 'OWNER_PROFILE_MISSING';
 
+    /**
+     * 审核通过之后交付物又变了 → 不得发布（任务卡 D-7 · ⑨）。
+     *
+     * ⚠ 与 `GATE_NOT_PASSED` 分开登记：那条要去**审核台**把审核做掉（队列里显示"未过"），
+     *   而这条恰恰相反 —— 审核台显示的是"已通过"，只是那个"通过"对应的**是另一份包**。
+     *   运营据此该去**商品编辑页**重新上传并重新提审，去审核台只会空转。
+     *   混成一个码就是把排查引向一个不存在的问题。
+     */
+    public const PACKAGE_CHANGED_AFTER_REVIEW = 'PACKAGE_CHANGED_AFTER_REVIEW';
+
+    /**
+     * 已发布的版本不允许再上传/覆盖交付物（任务卡 D-7 · ⑨）——
+     * 买家可能已经下载/安装了这一份，改它就是让"线上那一份"静默换字节。要改请发新版本。
+     */
+    public const VERSION_PUBLISHED_IMMUTABLE = 'VERSION_PUBLISHED_IMMUTABLE';
+
     // ── 语音(契约见 TtsController / AsrController 类注释) ────────────────
 
     public const NO_TEXT = 'NO_TEXT';

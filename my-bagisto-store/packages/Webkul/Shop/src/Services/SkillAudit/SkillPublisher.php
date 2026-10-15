@@ -6,10 +6,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Webkul\Product\Repositories\ProductRepository;
+use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\LifecycleNotifier;
+use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
 
 /**
  * 版本发布的**唯一入口** —— 2026-10-16 收敛。
@@ -54,11 +56,22 @@ class SkillPublisher
     public const ERR_AGREEMENT_REQUIRED = 'AGREEMENT_REQUIRED';
     public const ERR_OWNER_PROFILE_MISSING = 'OWNER_PROFILE_MISSING';
 
+    /**
+     * 审核通过之后，交付物又变了（任务卡 D-7 · ⑨）—— 拒绝发布。
+     *
+     * "审的那个包"与"要发的这个包"不是同一份字节流。与 GATE_NOT_PASSED 分开成码，
+     * 是因为处置路径完全不同：闸门没过要去**审核台**把审核做掉，而这条要去**商品编辑页**
+     * 重新上传 + 重新提审。混成一个码会让运营在审核台里空转 —— 那边显示的是"已通过"，
+     * 他找不到任何可做的动作。
+     */
+    public const ERR_PACKAGE_CHANGED_AFTER_REVIEW = 'PACKAGE_CHANGED_AFTER_REVIEW';
+
     public function __construct(
         protected ReviewGate $gate,
         protected SkillVersionState $states,
         protected ProductRepository $products,
         protected LifecycleNotifier $notifier,
+        protected PackageFingerprint $fingerprint,
     ) {}
 
     /**
@@ -67,7 +80,7 @@ class SkillPublisher
      * 顺序刻意如此：**先闸门，再改状态**。反过来的话，一旦闸门没过，
      * 库里就已经留下一个"看起来发布过"的痕迹。
      *
-     * @return array{ok: bool, code: string, message: string, version: SkillVersion, gate: array}
+     * @return array{ok: bool, code: string, message: string, version: SkillVersion, gate: array, package_integrity_verified: bool|null, package_integrity_note: string|null}
      */
     public function publish(SkillVersion $version): array
     {
@@ -131,6 +144,49 @@ class SkillPublisher
             );
         }
 
+        // 包完整性 —— "**审的那个包，就是发的这个包**"（任务卡 D-7 · ⑨）。
+        //
+        // 位置刻意在**闸门之后、迁移之前**：
+        //   ① 必须在 ReviewGate 之后 —— 先确认"审过了"，再确认"审的和现在的是同一份"。
+        //      顺序反了，一个**压根没审过**的版本会先报"包变了"，把运营引去查一个并不存在的
+        //      换包问题（真正的原因是他没做审核）。
+        //   ② 必须在状态迁移之前 —— 这是一条拒绝理由，拒绝了就不该留下任何"看起来发布过"的痕迹。
+        //
+        // 为什么这条闸门必要：交付物是**幂等 upsert**（`AssetUploadService::store`），
+        // 同一个 `(version, carrier_type, sort_order)` 再传一次就把旧文件覆盖掉了。
+        // 于是"提审之后、发布之前"再传一次包，就能让**审核记录看起来仍然有效**，
+        // 而实际要交付出去的已经是另一份字节流 —— 此前没有任何记录能发现。
+        $reviewed = $this->reviewedFingerprint($version);
+        $current = $this->fingerprint->forVersion((int) $version->id);
+
+        // ⚠ 判据方向：**只有"审过的那份"有值时才比对**。
+        //   `$current === null`（现在一个文件类交付物都没有）也是"变了" —— 审的时候有包，
+        //   现在没有了，同样是"审的不是发的"，不能因为另一侧为空就放行。
+        if ($reviewed !== null && ($current === null || ! hash_equals($reviewed, $current))) {
+            return $this->result(
+                false,
+                self::ERR_PACKAGE_CHANGED_AFTER_REVIEW,
+                '该版本在审核通过之后，交付物发生了变化；请重新提交审核。',
+                $version,
+                $gate
+            );
+        }
+
+        // 过渡口径（任务卡 D-7 · ⑨）：存量已发布/在审版本的历史 audit_record **没有**指纹，
+        // 非文件类交付物也没有字节（指纹天然为 NULL）。此时：
+        //   · **不**因为"变了"而拒绝 —— 缺失不等于变化，拿"没记"当"换了包"会把存量全打死；
+        //   · 也**不**静默放行 —— 返回值里如实带上 `package_integrity_verified = false`
+        //     与一句说明，调用方（接口/后台）能看见"这次发布没能校验包完整性"。
+        // 这条口径是**过渡**的：等存量版本走完一轮"重新提审→发布"（每条新审核记录都带指纹）
+        // 之后，`$reviewed === null` 会退化成"真的一件文件类交付物都没有"，那时才能收紧成一律拒绝。
+        $integrity = $reviewed === null
+            ? [
+                'verified' => false,
+                'note'     => '本次发布未能校验包完整性：该版本没有可比的包指纹'
+                    .'（历史审核记录未记录指纹，或该版本只有非文件类交付物）。',
+            ]
+            : ['verified' => true, 'note' => null];
+
         DB::transaction(function () use ($version) {
             // 归档同商品其它 published 版本 —— 保留**批量** update，刻意不逐条走 transition()：
             // 这是一次性收敛（"每个商品同时只留一个 published"），逐条 load→transition 会
@@ -175,7 +231,33 @@ class SkillPublisher
         // 内部 safe() 吞异常，发不出去也不该让已经成功的发布变成失败。
         $this->notifier->skillPublished((int) $version->product_id, (int) $version->id, (string) $version->version);
 
-        return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate);
+        return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate, $integrity);
+    }
+
+    /**
+     * "审核通过时看到的那份包"的指纹 —— 取**最近一条 L2（人审）通过记录**上的值。
+     *
+     * 为什么以人审为准：L2 是人工对"这一份包"下的结论，是判据的权威来源。
+     *   （`required_layers` 是策略，默认 [1, 3]；若配置把 L2 拿掉，退一步取闸门内
+     *   其它层最近一条通过记录 —— 有记录总比没有强。两层都拿不到才走"无指纹"过渡口径。）
+     *
+     * ⚠ 返回 `null` 有两种含义，调用方**必须**都按"无指纹可比"处理、不得当成"变了"：
+     *   · 没有通过记录（配置未把任何带指纹的层纳入闸门）；
+     *   · 有记录但当时没有指纹（存量历史数据 / 该版本只有非文件类交付物）。
+     */
+    protected function reviewedFingerprint(SkillVersion $version): ?string
+    {
+        $passed = fn () => AuditRecord::query()
+            ->forVersion((int) $version->product_id, (int) $version->id)
+            ->where('result', AuditRecord::RESULT_PASS);
+
+        $record = $passed()->where('layer', AuditRecord::LAYER_HUMAN)->orderByDesc('id')->first();
+
+        if (! $record) {
+            $record = $passed()->whereIn('layer', $this->gate->requiredLayers())->orderByDesc('id')->first();
+        }
+
+        return $record?->package_fingerprint;
     }
 
     /**
@@ -302,16 +384,32 @@ class SkillPublisher
     }
 
     /**
-     * @return array{ok: bool, code: string, message: string, version: SkillVersion, gate: array}
+     * @param  array{verified: bool, note: string|null}|null  $integrity  包完整性校验结论（D-7 · ⑨）
+     * @return array{
+     *     ok: bool, code: string, message: string, version: SkillVersion, gate: array,
+     *     package_integrity_verified: bool|null, package_integrity_note: string|null
+     * }
      */
-    protected function result(bool $ok, string $code, string $message, SkillVersion $version, ?array $gate = null): array
-    {
+    protected function result(
+        bool $ok,
+        string $code,
+        string $message,
+        SkillVersion $version,
+        ?array $gate = null,
+        ?array $integrity = null,
+    ): array {
         return [
             'ok'      => $ok,
             'code'    => $code,
             'message' => $message,
             'version' => $version,
             'gate'    => $gate ?? ['ok' => $ok, 'layers' => [], 'unmet' => [], 'message' => ''],
+            // 契约**只加不改**：既有键一个都不动，这里补两个新键。
+            //   verified: true  = 已用指纹校验且"审的就是发的"
+            //   verified: false = 走到这一步了但这版没有可比指纹（**过渡口径**，见 publish 注释）
+            //   verified: null  = 本次根本没走到校验那一步（如闸门没过）
+            'package_integrity_verified' => $integrity['verified'] ?? null,
+            'package_integrity_note'     => $integrity['note'] ?? null,
         ];
     }
 }

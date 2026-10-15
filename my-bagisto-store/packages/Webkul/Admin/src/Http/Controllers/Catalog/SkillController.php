@@ -266,6 +266,11 @@ class SkillController extends Controller
                 // 交付物文件缺失 —— 同样**不是**审核问题：运营在审核台做什么都没用，
                 // 要去商品编辑页重传该交付物，故与主体资格一样留在原地（不跳审核台）。
                 SkillPublisher::ERR_ASSET_FILE_MISSING     => '发布被拒（交付物文件在存储上不存在，不是审核未过）：'.$result['message'],
+                // 审核通过之后交付物又变了（任务卡 D-7 · ⑨）—— 同样**不是**"审核没过"：
+                // 审核台此刻显示的恰恰是"已通过"，运营去那边找不到任何该做的动作。
+                // 该做的是重新上传（或重新提审）这份包，所以留在**商品编辑页**，不跳审核台。
+                SkillPublisher::ERR_PACKAGE_CHANGED_AFTER_REVIEW => '发布被拒（审核通过之后交付物又变了，不是审核未过）：'
+                    .$result['message'].'　请在本页重新上传交付物并重新提交审核。',
                 SkillPublisher::ERR_GATE_NOT_PASSED        => $result['message'].'　请到「审核台」处理。',
                 default                                    => $result['message'],
             };

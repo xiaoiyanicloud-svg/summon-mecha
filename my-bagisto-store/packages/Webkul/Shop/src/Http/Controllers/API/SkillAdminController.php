@@ -114,9 +114,15 @@ class SkillAdminController extends APIController
         $result = $this->uploads->store($version, $payload, $request->file('file'));
 
         if (! $result->ok) {
-            // 失败原因由 AssetUploadService 给(缺文件 / 超体积 / sha256 不符 / 落盘失败),
-            // 状态码也由它定 —— 这里只负责套上统一信封,不再自己拼 `message + extra`。
-            return $this->fail(ApiErrorCode::SKILL_ASSET_UPLOAD_REJECTED, $result->message, $result->status, $result->extra);
+            // 失败原因由 AssetUploadService 给(缺文件 / 超体积 / sha256 不符 / 落盘失败 /
+            // 已发布版本不许换包),状态码也由它定 —— 这里只负责套上统一信封。
+            // ⚠ 逐个码显式映射，"已发布版本不可改"要能与通用上传失败区分开（前者是状态冲突，
+            //   调用方该去发新版本；后者是这份文件本身有问题，改文件重传即可）。
+            $code = $result->code === AssetUploadService::ERR_VERSION_PUBLISHED_IMMUTABLE
+                ? ApiErrorCode::VERSION_PUBLISHED_IMMUTABLE
+                : ApiErrorCode::SKILL_ASSET_UPLOAD_REJECTED;
+
+            return $this->fail($code, $result->message, $result->status, $result->extra);
         }
 
         return response()->json([
@@ -188,6 +194,9 @@ class SkillAdminController extends APIController
                 SkillPublisher::ERR_OWNER_NOT_VERIFIED    => ApiErrorCode::OWNER_NOT_VERIFIED,
                 SkillPublisher::ERR_AGREEMENT_REQUIRED    => ApiErrorCode::AGREEMENT_REQUIRED,
                 SkillPublisher::ERR_OWNER_PROFILE_MISSING => ApiErrorCode::OWNER_PROFILE_MISSING,
+                // 审核通过之后交付物又变了（D-7 · ⑨）—— 与闸门没过**分开**：那条去审核台，
+                // 这条要去重新上传 + 重新提审（审核台此刻显示的恰恰是"已通过"）。
+                SkillPublisher::ERR_PACKAGE_CHANGED_AFTER_REVIEW => ApiErrorCode::PACKAGE_CHANGED_AFTER_REVIEW,
                 default                                   => ApiErrorCode::SERVER_ERROR,
             };
 

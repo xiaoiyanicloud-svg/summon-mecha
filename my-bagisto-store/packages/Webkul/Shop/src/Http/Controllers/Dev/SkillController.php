@@ -194,7 +194,9 @@ class SkillController extends Controller
             return back()->withErrors(['file' => $result->message]);
         }
 
-        return back()->with('success', '技能包已上传。');
+        // 用 service 给的提示语，而不是这里另写一句：在审版本被**换包**时，service 会把版本
+        // 退回草稿，提示语里必须带上这件事（静默的状态回退会让开发者以为提审还在）。
+        return back()->with('success', $result->message);
     }
 
     public function submit(Request $request, int $versionId)

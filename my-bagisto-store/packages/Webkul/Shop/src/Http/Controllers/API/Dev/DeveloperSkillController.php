@@ -10,6 +10,7 @@ use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Developer\DeveloperSkillService;
+use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 
 /**
  * `/api/dev/skills*` —— 开发者侧技能 CRUD / 版本 / 传包 / 提审的 JSON 合同。
@@ -156,7 +157,13 @@ class DeveloperSkillController extends APIController
         if (! $result->ok) {
             // 与 internal.key 通道(SkillAdminController::storeAsset)共用 AssetUploadService,
             // 失败结构与错误码保持一致,免得同一个原因两条通道给前端两种形状。
-            return $this->fail(ApiErrorCode::SKILL_ASSET_UPLOAD_REJECTED, $result->message, $result->status, $result->extra);
+            // ⚠ "已发布版本不许换包"要单独成码（与运营后台同一映射）：开发者据此知道该做的是
+            //   发新版本，而不是反复调整这个文件。
+            $code = $result->code === AssetUploadService::ERR_VERSION_PUBLISHED_IMMUTABLE
+                ? ApiErrorCode::VERSION_PUBLISHED_IMMUTABLE
+                : ApiErrorCode::SKILL_ASSET_UPLOAD_REJECTED;
+
+            return $this->fail($code, $result->message, $result->status, $result->extra);
         }
 
         return response()->json([

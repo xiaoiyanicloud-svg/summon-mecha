@@ -41,6 +41,8 @@ class AuditRecord extends Model
         'suggestion',
         'submitted_at',
         'audited_at',
+        // 判决当时看到的**包指纹**（任务卡 D-7 · ⑨）—— 见 Services\SkillPackage\PackageFingerprint
+        'package_fingerprint',
     ];
 
     protected $casts = [
