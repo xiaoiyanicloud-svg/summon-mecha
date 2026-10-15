@@ -175,6 +175,24 @@
         </view>
       </view>
 
+      <!-- ===== 优惠码(仅技能单 · B-18) ===== -->
+      <!-- 技能单走 tob-order、不经购物车,原生券入口在购物车页 —— 这里给它一个。 -->
+      <!-- 无预览接口:券在**提交时**由后端校验并折抵;无效会在提交处弹出原因,不会静默吞掉 -->
+      <view class="summary-card" v-if="isSkillOrder">
+        <view class="card-title">优惠码</view>
+        <view class="coupon-row">
+          <input
+            class="coupon-input"
+            v-model="couponCode"
+            type="text"
+            :disabled="submitting"
+            placeholder="输入优惠码（可选）"
+            placeholder-class="coupon-placeholder"
+          />
+        </view>
+        <view class="coupon-hint">优惠码将于提交订单时校验，并直接折抵实付金额。</view>
+      </view>
+
       <view style="height: 40rpx;"></view>
     </scroll-view>
 
@@ -211,6 +229,8 @@ export default {
       qty: 1,
       intentMode: false,
       submitting: false,
+      // B-18:技能单优惠码(提交时由后端校验折抵;仅在技能单展示该输入)
+      couponCode: '',
       // 多机合单(场景租用):items 非空时走多商品模式,全场共用租期
       multiItems: [],
       rentDays: 1,
@@ -254,6 +274,10 @@ export default {
     productTypeLabel() {
       const map = { humanoid: '人形', quadruped: '四足', delivery: '配送', cleaning: '清洁', reception: '迎宾', inspection: '巡检', arm: '机械臂', companion: '陪伴' }
       return map[this.product.productType] || this.product.productType || '人形'
+    },
+    // B-18:仅技能单展示优惠码输入(券只对技能单开放,其余类型走议价流,后端也会拒)
+    isSkillOrder() {
+      return this.product && this.product.type === 'skill'
     },
     submitLabel() {
       if (this.submitting) return '提交中...'
@@ -579,6 +603,11 @@ export default {
           startDate: this.product.type === 'rent' ? this.product.startDate : '',
           endDate: this.product.type === 'rent' ? this.product.endDate : '',
         }
+        // B-18:技能单带券。空串不带该字段(后端 coupon_code 为 nullable,不带即不用券)。
+        // 券的校验与折抵全在后端:前端不做任何"看起来能用"的本地判断。
+        if (this.isSkillOrder && this.couponCode.trim()) {
+          payload.coupon_code = this.couponCode.trim()
+        }
         // 多机合单:整包 items[],后端按行计价建单(共用租期)
         if (this.multiItems.length) {
           payload.items = this.multiItems.map(it => ({
@@ -605,7 +634,12 @@ export default {
         if (this.product.type === 'skill') {
           // v3.4:技能单发起支付(支付资质未就绪时后端走 mock 网关,如实提示,不伪造结果)
           await this.payOrder(res && res.order_id)
-          uni.showToast({ title: '技能已开通', icon: 'success' })
+          // B-18:用了券就把折抵金额说出来(后端实算值,不是前端自己猜的)
+          const couponDiscount = (res && Number(res.discount)) || 0
+          uni.showToast({
+            title: couponDiscount > 0 ? `技能已开通（已优惠 ¥${couponDiscount}）` : '技能已开通',
+            icon: 'success',
+          })
           setTimeout(() => {
             uni.redirectTo({ url: '/pages/mine/skills' })
           }, 800)
@@ -1237,6 +1271,29 @@ export default {
   font-size: 36rpx;
   font-weight: 700;
   color: #FF7820;
+}
+
+/* ===== 优惠码(技能单 · B-18) ===== */
+.coupon-row {
+  margin-top: 8rpx;
+}
+.coupon-input {
+  height: 76rpx;
+  padding: 0 24rpx;
+  background: #F5F8FD;
+  border: 2rpx solid #E2EAF7;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  color: #1A2A3A;
+}
+.coupon-placeholder {
+  color: #9AA8B8;
+  font-size: 26rpx;
+}
+.coupon-hint {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #6B7A8A;
 }
 
 /* ===== 提交栏 ===== */

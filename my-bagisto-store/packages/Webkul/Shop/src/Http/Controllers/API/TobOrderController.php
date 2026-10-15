@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Sales\Repositories\OrderRepository;
 use Webkul\Shop\Models\Device;
+use Webkul\Shop\Services\Billing\SkillCouponService;
 
 /**
  * TOB 统一下单接口(新增,不改动现有 onepage/后台逻辑)。
@@ -27,7 +28,8 @@ class TobOrderController extends APIController
 {
     public function __construct(
         protected ProductRepository $productRepository,
-        protected OrderRepository $orderRepository
+        protected OrderRepository $orderRepository,
+        protected SkillCouponService $couponService
     ) {}
 
     /**
@@ -68,6 +70,9 @@ class TobOrderController extends APIController
             'phone'      => 'required|string',
             'city'       => ($isCustom ? 'nullable' : 'required').'|string',
             'address'    => ($isCustom ? 'nullable' : 'required').'|string',
+            // B-18:技能单优惠码(仅技能单可带,见下方处理)。规则校验不写在这里 ——
+            // 券的有效性要读库(券/规则/渠道/客群/用量),那是 SkillCouponService 的职责。
+            'coupon_code' => 'nullable|string|max:64',
         ]);
 
         // 技能交易强制登录(已与业务确认)。技能要绑设备、要产生授权,需要一个稳定身份;
@@ -219,6 +224,50 @@ class TobOrderController extends APIController
                 $totalQty += $line['qty'];
             }
 
+            // B-18 · 技能单用券。
+            // 技能单走 tob-order、不经购物车,原生券链路(`CartRule\Helpers\CartRule`)整条绑在
+            // 购物车上,够不着这里 —— 于是券数据在库里、技能单却没有任何入口能用它。
+            // 本段按既有券机制(同一批 cart_rules/cart_rule_coupons 表 + 同一套校验语义)算出折抵;
+            // **用量记账不在这里** —— 下单成功后原生监听 `checkout.order.save.after` 会按
+            // order 上的 discount_amount / applied_cart_rule_ids / coupon_code 自动 +1。
+            $couponCode = trim((string) $request->input('coupon_code', ''));
+            $discount = 0.0;
+            $appliedRuleId = null;
+
+            if ($couponCode !== '') {
+                // 券只对技能单开放:其余类型(租/买/配件)走的是"前端确认价优先"的议价流(M1),
+                // 折扣语义不同,贸然套券会与议价叠加出无法追溯的价。非技能单带了券 = 明确拒绝,不静默吞掉。
+                if ($type !== 'skill') {
+                    return $this->fail(ApiErrorCode::COUPON_INVALID, '优惠码仅适用于技能订单。', 422);
+                }
+
+                $couponResult = $this->couponService->resolve(
+                    $couponCode,
+                    $customer?->id,
+                    $customer?->customer_group_id ? (int) $customer->customer_group_id : null,
+                    (int) $channel->id,
+                    (float) $total,
+                    (int) $totalQty,
+                );
+
+                if (! $couponResult['ok']) {
+                    return $this->fail(ApiErrorCode::COUPON_INVALID, (string) $couponResult['message'], 422);
+                }
+
+                $discount = (float) $couponResult['discount'];
+                $appliedRuleId = (int) $couponResult['rule']->id;
+
+                // 折抵按行小计比例摊到条目(单条目时即整笔落在该条),后台条目视图与订单口径一致。
+                // ⚠ 只摊 discount_amount,total 保持行原价 —— 与原生的"小计不动、折扣单列"同义。
+                if ($total > 0) {
+                    foreach ($orderItems as &$line) {
+                        $line['discount_amount'] = round($discount * ($line['total'] / $total), 4);
+                        $line['base_discount_amount'] = $line['discount_amount'];
+                    }
+                    unset($line);
+                }
+            }
+
             $address = [
                 'address1'   => $request->input('address', $isCustom ? '定制咨询(无交付地址)' : ''),
                 'country'    => $request->input('country', 'CN'),
@@ -254,16 +303,21 @@ class TobOrderController extends APIController
                 'order_currency_code'   => $baseCurrency,
                 'total_item_count'      => $totalQty,
                 'total_qty_ordered'     => $totalQty,
-                'grand_total'           => $total,
-                'base_grand_total'      => $total,
+                // 小计 = 折前;实付 = 小计 − 券折抵(B-18)
+                'grand_total'           => $total - $discount,
+                'base_grand_total'      => $total - $discount,
                 'sub_total'             => $total,
                 'base_sub_total'        => $total,
                 'tax_amount'            => 0,
                 'base_tax_amount'       => 0,
                 'shipping_amount'       => 0,
                 'base_shipping_amount'  => 0,
-                'discount_amount'       => 0,
-                'base_discount_amount'  => 0,
+                'discount_amount'       => $discount,
+                'base_discount_amount'  => $discount,
+                // B-18:券落订单 —— coupon_code 供展示,applied_cart_rule_ids 供原生用量监听识别。
+                // ⚠ 两者必须**同时**有值,否则 `CartRule\Listeners\Order` 不会给券记账(times_used 不增)。
+                'coupon_code'           => $discount > 0 ? $couponCode : null,
+                'applied_cart_rule_ids' => $appliedRuleId ? (string) $appliedRuleId : null,
                 'shipping_method'       => '',
                 'shipping_title'        => '',
                 'payment'               => ['method' => 'cashondelivery', 'method_title' => 'Cash on Delivery'],
@@ -279,6 +333,8 @@ class TobOrderController extends APIController
                 'order_id'     => $order->id,
                 'increment_id' => $order->increment_id,
                 'grand_total'  => $order->grand_total,
+                'discount'     => $discount,
+                'coupon_code'  => $discount > 0 ? $couponCode : null,
                 'status'       => $order->status,
             ]);
         } catch (\Throwable $e) {
