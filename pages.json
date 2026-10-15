@@ -109,10 +109,24 @@
       }
     },
     {
+      "path": "pages/mine/ticket-detail",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "工单详情"
+      }
+    },
+    {
       "path": "pages/mine/incidents",
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "事故上报"
+      }
+    },
+    {
+      "path": "pages/mine/incident-detail",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "事故详情"
       }
     },
     {

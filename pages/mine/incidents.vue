@@ -93,14 +93,17 @@
 				btn-color="#ff6b00"
 				@retry="refresh"
 			>
-				<view v-for="it in list" :key="it.id" class="card incident-item">
+				<view v-for="it in list" :key="it.id" class="card incident-item" @click="goDetail(it)">
 					<view class="ii-head">
 						<text class="ii-no">{{ it.incident_no }}</text>
 						<text class="ii-sev" :class="it.severity">{{ it.severity_label }}</text>
 					</view>
 					<view class="ii-foot">
 						<text class="ii-status">{{ it.status_label }}</text>
-						<text class="ii-time">{{ it.created_at }}</text>
+						<view class="ii-right">
+							<text class="ii-time">{{ it.created_at }}</text>
+							<text class="ii-arrow">详情 ›</text>
+						</view>
 					</view>
 				</view>
 			</state-view>
@@ -170,6 +173,12 @@ export default {
 	},
 	methods: {
 		goBack() { uni.navigateBack({ delta: 1 }) },
+		// 消费既有接口 GET /api/incidents/{id} —— 此前列表项没有任何入口,
+		// 报案人看不到责任认定,事故闭环缺最后一公里
+		goDetail(it) {
+			if (!it || it.id == null) return
+			uni.navigateTo({ url: `/pages/mine/incident-detail?id=${it.id}` })
+		},
 
 		onDevicePick(e) {
 			const i = Number(e.detail.value)
@@ -296,6 +305,8 @@ export default {
 .ii-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10rpx; }
 .ii-status { font-size: 24rpx; color: #ff6b00; }
 .ii-time { font-size: 22rpx; color: #aaa; }
+.ii-right { display: flex; align-items: center; }
+.ii-arrow { margin-left: 14rpx; font-size: 22rpx; color: #ff6b00; }
 
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 120rpx; }
 .empty-state.small { padding-top: 40rpx; }

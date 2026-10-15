@@ -33,12 +33,15 @@
 				btn-color="#ff6b00"
 				@retry="refresh"
 			>
-				<view v-for="t in list" :key="t.id" class="card ticket-item">
+				<view v-for="t in list" :key="t.id" class="card ticket-item" @click="goDetail(t)">
 					<view class="ti-head">
 						<text class="ti-no">{{ t.ticket_no }}</text>
 						<text class="ti-status" :class="t.status">{{ statusText(t.status) }}</text>
 					</view>
-					<text class="ti-time">{{ t.created_at }}</text>
+					<view class="ti-foot">
+						<text class="ti-time">{{ t.created_at }}</text>
+						<text class="ti-arrow">详情 ›</text>
+					</view>
 				</view>
 			</state-view>
 
@@ -73,6 +76,11 @@ export default {
 	},
 	methods: {
 		goBack() { uni.navigateBack({ delta: 1 }) },
+		// 消费既有接口 GET /api/tickets/{id} —— 此前列表项没有任何入口,客服回复了用户看不到
+		goDetail(t) {
+			if (!t || t.id == null) return
+			uni.navigateTo({ url: `/pages/mine/ticket-detail?id=${t.id}` })
+		},
 		statusText(s) { return STATUS_TEXT[s] || s },
 		async refresh() {
 			this.loading = true
@@ -124,6 +132,8 @@ export default {
 .ti-no { font-size: 28rpx; color: #222; }
 .ti-status { font-size: 24rpx; color: #ff6b00; }
 .ti-time { display: block; margin-top: 10rpx; font-size: 22rpx; color: #aaa; }
+.ti-foot { display: flex; align-items: center; justify-content: space-between; }
+.ti-arrow { margin-top: 10rpx; font-size: 22rpx; color: #ff6b00; }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 120rpx; }
 .empty-icon { font-size: 80rpx; }
 .empty-text { margin-top: 24rpx; font-size: 28rpx; color: #999; }
