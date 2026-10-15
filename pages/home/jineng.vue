@@ -141,6 +141,7 @@
 <script>
 	import { productApi, skillApi, deviceApi, reviewApi, riskApi } from '@/utils/api'
 	import { submitSkillReport } from '@/utils/report'
+	import { TOKEN_KEY } from '@/utils/config'
 	import NavBar from '@/components/NavBar.vue'
 	export default {
 		components: { NavBar },
@@ -430,7 +431,19 @@
 				submitSkillReport({ targetType: 'skill', targetId: this.productId, name: this.skillInfo.name })
 			},
 			openCustomer() {
-				uni.showToast({ title: '联系客服：400-888-9999', icon: 'none' })
+				// B-20:此前只弹一个硬编码的 400-888-9999 —— 那是**假动作**,
+				// 平台没有任何真实客服通道接到它。现在跳真实客服工单页
+				// (support_ticket 有后台处理链路),用户提交的问题真的有人看。
+				if (!uni.getStorageSync(TOKEN_KEY)) {
+					uni.showModal({
+						title: '联系客服',
+						content: '客服工单需要登录后提交。前往「我的」登录？',
+						confirmText: '去登录',
+						success: (r) => { if (r.confirm) uni.switchTab({ url: '/pages/mine/index' }) },
+					})
+					return
+				}
+				uni.navigateTo({ url: '/pages/mine/tickets' })
 			},
 			handlePrice() {
 				uni.showModal({

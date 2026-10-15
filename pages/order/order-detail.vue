@@ -144,7 +144,7 @@
 </template>
 
 <script>
-import { orderApi } from '@/utils/api'
+import { orderApi, ticketApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
 import NavBar from '@/components/NavBar.vue'
@@ -313,7 +313,48 @@ import NavBar from '@/components/NavBar.vue'
 			},
 			extendRent() { uni.showToast({ title: '续租申请已提交', icon: 'success' }) },
 			applyReturn() { uni.showToast({ title: '归还申请已提交', icon: 'success' }) },
-			reportRepair() { uni.showToast({ title: '报修提交成功', icon: 'success' }) },
+			reportRepair() {
+				// B-20:此前这里直接 toast「报修提交成功」——**不调任何后端**,是假动作。
+				// 现在落到真实客服工单(category=device),用户能在「我的工单」里追进度。
+				if (!uni.getStorageSync(TOKEN_KEY)) {
+					uni.showModal({
+						title: '一键报修',
+						content: '报修会生成客服工单，需要先登录。前往「我的」登录？',
+						confirmText: '去登录',
+						success: (r) => { if (r.confirm) uni.switchTab({ url: '/pages/mine/index' }) },
+					})
+					return
+				}
+
+				uni.showModal({
+					title: '一键报修',
+					editable: true,
+					placeholderText: '请描述故障现象（必填）',
+					success: async (r) => {
+						if (!r.confirm) return
+						const desc = (r.content || '').trim()
+						if (!desc) { uni.showToast({ title: '请描述故障现象', icon: 'none' }); return }
+
+						const orderNo = (this.order && this.order.orderNo) || ''
+						const orderName = (this.order && this.order.name) || ''
+						try {
+							await ticketApi.create({
+								category: 'device',
+								content: `【一键报修】订单 ${orderNo}${orderName ? ' · ' + orderName : ''}\n故障描述：${desc}`,
+							})
+							uni.showModal({
+								title: '报修已提交',
+								content: '客服会在「我的工单」里回复你。',
+								confirmText: '查看工单',
+								cancelText: '知道了',
+								success: (m) => { if (m.confirm) uni.navigateTo({ url: '/pages/mine/tickets' }) },
+							})
+						} catch (e) {
+							uni.showToast({ title: (e && e.message) || '报修提交失败', icon: 'none' })
+						}
+					},
+				})
+			},
 			viewContract() { uni.showToast({ title: '查看电子合同', icon: 'none' }) },
 			contactService() { uni.showToast({ title: '客服已接入', icon: 'none' }) },
 			applyInvoice() { uni.showToast({ title: '申请开票', icon: 'none' }) },
