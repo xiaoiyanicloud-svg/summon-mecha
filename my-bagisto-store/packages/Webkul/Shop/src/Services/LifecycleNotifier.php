@@ -4,9 +4,13 @@ namespace Webkul\Shop\Services;
 
 use Throwable;
 use Webkul\Shop\Models\AfterSale;
+use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\DeployTask;
+use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\SkillAudit\RejectionReason;
 
 /**
  * 业务生命周期通知的**生产者**（B-2）。
@@ -16,6 +20,9 @@ use Webkul\Shop\Models\SkillEntitlement;
  * → `notification` 表 **0 行** → 用户的「消息通知」页永远空白，等于"功能看着有、实际没有"。
  * 本类把四类**用户侧业务事件**接上生产者：
  *   审核结果（售后通过/驳回）、退款到账、下发完成、试用到期。
+ *
+ * 任务卡 D-4 又接上**开发者侧**两类：技能审核判定（L0/L2）与技能上架。
+ * 它们发给的是"开发者本人的 customer 账号"（见 customerIdForSkillVersion 注释）。
  *
  * ⚠ 只做**站内信**（inapp）。微信订阅消息（subscribe_msg）属 A-3，本类不碰。
  *
@@ -92,6 +99,129 @@ class LifecycleNotifier
             '试用已到期',
             '你的技能试用已到期，试用版本已从设备回收。',
         );
+    }
+
+    /**
+     * 技能审核判定结果 —— L0 机审 / L2 人审（任务卡 D-4）。
+     *
+     * type 只有三种（approved / rejected / supplement），但 title/content 按**层级**说人话：
+     * L0 通过只是"过了机审、进人工队列"，**不是终审通过** —— 若也写成"审核已通过"，
+     * 开发者会以为马上能上架。判决的权威事实仍是 `audit_record`，这里只是它的投影。
+     *
+     * @param  int  $result  AuditRecord::RESULT_PASS / RESULT_REJECT / RESULT_SUPPLEMENT
+     * @param  array  $context  {layer, reason_category, reason_detail}
+     */
+    public function skillReviewDecided(int $productId, int $versionId, int $result, array $context = []): void
+    {
+        // 整个方法体（**含归属解析的查询**）都包在 safe() 里：解析也要读库，读库同样可能炸；
+        // 让一个"发通知"的副作用把"审核判定"这个已落库的权威事实炸成 500，是本卡明令禁止的。
+        $this->safe(function () use ($productId, $versionId, $result, $context) {
+            $customerId = $this->customerIdForSkillVersion($versionId);
+
+            // 找不到归属（平台自营 / 版本不存在）就不发 —— **不臆造一个收件人**
+            if (! $customerId) {
+                return;
+            }
+
+            $layer    = (int) ($context['layer'] ?? AuditRecord::LAYER_HUMAN);
+            $category = $context['reason_category'] ?? null;
+            $detail   = $context['reason_detail'] ?? null;
+
+            [$type, $title, $content] = $this->reviewMessage($result, $layer, $category, $detail);
+
+            $this->notifications->toCustomer(
+                $customerId,
+                $type,
+                $title,
+                $content,
+                [
+                    'product_id'      => $productId,
+                    'version_id'      => $versionId,
+                    'reason_category' => $category,
+                    'reason_detail'   => $detail,
+                ],
+            );
+        });
+    }
+
+    /**
+     * 技能已上架（任务卡 D-4）—— 发布成功后告知开发者，商品已经真正可售。
+     */
+    public function skillPublished(int $productId, int $versionId, string $version): void
+    {
+        $this->safe(function () use ($productId, $versionId, $version) {
+            $customerId = $this->customerIdForSkillVersion($versionId);
+
+            if (! $customerId) {
+                return;
+            }
+
+            $this->notifications->toCustomer(
+                $customerId,
+                'skill.published',
+                '技能已上架',
+                "你的技能版本 {$version} 已上架，用户现在可以买到。",
+                ['product_id' => $productId, 'version_id' => $versionId, 'version' => $version],
+            );
+        });
+    }
+
+    /**
+     * 审核结果 → [type, title, content]。
+     *
+     * 分开成纯函数：文案随层级/理由变化，混在 send 里会变成一坨难读的嵌套三元。
+     */
+    protected function reviewMessage(int $result, int $layer, ?string $category, ?string $detail): array
+    {
+        if ($result === AuditRecord::RESULT_PASS) {
+            return $layer === AuditRecord::LAYER_MACHINE
+                ? ['skill.review.approved', '已通过机审', '你的技能版本已通过 L0 机审，正在等待人工审核。']
+                : ['skill.review.approved', '技能审核已通过', '你的技能版本已通过审核，平台上架后即可对外销售。'];
+        }
+
+        // 理由摘要要说人话：理由码翻成人话（RejectionReason::LABELS），再拼上审核员填的明细
+        $parts = [];
+
+        if ($category) {
+            $parts[] = RejectionReason::label($category);
+        }
+
+        if ($detail) {
+            $parts[] = $detail;
+        }
+
+        $reason = $parts ? '理由：'.implode('：', $parts) : '';
+
+        if ($result === AuditRecord::RESULT_SUPPLEMENT) {
+            return ['skill.review.supplement', '技能审核需补充材料', '你的技能版本还需补充材料。'.$reason];
+        }
+
+        return ['skill.review.rejected', '技能审核未通过', '你的技能版本未通过审核。'.$reason];
+    }
+
+    /**
+     * 技能版本 → 开发者本人的 `customer_id`（任务卡 D-4）。
+     *
+     * ⚠ 为什么收件人是 **customer 而不是 developer**：开发者**就是那个客户**（同一账号，
+     *   `developer_profile.customer_id` 唯一指向一行 customers）。用 customer 意味着
+     *   用户侧「消息通知」页与门户收件箱读的是同一批行 —— 读侧一行都不用改。
+     *   若改写成 `recipient_type='developer'`，就会产生一类**谁都读不到**的通知
+     *   （`NotificationController` 硬过滤 customer）—— 又回到"功能看着有、实际没有"。
+     *
+     * 归属链：`skill_versions.seller_id` → `developer_profile.customer_id`。
+     * 解析不到（平台自营 seller_id 为 NULL / 版本不存在）返回 null → 调用方**不发**。
+     */
+    protected function customerIdForSkillVersion(int $versionId): ?int
+    {
+        $sellerId = SkillVersion::query()->whereKey($versionId)->value('seller_id');
+
+        if (! $sellerId) {
+            return null;
+        }
+
+        $customerId = DeveloperProfile::query()->where('seller_id', $sellerId)->value('customer_id');
+
+        return $customerId ? (int) $customerId : null;
     }
 
     protected function notifyByTask(DeployTask $task, string $type, string $title, string $content): void

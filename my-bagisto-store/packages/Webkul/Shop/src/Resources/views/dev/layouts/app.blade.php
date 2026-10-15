@@ -13,6 +13,8 @@
         .topbar .brand { font-weight: 600; letter-spacing: .5px; }
         .topbar nav a { color: #cbd5e1; margin-left: 18px; font-size: 14px; }
         .topbar nav a.on, .topbar nav a:hover { color: #fff; }
+        /* 顶栏未读角标：深色栏上用亮色小胶囊，数字一眼可见 */
+        .nav-badge { display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 5px; border-radius: 8px; background: #ef4444; color: #fff; font-size: 11px; line-height: 16px; text-align: center; vertical-align: 1px; }
         .wrap { max-width: 960px; margin: 24px auto; padding: 0 16px; }
         .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
         .card h2 { margin: 0 0 12px; font-size: 16px; }
@@ -50,6 +52,9 @@
             <a href="{{ route('shop.dev.dashboard') }}" class="{{ request()->routeIs('shop.dev.dashboard') ? 'on' : '' }}">总览</a>
             <a href="{{ route('shop.dev.skills.index') }}" class="{{ request()->routeIs('shop.dev.skills.*') ? 'on' : '' }}">我的技能</a>
             <a href="{{ route('shop.dev.audits.index') }}" class="{{ request()->routeIs('shop.dev.audits.*') ? 'on' : '' }}">审核状态</a>
+            <a href="{{ route('shop.dev.notifications.index') }}" class="{{ request()->routeIs('shop.dev.notifications.*') ? 'on' : '' }}">
+                通知@if (($devUnreadCount ?? 0) > 0)<span class="nav-badge">{{ $devUnreadCount }}</span>@endif
+            </a>
             <form method="POST" action="{{ route('shop.dev.logout') }}" style="display:inline">
                 @csrf
                 <button class="btn ghost small" type="submit" style="margin-left:18px">退出</button>

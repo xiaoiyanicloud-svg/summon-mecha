@@ -9,6 +9,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Webkul\Core\Http\Middleware\PreventRequestsDuringMaintenance;
@@ -24,6 +25,7 @@ use Webkul\Shop\Http\Middleware\ResolveDeveloperLogin;
 use Webkul\Shop\Http\Middleware\Theme;
 use Webkul\Shop\Http\Middleware\VerifyAgentKey;
 use Webkul\Shop\Http\Middleware\VerifyInternalKey;
+use Webkul\Shop\Models\Notification;
 
 class ShopServiceProvider extends ServiceProvider
 {
@@ -93,7 +95,29 @@ class ShopServiceProvider extends ServiceProvider
 
         Blade::anonymousComponentPath(__DIR__.'/../Resources/views/components', 'shop');
 
+        $this->registerDevNotificationBadge();
+
         $this->app->register(EventServiceProvider::class);
+    }
+
+    /**
+     * 开发者门户顶栏的**未读角标**（任务卡 D-4）。
+     *
+     * 布局文件是所有 dev 页共用的，控制器没法往里塞数据 —— 用 view composer 挂在布局上，
+     * 让每个门户页都能拿到未读数。口径与收件箱列表**同源**（`Notification::scopeDeveloperInbox`），
+     * 不另写一份查询：否则会出现"列表里有 3 条未读、角标却是别的数"的裂缝。
+     *
+     * 未登录（登录页/入驻页前半程）时角标不存在，置 0 即可 —— 布局里 `$devUnreadCount ?? 0` 也会兜底。
+     */
+    protected function registerDevNotificationBadge(): void
+    {
+        View::composer('shop::dev.layouts.app', function ($view) {
+            $customerId = auth('developer')->id();
+
+            $view->with('devUnreadCount', $customerId
+                ? Notification::query()->developerInbox((int) $customerId)->whereNull('read_at')->count()
+                : 0);
+        });
     }
 
     /**

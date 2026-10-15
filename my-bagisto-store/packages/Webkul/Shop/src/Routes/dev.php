@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webkul\Shop\Http\Controllers\Dev\NotificationController;
 use Webkul\Shop\Http\Controllers\Dev\OnboardingController;
 use Webkul\Shop\Http\Controllers\Dev\PortalController;
 use Webkul\Shop\Http\Controllers\Dev\SkillController;
@@ -80,4 +81,13 @@ Route::controller(SkillController::class)->prefix($devPrefix)->middleware('devel
     Route::post('versions/{versionId}/withdraw', 'withdraw')->whereNumber('versionId')->name('shop.dev.versions.withdraw');
 
     Route::get('audits', 'audits')->name('shop.dev.audits.index');
+});
+
+/**
+ * 通知收件箱（任务卡 D-4）—— 与「我的技能」同门槛（已入驻且状态正常）。
+ * 收件人是开发者本人的 customer 账号，见 Dev\NotificationController。
+ */
+Route::controller(NotificationController::class)->prefix($devPrefix)->middleware('developer')->group(function () {
+    Route::get('notifications', 'index')->name('shop.dev.notifications.index');
+    Route::post('notifications/{id}/read', 'read')->whereNumber('id')->name('shop.dev.notifications.read');
 });

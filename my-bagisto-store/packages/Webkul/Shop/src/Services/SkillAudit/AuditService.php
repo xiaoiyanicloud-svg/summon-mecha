@@ -7,6 +7,7 @@ use Webkul\Shop\Models\ContentSecurityRecord;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\ContentSafety\ContentSafetyManager;
 use Webkul\Shop\Services\ContentSafety\ContentScanRecorder;
+use Webkul\Shop\Services\LifecycleNotifier;
 use Webkul\Shop\Services\SkillPackage\ManifestValidator;
 
 /**
@@ -26,6 +27,7 @@ class AuditService
         protected ContentSafetyManager $contentSafety,
         protected ContentScanRecorder $scanRecorder,
         protected SkillVersionState $states,
+        protected LifecycleNotifier $notifier,
     ) {}
 
     /**
@@ -91,6 +93,14 @@ class AuditService
                 : SkillVersion::STATUS_REJECTED
         );
 
+        // 通知开发者（任务卡 D-4）——**纯副作用**：判定已经落库，通知发不出去也不能
+        // 影响返回值（LifecycleNotifier 内部 safe() 吞异常，找不到归属就不发）。
+        // L0 的驳回理由是一组 "CODE:明细"，拍平成 reason_detail 交给通知层。
+        $this->notifier->skillReviewDecided($skillId, $version, $result, [
+            'layer'         => AuditRecord::LAYER_MACHINE,
+            'reason_detail' => $reasons ? implode("\n", $reasons) : null,
+        ]);
+
         return [
             'layer' => AuditRecord::LAYER_MACHINE,
             'result' => $result,
@@ -146,6 +156,14 @@ class AuditService
         if (in_array($result, [AuditRecord::RESULT_REJECT, AuditRecord::RESULT_SUPPLEMENT], true)) {
             $statusOk = $this->syncLifecycle($version, SkillVersion::STATUS_REJECTED);
         }
+
+        // 通知开发者（任务卡 D-4）——纯副作用，同 submitLayer0。
+        // 驳回/待补充带上理由码与明细，让开发者知道"改什么才能过"。
+        $this->notifier->skillReviewDecided($skillId, $version, $result, [
+            'layer'           => AuditRecord::LAYER_HUMAN,
+            'reason_category' => $reasonCategory,
+            'reason_detail'   => $detail,
+        ]);
 
         return [
             'layer' => AuditRecord::LAYER_HUMAN,

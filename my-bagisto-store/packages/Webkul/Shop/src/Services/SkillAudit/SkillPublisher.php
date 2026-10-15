@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\LifecycleNotifier;
 
 /**
  * 版本发布的**唯一入口** —— 2026-10-16 收敛。
@@ -33,6 +34,7 @@ class SkillPublisher
         protected ReviewGate $gate,
         protected SkillVersionState $states,
         protected ProductRepository $products,
+        protected LifecycleNotifier $notifier,
     ) {}
 
     /**
@@ -106,6 +108,11 @@ class SkillPublisher
             // 绝不留下"版本 published 但商品禁用"的半状态）。
             $this->makeProductSellable($version);
         });
+
+        // 通知开发者（任务卡 D-4）——**放在事务之外**：事务提交后才是"真的上架了"这个事实，
+        // 放事务里会发出"通知已发、事务却回滚"的假消息。通知是副作用，LifecycleNotifier
+        // 内部 safe() 吞异常，发不出去也不该让已经成功的发布变成失败。
+        $this->notifier->skillPublished((int) $version->product_id, (int) $version->id, (string) $version->version);
 
         return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate);
     }
