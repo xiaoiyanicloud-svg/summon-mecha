@@ -55,9 +55,16 @@ class TicketController extends APIController
         $customer = auth()->guard('customer')->user();
 
         $payload = $request->validate([
-            'category' => ['nullable', 'string', 'max:64'],
+            // A9 · category 收敛成枚举(此前只 max:64,前端传什么都落库,后台"类别"列变成自由文本)
+            'category' => ['nullable', 'in:'.implode(',', array_keys(SupportTicket::CATEGORY_LABELS))],
             'content'  => ['required', 'string', 'max:2000'],
             'skill_id' => ['nullable', 'integer'],
+            // A9 · 接附件:ticket_message.attachments 列一直在,store 却完全不接收。
+            //   ⚠ 这里收的是**链接**(与事故报案 evidence 同一姿态):平台暂无面向用户的
+            //     对象存储 + 内容安全扫描,直接开一个无人看守的文件上传口子,风险大于收益。
+            //     等 COS + msgSecCheck 就绪后再把"文件"补上,那时改这里的语义。
+            'attachments'   => ['nullable', 'array', 'max:5'],
+            'attachments.*' => ['string', 'max:500'],
         ]);
 
         $idempotencyKey = $this->idempotencyKey($request);
@@ -90,7 +97,7 @@ class TicketController extends APIController
      *   · `uk_support_ticket_no` —— 单号随机后缀撞了(极小概率),换一个号再来;
      *   · `uk_ticket_customer_idem` —— 并发的同键请求已经落了单,取回它按幂等返回。
      *
-     * @param  array{category?:string|null,content:string,skill_id?:int|null}  $payload
+     * @param  array{category?:string|null,content:string,skill_id?:int|null,attachments?:array|null}  $payload
      * @return array{0:SupportTicket,1:bool}  [工单, 是否为幂等回放]
      */
     protected function createTicket(int $customerId, array $payload, ?string $idempotencyKey): array
@@ -106,18 +113,20 @@ class TicketController extends APIController
                         'customer_id'     => $customerId,
                         'skill_id'        => $payload['skill_id'] ?? null,
                         'channel'         => 'app',
-                        'category'        => $payload['category'] ?? 'other',
+                        'category'        => $payload['category'] ?? SupportTicket::CATEGORY_OTHER,
                         'priority'        => 'normal',
                         'status'          => SupportTicket::STATUS_OPEN,
                         'sla_due_at'      => now()->addHours(24),
                     ]);
 
                     TicketMessage::create([
-                        'ticket_id'  => $ticket->id,
-                        'actor_type' => 'customer',
-                        'actor_id'   => $customerId,
-                        'content'    => $payload['content'],
-                        'created_at' => now(),
+                        'ticket_id'   => $ticket->id,
+                        'actor_type'  => 'customer',
+                        'actor_id'    => $customerId,
+                        'content'     => $payload['content'],
+                        // A9 · 首条留言带上附件链接(设备无则 null,列是 JSON)
+                        'attachments' => ! empty($payload['attachments']) ? array_values($payload['attachments']) : null,
+                        'created_at'  => now(),
                     ]);
 
                     return $ticket;
@@ -234,10 +243,11 @@ class TicketController extends APIController
                 'category'  => $ticket->category,
                 'status'    => $ticket->status,
                 'messages'  => $ticket->messages->map(fn (TicketMessage $m) => [
-                    'id'         => $m->id,
-                    'actor_type' => $m->actor_type,
-                    'content'    => $m->content,
-                    'created_at' => optional($m->created_at)->toDateTimeString(),
+                    'id'          => $m->id,
+                    'actor_type'  => $m->actor_type,
+                    'content'     => $m->content,
+                    'attachments' => $m->attachments ?? [],
+                    'created_at'  => optional($m->created_at)->toDateTimeString(),
                 ])->values(),
             ],
         ]);

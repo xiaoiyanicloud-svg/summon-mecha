@@ -121,6 +121,12 @@ class IncidentController extends Controller
                 'status'         => $data['status'],
                 'responsibility' => $responsibility,
                 'severity'       => $incident->severity,
+                // A9 · 把定责/结案依据的说明并进审计 payload。
+                //   此前 oplog 只有 status/responsibility/severity,却**没有 note** ——
+                //   而 note 正是这次处置里唯一记录"为什么这么判"的内容。缺了它,
+                //   operation_log 只能回答"谁把状态改成了什么",回答不了"凭什么"。
+                //   摘要截断,避免长文本灌满审计表(完整 note 已落在 incident_handling_log)。
+                'note'           => $note !== null ? mb_substr($note, 0, 200) : null,
             ],
             $request->ip()
         );

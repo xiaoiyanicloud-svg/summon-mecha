@@ -61,7 +61,9 @@ class IncidentController extends APIController
             'description' => 'required|string|max:2000',
             'skill_id'    => 'nullable|integer',
             'device_id'   => 'nullable|integer',
-            'occurred_at' => 'nullable|date',
+            // A9 · 事故只能发生在"过去或现在"。此前仅 `date`,允许未来时间 ——
+            //   一个未来的 occurred_at 会让 SLA 计时(SLA 从 occurred_at 起算)整体错乱。
+            'occurred_at' => 'nullable|date|before_or_equal:now',
             // 只收文字与链接，不收文件（见类注释）
             'evidence'    => 'nullable|array|max:10',
             'evidence.*'  => 'string|max:500',

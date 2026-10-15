@@ -62,11 +62,16 @@ class ReviewController extends APIController
     public function store(int $id): JsonResource
     {
         $this->validate(request(), [
-            'title'         => 'required',
-            'comment'       => 'required',
+            // A9 · 补长度上限:此前 title / comment 是无上限的自由文本,
+            //   用户可以塞进整本书 —— 既撑爆存储,也让后台审核台无法阅读。
+            //   title 取列宽(string 255),comment 取与技能评价(SkillReview::CONTENT_MAX)×2 的宽裕值。
+            'title'         => 'required|string|max:255',
+            'comment'       => 'required|string|max:2000',
             'rating'        => 'required|numeric|min:1|max:5',
-            'attachments'   => 'array',
-            'attachments.*' => 'file|mimetypes:image/*,video/*',
+            // A9 · 附件补数量与大小上限:此前只校验 mimetype,不限制单个文件大小 ——
+            //   一个几百 MB 的"视频"就能把请求体和磁盘喂满。20MB 足够放下普通图片与短视频。
+            'attachments'   => 'array|max:5',
+            'attachments.*' => 'file|mimetypes:image/*,video/*|max:20480',
         ]);
 
         $data = array_merge(request()->only([

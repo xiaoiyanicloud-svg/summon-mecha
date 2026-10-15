@@ -33,6 +33,34 @@ class SupportTicket extends Model
         'urgent' => '紧急',
     ];
 
+    /**
+     * 工单类别（A9）。
+     *
+     * 此前 `category` 只做 `string|max:64`,前端传什么都落库 —— 于是后台的"类别"列
+     * 逐渐变成自由文本,既无法筛选也无法统计。这里收敛成一个固定枚举。
+     *
+     * ⚠ 保留 `other`:前端 `pages/mine/tickets.vue` 目前固定传 `other`,
+     *   `TicketController` 的默认值也是 `other` —— 收窄枚举时必须留着它,
+     *   否则用户开单会被 422 挡下来。
+     */
+    public const CATEGORY_OTHER = 'other';           // 其他
+
+    public const CATEGORY_DELIVERY = 'delivery';     // 下发 / 安装
+
+    public const CATEGORY_SKILL = 'skill';           // 技能功能
+
+    public const CATEGORY_DEVICE = 'device';         // 设备问题
+
+    public const CATEGORY_PAYMENT = 'payment';       // 支付 / 退款
+
+    public const CATEGORY_LABELS = [
+        self::CATEGORY_DELIVERY => '下发/安装',
+        self::CATEGORY_SKILL    => '技能功能',
+        self::CATEGORY_DEVICE   => '设备问题',
+        self::CATEGORY_PAYMENT  => '支付/退款',
+        self::CATEGORY_OTHER    => '其他',
+    ];
+
     protected $fillable = [
         'ticket_no',
         'idempotency_key',
@@ -69,6 +97,11 @@ class SupportTicket extends Model
     public function priorityLabel(): string
     {
         return self::PRIORITY_LABELS[$this->priority] ?? $this->priority;
+    }
+
+    public function categoryLabel(): string
+    {
+        return self::CATEGORY_LABELS[$this->category] ?? ($this->category ?: '其他');
     }
 
     /**
