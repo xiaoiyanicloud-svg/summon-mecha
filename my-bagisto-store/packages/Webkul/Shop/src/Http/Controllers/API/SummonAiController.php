@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Http;
  *
  * 降级策略:Coze 调不通或超时 → 自动回退 rule-v1,保证接口永远有响应。
  *
- * 配置(.env,不进版本库):
+ * 配置(.env,不进版本库;经 config/summon_ai.php 注册表读取,见 X5):
  *   COZE_BASE_URL / COZE_PAT / COZE_BOT_ID
  */
 class SummonAiController extends APIController
@@ -68,9 +68,11 @@ class SummonAiController extends APIController
         // 前端把已有对话带上,机器人才能记住上文(详见 normalizeHistory 的注释)
         $history = $this->normalizeHistory($request->input('history', []));
 
-        $base  = rtrim((string) env('COZE_BASE_URL', 'http://localhost:8888'), '/');
-        $pat   = (string) env('COZE_PAT', '');
-        $botId = (string) env('COZE_BOT_ID', '');
+        // X5 · 经配置注册表读取(config/summon_ai.php),不再直接 env() ——
+        //   生产 config:cache 后,config 文件外的 env() 一律返回 null,会让 AI 召唤静默失效。
+        $base  = rtrim((string) config('summon_ai.base_url'), '/');
+        $pat   = (string) config('summon_ai.pat');
+        $botId = (string) config('summon_ai.bot_id');
 
         // 机型/技能/配件三个库:本地查询,不走网络
         $catalog = $this->fetchCatalog();
@@ -142,9 +144,10 @@ class SummonAiController extends APIController
         // 前端把已有对话带上,机器人才能记住上文(详见 normalizeHistory 的注释)
         $history = $this->normalizeHistory($request->input('history', []));
 
-        $base    = rtrim((string) env('COZE_BASE_URL', 'http://localhost:8888'), '/');
-        $pat     = (string) env('COZE_PAT', '');
-        $botId   = (string) env('COZE_BOT_ID', '');
+        // X5 · 同上:读配置注册表,不读 env()(config:cache 后 env() 返回 null)
+        $base    = rtrim((string) config('summon_ai.base_url'), '/');
+        $pat     = (string) config('summon_ai.pat');
+        $botId   = (string) config('summon_ai.bot_id');
         $catalog = $this->fetchCatalog();
 
         return response()->stream(function () use ($q, $base, $pat, $botId, $catalog, $history) {
