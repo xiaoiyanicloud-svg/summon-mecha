@@ -15,6 +15,7 @@ use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\SkillAudit\AuditService;
+use Webkul\Shop\Services\SkillAudit\SkillVersionState;
 use Webkul\Shop\Services\SkillPackage\PackageInspector;
 use Webkul\Shop\Services\SkillSupply\AssetUploadResult;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
@@ -41,6 +42,7 @@ class DeveloperSkillService
         protected AssetUploadService $uploads,
         protected PackageInspector $inspector,
         protected AuditService $audit,
+        protected SkillVersionState $states,
     ) {}
 
     /**
@@ -326,6 +328,20 @@ class DeveloperSkillService
 
         if (! $version) {
             return null;
+        }
+
+        // 状态前置：只有「草稿」或「被驳回」的版本可以提审。
+        // 为什么放在协议/技能包检查**之前**：这是"这个动作能不能做"的问题，比"材料齐不齐"更靠前；
+        // 而且它堵掉"已 published 版本可重复提审" —— 那种重复提审会写一条 audit_record，
+        // 却因版本状态不是 draft 而永远进不了审核队列（静默黑洞，谁都看不到）。
+        // ⚠ 这里**只判不写**：状态的写入收敛在 AuditService（对 L0 判决同步写生命周期）。
+        if (! $this->states->canSubmit($version)) {
+            return [
+                'ok'      => false,
+                'status'  => 422,
+                'code'    => 'VERSION_NOT_SUBMITTABLE',
+                'message' => '只有「草稿」或「被驳回」的版本可以提交审核。',
+            ];
         }
 
         // 唯一的流程闸门：协议必须签全（realname 审核不拦，见 DeveloperProfile 注释）

@@ -4,6 +4,7 @@ namespace Webkul\Shop\Services\SkillAudit;
 
 use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\ContentSecurityRecord;
+use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\ContentSafety\ContentSafetyManager;
 use Webkul\Shop\Services\ContentSafety\ContentScanRecorder;
 use Webkul\Shop\Services\SkillPackage\ManifestValidator;
@@ -24,6 +25,7 @@ class AuditService
         protected ManifestValidator $manifestValidator,
         protected ContentSafetyManager $contentSafety,
         protected ContentScanRecorder $scanRecorder,
+        protected SkillVersionState $states,
     ) {}
 
     /**
@@ -76,7 +78,25 @@ class AuditService
 
         $this->record($skillId, $version, AuditRecord::LAYER_MACHINE, $result, $reasons);
 
-        return ['layer' => AuditRecord::LAYER_MACHINE, 'result' => $result, 'reasons' => $reasons, 'notes' => $notes];
+        // 提交审核 = 版本**进入在审**：draft / rejected → in_review（这两个来源都在白名单里）。
+        $statusOk = $this->syncLifecycle($version, SkillVersion::STATUS_IN_REVIEW);
+
+        // L0 不过 → 立刻落 rejected。
+        // ⚠ 白名单里**没有** `draft → rejected`：一个刚提交就被机审挡下的版本，语义上是
+        //   "进了审、又被立即驳回"，所以经 in_review 再落到 rejected（in_review → rejected 是白名单边）。
+        //   这样白名单保持 6 条不变，最终状态与"提交即被判驳回"完全一致。
+        if ($result !== AuditRecord::RESULT_PASS) {
+            $statusOk = $this->syncLifecycle($version, SkillVersion::STATUS_REJECTED) && $statusOk;
+        }
+
+        return [
+            'layer' => AuditRecord::LAYER_MACHINE,
+            'result' => $result,
+            'reasons' => $reasons,
+            'notes' => $notes,
+            // 新增键（既有键不动）：状态迁移是否成功。失败已 report，调用方可据此告警。
+            'status_transition_ok' => $statusOk,
+        ];
     }
 
     /**
@@ -117,7 +137,54 @@ class AuditService
             'suggestion'      => $suggestion,
         ]);
 
-        return ['layer' => AuditRecord::LAYER_HUMAN, 'result' => $result];
+        // L2 驳回 / 待补充 → 版本落 rejected；L2 通过**不写状态** —— 保持 in_review，
+        // 等"过闸门后发布"那一步才写 published（发布是生命周期上的另一个动作）。
+        $statusOk = true;
+
+        if (in_array($result, [AuditRecord::RESULT_REJECT, AuditRecord::RESULT_SUPPLEMENT], true)) {
+            $statusOk = $this->syncLifecycle($version, SkillVersion::STATUS_REJECTED);
+        }
+
+        return [
+            'layer' => AuditRecord::LAYER_HUMAN,
+            'result' => $result,
+            // 新增键（既有键不动）：见 submitLayer0 同名字段说明。L2 通过时不涉及迁移，恒 true。
+            'status_transition_ok' => $statusOk,
+        ];
+    }
+
+    /**
+     * 审核判定落库后，把版本生命周期同步到 `$to`（唯一入口 = SkillVersionState）。
+     *
+     * ⚠ 状态写失败**不静默吞**：`report()` 留痕，返回值交给调用方放进 `status_transition_ok`。
+     *   为什么不直接抛：审核记录已经落库（判决是权威事实），此时把整个请求炸掉反而
+     *   会让调用方以为"审核没成功"，而其实只剩生命周期这一根轴没跟上 —— 记为异常并如实回报更准。
+     *
+     * 版本不存在时（如单测直接用合成 id 调 submitLayer0）没有可迁移对象，跳过并视为 ok。
+     */
+    protected function syncLifecycle(int $versionId, string $to): bool
+    {
+        $version = SkillVersion::find($versionId);
+
+        if (! $version) {
+            return true;
+        }
+
+        // 已经在目标状态 = 无需迁移（例如对已 in_review 的版本重跑 L0 机审）→ 视为 ok，
+        // 不当作失败去 report —— 那不是状态机出错，只是没有要改的东西。
+        if ((string) $version->status === $to) {
+            return true;
+        }
+
+        $result = $this->states->transition($version, $to);
+
+        if (! $result['ok']) {
+            report(new \RuntimeException(
+                "审核后版本状态迁移失败：#{$versionId} → {$to}（{$result['code']} {$result['message']}）"
+            ));
+        }
+
+        return $result['ok'];
     }
 
     /**

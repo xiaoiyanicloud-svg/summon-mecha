@@ -197,6 +197,10 @@ it('传包 → 提审：走的是既有审核服务（audit_record 出现 L0）'
     // 提审
     post(route('shop.dev.versions.submit', $version->id))->assertRedirect();
 
+    // 提审后版本生命周期落到 in_review（写状态的唯一入口是 AuditService，见 submitLayer0）。
+    // 注：上面 :183 那处断言在**提审之前**，彼时仍是 draft —— 两者不矛盾。
+    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_IN_REVIEW);
+
     $this->assertDatabaseHas('audit_record', [
         'skill_id' => $productId,
         'version'  => $version->id,

@@ -221,6 +221,9 @@ final class ApiErrorCode
     public const SKILL_IMPORT_FAILED = 'SKILL_IMPORT_FAILED';
     public const SKILL_L0_AUDIT_FAILED = 'SKILL_L0_AUDIT_FAILED';
 
+    /** 版本当前状态不允许提审 —— 只有「草稿」/「被驳回」可提（堵重复提审已发布版本）。 */
+    public const VERSION_NOT_SUBMITTABLE = 'VERSION_NOT_SUBMITTABLE';
+
     // ── 评价 ─────────────────────────────────────────────────────────────
 
     public const REVIEW_NOT_APPROVED = 'REVIEW_NOT_APPROVED';

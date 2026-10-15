@@ -253,7 +253,7 @@ it('B1 回归：没过 L2 人审，后台点发布被拒（原先能直接上架
 
     post(route('admin.catalog.skills.versions.publish', $version->id))->assertRedirect();
 
-    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_DRAFT)
+    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_IN_REVIEW)
         ->and(session('error'))->toContain('发布闸门');
 });
 
@@ -283,7 +283,8 @@ it('B1 回归：L2 判为驳回 → 依然不许发布', function () {
 
     post(route('admin.catalog.skills.versions.publish', $version->id))->assertRedirect();
 
-    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_DRAFT);
+    // 提审后是 in_review；L2 判驳回 → AuditService 把生命周期落到 rejected（不是 draft）
+    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_REJECTED);
 });
 
 // ==================== D · L2 判定 ====================

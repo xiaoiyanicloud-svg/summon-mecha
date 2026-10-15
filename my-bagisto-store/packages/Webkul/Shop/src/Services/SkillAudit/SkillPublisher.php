@@ -27,7 +27,10 @@ class SkillPublisher
     public const ERR_VERSION_HAS_NO_ASSET = 'VERSION_HAS_NO_ASSET';
     public const ERR_GATE_NOT_PASSED = 'GATE_NOT_PASSED';
 
-    public function __construct(protected ReviewGate $gate) {}
+    public function __construct(
+        protected ReviewGate $gate,
+        protected SkillVersionState $states,
+    ) {}
 
     /**
      * 发布一个版本。
@@ -63,16 +66,33 @@ class SkillPublisher
         }
 
         DB::transaction(function () use ($version) {
-            // 同一个商品同时只保留一个 published,避免下单时锁定到哪个不确定
+            // 归档同商品其它 published 版本 —— 保留**批量** update，刻意不逐条走 transition()：
+            // 这是一次性收敛（"每个商品同时只留一个 published"），逐条 load→transition 会
+            // 退化成 N 次写库，而它们的迁移规则完全一致（published → archived），无需逐条判定。
+            // 它绕过唯一入口，但触发点唯一（只有 SkillPublisher）且值域封闭（是白名单里已有的迁移），
+            // 属受控例外；真要统一时，改成先批量取 id 再逐个 transition 即可。
             SkillVersion::query()
                 ->where('product_id', $version->product_id)
                 ->where('id', '!=', $version->id)
                 ->where('status', SkillVersion::STATUS_PUBLISHED)
                 ->update(['status' => SkillVersion::STATUS_ARCHIVED]);
 
-            $version->status = SkillVersion::STATUS_PUBLISHED;
+            // ⚠ 顺序硬要求：**先闸门、后改状态**。反过来会让"draft + 无审核记录"返回
+            //   TRANSITION_INVALID 而不是 GATE_NOT_PASSED，语义就错了（闸门在上面的 gate 块里判）。
+            // 状态写入收敛到 SkillVersionState（唯一入口）；先设 released_at，让 transition
+            // 的那一次 save() 把 status 与 released_at 一并落库（一次写）。
             $version->released_at = now();
-            $version->save();
+
+            $transition = $this->states->transition($version, SkillVersion::STATUS_PUBLISHED);
+
+            if (! $transition['ok']) {
+                // 不可达：能到这里说明闸门已过，版本必然已被 submitLayer0 落到 in_review。
+                // 真出现了就是状态机漏了路径 —— 宁可炸（回滚整个事务）也不谎报"已发布"。
+                throw new \RuntimeException(
+                    "发布状态迁移失败：版本 #{$version->id} 未能迁到 published"
+                    ."（{$transition['code']} {$transition['message']}）"
+                );
+            }
         });
 
         return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate);

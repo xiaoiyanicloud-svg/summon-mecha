@@ -40,15 +40,18 @@ class SkillReviewController extends Controller
     /**
      * 待审队列。
      *
-     * 队列的定义是「**已提审**且仍是草稿的版本」——
-     * 没提审过的版本不该出现在审核台（那是运营/开发还没做完，不是审核的事）。
+     * 队列的定义是「**已提审**的版本」—— 体现为生命周期状态 `in_review`（在审）或
+     * `rejected`（被驳回）。⚠ 不再是 `STATUS_DRAFT`：
+     *   2026-10-16 起提审会把状态从 draft 迁到 in_review（写入收敛在 `AuditService`）。
+     *   队列若还按 draft 取，提审后的版本就再也进不了审核台 —— 整条供给链**静默断掉**。
+     *   （下面 `$records` 的过滤再兜一层：没有任何 audit_record 的版本仍不出现在队列。）
      */
     public function index(Request $request)
     {
         $filter = (string) $request->query('status', 'pending');
 
         $versions = SkillVersion::query()
-            ->where('status', SkillVersion::STATUS_DRAFT)
+            ->whereIn('status', [SkillVersion::STATUS_IN_REVIEW, SkillVersion::STATUS_REJECTED])
             ->with('product')
             ->orderByDesc('id')
             ->get();

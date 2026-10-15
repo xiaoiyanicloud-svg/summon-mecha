@@ -5,7 +5,9 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Shop\Models\SkillBuild;
+use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\SkillAudit\AuditService;
+use Webkul\Shop\Services\SkillAudit\SkillVersionState;
 use Webkul\Shop\Services\SkillCompile\SkillBuildService;
 use Webkul\Shop\Services\SkillImport\SkillImportService;
 use Webkul\Shop\Services\SkillPackage\PackageInspector;
@@ -23,6 +25,7 @@ class SkillSupplyController extends APIController
         protected SkillImportService $importer,
         protected SkillBuildService $builder,
         protected AuditService $audit,
+        protected SkillVersionState $states,
     ) {}
 
     /**
@@ -100,6 +103,20 @@ class SkillSupplyController extends APIController
             'skill_id' => ['required', 'integer'],
             'manifest' => ['required', 'array'],
         ]);
+
+        // 状态前置：只有「草稿」/「被驳回」可提审。
+        // internal.key 通道同样要拦 —— 否则已发布版本可经此**重复提审**，
+        // 写出一条 audit_record 却永远不进审核队列（静默黑洞）。
+        // 版本不存在时不拦（沿用 submitLayer0 对不存在版本的原行为，不改变既有语义）。
+        $version = SkillVersion::find($versionId);
+
+        if ($version && ! $this->states->canSubmit($version)) {
+            return $this->fail(
+                ApiErrorCode::VERSION_NOT_SUBMITTABLE,
+                '只有「草稿」或「被驳回」的版本可以提交审核。',
+                422
+            );
+        }
 
         $result = $this->audit->submitLayer0($payload['skill_id'], $versionId, $payload['manifest']);
 

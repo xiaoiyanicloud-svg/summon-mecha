@@ -33,6 +33,22 @@ class ShopServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->registerConfig();
+
+        $this->registerCommands();
+    }
+
+    /**
+     * 注册本包的 artisan 命令。
+     *
+     * 只在控制台运行时注册（与 Core / Product 包一致）—— Web 请求里不必实例化命令。
+     */
+    protected function registerCommands(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Webkul\Shop\Console\Commands\BackfillVersionStatus::class,
+            ]);
+        }
     }
 
     /**

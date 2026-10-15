@@ -85,7 +85,9 @@ it('旁路已堵：没过审的技能经 API 通道也发布不了（原先能�
 });
 
 it('闸门过了才放行：L0 + L2 都通过 → 发布成功', function () {
-    $version = spgVersion();
+    // 过了 L0+L2 的版本在现实里就是 in_review（提审时由 AuditService 落生命周期状态），
+    // 发布是 in_review → published。夹具照此设 —— draft 直接发布会被状态白名单挡掉。
+    $version = spgVersion(SkillVersion::STATUS_IN_REVIEW);
 
     spgAudit($version, AuditRecord::LAYER_MACHINE, AuditRecord::RESULT_PASS);
     spgAudit($version, AuditRecord::LAYER_HUMAN, AuditRecord::RESULT_PASS);
@@ -99,13 +101,14 @@ it('闸门过了才放行：L0 + L2 都通过 → 发布成功', function () {
 });
 
 it('驳回过、整改后再提 → 以每层最新一条判定为准，放行', function () {
-    $version = spgVersion();
+    $version = spgVersion(SkillVersion::STATUS_IN_REVIEW);
 
     spgAudit($version, AuditRecord::LAYER_MACHINE, AuditRecord::RESULT_PASS);
     spgAudit($version, AuditRecord::LAYER_HUMAN, AuditRecord::RESULT_REJECT);
 
     post(spgUrl($version), [], spgHeaders())->assertStatus(422);
-    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_DRAFT);
+    // 闸门没过 → 停在原状态（in_review），不会被误改成 published
+    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_IN_REVIEW);
 
     spgAudit($version, AuditRecord::LAYER_HUMAN, AuditRecord::RESULT_PASS);
 
@@ -141,7 +144,8 @@ it('同商品发布新版本 → 旧的 published 自动归档（同时只有一
         'product_id' => $old->product_id,
         'version'    => '2.0.0',
         'channel'    => 'stable',
-        'status'     => SkillVersion::STATUS_DRAFT,
+        // 新版本提审后即 in_review，发布走 in_review → published
+        'status'     => SkillVersion::STATUS_IN_REVIEW,
     ]);
     spgAsset($new, 'spg-demo-2.skill');
 
