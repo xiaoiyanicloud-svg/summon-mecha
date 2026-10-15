@@ -8,6 +8,7 @@ use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\LifecycleNotifier;
 
 /**
  * 下发任务服务 —— 状态机 —— v3.4 步骤 8(计划 §4.6)。
@@ -74,6 +75,7 @@ class DeployTaskService
     public function __construct(
         protected SigningService $signing,
         protected AgentGatewayManager $gateways,
+        protected LifecycleNotifier $notifier,
     ) {}
 
     /**
@@ -381,6 +383,15 @@ class DeployTaskService
                 ]);
             } else {
                 $this->recordInstall($task);
+            }
+
+            // B-2 · 用户侧站内通知(副作用;LifecycleNotifier 内已吞异常,不影响状态机):
+            //   · 安装:仅"非空跑"才算真装上了(空跑什么都没装,不发"已下发");
+            //   · 回收:回收语义不依赖包,空跑也算完成(试用确实被回收)。
+            if ($task->operation === DeployTask::OP_INSTALL && ! $task->isDryRun()) {
+                $this->notifier->deliveryCompleted($task);
+            } elseif ($task->operation === DeployTask::OP_RECLAIM) {
+                $this->notifier->trialExpired($task);
             }
         }
 

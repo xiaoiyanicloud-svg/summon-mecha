@@ -9,6 +9,7 @@ use Webkul\Shop\Models\AfterSale;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\RefundRequest;
 use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Services\LifecycleNotifier;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\Payment\PaymentManager;
 
@@ -28,6 +29,7 @@ class AfterSaleService
     public function __construct(
         protected PaymentManager $payments,
         protected OperationLogger $oplog,
+        protected LifecycleNotifier $notifier,
     ) {}
 
     /**
@@ -217,7 +219,23 @@ class AfterSaleService
         }
 
         // ── 阶段③:回写终态 ──
-        return $this->settleRefund($prepared['refund_id'], $ok, $msg);
+        $result = $this->settleRefund($prepared['refund_id'], $ok, $msg);
+
+        // B-2 · 站内通知(副作用,不改变上面已定的结果):
+        //   · 审核结果 —— 批准是已经发生的事实,网关成功与否都发;
+        //   · 退款到账 —— 仅当打款成功才发(失败不发"到账",见 LifecycleNotifier)。
+        $afterSale = AfterSale::find($prepared['after_sale_id']);
+        if ($afterSale) {
+            $this->notifier->afterSaleDecided($afterSale, true);
+            $this->notifier->refundSettled(
+                $afterSale,
+                (float) ($result['data']['amount'] ?? $prepared['amount']),
+                ($result['data']['refund_status'] ?? null) === RefundRequest::STATUS_SUCCESS,
+                $prepared['out_refund_no'] ?? null,
+            );
+        }
+
+        return $result;
     }
 
     /**
@@ -328,6 +346,9 @@ class AfterSaleService
             $afterSale->id,
             ['reason' => $reason]
         );
+
+        // B-2 · 审核结果(驳回)站内通知
+        $this->notifier->afterSaleDecided($afterSale, false);
 
         return ['ok' => true, 'message' => '已驳回。', 'data' => ['id' => $afterSale->id]];
     }
