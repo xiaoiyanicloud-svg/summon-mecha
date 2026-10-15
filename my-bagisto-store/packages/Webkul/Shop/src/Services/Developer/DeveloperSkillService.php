@@ -400,6 +400,99 @@ class DeveloperSkillService
         ];
     }
 
+    /**
+     * 撤回提审 —— 把版本从「审核中」拉回「草稿」（任务卡 D-3 · D）。
+     *
+     * 只有 `in_review` 可撤回：其它状态没有"待审"可撤（draft 本就未提交，rejected 已是终局待整改）。
+     * 撤回后版本**自动离开审核台队列** —— 队列口径是 in_review|rejected（见 SkillReviewController），
+     * 状态一改成 draft 就掉了，无需额外动队列。
+     *
+     * 归属过滤在查询层（findOwnedVersion），拿不到 → null（控制器 404，不是 403）。
+     *
+     * @return array{ok:bool,code:string,message:string,version?:SkillVersion}|null
+     */
+    public function withdrawVersion(DeveloperProfile $profile, int $versionId): ?array
+    {
+        $version = $this->findOwnedVersion($profile, $versionId);
+
+        if (! $version) {
+            return null;
+        }
+
+        if ($version->status !== SkillVersion::STATUS_IN_REVIEW) {
+            return [
+                'ok'      => false,
+                'code'    => 'VERSION_NOT_WITHDRAWABLE',
+                'message' => '只有审核中的版本可以撤回。',
+            ];
+        }
+
+        // 状态写入收敛到 SkillVersionState（唯一入口）；in_review → draft 是白名单边。
+        $transition = $this->states->transition($version, SkillVersion::STATUS_DRAFT);
+
+        if (! $transition['ok']) {
+            return [
+                'ok'      => false,
+                'code'    => $transition['code'],
+                'message' => '撤回失败：'.$transition['message'],
+            ];
+        }
+
+        return [
+            'ok'      => true,
+            'code'    => 'WITHDRAWN',
+            'message' => '已撤回提审，版本回到草稿状态。',
+            'version' => $version,
+        ];
+    }
+
+    /**
+     * 下架我的技能 —— 把商品置为**不可售**（任务卡 D-3 · E）。
+     *
+     * ⚠ **不回收已售授权**：`skill_entitlements` 一律不动。买断的设备继续可用，
+     *   本动作只停"新增销售"。任何"下架即回收"的实现都违反 D3（买断制）与 D10（已激活可申诉）。
+     *
+     * ⚠ **开发者不能自己重新上架**：本类**不提供** online 入口。重新上架走
+     *   "运营发布" 或 "重新提审 → 发布"，避免"下架 → 立刻自己上架"的反复横跳
+     *   （上下架是影响买家可见性的动作，语义上是运营/发布链的一环，不是开发者的自由开关）。
+     *
+     * 归属过滤在查询层（findOwnedSkill），拿不到 → null（控制器 404）。
+     *
+     * @return array{ok:bool,code:string,message:string}|null
+     */
+    public function takeOffline(DeveloperProfile $profile, int $productId): ?array
+    {
+        $product = $this->findOwnedSkill($profile, $productId);
+
+        if (! $product) {
+            return null;
+        }
+
+        // 与"发布置可售"（SkillPublisher::makeProductSellable）同一条商品更新通道 + 事件三步：
+        //   flat 是派生表，绕过事件只改 EAV 会留下不一致（列表/搜索读的仍是旧 status）。
+        // ⚠ 必须带上商品当前分类，否则 AbstractType::update 会把它从「技能」分类里摘掉。
+        $categories = $product->categories->pluck('id')->all();
+
+        Event::dispatch('catalog.product.update.before', $productId);
+
+        $this->products->update([
+            'status'     => 0,
+            'channel'    => core()->getDefaultChannelCode(),
+            'locale'     => $this->defaultLocaleCode(),
+            'categories' => $categories,
+        ], $productId);
+
+        Event::dispatch('catalog.product.update.after', $product->fresh());
+
+        // skill_entitlements 刻意不动 —— 见方法注释（下架不回收已售授权）。
+
+        return [
+            'ok'      => true,
+            'code'    => 'OFFLINED',
+            'message' => '技能已下架（只停新增销售，已售授权不受影响）。',
+        ];
+    }
+
     // ==================== 内部 ====================
 
     protected function defaultFamilyId(): int

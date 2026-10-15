@@ -147,6 +147,25 @@ it('非法迁移：直接调 transition 走 draft → published → ok=false + T
         ->and($version->fresh()->status)->toBe(SkillVersion::STATUS_DRAFT);
 });
 
+it('白名单：draft → rejected 合法（刚提审即被 L0 挡下，一次迁移）；draft → published 仍非法', function () {
+    $states = app(SkillVersionState::class);
+
+    // draft → rejected：刚提交就被机审驳回。这条边只把版本推进"需整改"态，不弱化拦截。
+    $draft = svsVersion(SkillVersion::STATUS_DRAFT);
+    $toRejected = $states->transition($draft, SkillVersion::STATUS_REJECTED);
+
+    expect($toRejected['ok'])->toBeTrue()
+        ->and($draft->fresh()->status)->toBe(SkillVersion::STATUS_REJECTED);
+
+    // draft → published 必须仍然被挡：发布不能绕过审核（收口这条边不会顺带开了后门）
+    $draft2 = svsVersion(SkillVersion::STATUS_DRAFT);
+    $toPublished = $states->transition($draft2, SkillVersion::STATUS_PUBLISHED);
+
+    expect($toPublished['ok'])->toBeFalse()
+        ->and($toPublished['code'])->toBe(SkillVersionState::INVALID)
+        ->and($draft2->fresh()->status)->toBe(SkillVersion::STATUS_DRAFT);
+});
+
 // ==================== 提审前置（堵重复提审已发布版本）====================
 
 it('in_review 的版本再提审 → 被拒，code=VERSION_NOT_SUBMITTABLE', function () {

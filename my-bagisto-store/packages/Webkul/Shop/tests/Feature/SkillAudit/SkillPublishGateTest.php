@@ -1,5 +1,9 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
+use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
@@ -25,10 +29,53 @@ function spgHeaders(): array
     ];
 }
 
+/**
+ * 建一个**真实**的技能商品（走 Bagisto 建/更商品通道，与 DeveloperSkillService::createSkill 同法）。
+ *
+ * ⚠ 为什么夹具必须是真商品（2026-10-16）：发布现在会把商品**一并置为可售**
+ *   （`SkillPublisher::makeProductSellable`）—— 版本指向的商品必须存在，否则发布会在
+ *   "置可售"这一步失败。这是本卡要锁的行为（发布不是空动作），夹具必须照现实来：
+ *   版本总是挂在一个真实商品下，而不是凭空捏造的 product_id。
+ */
+function spgProduct(): int
+{
+    Event::dispatch('catalog.product.create.before');
+
+    $product = app(ProductRepository::class)->create([
+        'type'                => 'simple',
+        'attribute_family_id' => (int) (DB::table('attribute_families')->where('code', 'default')->value('id')
+            ?: DB::table('attribute_families')->value('id') ?: 1),
+        'sku'                 => 'SPG'.strtoupper(Str::random(10)),
+    ]);
+
+    Event::dispatch('catalog.product.create.after', $product);
+
+    Event::dispatch('catalog.product.update.before', $product->id);
+
+    app(ProductRepository::class)->update([
+        'name'                 => '闸门技能',
+        'url_key'              => 'spg-'.$product->id,
+        'price'                => 10,
+        // 新建即草稿 —— 与开发者建技能一致；上架要靠发布
+        'status'               => 0,
+        'visible_individually' => 1,
+        'channel'              => core()->getDefaultChannelCode(),
+        'locale'               => (string) (optional(core()->getDefaultChannel()->default_locale)->code
+            ?: core()->getDefaultChannelCode()),
+        'categories'           => array_values(array_filter([
+            (int) DB::table('category_translations')->where('slug', 'skill')->value('category_id'),
+        ])),
+    ], $product->id);
+
+    Event::dispatch('catalog.product.update.after', $product->fresh());
+
+    return (int) $product->id;
+}
+
 function spgVersion(string $status = SkillVersion::STATUS_DRAFT): SkillVersion
 {
     $version = SkillVersion::create([
-        'product_id'   => 910000 + random_int(1, 9999),
+        'product_id'   => spgProduct(),
         'version'      => '1.0.0',
         'channel'      => 'stable',
         'status'       => $status,

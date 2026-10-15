@@ -41,9 +41,15 @@ class SkillVersionState
      *   发布只能从 in_review 走，且必须过了闸门（SkillPublisher 保证顺序）。
      */
     protected const TRANSITIONS = [
-        // 新建的草稿：只能提审
+        // 新建的草稿：提审 → in_review；或"刚提审就被机审 L0 挡下" → rejected。
+        //
+        // 为什么会有 `draft → rejected` 这条边（2026-10-16 收口）：提审时若 L0 不过，
+        //   版本的事实状态就是"进了审、又被立即驳回"，落 `rejected` 才与"从没提审过"分得开。
+        //   这条边**只把版本推进"需开发者整改"态,不能上架** —— 它不弱化任何拦截:
+        //   `draft → published` 仍然**必须**被挡（不在白名单里,见类注释）。
         SkillVersion::STATUS_DRAFT => [
             SkillVersion::STATUS_IN_REVIEW,
+            SkillVersion::STATUS_REJECTED,
         ],
         // 被驳回 / 待补充：整改后重新提审（回到 in_review）
         SkillVersion::STATUS_REJECTED => [

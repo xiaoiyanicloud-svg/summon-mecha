@@ -5,6 +5,7 @@ namespace Webkul\Shop\Services\Ops;
 use Illuminate\Support\Facades\DB;
 use Webkul\Category\Models\Category;
 use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Models\SkillVersion;
 
 /**
  * 平台运营指标 —— **只读聚合**。
@@ -432,7 +433,11 @@ class OpsMetricsService
     // ==================== 内部 ====================
 
     /**
-     * 已过 L0、尚未做 L2 人审的版本数（审核队列的深度）。
+     * 已提审、尚未过人审（L2）的版本数（审核队列的深度）。
+     *
+     * ⚠ 状态口径：提审即 `in_review`（2026-10-16 起版本生命周期收敛，见 SkillVersionState）。
+     *   此前这里取的是 `draft` —— 那是收敛前的旧口径，收敛后**永远数到 0**，
+     *   而它正是开发者总览页上"已提交、还在等人审的版本数"。
      *
      * ⚠ 列名陷阱：`audit_record.skill_id` 存的是 **products.id**，`version` 存的是
      *   **skill_versions.id**（见 AuditRecord::scopeForVersion 的注释）。
@@ -443,12 +448,13 @@ class OpsMetricsService
     protected function countPendingHumanReview(?int $sellerId = null): int
     {
         return DB::table('skill_versions as v')
-            ->where('v.status', 'draft')
+            ->where('v.status', SkillVersion::STATUS_IN_REVIEW)
             ->when($sellerId !== null, fn ($q) => $q->where('v.seller_id', $sellerId))
             ->whereExists(fn ($q) => $q->select(DB::raw(1))->from('audit_record as a')
                 ->whereColumn('a.skill_id', 'v.product_id')
                 ->whereColumn('a.version', 'v.id'))
-            // 还没有 L2（layer=3）通过记录的
+            // ⚠ 这条**不是**冗余：L2 通过后版本仍是 in_review（等发布）。这条子查询正是把
+            //   "已过人审、待发布"排除掉，否则会被当成"待审"。去掉它队列会虚高。
             ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('audit_record as a')
                 ->whereColumn('a.skill_id', 'v.product_id')
                 ->whereColumn('a.version', 'v.id')

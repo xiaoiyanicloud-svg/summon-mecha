@@ -127,14 +127,16 @@ it('看板页把未统计维度的理由也渲染出来', function () {
 });
 
 it('审核队列深度：用正确的关联列（audit_record 的列名与内容不一致）', function () {
-    // 造一个已提审（有 L0 记录）、尚未做 L2 的草稿版本
+    // 造一个已提审（有 L0 记录）、尚未做 L2 的版本。
+    // ⚠ status 用 in_review：2026-10-16 起版本生命周期收敛，**提审即 in_review**
+    //   （此前"提审后库里还是 draft"的旧口径已废弃 —— 见 SkillVersionState）。
     $productId = DB::table('products')->insertGetId([
         'sku' => 'ops-sku-'.uniqid(), 'type' => 'simple',
         'created_at' => now(), 'updated_at' => now(),
     ]);
 
     $versionId = DB::table('skill_versions')->insertGetId([
-        'product_id' => $productId, 'version' => '1.0.0', 'status' => 'draft',
+        'product_id' => $productId, 'version' => '1.0.0', 'status' => 'in_review',
         'created_at' => now(), 'updated_at' => now(),
     ]);
 

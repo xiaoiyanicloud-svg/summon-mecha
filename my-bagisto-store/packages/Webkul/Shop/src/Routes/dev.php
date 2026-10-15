@@ -70,10 +70,14 @@ Route::controller(SkillController::class)->prefix($devPrefix)->middleware('devel
     Route::get('skills/{id}/edit', 'edit')->whereNumber('id')->name('shop.dev.skills.edit');
     Route::put('skills/{id}', 'update')->whereNumber('id')->name('shop.dev.skills.update');
 
+    // 下架：影响买家可见性的动作，理由必填、留痕。**刻意没有 online 入口**（见控制器注释）。
+    Route::post('skills/{id}/offline', 'offline')->whereNumber('id')->name('shop.dev.skills.offline');
+
     Route::post('skills/{id}/versions', 'storeVersion')->whereNumber('id')->name('shop.dev.skills.versions.store');
 
     Route::post('versions/{versionId}/upload', 'upload')->whereNumber('versionId')->name('shop.dev.versions.upload');
     Route::post('versions/{versionId}/submit', 'submit')->whereNumber('versionId')->name('shop.dev.versions.submit');
+    Route::post('versions/{versionId}/withdraw', 'withdraw')->whereNumber('versionId')->name('shop.dev.versions.withdraw');
 
     Route::get('audits', 'audits')->name('shop.dev.audits.index');
 });

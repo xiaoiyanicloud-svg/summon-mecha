@@ -13,6 +13,28 @@
         <a href="{{ route('shop.dev.skills.index') }}" style="margin-left:10px">← 返回列表</a>
     </p>
 
+    {{-- 下架：已上架的技能才显示。理由必填、会留痕；下架不回收已售授权；无自助重新上架入口。 --}}
+    @if ($product->status)
+        <div class="card">
+            <h2>下架技能</h2>
+            <form method="POST" action="{{ route('shop.dev.skills.offline', $product->id) }}">
+                @csrf
+                <div>
+                    <label for="offline_reason">下架理由（必填，会留痕）</label>
+                    <input id="offline_reason" type="text" name="reason" required minlength="2" maxlength="500"
+                           placeholder="例如：技能存在缺陷，暂时下架整改">
+                </div>
+                <p class="muted">
+                    下架只停<b>新增销售</b>：已购买用户的授权不受影响，设备继续可用。
+                    重新上架请联系平台运营，或修改后重新提审 → 发布（开发者不能自助重新上架）。
+                </p>
+                <div style="margin-top:12px">
+                    <button type="submit">下架</button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     {{-- 新建版本 --}}
     <div class="card">
         <h2>新建版本</h2>
@@ -134,6 +156,15 @@
                 <button type="submit">提交审核</button>
                 <span class="muted">提交后走 L0 机审；驳回理由见「审核状态」页。</span>
             </form>
+
+            {{-- 撤回提审：仅「审核中」的版本可撤回（其余状态没有"待审"可撤） --}}
+            @if ($version->status === \Webkul\Shop\Models\SkillVersion::STATUS_IN_REVIEW)
+                <form method="POST" action="{{ route('shop.dev.versions.withdraw', $version->id) }}" style="margin-top:10px">
+                    @csrf
+                    <button type="submit" class="btn small ghost">撤回提审</button>
+                    <span class="muted">撤回后版本回到草稿，自动离开审核队列。</span>
+                </form>
+            @endif
         </div>
     @empty
         <div class="card"><p class="muted">还没有版本。先在上方创建一个版本，再上传技能包。</p></div>

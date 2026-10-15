@@ -78,16 +78,18 @@ class AuditService
 
         $this->record($skillId, $version, AuditRecord::LAYER_MACHINE, $result, $reasons);
 
-        // 提交审核 = 版本**进入在审**：draft / rejected → in_review（这两个来源都在白名单里）。
-        $statusOk = $this->syncLifecycle($version, SkillVersion::STATUS_IN_REVIEW);
-
-        // L0 不过 → 立刻落 rejected。
-        // ⚠ 白名单里**没有** `draft → rejected`：一个刚提交就被机审挡下的版本，语义上是
-        //   "进了审、又被立即驳回"，所以经 in_review 再落到 rejected（in_review → rejected 是白名单边）。
-        //   这样白名单保持 6 条不变，最终状态与"提交即被判驳回"完全一致。
-        if ($result !== AuditRecord::RESULT_PASS) {
-            $statusOk = $this->syncLifecycle($version, SkillVersion::STATUS_REJECTED) && $statusOk;
-        }
+        // 提交审核 = 版本进入终态判定（**一次迁移**，不再两跳）：
+        //   - L0 通过 → in_review（进入后续 L1/L2 与发布流程）；
+        //   - L0 不过 → rejected（刚进审就被机审挡下 = "进了审、又被立即驳回"）。
+        //   `draft → rejected` 是白名单里的直接边（见 SkillVersionState::TRANSITIONS）。
+        //   ⚠ 此前走的是 draft→in_review→rejected 两次写：两步不在一个事务里，第二步失败会
+        //     留下 "status=in_review 但 audit_record 已判驳回" 的分裂状态。收敛成一次写即消除。
+        $statusOk = $this->syncLifecycle(
+            $version,
+            $result === AuditRecord::RESULT_PASS
+                ? SkillVersion::STATUS_IN_REVIEW
+                : SkillVersion::STATUS_REJECTED
+        );
 
         return [
             'layer' => AuditRecord::LAYER_MACHINE,

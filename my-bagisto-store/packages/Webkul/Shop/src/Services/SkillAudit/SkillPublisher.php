@@ -3,6 +3,8 @@
 namespace Webkul\Shop\Services\SkillAudit;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Models\SkillVersion;
 
 /**
@@ -30,6 +32,7 @@ class SkillPublisher
     public function __construct(
         protected ReviewGate $gate,
         protected SkillVersionState $states,
+        protected ProductRepository $products,
     ) {}
 
     /**
@@ -93,9 +96,62 @@ class SkillPublisher
                     ."（{$transition['code']} {$transition['message']}）"
                 );
             }
+
+            // 版本 published ≠ 用户看得见。技能市场搜的是 `product_flat` 里
+            // `status=1 && visible_individually=1` 的商品行（见 SkillCatalogController::search）；
+            // 而技能商品建出来就是 `status=0`（开发者不能自己上架）。所以**发布必须把商品一并置为可售**，
+            // 否则"发布"是个空动作：版本是 published，市场却搜不到。
+            //
+            // 顺序硬要求：**先版本迁移、再置商品可售**（都在同一事务里，任一步失败整体回滚，
+            // 绝不留下"版本 published 但商品禁用"的半状态）。
+            $this->makeProductSellable($version);
         });
 
         return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate);
+    }
+
+    /**
+     * 把该版本所属的商品置为**可售**（status=1 + visible_individually=1）。
+     *
+     * 走 Bagisto 既有的商品更新通道（`ProductRepository::update()`）+ 事件三步，
+     * **不直写 `product_flat`** —— flat 是派生表，绕过事件会留下不一致；
+     * 写法与 `DeveloperSkillService::createSkill()/updateSkill()` 一致。
+     *
+     * 必须在**版本迁移成功之后**调用（顺序见 publish）。商品不存在时抛异常、回滚整个发布事务，
+     * 绝不留下一个"版本已发布、市场里却没有这个商品"的假发布。
+     */
+    protected function makeProductSellable(SkillVersion $version): void
+    {
+        $productId = (int) $version->product_id;
+        $product = $this->products->find($productId);
+
+        if (! $product) {
+            // 现实中版本必挂在商品下；指到不存在的商品 = 数据被破坏。
+            throw new \RuntimeException(
+                "发布失败：版本 #{$version->id} 指向的商品 #{$productId} 不存在，无法置为可售。"
+            );
+        }
+
+        // ⚠ 必须带上商品**当前**的分类：`AbstractType::update` 在 `categories` 缺失时会把商品
+        //   从所有分类里 sync 掉（见 DeveloperSkillService::updateSkill 的注释）。技能一旦脱离
+        //   「技能」分类，市场搜索（按该分类过滤，见 SkillCatalogController::search）就再也搜不到
+        //   它 —— 那正是本次要修的病，不能在修它的时候又把它踩回去。
+        $categories = $product->categories->pluck('id')->all();
+
+        // 事件三步一步都不能省：`product_flat` 是 `catalog.product.update.after` 里
+        // flatIndexer 刷出来的，不派发就只改了 EAV，搜索读的 flat 仍是旧值（status=0）。
+        Event::dispatch('catalog.product.update.before', $productId);
+
+        $this->products->update([
+            'status'               => 1,
+            'visible_individually' => 1,
+            'channel'              => core()->getDefaultChannelCode(),
+            'locale'               => (string) (optional(core()->getDefaultChannel()->default_locale)->code
+                ?: core()->getDefaultChannelCode()),
+            'categories'           => $categories,
+        ], $productId);
+
+        Event::dispatch('catalog.product.update.after', $product->fresh());
     }
 
     /**

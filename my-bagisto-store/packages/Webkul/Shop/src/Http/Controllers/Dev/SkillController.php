@@ -215,6 +215,84 @@ class SkillController extends Controller
         ]);
     }
 
+    /**
+     * 撤回提审（任务卡 D-3 · D）—— 只做校验 + 调 service + 重定向。
+     *
+     * 归属过滤在 DeveloperSkillService::findOwnedVersion（查询层）；拿不到 → 404。
+     */
+    public function withdraw(Request $request, int $versionId)
+    {
+        $profile = $this->profile($request);
+
+        $result = $this->skills->withdrawVersion($profile, $versionId);
+
+        if (! $result) {
+            abort(404);
+        }
+
+        if (! $result['ok']) {
+            return back()->withErrors(['withdraw' => $result['message']]);
+        }
+
+        // 撤回是影响"这个版本在不在审核队列里"的动作，留痕（唯一入口 OperationLogger）
+        $version = $result['version'];
+
+        $this->ops->log(
+            OperationLog::ACTOR_SELLER,
+            $profile->seller_id,
+            'skill.version.withdraw',
+            'skill_version',
+            $version->id,
+            [
+                'product_id' => $version->product_id,
+                'version'    => $version->version,
+                'from'       => SkillVersion::STATUS_IN_REVIEW,
+                'to'         => SkillVersion::STATUS_DRAFT,
+            ]
+        );
+
+        return back()->with('success', $result['message']);
+    }
+
+    /**
+     * 下架技能（任务卡 D-3 · E）—— 只做校验 + 调 service + 重定向。
+     *
+     * 理由必填：这是影响**买家可见性**的动作，留痕要能解释"为什么下架"。
+     * 归属过滤在 DeveloperSkillService::findOwnedSkill（查询层）；拿不到 → 404。
+     *
+     * ⚠ 刻意**没有** online（重新上架）入口：下架是单向的，重新上架走"运营发布"或
+     *   "重新提审 → 发布"。不要顺手补一个 self-online 路由。
+     */
+    public function offline(Request $request, int $id)
+    {
+        $payload = $request->validate([
+            'reason' => ['required', 'string', 'min:2', 'max:500'],
+        ]);
+
+        $profile = $this->profile($request);
+
+        $result = $this->skills->takeOffline($profile, $id);
+
+        if (! $result) {
+            abort(404);
+        }
+
+        if (! $result['ok']) {
+            return back()->withErrors(['offline' => $result['message']]);
+        }
+
+        $this->ops->log(
+            OperationLog::ACTOR_SELLER,
+            $profile->seller_id,
+            'skill.offline',
+            'product',
+            $id,
+            ['reason' => $payload['reason']]
+        );
+
+        return back()->with('success', $result['message']);
+    }
+
     protected function profile(Request $request): DeveloperProfile
     {
         // 由 `developer` 中间件放入（见 AuthenticateDeveloper）
