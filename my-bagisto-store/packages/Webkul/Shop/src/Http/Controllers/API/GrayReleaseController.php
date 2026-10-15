@@ -50,6 +50,9 @@ class GrayReleaseController extends APIController
             (int) $payload['skill_version_id'],
             $payload['strategy'] ?? ['percent' => 5],
             $payload['batch_no'] ?? null,
+            // P10:发起者留痕(调用方自报,见 APIController::internalOperator)
+            $this->internalOperator($request),
+            $request->ip(),
         );
 
         return response()->json([
@@ -120,7 +123,14 @@ class GrayReleaseController extends APIController
 
         $payload = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
 
-        $affected = $this->gray->abort($release, $payload['reason'] ?? '人工回滚', 'manual');
+        $affected = $this->gray->abort(
+            $release,
+            $payload['reason'] ?? '人工回滚',
+            'manual',
+            // P10:人工回滚必须记到"人" —— 回滚是拿别人的设备执行动作
+            $this->internalOperator($request),
+            $request->ip(),
+        );
 
         return response()->json([
             'message' => '已回滚。',

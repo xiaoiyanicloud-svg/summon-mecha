@@ -82,6 +82,28 @@ class APIController extends Controller
     }
 
     /**
+     * `internal.key` 通道的调用方自称身份 —— 熔断 / 灰度 / 回滚这类平台端动作的操作者留痕。
+     *
+     * ⚠ 诚实边界:`internal.key` 是**共享密钥**,服务端**无法验证**这个自称。它只是
+     *   "调用方自报是谁",不是认证身份(per-operator 凭证是目标形态)。
+     *   故一律存成 `internal[:<自称>]` —— 前缀本身就写明"这是内部通道自报的",
+     *   不会被误读成"已认证的管理员"。此前熔断把操作者写死 `'admin'`,
+     *   比留空更坏:它看起来像有留痕。
+     *
+     * 返回值截到 32 字符,与 `skill_blocklist.created_by` 的列宽对齐(超宽在 MySQL
+     * 严格模式下会直接写入失败 —— 那会让一次熔断因为"操作者名字太长"而失败)。
+     */
+    protected function internalOperator(Request $request): string
+    {
+        $raw = trim((string) $request->header('X-Internal-Operator', ''));
+
+        // 只留可安全入库的字符(去掉换行/控制字符等 —— 它会被写进审计与日志)
+        $raw = (string) preg_replace('/[^\p{L}\p{N}\-_.:@ ]/u', '', $raw);
+
+        return $raw === '' ? 'internal' : mb_substr('internal:'.$raw, 0, 32);
+    }
+
+    /**
      * 本机游客标识 —— 由前端首次生成并持久化,随每个请求以 X-Guest-Key 头带来。
      *
      * 用途:把「游客订单」限定到产生它的那台设备。

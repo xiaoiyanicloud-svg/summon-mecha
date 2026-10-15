@@ -32,6 +32,7 @@ class SkillBlocklist extends Model
         'status',
         'affected_devices',
         'created_by',
+        'ip',
         'lifted_at',
     ];
 

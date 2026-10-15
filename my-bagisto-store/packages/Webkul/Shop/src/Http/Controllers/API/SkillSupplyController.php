@@ -200,6 +200,10 @@ class SkillSupplyController extends APIController
             $payload['action'] ?? 'block_all',
             $payload['reason'] ?? '',
             $payload['severity'] ?? 'high',
+            // P10:操作者不再写死 'admin' —— 调用方可经 X-Internal-Operator 自报身份,
+            // 不自报则记 'internal'(见 APIController::internalOperator 的诚实边界说明)。
+            $this->internalOperator($request),
+            $request->ip(),
         );
 
         return response()->json(['message' => '已熔断。', 'data' => $res]);
@@ -208,9 +212,13 @@ class SkillSupplyController extends APIController
     /**
      * 解除熔断。
      */
-    public function lift(int $skillId): JsonResponse
+    public function lift(Request $request, int $skillId): JsonResponse
     {
-        $ok = app(\Webkul\Shop\Services\Deploy\KillSwitchService::class)->lift($skillId);
+        $ok = app(\Webkul\Shop\Services\Deploy\KillSwitchService::class)->lift(
+            $skillId,
+            $this->internalOperator($request),
+            $request->ip(),
+        );
 
         if (! $ok) {
             return $this->fail(ApiErrorCode::KILL_SWITCH_NOT_ENGAGED, '无生效中的熔断。', 404);

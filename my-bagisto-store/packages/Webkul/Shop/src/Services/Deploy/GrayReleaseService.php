@@ -2,16 +2,23 @@
 
 namespace Webkul\Shop\Services\Deploy;
 
+use Illuminate\Support\Facades\Log;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\GrayRelease;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\RollbackRecord;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Ops\OperationLogger;
 
 /**
  * 灰度发布 / 自动回滚 —— v3.4 步骤 8(计划 §4.10)。
  *
  * 策略:白名单 DID / 比例分批(5%→20%→50%→100%)。
  * 自动回滚阈值:安装成功率 < 90% 暂停;< 80% 回滚(向已更新设备推回滚任务)。
+ *
+ * ── P10 · 灰度与回滚要留痕 ──
+ *   回滚是"拿着别人的设备执行动作",发起(人工)与触发(自动)都要能追。故
+ *   `rollback_record` 落 `created_by`/`ip`,并把动作写进 `operation_log`。
  */
 class GrayReleaseService
 {
@@ -19,26 +26,57 @@ class GrayReleaseService
 
     protected const ROLLBACK_THRESHOLD = 80.0; // 成功率 < 80% 回滚
 
+    /** 自动触发时的操作者标识 —— 与"人按的"区分开,复盘时才看得出发起方。 */
+    public const ACTOR_AUTO = 'system';
+
     /**
      * 灰度的终态 —— 到了这里就不该再有"回滚"这个动作(已经 rollback 过,或本来就没问题)。
      * `aborted` = 已回滚;`done` = 灰度正常走完、全量发布 —— 两者都不该被重复 abort。
      */
     protected const TERMINAL_STATUSES = ['aborted', 'done'];
 
-    public function __construct(protected DeployTaskService $deploy) {}
+    public function __construct(
+        protected DeployTaskService $deploy,
+        protected OperationLogger $oplog,
+    ) {}
 
     /**
      * 开启一次灰度。
+     *
+     * @param  string|null  $createdBy  调用方自报的身份;null → 'internal'
+     * @param  string|null  $ip         来源 IP
      */
-    public function start(int $skillVersionId, array $strategy = ['percent' => 5], ?string $batchNo = null): GrayRelease
-    {
-        return GrayRelease::create([
+    public function start(
+        int $skillVersionId,
+        array $strategy = ['percent' => 5],
+        ?string $batchNo = null,
+        ?string $createdBy = null,
+        ?string $ip = null,
+    ): GrayRelease {
+        $release = GrayRelease::create([
             'skill_version_id' => $skillVersionId,
             'strategy'         => $strategy,
             'batch_no'         => $batchNo ?: 'G'.now()->format('ymdHis'),
             'status'           => 'releasing',
             'metrics'          => ['installs' => 0, 'successes' => 0, 'failures' => 0],
         ]);
+
+        $this->oplog->log(
+            OperationLog::ACTOR_ADMIN,
+            null,
+            'gray_release.start',
+            'skill_version',
+            $skillVersionId,
+            [
+                'operator'   => $createdBy ?: 'internal',
+                'release_id' => $release->id,
+                'strategy'   => $strategy,
+                'batch_no'   => $release->batch_no,
+            ],
+            $ip
+        );
+
+        return $release;
     }
 
     /**
@@ -76,7 +114,12 @@ class GrayReleaseService
         if ($rate < self::ROLLBACK_THRESHOLD) {
             // affected 走 abort() 的返回值:已经是终态时它返回 0(守卫命中),
             // 此时**没有**新回滚发生 —— 若这里不带上这个数,响应会谎报"刚回滚了"。
-            $affected = $this->abort($release, "成功率 {$rate}% < ".self::ROLLBACK_THRESHOLD.'%,自动回滚');
+            $affected = $this->abort(
+                $release,
+                "成功率 {$rate}% < ".self::ROLLBACK_THRESHOLD.'%,自动回滚',
+                'auto',
+                self::ACTOR_AUTO,
+            );
 
             return [
                 'action'           => 'rollback',
@@ -114,10 +157,17 @@ class GrayReleaseService
     /**
      * 中止并回滚:向"已更新该版本"的设备推回滚任务。
      *
-     * @param  string  $trigger  auto(阈值命中)/ manual(人工)
+     * @param  string  $trigger    auto(阈值命中)/ manual(人工)
+     * @param  string|null  $createdBy  发起者:auto 路径传 ACTOR_AUTO;人工路径传调用方自报身份
+     * @param  string|null  $ip         来源 IP
      */
-    public function abort(GrayRelease $release, string $reason = '', string $trigger = 'auto'): int
-    {
+    public function abort(
+        GrayRelease $release,
+        string $reason = '',
+        string $trigger = 'auto',
+        ?string $createdBy = null,
+        ?string $ip = null,
+    ): int {
         // 幂等守卫:灰度已是终态就直接返回,**不再回滚一次**。
         //
         // 重复调用是**常态**而不是异常:
@@ -171,12 +221,41 @@ class GrayReleaseService
             $count++;
         }
 
+        $actor = $createdBy ?: ($trigger === 'auto' ? self::ACTOR_AUTO : 'internal');
+
         RollbackRecord::create([
             'gray_release_id'  => $release->id,
             'trigger'          => $trigger,
             'reason'           => $reason,
             'affected_devices' => $count,
+            'created_by'       => $actor,
+            'ip'               => $ip,
             'created_at'       => now(),
+        ]);
+
+        // 审计:回滚是"拿别人的设备执行动作",必须能回答"谁、从哪、什么时候、影响几台"。
+        $this->oplog->log(
+            OperationLog::ACTOR_ADMIN,
+            null,
+            'gray_release.abort',
+            'gray_release',
+            $release->id,
+            [
+                'operator'         => $actor,
+                'trigger'          => $trigger,
+                'reason'           => $reason,
+                'affected_devices' => $count,
+                'skill_version_id' => $release->skill_version_id,
+            ],
+            $ip
+        );
+
+        Log::warning('灰度回滚已执行', [
+            'release_id'       => $release->id,
+            'skill_version_id' => $release->skill_version_id,
+            'trigger'          => $trigger,
+            'actor'            => $actor,
+            'affected_devices' => $count,
         ]);
 
         return $count;
