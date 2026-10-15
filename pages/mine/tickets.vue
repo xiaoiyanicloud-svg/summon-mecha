@@ -1,13 +1,7 @@
 <template>
 	<view class="ticket-page">
 		<!-- 导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack">
-				<text class="back-icon">‹</text>
-			</view>
-			<text class="nav-title">我的工单</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar title="我的工单" />
 
 		<view v-if="!loggedIn" class="empty-state">
 			<text class="empty-icon">🔒</text>
@@ -54,11 +48,12 @@
 import { ticketApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
+import NavBar from '@/components/NavBar.vue'
 
 const STATUS_TEXT = { open: '待处理', pending: '待处理', processing: '处理中', resolved: '已解决', closed: '已关闭' }
 
 export default {
-	components: { StateView },
+	components: { StateView, NavBar },
 	data() {
 		return {
 			loggedIn: false,
@@ -118,11 +113,6 @@ export default {
 
 <style scoped>
 .ticket-page { min-height: 100vh; background: #f5f6f8; }
-.nav-bar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 24rpx; background: #fff; }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 48rpx; color: #333; }
-.nav-title { font-size: 32rpx; font-weight: 600; color: #222; }
-.nav-placeholder { width: 60rpx; }
 .scroll-content { height: calc(100vh - 88rpx); }
 .card { background: #fff; border-radius: 16rpx; margin: 20rpx 24rpx; padding: 28rpx; }
 .nt-title { font-size: 28rpx; font-weight: 600; color: #222; }

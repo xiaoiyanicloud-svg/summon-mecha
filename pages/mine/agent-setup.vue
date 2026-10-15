@@ -1,10 +1,6 @@
 <template>
 	<view class="setup-page">
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack"><text class="back-icon">‹</text></view>
-			<text class="nav-title">安装 Agent</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar title="安装 Agent" />
 
 		<scroll-view class="scroll-content" scroll-y="true" show-scrollbar="false">
 			<view class="intro">
@@ -79,11 +75,13 @@
 
 <script>
 import { deviceApi } from '@/utils/api'
+import NavBar from '@/components/NavBar.vue'
 
 // 训练手册:每家机器人的安装步骤(来自用户教程)。
 // ⚠ 「安装 Agent」那一步的命令**由平台签发**(内含一次性 token),不在这里硬编码 ——
 //   所以该步用 `install: true` 标记,渲染时取①里生成的真实命令。
 export default {
+	components: { NavBar },
 	data() {
 		return {
 			picked: 'unitree',
@@ -131,7 +129,6 @@ export default {
 		current() { return this.setups[this.picked] },
 	},
 	methods: {
-		goBack() { uni.navigateBack({ delta: 1 }) },
 		goDevices() { uni.redirectTo({ url: '/pages/mine/devices' }) },
 		async loadDevices() {
 			this.deviceLoadError = ''
@@ -175,11 +172,6 @@ export default {
 
 <style scoped>
 .setup-page { min-height: 100vh; background: #f5f6f8; }
-.nav-bar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 24rpx; background: #fff; }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 48rpx; color: #333; }
-.nav-title { font-size: 32rpx; font-weight: 600; color: #222; }
-.nav-placeholder { width: 60rpx; }
 .scroll-content { height: calc(100vh - 88rpx); }
 .intro { padding: 24rpx; }
 .intro-text { font-size: 26rpx; color: #666; line-height: 1.6; }

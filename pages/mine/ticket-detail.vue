@@ -1,13 +1,7 @@
 <template>
 	<view class="detail-page">
 		<!-- 导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack">
-				<text class="back-icon">‹</text>
-			</view>
-			<text class="nav-title">工单详情</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar title="工单详情" />
 
 		<scroll-view class="scroll-content" scroll-y="true" show-scrollbar="false">
 			<!-- 三态:加载中 / 故障(带重试) / 取不到这张工单。故障不伪装成「工单不存在」 -->
@@ -61,6 +55,7 @@
 <script>
 import { ticketApi } from '@/utils/api'
 import StateView from '@/components/StateView.vue'
+import NavBar from '@/components/NavBar.vue'
 
 /**
  * 工单详情 —— 消费既有接口 GET /api/tickets/{id}（shop.api.tickets.show）。
@@ -75,7 +70,7 @@ const CATEGORY_TEXT = { delivery: '下发/安装', skill: '技能功能', device
 const ACTOR_TEXT = { customer: '我', admin: '平台客服', developer: '开发者', system: '系统' }
 
 export default {
-	components: { StateView },
+	components: { StateView, NavBar },
 	data() {
 		return {
 			id: null,
@@ -91,7 +86,6 @@ export default {
 		else this.loading = false // 没带 id = 链接坏了,走「工单不存在」空态
 	},
 	methods: {
-		goBack() { uni.navigateBack({ delta: 1 }) },
 		statusText(s) { return STATUS_TEXT[s] || s },
 		categoryText(c) { return CATEGORY_TEXT[c] || (c || '其他') },
 		actorText(a) { return ACTOR_TEXT[a] || a || '系统' },
@@ -118,11 +112,6 @@ export default {
 
 <style scoped>
 .detail-page { min-height: 100vh; background: #f5f6f8; }
-.nav-bar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 24rpx; background: #fff; }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 48rpx; color: #333; }
-.nav-title { font-size: 32rpx; font-weight: 600; color: #222; }
-.nav-placeholder { width: 60rpx; }
 .scroll-content { height: calc(100vh - 88rpx); }
 .card { background: #fff; border-radius: 16rpx; margin: 20rpx 24rpx; padding: 28rpx; }
 

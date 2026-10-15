@@ -1,15 +1,11 @@
 <template>
   <view class="detail-page">
     <!-- ===== 顶部导航 ===== -->
-    <view class="nav-bar">
-      <view class="nav-left" @tap="goBack">
-        <text class="back-icon">‹</text>
-        <text class="back-text">返回</text>
-      </view>
-      <view class="nav-right">
+    <nav-bar variant="frost" back-text="返回">
+      <template #right>
         <text class="nav-share">↗</text>
-      </view>
-    </view>
+      </template>
+    </nav-bar>
 
     <scroll-view class="scroll-content" scroll-y :show-scrollbar="false">
       <!-- ===== 1. Hero：价值主张 + 信任 + 关键数字 ===== -->
@@ -149,6 +145,7 @@
 
 <script>
 import { SCHEME_DB, DEFAULT_SCHEME } from '@/components/jiqi/changjing-data.js'
+import NavBar from '@/components/NavBar.vue'
 // ================================================================
 // 机器人库（供各方案推荐引用）
 // ================================================================
@@ -170,6 +167,7 @@ const ROBOTS = [
 // ================================================================
 
 export default {
+  components: { NavBar },
   data() {
     return {
       robots: ROBOTS,
@@ -215,9 +213,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
     onConsult() {
       uni.showModal({
         title: '免费定制方案',
@@ -249,35 +244,6 @@ page {
 }
 
 /* ===== 顶部导航 ===== */
-.nav-bar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 20rpx;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10rpx);
-  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.04);
-}
-.nav-left, .nav-right {
-  width: 76rpx;
-  display: flex;
-  align-items: center;
-}
-.nav-back { font-size: 44rpx; font-weight: 300; color: #0F172A; }
-.back-text { font-size: 26rpx; color: #334155; margin-left: 4rpx; }
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #0F172A;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.nav-right { justify-content: flex-end; }
 .nav-share { font-size: 34rpx; color: #2563EB; }
 
 /* ===== 滚动区 ===== */

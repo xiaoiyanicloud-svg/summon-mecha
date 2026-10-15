@@ -1,15 +1,11 @@
 <template>
 	<view class="page-container">
 		<!-- 1. 顶部导航 -->
-		<view class="nav-bar">
-			<view class="nav-left" @click="goBack">
-				<text class="icon-back">‹</text>
-			</view>
-			<view class="nav-title">技能详情</view>
-			<view class="nav-right" @click="handleShare">
-				<text class="icon-share">↗</text>
-			</view>
-		</view>
+		<nav-bar title="技能详情" variant="sticky">
+			<template #right>
+				<view class="icon-share" @click="handleShare">↗</view>
+			</template>
+		</nav-bar>
 
 		<!-- 2. 轮播图 -->
 		<swiper class="swiper" indicator-dots autoplay interval="3000" circular>
@@ -106,7 +102,9 @@
 
 <script>
 	import { productApi, skillApi, deviceApi, reviewApi } from '@/utils/api'
+	import NavBar from '@/components/NavBar.vue'
 	export default {
+		components: { NavBar },
 		data() {
 			return {
 				currentTab: 0,
@@ -339,9 +337,6 @@
 				}
 				return db[id] || null
 			},
-			goBack() {
-				uni.navigateBack()
-			},
 			handleShare() {
 				uni.showToast({ title: '分享功能开发中', icon: 'none' })
 			},
@@ -379,31 +374,7 @@
 		background-color: #f8f8f8;
 		padding-bottom: 100px;
 	}
-	.nav-bar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 12px 20px;
-		background-color: #ffffff;
-		position: sticky;
-		top: 0;
-		z-index: 10;
-		border-bottom: 1px solid #eee;
-	}
-	.nav-left, .nav-right {
-		width: 60px;
-		font-size: 28px;
-		color: #333;
-	}
-	.nav-left { text-align: left; }
-	.nav-right { text-align: right; }
-	.nav-title {
-		font-size: 18px;
-		font-weight: 600;
-		color: #222;
-	}
-	.icon-back { font-weight: 300; }
-	.icon-share { font-weight: 300; }
+	.icon-share { font-weight: 300; font-size: 28px; color: #333; }
 	.swiper {
 		width: 100%;
 		height: 400rpx;

@@ -1,13 +1,7 @@
 <template>
 	<view class="notify-page">
 		<!-- 导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack">
-				<text class="back-icon">‹</text>
-			</view>
-			<text class="nav-title">消息通知</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar title="消息通知" />
 
 		<view v-if="!loggedIn" class="empty-state">
 			<text class="empty-icon">🔒</text>
@@ -51,9 +45,10 @@
 import { notificationApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
+import NavBar from '@/components/NavBar.vue'
 
 export default {
-	components: { StateView },
+	components: { StateView, NavBar },
 	data() {
 		return {
 			loggedIn: false,
@@ -99,11 +94,6 @@ export default {
 
 <style scoped>
 .notify-page { min-height: 100vh; background: #f5f6f8; }
-.nav-bar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 24rpx; background: #fff; }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 48rpx; color: #333; }
-.nav-title { font-size: 32rpx; font-weight: 600; color: #222; }
-.nav-placeholder { width: 60rpx; }
 .scroll-content { height: calc(100vh - 88rpx); }
 .card { background: #fff; border-radius: 16rpx; margin: 20rpx 24rpx; padding: 28rpx; }
 .notify-card.unread { border-left: 6rpx solid #ff6b00; }

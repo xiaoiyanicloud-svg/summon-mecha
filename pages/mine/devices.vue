@@ -1,13 +1,7 @@
 <template>
 	<view class="devices-page">
 		<!-- 导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack">
-				<text class="back-icon">‹</text>
-			</view>
-			<text class="nav-title">我的设备</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar title="我的设备" variant="safe" />
 
 		<!-- 未登录:项目没有独立登录页,登录在「我的」页面内完成 -->
 		<view v-if="!loggedIn" class="empty-state">
@@ -130,6 +124,7 @@
 import { deviceApi, skillApi, catalogApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
+import NavBar from '@/components/NavBar.vue'
 
 const STATUS_TEXT = {
 	granted: '已开通',
@@ -140,7 +135,7 @@ const STATUS_TEXT = {
 }
 
 export default {
-	components: { StateView },
+	components: { StateView, NavBar },
 	data() {
 		return {
 			loggedIn: false,
@@ -295,18 +290,6 @@ export default {
 	display: flex;
 	flex-direction: column;
 }
-.nav-bar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: calc(80rpx + env(safe-area-inset-top)) 30rpx 20rpx;
-	background: #FFFFFF;
-}
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 48rpx; color: #1A2A3A; line-height: 1; }
-.nav-title { font-size: 34rpx; font-weight: 600; color: #1A2A3A; }
-.nav-placeholder { width: 60rpx; }
-
 .scroll-content { flex: 1; height: 0; padding: 20rpx 30rpx; box-sizing: border-box; }
 
 .card {

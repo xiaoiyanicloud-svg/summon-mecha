@@ -1,13 +1,7 @@
 <template>
 	<view class="order-detail-page">
 		<!-- 导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack">
-				<text class="back-icon">‹</text>
-			</view>
-			<text class="nav-title">订单详情</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar title="订单详情" variant="pill" />
 
 		<!-- 加载 / 故障:加载中转圈;拉取失败走「取不到」,而不是伪造成「订单不存在」 -->
 		<state-view
@@ -153,8 +147,9 @@
 import { orderApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
+import NavBar from '@/components/NavBar.vue'
 	export default {
-		components: { StateView },
+		components: { StateView, NavBar },
 		data() {
 			return {
 				order: null,
@@ -364,40 +359,6 @@ import StateView from '@/components/StateView.vue'
 		flex-direction: column;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 	}
-	.nav-bar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 88rpx 24rpx 20rpx;
-		background-color: #ffffff;
-		border-bottom: 1rpx solid #f1f5f9;
-		flex-shrink: 0;
-	}
-	.nav-back {
-		width: 72rpx;
-		height: 72rpx;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		border-radius: 50%;
-		background: #f8faff;
-	}
-	.nav-back:active { background: #e8edf3; }
-	.back-icon {
-		font-size: 48rpx;
-		font-weight: 300;
-		color: #1e293b;
-	}
-	.nav-title {
-		flex: 1;
-		text-align: center;
-		font-size: 34rpx;
-		font-weight: 600;
-		color: #1e293b;
-	}
-	.nav-placeholder { width: 72rpx; }
-
 	.loading-state {
 		flex: 1;
 		display: flex;

@@ -1,13 +1,7 @@
 <template>
 	<view class="legal-page">
 		<!-- 导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack">
-				<text class="back-icon">‹</text>
-			</view>
-			<text class="nav-title">{{ docTitle }}</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar :title="docTitle" />
 
 		<scroll-view class="scroll-content" scroll-y="true" show-scrollbar="false">
 			<view v-if="loading" class="empty-state">
@@ -46,6 +40,7 @@
 
 <script>
 import { cmsApi } from '@/utils/api'
+import NavBar from '@/components/NavBar.vue'
 
 /**
  * 隐私政策 / 用户协议 —— 同一套壳子,靠 `?doc=` 区分。
@@ -66,6 +61,7 @@ const DOCS = {
 }
 
 export default {
+	components: { NavBar },
 	data() {
 		return {
 			slug: '',
@@ -81,8 +77,6 @@ export default {
 		this.refresh()
 	},
 	methods: {
-		goBack() { uni.navigateBack({ delta: 1 }) },
-
 		async refresh() {
 			// 白名单外的 slug:不发请求。请求了也只是把 404 变成一次无意义的往返。
 			if (!DOCS[this.slug]) {
@@ -118,11 +112,6 @@ export default {
 
 <style scoped>
 .legal-page { min-height: 100vh; background: #f5f6f8; }
-.nav-bar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 24rpx; background: #fff; }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 48rpx; color: #333; }
-.nav-title { font-size: 32rpx; font-weight: 600; color: #222; }
-.nav-placeholder { width: 60rpx; }
 .scroll-content { height: calc(100vh - 88rpx); }
 .card { background: #fff; border-radius: 16rpx; margin: 20rpx 24rpx; padding: 28rpx; }
 .legal-body { font-size: 28rpx; color: #333; line-height: 1.7; }

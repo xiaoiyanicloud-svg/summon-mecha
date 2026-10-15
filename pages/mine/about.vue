@@ -1,13 +1,7 @@
 <template>
 	<view class="about-page">
 		<!-- 导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-back" @click="goBack">
-				<text class="back-icon">‹</text>
-			</view>
-			<text class="nav-title">关于</text>
-			<view class="nav-placeholder"></view>
-		</view>
+		<nav-bar title="关于" />
 
 		<scroll-view class="scroll-content" scroll-y="true" show-scrollbar="false">
 			<!-- 品牌 -->
@@ -66,6 +60,7 @@
 
 <script>
 import { APP_VERSION } from '@/utils/config'
+import NavBar from '@/components/NavBar.vue'
 
 /**
  * 关于页。
@@ -82,6 +77,7 @@ import { APP_VERSION } from '@/utils/config'
  * 不再各写一份(两处各写一遍必然分叉)。
  */
 export default {
+	components: { NavBar },
 	data() {
 		return {
 			appName: '召唤机甲',
@@ -89,7 +85,6 @@ export default {
 		}
 	},
 	methods: {
-		goBack() { uni.navigateBack({ delta: 1 }) },
 		goLegal(doc) { uni.navigateTo({ url: `/pages/mine/legal?doc=${doc}` }) },
 		goCustomerService() { uni.navigateTo({ url: '/pages/mine/tickets' }) },
 	},
@@ -98,11 +93,6 @@ export default {
 
 <style scoped>
 .about-page { min-height: 100vh; background: #f5f6f8; }
-.nav-bar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 24rpx; background: #fff; }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 48rpx; color: #333; }
-.nav-title { font-size: 32rpx; font-weight: 600; color: #222; }
-.nav-placeholder { width: 60rpx; }
 .scroll-content { height: calc(100vh - 88rpx); }
 
 .brand { display: flex; flex-direction: column; align-items: center; padding: 60rpx 40rpx 40rpx; }
