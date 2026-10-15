@@ -22,6 +22,16 @@
 					<text class="t-cat">类别：{{ categoryText(ticket.category) }}</text>
 				</view>
 
+				<!-- B-10:若本工单已被定性为事故,如实告诉用户(此前投诉完就没下文) -->
+				<view v-if="ticket.incident" class="card incident-card">
+					<view class="ic-head">
+						<text class="ic-title">已转为事故处理</text>
+						<text class="ic-badge">{{ ticket.incident.severity_label }} · {{ ticket.incident.status_label }}</text>
+					</view>
+					<text class="ic-no">事故编号：{{ ticket.incident.incident_no }}</text>
+					<text class="ic-tip">平台已把本工单定性为事故并进入追溯流程，处理进展见下方记录。</text>
+				</view>
+
 				<text class="sec-title">处理记录</text>
 
 				<view v-if="!messages.length" class="empty-state small">
@@ -121,6 +131,14 @@ export default {
 .t-status { font-size: 24rpx; color: #ff6b00; }
 .t-status.resolved, .t-status.closed { color: #52c41a; }
 .t-cat { display: block; margin-top: 14rpx; font-size: 24rpx; color: #999; }
+
+/* 已转为事故(B-10) */
+.incident-card { background: #fff8f0; border: 1rpx solid #ffd9b8; }
+.ic-head { display: flex; align-items: center; justify-content: space-between; }
+.ic-title { font-size: 28rpx; font-weight: 600; color: #d46b08; }
+.ic-badge { font-size: 22rpx; color: #d46b08; background: #fff1e0; border-radius: 20rpx; padding: 4rpx 16rpx; }
+.ic-no { display: block; margin-top: 14rpx; font-size: 26rpx; color: #333; }
+.ic-tip { display: block; margin-top: 8rpx; font-size: 23rpx; color: #999; line-height: 1.5; }
 
 .sec-title { display: block; margin: 28rpx 24rpx 0; font-size: 28rpx; font-weight: 600; color: #333; }
 

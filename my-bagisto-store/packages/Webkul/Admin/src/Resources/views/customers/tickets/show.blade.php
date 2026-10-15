@@ -97,6 +97,51 @@
                 ⚠ 直接改成「已解决」而不回复，用户只会看到状态变了、没有任何说明。
                 结单前请先在左边回一句。
             </p>
+
+            {{-- B-10:工单 ↔ 事故互链 --}}
+            <div class="mt-4 border-t pt-4 dark:border-gray-800">
+                <p class="mb-2 font-semibold text-gray-800 dark:text-white">事故定性</p>
+
+                @if ($incident)
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        <p>本工单已定性为事故：<b>{{ $incident->incident_no }}</b>
+                            （{{ $incident->severityLabel() }} · {{ $incident->statusLabel() }}）</p>
+                        <a href="{{ route('admin.customers.incidents.show', $incident->id) }}"
+                           class="mt-1 inline-block text-blue-600 hover:underline">查看事故记录 →</a>
+                    </div>
+                @elseif (! $ticket->customer_id)
+                    <p class="text-xs text-gray-500">该工单没有关联客户，无法定性为事故。</p>
+                @else
+                    <form method="POST" action="{{ route('admin.customers.tickets.escalate', $ticket->id) }}" class="space-y-2">
+                        @csrf
+                        <div>
+                            <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">严重程度</label>
+                            <select name="severity" class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
+                                @foreach (\Webkul\Shop\Models\Incident::SEVERITY_LABELS as $val => $label)
+                                    <option value="{{ $val }}" @selected($val === 'minor')>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">事故描述（必填）</label>
+                            <textarea name="description" rows="3" required
+                                      class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800"
+                                      placeholder="定性依据 / 经过"></textarea>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">发生时间（可选，默认现在）</label>
+                            <input type="datetime-local" name="occurred_at"
+                                   class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
+                        </div>
+                        <button type="submit" class="rounded bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700">
+                            定性为事故
+                        </button>
+                        <p class="text-xs text-gray-500">
+                            会走与用户报案同一个事故服务（证据链在定性这一刻固化），并在本工单留一条系统留言。
+                        </p>
+                    </form>
+                @endif
+            </div>
         </div>
     </div>
 </x-admin::layouts>

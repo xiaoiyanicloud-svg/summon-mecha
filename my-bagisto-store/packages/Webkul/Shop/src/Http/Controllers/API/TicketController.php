@@ -236,12 +236,27 @@ class TicketController extends APIController
             return $this->fail(ApiErrorCode::TICKET_NOT_FOUND, '工单不存在。', 404);
         }
 
+        // B-10:若这张工单已被定性为事故,如实告诉当事人(编号 + 状态)。
+        //   此前工单与事故零互引,用户"投诉完就没下文",看不到平台把它转成了事故处理。
+        $incident = \Webkul\Shop\Models\Incident::query()
+            ->where('ticket_id', $ticket->id)
+            ->orderByDesc('id')
+            ->first();
+
         return response()->json([
             'data' => [
                 'id'        => $ticket->id,
                 'ticket_no' => $ticket->ticket_no,
                 'category'  => $ticket->category,
                 'status'    => $ticket->status,
+                'incident'  => $incident ? [
+                    'id'             => $incident->id,
+                    'incident_no'    => $incident->incident_no,
+                    'severity'       => $incident->severity,
+                    'severity_label' => $incident->severityLabel(),
+                    'status'         => $incident->status,
+                    'status_label'   => $incident->statusLabel(),
+                ] : null,
                 'messages'  => $ticket->messages->map(fn (TicketMessage $m) => [
                     'id'          => $m->id,
                     'actor_type'  => $m->actor_type,

@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * 客服工单 —— v3.4 步骤 7（用户↔平台↔开发者）。
@@ -87,6 +88,17 @@ class SupportTicket extends Model
     public function messages()
     {
         return $this->hasMany(TicketMessage::class, 'ticket_id')->orderBy('id');
+    }
+
+    /**
+     * 由本工单定性而来的事故(B-10)。
+     *
+     * 反向关系 —— 真相存在 `incident.ticket_id`,这里反查,**不双写**。
+     * 一张工单最多对应一起事故(定性一次);重复定性的入口在服务端被挡(见 SupportTicketController::escalate)。
+     */
+    public function incident(): HasOne
+    {
+        return $this->hasOne(Incident::class, 'ticket_id')->orderByDesc('id');
     }
 
     public function statusLabel(): string

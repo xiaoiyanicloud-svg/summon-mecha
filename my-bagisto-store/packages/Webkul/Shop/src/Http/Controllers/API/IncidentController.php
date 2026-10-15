@@ -66,6 +66,8 @@ class IncidentController extends APIController
             'description' => 'required|string|max:2000',
             'skill_id'    => 'nullable|integer',
             'device_id'   => 'nullable|integer',
+            // B-10:可由已有工单升级而来 —— 只收工单 id(若给)。归属在后面校验。
+            'ticket_id'   => 'nullable|integer',
             // A9 · 事故只能发生在"过去或现在"。此前仅 `date`,允许未来时间 ——
             //   一个未来的 occurred_at 会让 SLA 计时(SLA 从 occurred_at 起算)整体错乱。
             'occurred_at' => 'nullable|date|before_or_equal:now',
@@ -103,9 +105,23 @@ class IncidentController extends APIController
             }
         }
 
+        // B-10:工单必须属于当前客户 —— 与 device_id 同源。
+        //   否则任何人都能把一起事故挂到别人的工单上(污染定责链)。
+        if (! empty($payload['ticket_id'])) {
+            $ownedTicket = DB::table('support_ticket')
+                ->where('id', $payload['ticket_id'])
+                ->where('customer_id', $customer->id)
+                ->exists();
+
+            if (! $ownedTicket) {
+                return $this->fail(ApiErrorCode::TICKET_NOT_FOUND, '该工单不在你的工单列表中。', 422);
+            }
+        }
+
         $incident = $this->incidents->report($customer->id, [
             'skill_id'    => $payload['skill_id'] ?? null,
             'device_id'   => $payload['device_id'] ?? null,
+            'ticket_id'   => $payload['ticket_id'] ?? null,
             'severity'    => $payload['severity'],
             'occurred_at' => $payload['occurred_at'] ?? null,
             'description' => $payload['description'],
@@ -167,6 +183,8 @@ class IncidentController extends APIController
             'data' => [
                 'id'             => $incident->id,
                 'incident_no'    => $incident->incident_no,
+                // B-10:来源工单(若由工单定性而来)
+                'ticket_id'      => $incident->ticket_id,
                 'severity'       => $incident->severity,
                 'severity_label' => $incident->severityLabel(),
                 'status'         => $incident->status,

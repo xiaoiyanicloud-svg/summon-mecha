@@ -39,12 +39,15 @@ class IncidentService
      * 上报一起事故。
      *
      * @param  array{skill_id?:int|null, device_id?:int|null, severity:string, occurred_at?:string|null,
-     *               description:string, evidence?:array|null}  $data
+     *               description:string, evidence?:array|null, ticket_id?:int|null}  $data
      */
     public function report(int $customerId, array $data): Incident
     {
         $productId = isset($data['skill_id']) ? (int) $data['skill_id'] : null;
         $deviceId = isset($data['device_id']) ? (int) $data['device_id'] : null;
+        // B-10:若由某张工单定性而来,记下肇事工单(可空)。归属校验在调用方(控制器)做 ——
+        //   服务层不做鉴权,只落事实(与 traceFor 一样)。
+        $ticketId = isset($data['ticket_id']) ? (int) $data['ticket_id'] : null;
 
         $trace = $this->traceFor($customerId, $productId, $deviceId);
 
@@ -62,6 +65,8 @@ class IncidentService
                     'skill_version_id'  => $trace['resolved']['skill_version_id'] ?? null,
                     'device_binding_id' => $trace['resolved']['device_binding_id'] ?? null,
                     'customer_id'       => $customerId,
+                    // B-10:肇事工单(可空)
+                    'ticket_id'         => $ticketId,
                     'severity'          => $data['severity'],
                     'occurred_at'       => $data['occurred_at'] ?? now(),
                     'description'       => $data['description'],

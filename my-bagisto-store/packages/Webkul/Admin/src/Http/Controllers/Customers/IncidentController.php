@@ -57,7 +57,10 @@ class IncidentController extends Controller
             ? \Webkul\Product\Models\ProductProxy::modelClass()::find($incident->skill_id)?->name
             : null;
 
-        return view('admin::customers.incidents.show', compact('incident', 'customer', 'productName'));
+        // B-10:来源工单(若本起事故由某张用户工单定性而来)—— 给出互链
+        $ticket = $incident->ticket;
+
+        return view('admin::customers.incidents.show', compact('incident', 'customer', 'productName', 'ticket'));
     }
 
     /**

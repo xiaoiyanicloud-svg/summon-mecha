@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * 事故上报与追溯（v3.4 计划 §4.19）。
@@ -111,6 +112,8 @@ class Incident extends Model
         'skill_version_id',
         'device_binding_id',
         'customer_id',
+        // B-10:本起事故若由某张工单定性而来,记下肇事工单(可空)
+        'ticket_id',
         'severity',
         'occurred_at',
         'description',
@@ -128,6 +131,7 @@ class Incident extends Model
         'skill_version_id'  => 'integer',
         'device_binding_id' => 'integer',
         'customer_id'       => 'integer',
+        'ticket_id'         => 'integer',
         'occurred_at'       => 'datetime',
         'resolved_at'       => 'datetime',
         'evidence'          => 'array',
@@ -147,6 +151,17 @@ class Incident extends Model
     public function handlingEntries()
     {
         return $this->hasMany(IncidentHandlingLog::class, 'incident_id')->orderBy('id');
+    }
+
+    /**
+     * 肇事工单(B-10)—— 本起事故若由某张用户工单定性而来,这里是它。
+     *
+     * 关系是"事故 → 工单"单向存储(`incident.ticket_id`);反方向(工单是否已定性事故)
+     * 用 `SupportTicket::incident()` 反查,**不双写**,避免两处链接漂移。
+     */
+    public function ticket(): BelongsTo
+    {
+        return $this->belongsTo(SupportTicket::class, 'ticket_id');
     }
 
     public function severityLabel(): string

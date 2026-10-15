@@ -5,9 +5,11 @@ namespace Webkul\Admin\Http\Controllers\Customers;
 use Illuminate\Http\Request;
 use Webkul\Admin\DataGrids\Customers\SupportTicketDataGrid;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\Shop\Models\Incident;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SupportTicket;
 use Webkul\Shop\Models\TicketMessage;
+use Webkul\Shop\Services\Incident\IncidentService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 
 /**
@@ -25,7 +27,10 @@ use Webkul\Shop\Services\Ops\OperationLogger;
  */
 class SupportTicketController extends Controller
 {
-    public function __construct(protected OperationLogger $oplog) {}
+    public function __construct(
+        protected OperationLogger $oplog,
+        protected IncidentService $incidents,
+    ) {}
 
     public function index()
     {
@@ -50,7 +55,85 @@ class SupportTicketController extends Controller
             ? \Webkul\Customer\Models\Customer::find($ticket->customer_id)
             : null;
 
-        return view('admin::customers.tickets.show', compact('ticket', 'customer'));
+        // B-10:若本工单已被定性为事故,在详情页给出互链
+        $incident = $ticket->incident;
+
+        return view('admin::customers.tickets.show', compact('ticket', 'customer', 'incident'));
+    }
+
+    /**
+     * 定性为事故(B-10)。
+     *
+     * 计划要求的链:**用户投诉 → 工单 → 若定性事故 → incident**。这里是把工单
+     * 升级成一起事故的**唯一入口**:走与用户报案同一个 `IncidentService::report()`
+     * (证据链照样在"这一刻"固化),并在 incident 侧记下肇事工单 `ticket_id`。
+     *
+     * 两条硬约束:
+     *   ① 工单必须**有归属客户** —— `incident.customer_id` 是 NOT NULL,无主工单装不下;
+     *   ② **不能重复定性** —— 一张工单最多对应一起事故,否则追溯链会分叉。
+     */
+    public function escalate(Request $request, int $id)
+    {
+        $ticket = SupportTicket::findOrFail($id);
+
+        if (! $ticket->customer_id) {
+            session()->flash('error', '该工单没有关联客户,无法定性为事故。');
+
+            return redirect()->route('admin.customers.tickets.show', $id);
+        }
+
+        if ($ticket->incident) {
+            session()->flash('error', '该工单已被定性为事故('.$ticket->incident->incident_no.'),不能重复定性。');
+
+            return redirect()->route('admin.customers.tickets.show', $id);
+        }
+
+        $data = $request->validate([
+            'severity'    => 'required|in:'.implode(',', array_keys(Incident::SEVERITY_LABELS)),
+            'description' => 'required|string|max:2000',
+            'occurred_at' => 'nullable|date|before_or_equal:now',
+        ]);
+
+        $incident = $this->incidents->report($ticket->customer_id, [
+            // 工单上的 skill_id 就是商品 id(开单时校验过归属),直接带过去
+            'skill_id'    => $ticket->skill_id,
+            'severity'    => $data['severity'],
+            'occurred_at' => $data['occurred_at'] ?? null,
+            'description' => $data['description'],
+            'ticket_id'   => $ticket->id,
+        ]);
+
+        // 工单侧留一条系统留言 + 状态推进 —— 否则工单看上去"没人管"了
+        TicketMessage::create([
+            'ticket_id'  => $ticket->id,
+            'actor_type' => 'system',
+            'actor_id'   => null,
+            'content'    => "本工单已定性为事故，转事故追溯流程处理（事故编号 {$incident->incident_no}）。后续处理进展见事故记录。",
+            'created_at' => now(),
+        ]);
+
+        if ($ticket->status === SupportTicket::STATUS_OPEN) {
+            $ticket->status = SupportTicket::STATUS_PROCESSING;
+        }
+        $ticket->save();
+
+        $this->oplog->log(
+            OperationLog::ACTOR_ADMIN,
+            auth()->guard('admin')->user()->id,
+            'ticket.escalate_incident',
+            'support_ticket',
+            $ticket->id,
+            [
+                'incident_id' => $incident->id,
+                'incident_no' => $incident->incident_no,
+                'severity'    => $incident->severity,
+            ],
+            $request->ip()
+        );
+
+        session()->flash('success', "已定性为事故 {$incident->incident_no}。");
+
+        return redirect()->route('admin.customers.incidents.show', $incident->id);
     }
 
     /**

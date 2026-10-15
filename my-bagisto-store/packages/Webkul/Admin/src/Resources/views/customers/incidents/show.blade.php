@@ -15,6 +15,15 @@
                 　发生: {{ $incident->occurred_at?->format('Y-m-d H:i') ?? '—' }}
                 　上报: {{ $incident->created_at?->format('Y-m-d H:i') }}
             </p>
+            {{-- B-10:来源工单(本起事故由用户投诉升级而来时) --}}
+            @if ($ticket)
+                <p class="mt-1 text-xs">
+                    来源工单:
+                    <a href="{{ route('admin.customers.tickets.show', $ticket->id) }}" class="text-blue-600 hover:underline">
+                        {{ $ticket->ticket_no }}
+                    </a>
+                </p>
+            @endif
         </div>
         <a href="{{ route('admin.customers.incidents.index') }}">
             <span class="cursor-pointer text-sm text-blue-600 hover:underline">← 回事故列表</span>

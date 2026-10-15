@@ -157,6 +157,8 @@ Route::prefix('customers')->group(function () {
 
         Route::post('{id}/reply', 'reply')->whereNumber('id')->name('admin.customers.tickets.reply');
         Route::post('{id}/status', 'updateStatus')->whereNumber('id')->name('admin.customers.tickets.status');
+        // B-10:定性为事故 —— 工单 → incident 的唯一入口
+        Route::post('{id}/escalate', 'escalate')->whereNumber('id')->name('admin.customers.tickets.escalate');
     });
 
     /**
