@@ -41,6 +41,28 @@ function getGuestKey() {
   return key
 }
 
+/**
+ * 从响应体里抽出**对用户有用**的错误提示。
+ *
+ * ⚠ 此前只取 `body.message || body.error`,后端 422 的**字段级错误**(`errors`)
+ *   被整块丢掉 —— 用户提交表单失败时只能看到笼统的 `The given data was invalid.`,
+ *   根本不知道是哪个字段错了。这里把第一条字段错误并进提示。
+ *
+ * 兼容两种后端外壳:`{message, errors}` 与统一信封 `{code, message, errors}`。
+ */
+function extractErrorMessage(body, statusCode) {
+  const base = (body && (body.message || body.error)) || `请求失败(${statusCode})`
+  const fields = body && body.errors
+  if (fields && typeof fields === 'object') {
+    // errors 形如 { field: ['消息', ...] },取第一个非空的
+    const first = Object.keys(fields)
+      .map(k => (Array.isArray(fields[k]) ? fields[k][0] : fields[k]))
+      .find(v => typeof v === 'string' && v.trim())
+    if (first && first !== base) return `${base}：${first}`
+  }
+  return base
+}
+
 function request({ url, method = 'GET', data = {}, header = {}, loading = false, loadingText = '加载中...', timeout = REQUEST_TIMEOUT }) {
   const headers = {
     'Content-Type': 'application/json',
@@ -98,17 +120,29 @@ function request({ url, method = 'GET', data = {}, header = {}, loading = false,
         }
 
         const body = res.data || {}
-        const message = body.message || body.error || `请求失败(${res.statusCode})`
+        const message = extractErrorMessage(body, res.statusCode)
         reject({
           ...res,
           statusCode: res.statusCode,
+          // 带上后端错误码与字段级错误,便于调用方做精确处理(此前只剩笼统 message)
+          code: body.code,
+          errors: body.errors,
           message,
         })
       },
       fail: (err) => {
+        // ⚠ uni.request 的 fail 把**超时**与**连不上**混在同一个回调里。
+        //   errMsg 含 `timeout` 的是超时(服务慢/网络卡),否则是网络层失败(连不上)。
+        //   二者对用户的含义完全不同,不能都写成「网络异常」—— 超时被误诊会把人
+        //   引向"后端没启动"的错误方向。
+        const raw = (err && err.errMsg) || ''
+        const isTimeout = /timeout/i.test(raw)
         reject({
           ...err,
-          message: '网络异常，请确认后端服务已启动',
+          isTimeout,
+          message: isTimeout
+            ? '请求超时，请稍后重试'
+            : '网络异常，请确认后端服务已启动',
         })
       },
       complete: () => {
