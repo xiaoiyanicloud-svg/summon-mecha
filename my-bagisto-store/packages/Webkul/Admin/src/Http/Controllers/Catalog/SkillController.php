@@ -10,9 +10,11 @@ use Webkul\Category\Models\Category;
 use Webkul\Product\Models\ProductProxy;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillImport;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillAudit\ReviewGate;
+use Webkul\Shop\Services\SkillImport\SkillImportService;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 
 /**
@@ -320,6 +322,165 @@ class SkillController extends Controller
         session()->flash('success', '版本已删除。');
 
         return redirect()->route('admin.catalog.skills.edit', $productId);
+    }
+
+    /**
+     * 导入台(B-17)—— 他平台 / 动捕技能包导入。
+     *
+     * 背景:导入器(宇树 UniStore / 通用动捕 BVH·SMPLX)早已实现,注册表
+     * `config/skill_importers.php` 也早就绪 —— 但**唯一入口是 internal.key 的
+     * `POST /api/skill-supply/import`**,运营得敲 curl 才能用,开发者门户也没有入口。
+     * 这个页面把同一条导入能力搬到后台界面上(逻辑仍在 `SkillImportService`,不新造)。
+     *
+     * ⚠ 只做**平台端自营导入**:按 `CLAUDE.md`,当前阶段是「自营 + 客户需求」两方,
+     *   第三方开发者(供给方)目前为 0 —— 不为不存在的供给方建开发者端导入 UI。
+     */
+    public function importForm()
+    {
+        // 给个可直接用的样例,省得运营对着空框猜字段(与两个导入器的识别特征一致)
+        $exampleUnitree = json_encode([
+            'name'             => '演示:宇树迎宾应用',
+            'version'          => '1.0.0',
+            'base_image'       => 'registry.example.com/g1-reception:1.0',
+            'startup_commands' => ['./run.sh'],
+            'permissions'      => ['camera', 'audio'],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $exampleMotion = json_encode([
+            'name'          => '演示:导入舞蹈动作',
+            'version'       => '1.0.0',
+            'motion_format' => 'bvh',
+            'fps'           => 60,
+            'risk_level'    => 'low',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $products = $this->skillProducts();
+        $imports = SkillImport::query()->orderByDesc('id')->limit(20)->get();
+
+        return view('admin::catalog.skills.import', compact('products', 'imports', 'exampleUnitree', 'exampleMotion'));
+    }
+
+    /**
+     * 执行导入(平台端)。
+     *
+     * 走 `SkillImportService`(与 internal.key 通道**同一份实现**):
+     * 选导入器 → 中立 manifest → 写 `skill_import` 留痕。
+     * 若指定了目标商品,再落一条**草稿版本**承载这份清单(搬运 manifest 的
+     * risk_level / delivery_channels / pricing_mode —— 但不自动发布,发布仍走闸门)。
+     */
+    public function import(\Illuminate\Http\Request $request, SkillImportService $importer)
+    {
+        $data = $request->validate([
+            'metadata'   => ['required', 'string', 'max:65535'],
+            'source_ref' => ['nullable', 'string', 'max:255'],
+            'product_id' => ['nullable', 'integer'],
+        ]);
+
+        $input = json_decode((string) $data['metadata'], true);
+
+        if (! is_array($input) || $input === []) {
+            session()->flash('error', '元数据必须是合法的 JSON 对象(不能是数组或空)。');
+
+            return redirect()->route('admin.catalog.skills.import')->withInput();
+        }
+
+        $result = $importer->import($input, null, $data['source_ref'] ?? null);
+
+        if (! $result['ok']) {
+            session()->flash('error', $result['message']);
+
+            return redirect()->route('admin.catalog.skills.import')->withInput();
+        }
+
+        $manifest = $result['manifest'];
+        $createdVersion = null;
+
+        // 可选:把清单落成一条草稿版本(不自动发布 —— 发布有闸门)
+        if (! empty($data['product_id'])) {
+            $productId = (int) $data['product_id'];
+
+            // 只允许挂到 skill 分类下的商品 —— 否则会给普通商品凭空建技能版本
+            if (! $this->skillProducts()->pluck('id')->contains($productId)) {
+                session()->flash('error', "商品 #{$productId} 不在「技能」分类下,不能挂技能版本。导入留痕已保留。");
+
+                return redirect()->route('admin.catalog.skills.import')->withInput();
+            }
+
+            $versionNo = (string) ($manifest['version'] ?? '1.0.0');
+
+            if (SkillVersion::where('product_id', $productId)->where('version', $versionNo)->exists()) {
+                session()->flash('error', "该商品下已有版本 {$versionNo},未重复创建。导入留痕已保留,可改用别的版本号。");
+
+                return redirect()->route('admin.catalog.skills.import')->withInput();
+            }
+
+            $createdVersion = SkillVersion::create([
+                'product_id'        => $productId,
+                'version'           => $versionNo,
+                'channel'           => 'stable',
+                'status'            => SkillVersion::STATUS_DRAFT,
+                'license_mode'      => 'per_device',
+                // D3:买断制 —— pricing_mode 表达,不用 license_mode
+                'pricing_mode'      => $manifest['pricing_mode'] ?? 'buyout',
+                // 导入器可能**自动收紧**通道(如宇树容器只跑宇树),优先用锁定值
+                'delivery_channels' => ! empty($result['locked_channels'])
+                    ? $result['locked_channels']
+                    : ($manifest['delivery_channels'] ?? null),
+                'risk_level'        => $manifest['safety']['risk_level'] ?? null,
+                'manifest_schema'   => $manifest['schema'] ?? null,
+                'imported_meta'     => $manifest,
+            ]);
+
+            $this->oplog->log(
+                OperationLog::ACTOR_ADMIN,
+                auth()->guard('admin')->user()->id,
+                'skill.import',
+                'skill_version',
+                $createdVersion->id,
+                [
+                    'product_id' => $productId,
+                    'version'    => $versionNo,
+                    'import_id'  => $result['import_id'],
+                    'locked_models'   => $result['locked_models'],
+                    'locked_channels' => $result['locked_channels'],
+                ],
+                $request->ip()
+            );
+        }
+
+        // 结果预览经 flash 带到页面(重定向 + 一次展示,符合既有的 session flash 模式)
+        session()->flash('import_result', [
+            'manifest'        => $manifest,
+            'warnings'        => $result['warnings'],
+            'locked_models'   => $result['locked_models'],
+            'locked_channels' => $result['locked_channels'],
+            'import_id'       => $result['import_id'],
+            'created_version' => $createdVersion?->id,
+            'created_product' => $createdVersion?->product_id,
+        ]);
+
+        session()->flash('success', $createdVersion
+            ? "导入成功,已为商品 #{$createdVersion->product_id} 创建草稿版本 {$createdVersion->version}。"
+            : '导入成功,已映射为中立清单(未挂商品,仅留痕)。');
+
+        return redirect()->route('admin.catalog.skills.import');
+    }
+
+    /**
+     * skill 分类下的商品(导入台的商品下拉)。
+     */
+    protected function skillProducts()
+    {
+        $categoryId = $this->skillCategoryId();
+
+        $productIds = $categoryId
+            ? DB::table('product_categories')->where('category_id', $categoryId)->pluck('product_id')->all()
+            : [];
+
+        return ProductProxy::modelClass()::query()
+            ->whereIn('products.id', $productIds ?: [0])
+            ->orderBy('id')
+            ->get();
     }
 
     /**

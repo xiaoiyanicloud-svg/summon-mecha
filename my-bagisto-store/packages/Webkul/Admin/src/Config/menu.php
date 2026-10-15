@@ -126,6 +126,12 @@ return [
         'sort'       => 4,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.skill-import',
+        'name'       => '技能导入',
+        'route'      => 'admin.catalog.skills.import',
+        'sort'       => 4,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.skill-reviews',
         'name'       => '审核台',
         'route'      => 'admin.catalog.skill-reviews.index',

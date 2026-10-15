@@ -135,6 +135,11 @@ Route::prefix('catalog')->group(function () {
      */
     Route::controller(SkillController::class)->prefix('skills')->group(function () {
         Route::get('', 'index')->name('admin.catalog.skills.index');
+
+        // B-17 · 导入台(他平台/动捕技能包 → 中立清单)。静态段放 {productId} 之前
+        Route::get('import', 'importForm')->name('admin.catalog.skills.import');
+        Route::post('import', 'import')->name('admin.catalog.skills.import.store');
+
         Route::get('edit/{productId}', 'edit')->name('admin.catalog.skills.edit');
 
         Route::post('{productId}/versions', 'storeVersion')->name('admin.catalog.skills.versions.store');

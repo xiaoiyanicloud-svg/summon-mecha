@@ -216,6 +216,12 @@ return [
         'route' => 'admin.catalog.skills.index',
         'sort'  => 5,
     ], [
+        // 导入台:他平台/动捕技能包 → 中立清单(B-17)
+        'key'   => 'catalog.skill-import',
+        'name'  => '技能导入',
+        'route' => 'admin.catalog.skills.import',
+        'sort'  => 5,
+    ], [
         // 审核台:技能准入的 L0 / L2 判定(发布闸门在这里落地)
         'key'   => 'catalog.skill-reviews',
         'name'  => '审核台',
