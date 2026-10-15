@@ -4,6 +4,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Validator;
@@ -14,6 +15,16 @@ use Webkul\Shop\Http\Requests\Customer\LoginRequest;
 
 class CustomerController extends APIController
 {
+    /**
+     * X3 · 连续失败达到该次数即锁定(限速之外的慢速撞库防线)。
+     */
+    public const MAX_LOGIN_FAILURES = 5;
+
+    /**
+     * X3 · 锁定与失败计数的存活时长(分钟)。
+     */
+    public const LOGIN_LOCK_MINUTES = 15;
+
     /**
      * Create a new controller instance.
      *
@@ -31,11 +42,33 @@ class CustomerController extends APIController
      */
     public function login(LoginRequest $request)
     {
+        // X3 · 失败计数锁定:限速挡不住"慢速撞库"(每 IP 低频、分散 IP)。
+        // 以 email+IP 为单位累计连续失败,达到阈值即锁定一段时间,不再尝试。
+        $lockKey = 'login:fail:'.sha1(Str::lower((string) $request->input('email')).'|'.$request->ip());
+
+        if (Cache::get($lockKey.':lock')) {
+            return response()->json([
+                'code'    => 'ACCOUNT_LOCKED',
+                'message' => '失败次数过多,账号已临时锁定,请稍后再试。',
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         if (! auth()->guard('customer')->attempt($request->only(['email', 'password']))) {
+            $fails = (int) Cache::get($lockKey, 0) + 1;
+            Cache::put($lockKey, $fails, now()->addMinutes(15));
+
+            if ($fails >= self::MAX_LOGIN_FAILURES) {
+                Cache::put($lockKey.':lock', true, now()->addMinutes(self::LOGIN_LOCK_MINUTES));
+                Cache::forget($lockKey);
+            }
+
             return response()->json([
                 'message' => trans('shop::app.customers.login-form.invalid-credentials'),
             ], Response::HTTP_FORBIDDEN);
         }
+
+        // 登录成功:清掉失败计数
+        Cache::forget($lockKey);
 
         if (! auth()->guard('customer')->user()->status) {
             auth()->guard('customer')->logout();

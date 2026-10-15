@@ -89,32 +89,34 @@ Route::group(['prefix' => 'api'], function () {
     Route::controller(ReviewController::class)->prefix('product/{id}')->group(function () {
         Route::get('reviews', 'index')->name('shop.api.products.reviews.index');
 
-        Route::post('review', 'store')->name('shop.api.products.reviews.store');
+        // X3:公开可匿名提交的写入口,挂 write 档(游客按 IP,30/分)
+        Route::post('review', 'store')->middleware('throttle:write')->name('shop.api.products.reviews.store');
 
         Route::get('reviews/{review_id}/translate', 'translate')->name('shop.api.products.reviews.translate');
     });
 
     // 小召·召唤引擎:意图→场景→机型(确定性规则匹配 v1,后续可平滑升级 LLM)
-    Route::post('summon', [SummonController::class, 'summon'])->name('shop.api.summon');
+    // X3:公开且耗资源的入口统一挂 AI 档限流(按 IP,60/分)
+    Route::post('summon', [SummonController::class, 'summon'])->middleware('throttle:ai')->name('shop.api.summon');
 
     // 小召·召唤引擎 v2(AI 版,Coze Agent 驱动)——独立新增,不影响上面的 rule-v1
-    Route::post('summon-ai', [SummonAiController::class, 'summon'])->name('shop.api.summon-ai');
+    Route::post('summon-ai', [SummonAiController::class, 'summon'])->middleware('throttle:ai')->name('shop.api.summon-ai');
 
     // 小召·召唤引擎 v2 流式版(SSE):边生成边返回,改善 8~20 秒的等待体验
-    Route::post('summon-stream', [SummonAiController::class, 'summonStream'])->name('shop.api.summon-stream');
+    Route::post('summon-stream', [SummonAiController::class, 'summonStream'])->middleware('throttle:ai')->name('shop.api.summon-stream');
 
     // 语音识别:录音上传 → 腾讯云「一句话识别」→ 文字。
     // 两端共用的兜底链路:H5 的唯一路径;小程序优先走微信「同声传译」插件,插件不可用时走这里。
     // 公开路由(不挂 middleware)——语音是游客也能用的入口,与上面的 summon 一致。
     // 密钥未配置时返回 code=ASR_NOT_CONFIGURED,不报错。
-    Route::post('asr', [AsrController::class, 'recognize'])->name('shop.api.asr');
+    Route::post('asr', [AsrController::class, 'recognize'])->middleware('throttle:ai')->name('shop.api.asr');
 
     // 语音合成:AI 回复正文 → 腾讯云「语音合成」→ base64 音频数组,前端顺序播放。
     // 客户端不直连(代理的用意就是不让 AK/SK 进小程序包),超长文本由后端拆段。
     // 公开路由(不挂 middleware),与 asr / summon 一致 —— 朗读是游客也能用的附加功能。
     // 密钥未配置时返回 code=TTS_NOT_CONFIGURED;资源包用尽返回 TTS_FAILED,前端静默跳过。
     // ⚠ 前端可能把它指到**另一个后端进程**(见 utils/config.js 的 TTS_BASE_URL 注释)。
-    Route::post('tts', [TtsController::class, 'synthesize'])->name('shop.api.tts');
+    Route::post('tts', [TtsController::class, 'synthesize'])->middleware('throttle:ai')->name('shop.api.tts');
 
     // 赛事(Event):生态中心「赛事活动」tab + 真实报名(平台级闭环)
     Route::controller(EventController::class)->prefix('events')->group(function () {
@@ -181,7 +183,8 @@ Route::group(['prefix' => 'api'], function () {
     // TOB 统一下单:租/买/配件/技能等直接创建真实后台订单(不依赖购物车/配送/支付配置)
     // api.customer 中间件:带 token 则绑定登录用户(customer_id 正确→前端订单页能按用户拉到);游客也放行
     Route::controller(TobOrderController::class)->prefix('tob-order')->middleware(['api.customer'])->group(function () {
-        Route::post('', 'store')->name('shop.api.tob-order.store');
+        // X3:公开写入口,挂 write 档(带 token 按 customer 计,游客按 IP 计,30/分)
+        Route::post('', 'store')->middleware('throttle:write')->name('shop.api.tob-order.store');
     });
 
     // 游客订单列表(放行,无需登录):返回本机游客单——场景租用游客单也在此通用查询,前端订单页无登录也能显示真实单
@@ -257,15 +260,17 @@ Route::group(['prefix' => 'api'], function () {
 
     /**
      * 支付回调 —— 不挂 customer 鉴权(来自支付网关)。生产须验签 + 幂等。
+     * X3:不挂鉴权的公开写入口,挂 AI 档限流(按 IP),防止被刷。
      */
-    Route::post('callback/payment', [PaymentCallbackController::class, 'handle'])->name('shop.api.callback.payment');
+    Route::post('callback/payment', [PaymentCallbackController::class, 'handle'])->middleware('throttle:ai')->name('shop.api.callback.payment');
 
     /**
      * v3.4 步骤 4 · 售后/退款(虚拟商品政策)。
      */
     Route::controller(AfterSaleController::class)->prefix('after-sale')->middleware(['customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.after-sale.index');
-        Route::post('', 'store')->name('shop.api.after-sale.store');
+        // X3:写入口挂 write 档(按 customer,30/分);同组 GET 不限流,避免翻页被自己限死
+        Route::post('', 'store')->middleware('throttle:write')->name('shop.api.after-sale.store');
     });
 
     /**
@@ -290,7 +295,8 @@ Route::group(['prefix' => 'api'], function () {
      */
     Route::controller(TicketController::class)->prefix('tickets')->middleware(['customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.tickets.index');
-        Route::post('', 'store')->name('shop.api.tickets.store');
+        // X3:写入口挂 write 档(按 customer,30/分);同组 GET 不限流
+        Route::post('', 'store')->middleware('throttle:write')->name('shop.api.tickets.store');
         Route::get('{id}', 'show')->name('shop.api.tickets.show');
     });
 
@@ -302,7 +308,8 @@ Route::group(['prefix' => 'api'], function () {
      */
     Route::controller(IncidentController::class)->prefix('incidents')->middleware(['customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.incidents.index');
-        Route::post('', 'store')->name('shop.api.incidents.store');
+        // X3:写入口挂 write 档(按 customer,30/分);同组 GET 不限流
+        Route::post('', 'store')->middleware('throttle:write')->name('shop.api.incidents.store');
         Route::get('{id}', 'show')->name('shop.api.incidents.show');
     });
 
@@ -408,9 +415,9 @@ Route::group(['prefix' => 'api'], function () {
      * Login routes.
      */
     Route::controller(CustomerController::class)->prefix('customer')->group(function () {
-        Route::post('login', 'login')->name('shop.api.customers.session.create');
+        Route::post('login', 'login')->middleware('throttle:login')->name('shop.api.customers.session.create');
 
-        Route::post('register', 'register')->name('shop.api.customers.register');
+        Route::post('register', 'register')->middleware('throttle:login')->name('shop.api.customers.register');
     });
 
     Route::group(['middleware' => ['customer'], 'prefix' => 'customer'], function () {
