@@ -161,6 +161,17 @@ export const skillCatalogApi = {
   categories: () => http.get('/api/skill-catalog/categories', { loading: false }),
   // type 可选:motion_type / scene / difficulty
   tags: (type) => http.get('/api/skill-catalog/tags', { data: type ? { type } : {}, loading: false }),
+  // B-9 · 筛选面板候选项(机型 / 交付通道 / 风险等级)
+  filters: () => http.get('/api/skill-catalog/filters', { loading: false }),
+  // B-9 · 技能搜索:名称 q + 四个筛选维度(机型/通道/动作类型/风险等级),空值不发送
+  search: (q, filters = {}) => {
+    const data = {}
+    if (q) data.q = q
+    ;['model', 'channel', 'motion', 'risk'].forEach((k) => {
+      if (filters[k]) data[k] = filters[k]
+    })
+    return http.get('/api/skill-catalog/search', { data, loading: false })
+  },
 }
 
 // ==================== 风险告知与留痕(B-5 · 计划 §4.14 / D6) ====================

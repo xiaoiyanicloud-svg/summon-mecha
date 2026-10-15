@@ -22,6 +22,69 @@
           <input class="ss-input" v-model="skillQuery" placeholder="搜索技能（名称/关键词）" confirm-type="search" @confirm="doSkillSearch" />
           <text v-if="skillQuery" class="ss-clear" @click="clearSkillSearch">✕</text>
         </view>
+        <!-- B-9:筛选维度(机型/通道/动作类型/风险等级)—— 服务端筛选 -->
+        <view class="skill-filter">
+          <view class="sf-toggle" @click="showFilters = !showFilters">
+            <text class="sf-toggle-text">筛选</text>
+            <text v-if="activeFilterCount" class="sf-toggle-badge">{{ activeFilterCount }}</text>
+            <text class="sf-toggle-arrow">{{ showFilters ? '▲' : '▼' }}</text>
+            <text v-if="activeFilterCount" class="sf-reset" @click.stop="resetFilters">重置</text>
+          </view>
+          <view v-show="showFilters" class="sf-panel">
+            <view class="sf-group" v-if="filterOptions.models.length">
+              <text class="sf-label">机型</text>
+              <view class="sf-chips">
+                <text class="sf-chip" :class="{ on: !filters.model }" @click="pickFilter('model', '')">全部</text>
+                <text
+                  v-for="m in filterOptions.models"
+                  :key="m.code"
+                  class="sf-chip"
+                  :class="{ on: filters.model === m.code }"
+                  @click="pickFilter('model', m.code)"
+                >{{ m.name }}</text>
+              </view>
+            </view>
+            <view class="sf-group">
+              <text class="sf-label">通道</text>
+              <view class="sf-chips">
+                <text class="sf-chip" :class="{ on: !filters.channel }" @click="pickFilter('channel', '')">全部</text>
+                <text
+                  v-for="c in filterOptions.channels"
+                  :key="c.value"
+                  class="sf-chip"
+                  :class="{ on: filters.channel === c.value }"
+                  @click="pickFilter('channel', c.value)"
+                >{{ c.label }}</text>
+              </view>
+            </view>
+            <view class="sf-group" v-if="filterOptions.motions.length">
+              <text class="sf-label">动作</text>
+              <view class="sf-chips">
+                <text class="sf-chip" :class="{ on: !filters.motion }" @click="pickFilter('motion', '')">全部</text>
+                <text
+                  v-for="t in filterOptions.motions"
+                  :key="t.id"
+                  class="sf-chip"
+                  :class="{ on: filters.motion === t.name }"
+                  @click="pickFilter('motion', t.name)"
+                >{{ t.name }}</text>
+              </view>
+            </view>
+            <view class="sf-group">
+              <text class="sf-label">风险</text>
+              <view class="sf-chips">
+                <text class="sf-chip" :class="{ on: !filters.risk }" @click="pickFilter('risk', '')">全部</text>
+                <text
+                  v-for="r in filterOptions.risks"
+                  :key="r.value"
+                  class="sf-chip"
+                  :class="{ on: filters.risk === r.value }"
+                  @click="pickFilter('risk', r.value)"
+                >{{ r.label }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
         <view class="grid-3col">
           <view class="eco-card skill-card" v-for="item in displayedSkills" :key="item.uid" @click.stop="onSkill(item)">
             <view class="eco-img" :style="{ backgroundColor: item.bg }">
@@ -32,6 +95,9 @@
             <!-- 价格为空或 0 时不显示, 避免真机无价商品出现"¥0" -->
             <text class="eco-price" v-if="item.price && String(item.price) !== '0'">¥{{ item.price }}</text>
           </view>
+        </view>
+        <view v-if="skillSearchActive && !skillSearching && displayedSkills.length === 0" class="skill-empty">
+          <text>没有符合条件的技能</text>
         </view>
         <view class="more-entry" @click="goMoreSkills">
           <text class="more-text">更多技能 →</text>
@@ -199,6 +265,11 @@ export default {
       // v3.4:技能搜索(服务端)—— skillResults 为 null 表示"未搜索,显示全部"
       skillQuery: '',
       skillResults: null,
+      skillSearching: false,
+      // B-9:筛选维度(机型/通道/动作类型/风险等级) —— 服务端筛选
+      showFilters: false,
+      filters: { model: '', channel: '', motion: '', risk: '' },
+      filterOptions: { models: [], channels: [], risks: [], motions: [] },
       accessoryCatalog: [],
       // 赛事:后台 events 表数据(拉取失败保留 mock 兜底);报名弹窗
       showEventReg: false,
@@ -404,7 +475,24 @@ export default {
     // v3.4:搜索中显示搜索结果,否则显示全部(skillResults 为 null = 未搜索)
     displayedSkills() {
       if (this.skillResults === null) return this.skillCards
-      return this.skillResults.map(p => ({ ...p, uid: 's' + p.id }))
+      return this.skillResults.map(p => ({ ...p, uid: 's' + p.id, icon: p.icon || '🤖', bg: p.bg || '#F0F4FA' }))
+    },
+    // B-9:非空筛选维度(送给服务端)
+    activeFilters() {
+      const f = this.filters
+      const out = {}
+      if (f.model) out.model = f.model
+      if (f.channel) out.channel = f.channel
+      if (f.motion) out.motion = f.motion
+      if (f.risk) out.risk = f.risk
+      return out
+    },
+    activeFilterCount() {
+      return Object.keys(this.activeFilters).length
+    },
+    // 有搜索词或任一筛选维度 → 走服务端搜索(否则显示全部)
+    skillSearchActive() {
+      return (this.skillQuery || '').trim() !== '' || this.activeFilterCount > 0
     },
     // 配件皮肤: 后台真实商品 + 静态 mock 共存(mock 仍受分类 chips 筛选, 同样按名称去重)
     accessoryCards() {
@@ -425,6 +513,7 @@ export default {
     this.loadSkill();
     this.loadAccessory();
     this.loadEvents();
+    this.loadFilters();
   },
   methods: {
     switchTab(tab) {
@@ -432,7 +521,7 @@ export default {
         this.currentTab = tab;
         if (tab !== 'event') this.selectedEvent = null;
       }
-      if (tab === 'skill') this.loadSkill();
+      if (tab === 'skill') { this.loadSkill(); this.loadFilters(); }
       if (tab === 'accessory') this.loadAccessory();
     },
     // 富文本图片地址修复(与机器人页一致): 后台描述里的 localhost/相对路径统一重写为 BASE_URL, 图片可加载
@@ -524,20 +613,56 @@ export default {
       uni.setStorageSync('robotTab', 'skill');
       uni.switchTab({ url: '/pages/robot/index' });
     },
-    // v3.4:服务端技能搜索(接 /api/skill-catalog/search)
+    // v3.4:服务端技能搜索(接 /api/skill-catalog/search) + B-9 四筛选维度
     async doSkillSearch() {
       const q = (this.skillQuery || '').trim()
-      if (!q) { this.skillResults = null; return }
+      const f = this.activeFilters
+      // 无搜索词也无筛选 → 回到"显示全部"(不请求)
+      if (!q && Object.keys(f).length === 0) { this.skillResults = null; return }
+      this.skillSearching = true
       try {
-        const res = await skillCatalogApi.search(q)
+        const res = await skillCatalogApi.search(q, f)
         this.skillResults = (res && Array.isArray(res.data)) ? res.data : []
       } catch (e) {
         uni.showToast({ title: (e && e.message) || '搜索失败', icon: 'none' })
+      } finally {
+        this.skillSearching = false
       }
     },
     clearSkillSearch() {
       this.skillQuery = ''
-      this.skillResults = null
+      this.doSkillSearch()
+    },
+    // B-9:筛选候选项(机型/通道/风险走 filters;动作形态走既有 tags 接口)
+    async loadFilters() {
+      if (this._filtersLoaded) return
+      this._filtersLoaded = true
+      try {
+        const [f, motions] = await Promise.all([
+          skillCatalogApi.filters(),
+          skillCatalogApi.tags('motion_type'),
+        ])
+        const d = (f && f.data) || {}
+        this.filterOptions = {
+          models: Array.isArray(d.models) ? d.models : [],
+          channels: Array.isArray(d.channels) ? d.channels : [],
+          risks: Array.isArray(d.risks) ? d.risks : [],
+          motions: (motions && Array.isArray(motions.data)) ? motions.data : [],
+        }
+      } catch (e) {
+        // 候选项拉不到 → 筛选面板留空(不编假选项),搜索本身仍可用
+        console.warn('[EcoCenter] 筛选候选项加载失败', e)
+        this._filtersLoaded = false
+      }
+    },
+    // B-9:点选一个筛选维度(再点一次取消)→ 立即重新搜索
+    pickFilter(key, value) {
+      this.filters = { ...this.filters, [key]: this.filters[key] === value ? '' : value }
+      this.doSkillSearch()
+    },
+    resetFilters() {
+      this.filters = { model: '', channel: '', motion: '', risk: '' }
+      this.doSkillSearch()
     },
     goMoreSkills() {
       uni.setStorageSync('robotTab', 'skill');
@@ -992,4 +1117,19 @@ export default {
 .ss-icon { font-size: 30rpx; margin-right: 12rpx; }
 .ss-input { flex: 1; font-size: 28rpx; }
 .ss-clear { font-size: 28rpx; color: #9CA3AF; padding: 0 8rpx; }
+
+/* ===== 技能筛选(B-9) ===== */
+.skill-filter { margin-bottom: 8rpx; }
+.sf-toggle { display: flex; align-items: center; padding: 10rpx 4rpx; }
+.sf-toggle-text { font-size: 24rpx; color: #165DFF; font-weight: 600; }
+.sf-toggle-badge { margin-left: 8rpx; min-width: 30rpx; height: 30rpx; line-height: 30rpx; padding: 0 8rpx; border-radius: 15rpx; background: #165DFF; color: #fff; font-size: 20rpx; text-align: center; }
+.sf-toggle-arrow { margin-left: 10rpx; font-size: 20rpx; color: #9CA3AF; }
+.sf-reset { margin-left: auto; font-size: 24rpx; color: #9CA3AF; }
+.sf-panel { background: #F8FAFC; border: 1px solid #EEF2F6; border-radius: 16rpx; padding: 12rpx 16rpx; margin-bottom: 12rpx; }
+.sf-group { display: flex; align-items: flex-start; padding: 8rpx 0; }
+.sf-label { width: 66rpx; flex-shrink: 0; font-size: 22rpx; color: #6B7280; line-height: 44rpx; }
+.sf-chips { flex: 1; display: flex; flex-wrap: wrap; }
+.sf-chip { padding: 6rpx 20rpx; margin: 0 12rpx 12rpx 0; font-size: 22rpx; color: #6B7280; background: #fff; border: 1px solid #E5E7EB; border-radius: 30rpx; }
+.sf-chip.on { background: #165DFF; color: #fff; border-color: #165DFF; }
+.skill-empty { text-align: center; color: #9CA3AF; font-size: 24rpx; padding: 40rpx 0; }
 </style>

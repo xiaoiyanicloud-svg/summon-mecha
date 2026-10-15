@@ -313,6 +313,8 @@ Route::group(['prefix' => 'api'], function () {
     Route::controller(SkillCatalogController::class)->prefix('skill-catalog')->group(function () {
         Route::get('categories', 'categories')->name('shop.api.skill-catalog.categories');
         Route::get('tags', 'tags')->name('shop.api.skill-catalog.tags');
+        // B-9 · 筛选面板候选项(机型/通道/风险等级)
+        Route::get('filters', 'filters')->name('shop.api.skill-catalog.filters');
         Route::get('search', 'search')->name('shop.api.skill-catalog.search');
     });
 

@@ -3,11 +3,23 @@
 namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\SkillCategory;
 use Webkul\Shop\Models\SkillTag;
 
 /**
- * 技能类目/标签 —— 公开读取(v3.4 步骤 6)。
+ * 技能类目/标签/筛选 —— 公开读取(v3.4 步骤 6/7)。
+ *
+ * 三件事:
+ *   - `categories` / `tags`:类目与标签字典(标签按 type 分栏:motion_type/scene/difficulty);
+ *   - `filters`:技能市场筛选面板的候选项(机型/通道/风险等级);
+ *   - `search`:技能搜索 —— **支持四个筛选维度**(机型/通道/动作类型/风险等级,B-9)。
+ *
+ * ⚠ 四个筛选维度里,机型/通道/风险等级落在 `skill_versions`(已发布版本)上,
+ *   动作类型落在 `skill_tag`(type=motion_type)+ `skill_tag_pivot` 上。
+ *   三者的语义与 `CompatibilityService` / `RiskDisclosureService` **同一口径**,
+ *   不在这里另立一套判据(否则"能筛到"和"能装上"会互相打架)。
  */
 class SkillCatalogController extends APIController
 {
@@ -33,7 +45,7 @@ class SkillCatalogController extends APIController
     /**
      * 标签列表(可按 type 过滤:motion_type/scene/difficulty)。
      */
-    public function tags(\Illuminate\Http\Request $request): JsonResponse
+    public function tags(Request $request): JsonResponse
     {
         $q = SkillTag::query()->orderBy('sort_order');
 
@@ -51,14 +63,63 @@ class SkillCatalogController extends APIController
     }
 
     /**
-     * 技能搜索(v3.4 步骤 7)。
+     * 筛选面板候选项(B-9)。
      *
-     * 只搜 `skill` 分类下的商品,按 name 模糊匹配。返回精简列表(id/name/price)。
-     * 用 product_flat 直查(避免 locale/channel 重复),按 product_id 去重。
+     * 返回技能市场「筛选」行要用的三组选项:机型 / 交付通道 / 风险等级。
+     * 动作类型("动作形态"标签)走既有的 `tags?type=motion_type` —— 不在这里重复下发。
+     *
+     * ⚠ 只给**真实存在**的选项,不编占位项:
+     *   - 机型库为空 → models 返回空数组,前端不展示机型筛选(不假装有机型可选);
+     *   - 通道只列 P0 两个真实通道(agent/manual);厂商云(vendor:{code})是 P1,未就绪则不发。
      */
-    public function search(\Illuminate\Http\Request $request): JsonResponse
+    public function filters(): JsonResponse
     {
-        $q = trim((string) $request->input('q', ''));
+        $models = DeviceModel::query()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['model_code', 'model_name', 'brand']);
+
+        return response()->json([
+            'data' => [
+                'models' => $models->map(fn (DeviceModel $m) => [
+                    'code'  => $m->model_code,
+                    'name'  => $m->model_name,
+                    'brand' => $m->brand,
+                ])->values(),
+                'channels' => [
+                    ['value' => 'agent',  'label' => '自动下发'],
+                    ['value' => 'manual', 'label' => '人工安装'],
+                ],
+                'risks' => [
+                    ['value' => 'low',    'label' => '低风险'],
+                    ['value' => 'medium', 'label' => '中风险'],
+                    ['value' => 'high',   'label' => '高风险'],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * 技能搜索(v3.4 步骤 7;筛选维度 B-9)。
+     *
+     * 只搜 `skill` 分类下的商品。参数:
+     *   - `q`       名称模糊匹配(name LIKE)
+     *   - `model`   机型 code(device_model.model_code)—— 技能已发布版本声明的交付通道
+     *               与该机型可用通道**有交集**即命中(与 CompatibilityService 同一判据)
+     *   - `channel` 交付通道(agent / manual)—— 技能声明的通道含它
+     *   - `motion`  动作形态(skill_tag.type=motion_type 的 name)
+     *   - `risk`    风险等级(low/medium/high)
+     *
+     * 返回精简列表(id/name/price/special_price)。用 product_flat 直查
+     * (避免 locale/channel 重复),按 product_id 去重。
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $q       = trim((string) $request->input('q', ''));
+        $model   = trim((string) $request->input('model', ''));
+        $channel = trim((string) $request->input('channel', ''));
+        $motion  = trim((string) $request->input('motion', ''));
+        $risk    = trim((string) $request->input('risk', ''));
 
         // skill 分类 id(取分类翻译里 slug=skill 的 category_id)
         $categoryId = \DB::table('category_translations')->where('slug', 'skill')->value('category_id');
@@ -81,6 +142,16 @@ class SkillCatalogController extends APIController
             $query->where('name', 'like', '%'.$escaped.'%');
         }
 
+        // 机型 / 通道 / 风险等级 —— 都约束在**已发布版本**上
+        if ($risk !== '' || $channel !== '' || $model !== '') {
+            $query->whereIn('product_id', $this->versionConstrainedProductIds($risk, $channel, $model));
+        }
+
+        // 动作形态 —— 标签(type=motion_type)命中其一即可
+        if ($motion !== '') {
+            $query->whereIn('product_id', $this->motionTagProductIds($motion));
+        }
+
         $rows = $query->orderByDesc('product_id')->limit(40)->get(['product_id', 'name', 'price', 'special_price', 'url_key']);
 
         // 去重(同商品多语言行)
@@ -99,6 +170,79 @@ class SkillCatalogController extends APIController
             ];
         }
 
-        return response()->json(['data' => $data, 'query' => $q]);
+        return response()->json([
+            'data'    => $data,
+            'query'   => $q,
+            'filters' => array_filter([
+                'model'   => $model !== '' ? $model : null,
+                'channel' => $channel !== '' ? $channel : null,
+                'motion'  => $motion !== '' ? $motion : null,
+                'risk'    => $risk !== '' ? $risk : null,
+            ]),
+        ]);
+    }
+
+    /**
+     * 命中的商品 id 子查询:已发布版本同时满足 风险等级 / 通道 / 机型。
+     */
+    protected function versionConstrainedProductIds(string $risk, string $channel, string $model)
+    {
+        $sub = \DB::table('skill_versions')->select('product_id')->where('status', 'published');
+
+        if ($risk !== '') {
+            $sub->where('risk_level', $risk);
+        }
+
+        if ($channel !== '') {
+            $this->whereDeclaresChannel($sub, $channel);
+        }
+
+        if ($model !== '') {
+            // 机型可用通道(未知机型降级为仅 manual —— 与 CompatibilityService 一致)
+            $declared = DeviceModel::query()->where('model_code', $model)->value('comm_channels');
+            $modelChannels = is_array($declared) && $declared ? $declared : ['manual'];
+
+            $sub->where(function ($inner) use ($modelChannels) {
+                foreach (array_values($modelChannels) as $i => $ch) {
+                    $this->whereDeclaresChannel($inner, (string) $ch, $i > 0);
+                }
+            });
+        }
+
+        return $sub;
+    }
+
+    /**
+     * 命中的商品 id 子查询:带指定动作形态标签。
+     */
+    protected function motionTagProductIds(string $motionName)
+    {
+        return \DB::table('skill_tag_pivot')
+            ->select('skill_id')
+            ->whereIn('tag_id', function ($sub) use ($motionName) {
+                $sub->select('id')->from('skill_tag')
+                    ->where('type', SkillTag::TYPE_MOTION)
+                    ->where('name', $motionName);
+            });
+    }
+
+    /**
+     * 给查询加一条「该版本声明含通道 $channel」的条件。
+     *
+     * ⚠ `delivery_channels` 为 NULL 的旧版本视为 `['manual']` —— 与
+     *   `CompatibilityService` 的缺省口径一致,否则"能筛到"和"能装上"会互相打架。
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query
+     */
+    protected function whereDeclaresChannel($query, string $channel, bool $or = false): void
+    {
+        $query->where(function ($w) use ($channel) {
+            if ($channel === 'manual') {
+                $w->whereNull('delivery_channels')
+                    ->orWhereJsonContains('delivery_channels', 'manual');
+            } else {
+                $w->whereJsonContains('delivery_channels', $channel);
+            }
+        }, null, null, $or ? 'or' : 'and');
     }
 }
