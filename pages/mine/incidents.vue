@@ -82,13 +82,17 @@
 			<!-- 我的上报记录 -->
 			<text class="list-title">我的上报记录</text>
 
-			<view v-if="loading" class="empty-state"><text class="empty-text">加载中…</text></view>
-
-			<view v-else-if="!list.length" class="empty-state small">
-				<text class="empty-text">还没有上报记录</text>
-			</view>
-
-			<view v-else>
+			<!-- 三态:加载中 / 故障(带重试) / 真·还没有上报记录。故障不再伪装成「还没有」 -->
+			<state-view
+				:loading="loading"
+				:error="loadError"
+				:empty="!list.length"
+				compact
+				empty-icon=""
+				empty-text="还没有上报记录"
+				btn-color="#ff6b00"
+				@retry="refresh"
+			>
 				<view v-for="it in list" :key="it.id" class="card incident-item">
 					<view class="ii-head">
 						<text class="ii-no">{{ it.incident_no }}</text>
@@ -99,7 +103,7 @@
 						<text class="ii-time">{{ it.created_at }}</text>
 					</view>
 				</view>
-			</view>
+			</state-view>
 
 			<view style="height: 60rpx;"></view>
 		</scroll-view>
@@ -109,6 +113,7 @@
 <script>
 import { incidentApi, deviceApi, skillApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
+import StateView from '@/components/StateView.vue'
 
 // 与后端 Incident::SEVERITY_LABELS 对齐
 const SEVERITIES = [
@@ -119,10 +124,12 @@ const SEVERITIES = [
 ]
 
 export default {
+	components: { StateView },
 	data() {
 		return {
 			loggedIn: false,
 			loading: true,
+			loadError: '',
 			submitting: false,
 			severities: SEVERITIES,
 			form: { severity: '', description: '' },
@@ -175,18 +182,21 @@ export default {
 
 		async refresh() {
 			this.loading = true
-			try {
-				const [inc, dev, sk] = await Promise.all([
-					incidentApi.list().catch(() => ({ data: [] })),
-					deviceApi.list().catch(() => ({ data: [] })),
-					skillApi.mine().catch(() => ({ data: [] })),
-				])
-				this.list = (inc && Array.isArray(inc.data)) ? inc.data : []
-				this.devices = (dev && Array.isArray(dev.data)) ? dev.data : []
-				this.skills = (sk && Array.isArray(sk.data)) ? sk.data : []
-			} finally {
-				this.loading = false
-			}
+			this.loadError = ''
+			// 主列表(上报记录)失败 → 置错误标记,由 StateView 的错误态承载(带重试)。
+			// 设备/技能只服务于下方两个「可选项」下拉,拉不到不阻断页面,但留 warn 不静默。
+			const [inc, dev, sk] = await Promise.all([
+				incidentApi.list().catch(e => {
+					this.loadError = (e && e.message) || '加载失败'
+					return null
+				}),
+				deviceApi.list().catch(e => { console.warn('[incidents] 设备下拉加载失败', e); return null }),
+				skillApi.mine().catch(e => { console.warn('[incidents] 技能下拉加载失败', e); return null }),
+			])
+			this.list = (inc && Array.isArray(inc.data)) ? inc.data : []
+			this.devices = (dev && Array.isArray(dev.data)) ? dev.data : []
+			this.skills = (sk && Array.isArray(sk.data)) ? sk.data : []
+			this.loading = false
 		},
 
 		async submit() {

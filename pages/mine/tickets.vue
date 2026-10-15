@@ -23,14 +23,16 @@
 				<view class="nt-btn" @click="submit">{{ submitting ? '提交中…' : '提交' }}</view>
 			</view>
 
-			<view v-if="loading" class="empty-state"><text class="empty-text">加载中…</text></view>
-
-			<view v-else-if="!list.length" class="empty-state">
-				<text class="empty-icon">🛠️</text>
-				<text class="empty-text">暂无工单</text>
-			</view>
-
-			<view v-else>
+			<!-- 三态:加载中 / 故障(带重试) / 真·暂无工单。故障不再伪装成「暂无工单」 -->
+			<state-view
+				:loading="loading"
+				:error="loadError"
+				:empty="!list.length"
+				empty-icon="🛠️"
+				empty-text="暂无工单"
+				btn-color="#ff6b00"
+				@retry="refresh"
+			>
 				<view v-for="t in list" :key="t.id" class="card ticket-item">
 					<view class="ti-head">
 						<text class="ti-no">{{ t.ticket_no }}</text>
@@ -38,7 +40,7 @@
 					</view>
 					<text class="ti-time">{{ t.created_at }}</text>
 				</view>
-			</view>
+			</state-view>
 
 			<view style="height: 60rpx;"></view>
 		</scroll-view>
@@ -48,14 +50,17 @@
 <script>
 import { ticketApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
+import StateView from '@/components/StateView.vue'
 
 const STATUS_TEXT = { open: '待处理', pending: '待处理', processing: '处理中', resolved: '已解决', closed: '已关闭' }
 
 export default {
+	components: { StateView },
 	data() {
 		return {
 			loggedIn: false,
 			loading: true,
+			loadError: '',
 			submitting: false,
 			content: '',
 			list: [],
@@ -71,9 +76,15 @@ export default {
 		statusText(s) { return STATUS_TEXT[s] || s },
 		async refresh() {
 			this.loading = true
+			this.loadError = ''
 			try {
-				const res = await ticketApi.list().catch(() => ({ data: [] }))
+				const res = await ticketApi.list()
 				this.list = (res && Array.isArray(res.data)) ? res.data : []
+			} catch (e) {
+				// ⚠ 故障 ≠「暂无工单」:置错误标记交给 StateView 的错误态(带重试),
+				//   而不是把空数组塞进列表 —— 那会让 500/断网 看起来像「你没有工单」。
+				this.loadError = (e && e.message) || '加载失败'
+				this.list = []
 			} finally {
 				this.loading = false
 			}

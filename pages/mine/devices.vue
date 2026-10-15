@@ -49,14 +49,15 @@
 			</view>
 
 			<!-- 设备列表 -->
-			<view v-if="loading" class="empty-state"><text class="empty-text">加载中…</text></view>
-
-			<view v-else-if="!devices.length" class="empty-state">
-				<text class="empty-icon">🔧</text>
-				<text class="empty-text">还没有登记任何设备</text>
-			</view>
-
-			<view v-else>
+			<!-- 三态:加载中 / 故障(带重试) / 真·还没有登记设备。故障不再伪装成「还没有设备」 -->
+			<state-view
+				:loading="loading"
+				:error="loadError"
+				:empty="!devices.length"
+				empty-icon="🔧"
+				empty-text="还没有登记任何设备"
+				@retry="refresh"
+			>
 				<view class="card device-card" v-for="d in devices" :key="d.id">
 					<view class="device-head">
 						<view class="device-info">
@@ -103,7 +104,7 @@
 						</view>
 					</view>
 				</view>
-			</view>
+			</state-view>
 
 			<view style="height: 60rpx;"></view>
 		</scroll-view>
@@ -128,6 +129,7 @@
 <script>
 import { deviceApi, skillApi, catalogApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
+import StateView from '@/components/StateView.vue'
 
 const STATUS_TEXT = {
 	granted: '已开通',
@@ -138,10 +140,12 @@ const STATUS_TEXT = {
 }
 
 export default {
+	components: { StateView },
 	data() {
 		return {
 			loggedIn: false,
 			loading: true,
+			loadError: '',
 			saving: false,
 			devices: [],
 			skills: [],
@@ -181,6 +185,7 @@ export default {
 		},
 		async refresh() {
 			this.loading = true
+			this.loadError = ''
 			await Promise.all([this.loadDevices(), this.loadSkills(), this.loadModels()])
 			this.loading = false
 		},
@@ -189,6 +194,8 @@ export default {
 				const res = await deviceApi.list()
 				this.devices = (res && Array.isArray(res.data)) ? res.data : []
 			} catch (e) {
+				// ⚠ 故障 ≠「还没有登记设备」:置错误标记交给 StateView 的错误态(带重试)
+				this.loadError = (e && e.message) || '加载失败'
 				this.devices = []
 			}
 		},
@@ -197,6 +204,8 @@ export default {
 				const res = await skillApi.mine()
 				this.skills = (res && Array.isArray(res.data)) ? res.data : []
 			} catch (e) {
+				// 技能只影响「待指派」区块,拉不到不阻断设备列表 —— 留 warn 不静默
+				console.warn('[devices] 技能授权加载失败', e)
 				this.skills = []
 			}
 		},
@@ -216,7 +225,8 @@ export default {
 				})
 				this.modelOptions = options
 			} catch (e) {
-				/* 目录拉不到不影响登记,机型是可选项 */
+				// 目录拉不到不影响登记,机型是可选项 —— 但留 warn,别静默
+				console.warn('[devices] 机型目录加载失败', e)
 			}
 		},
 		openModelPicker() {

@@ -187,10 +187,14 @@
             </view>
             <view class="scroll-bottom-placeholder" v-if="filteredRentList.length > 0"></view>
           </view>
-          <view class="empty-state" v-if="filteredRentList.length === 0">
+          <view class="empty-state" v-if="filteredRentList.length === 0 && !catalogLoading && !catalogError">
             <text class="empty-icon">📭</text>
             <text class="empty-text">没有找到匹配的机器人</text>
           </view>
+          <state-view
+            v-else-if="filteredRentList.length === 0"
+            :loading="catalogLoading" :error="catalogError" compact btn-color="#102F6E" @retry="reloadCatalog"
+          />
         </scroll-view>
       </view>
 
@@ -226,10 +230,14 @@
             </view>
             <view class="scroll-bottom-placeholder" v-if="filteredBuyList.length > 0"></view>
           </view>
-          <view class="empty-state" v-if="filteredBuyList.length === 0">
+          <view class="empty-state" v-if="filteredBuyList.length === 0 && !catalogLoading && !catalogError">
             <text class="empty-icon">📭</text>
             <text class="empty-text">没有找到匹配的机器人</text>
           </view>
+          <state-view
+            v-else-if="filteredBuyList.length === 0"
+            :loading="catalogLoading" :error="catalogError" compact btn-color="#102F6E" @retry="reloadCatalog"
+          />
         </scroll-view>
       </view>
 
@@ -606,6 +614,7 @@
 <script>
 import Jineng from '@/components/jiqi/jineng.vue'
 import Peijian from '@/components/jiqi/peijian.vue'
+import StateView from '@/components/StateView.vue'
 import { cartApi, productApi, categoryApi, catalogApi, tobOrderApi } from '@/utils/api'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing-data.js'
 import { BASE_URL } from '@/utils/config'
@@ -712,7 +721,7 @@ let _catalogCachedAt = 0
 let _relatedSeq = 0
 
 export default {
-  components: { Jineng, Peijian },
+  components: { Jineng, Peijian, StateView },
   data() {
     return {
       currentTab: 'rent',
@@ -720,6 +729,9 @@ export default {
       buyCatalog: [],
       accessoryCatalog: [],
       skillCatalog: [],
+      // 目录三态:加载中 / 拉取失败 / 真·没有匹配。失败不再伪装成「没有找到匹配的机器人」
+      catalogLoading: false,
+      catalogError: '',
       currentType: 'all',
       showTypePicker: false,
       currentBrand: 'all',
@@ -1438,7 +1450,10 @@ export default {
         this.applyCatalog(_catalogRawCache)
         return
       }
+      this.catalogLoading = true
+      this.catalogError = ''
       // 优先聚合端点:1 个请求拿全部(后端未部署该接口时自动回退旧多请求逻辑)
+      let aggFailed = false
       try {
         const aggRes = await catalogApi.getAggregate()
         const d = aggRes && aggRes.data
@@ -1446,11 +1461,13 @@ export default {
           _catalogRawCache = { rent: d.rent, buy: d.buy, accessory: d.accessory, skill: d.skill }
           _catalogCachedAt = Date.now()
           this.applyCatalog(_catalogRawCache)
+          this.catalogLoading = false
           return
         }
-      } catch (e) { /* 聚合端点不可用 → 回退旧多请求逻辑 */ }
+      } catch (e) { aggFailed = true /* 聚合端点不可用 → 回退旧多请求逻辑 */ }
       // 按分类区分:rent=租用,buy=购买,accessory=配件,skill=技能(找不到则对应为空)
       const catIds = { rent: null, buy: null, accessory: null, skill: null }
+      let catFailed = false
       try {
         const catRes = await categoryApi.getCategories({ limit: 200 })
         const cats = (catRes && Array.isArray(catRes.data)) ? catRes.data : []
@@ -1459,7 +1476,7 @@ export default {
         catIds.buy = pick('buy', '购买')
         catIds.accessory = pick('accessory', '配件')
         catIds.skill = pick('skill', '技能')
-      } catch (e) { /* 分类拉取失败则全空 */ }
+      } catch (e) { catFailed = true /* 分类拉取失败则全空 */ }
 
       const f = async (id) => id ? this.fetchProductsByCat(id) : Promise.resolve([])
       const [rentItems, buyItems, accItems, sklItems] = await Promise.all([
@@ -1468,6 +1485,17 @@ export default {
       _catalogRawCache = { rent: rentItems, buy: buyItems, accessory: accItems, skill: sklItems }
       _catalogCachedAt = Date.now()
       this.applyCatalog(_catalogRawCache)
+      this.catalogLoading = false
+      // 两条来源都失败 = 服务不可用 —— 置错误态,不让空目录伪装成「没有找到匹配的机器人」
+      if (aggFailed && catFailed) {
+        this.catalogError = '目录加载失败'
+      }
+    },
+    // 错误态「重试」:先作废 5 分钟缓存,再重拉 —— 否则 TTL 内会直接命中失败前的空缓存
+    reloadCatalog() {
+      _catalogRawCache = null
+      _catalogCachedAt = 0
+      return this.loadCatalog()
     },
     // 原始商品数组 → 四个目录(纯展示映射,缓存命中与首拉共用一条路径)
     applyCatalog(raw) {

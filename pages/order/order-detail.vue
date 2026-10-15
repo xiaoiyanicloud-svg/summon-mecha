@@ -9,10 +9,15 @@
 			<view class="nav-placeholder"></view>
 		</view>
 
-		<!-- 加载状态 -->
-		<view v-if="loading" class="loading-state">
-			<text class="loading-text">加载中...</text>
-		</view>
+		<!-- 加载 / 故障:加载中转圈;拉取失败走「取不到」,而不是伪造成「订单不存在」 -->
+		<state-view
+			v-if="loading || loadError"
+			:loading="loading"
+			:error="loadError"
+			compact
+			btn-color="#2563eb"
+			@retry="retryLoad"
+		/>
 
 		<!-- 订单内容 -->
 		<view v-else-if="order" class="scroll-content">
@@ -147,15 +152,20 @@
 <script>
 import { orderApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
+import StateView from '@/components/StateView.vue'
 	export default {
+		components: { StateView },
 		data() {
 			return {
 				order: null,
+				orderId: null,
 				loading: true,
+				loadError: '',
 			}
 		},
 		onLoad(options) {
 			const id = parseInt(options.id)
+			this.orderId = id || null
 			if (id) {
 				this.loadOrder(id)
 			} else {
@@ -180,6 +190,8 @@ import { TOKEN_KEY } from '@/utils/config'
 		},
 		methods: {
 			async loadOrder(id) {
+				this.loading = true
+				this.loadError = ''
 				// 方式一：优先使用列表页同步过来的完整订单（viewDetail 里 setStorageSync）
 				const synced = uni.getStorageSync('orderDetailData')
 				if (synced && (id == null || Number(synced.id) === Number(id))) {
@@ -210,12 +222,20 @@ import { TOKEN_KEY } from '@/utils/config'
 							return
 						}
 					} catch (e) {
-						// 接口失败 → 落入下方空态
+						// ⚠ 接口失败是**故障**,不是「订单不存在」—— 置错误标记,
+						//   由上方 StateView 的错误态承载(带重试),不再落进「订单不存在」空态。
+						this.loadError = (e && e.message) || '加载失败'
 					}
 				}
 
 				this.order = null
 				this.loading = false
+			},
+
+			// 错误态「重试」:清掉错误标记,按记住的 id 重拉
+			retryLoad() {
+				if (!this.orderId) { this.loadError = ''; return }
+				this.loadOrder(this.orderId)
 			},
 
 			// 后台订单详情 → 展示字段(只映射接口真实存在的数据,mock 专属字段不伪造)

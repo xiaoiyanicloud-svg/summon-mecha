@@ -39,6 +39,20 @@
 
 		<!-- ===== 订单列表 ===== -->
 		<view class="order-list">
+			<!-- 三态:加载中 / 故障(带重试) / 真·暂无订单。故障不再伪装成「暂无订单」 -->
+			<state-view
+				:loading="loading"
+				:error="loadError"
+				:empty="filteredOrders.length === 0"
+				empty-icon="🤖"
+				empty-text="暂无订单"
+				empty-hint="去AI生成机器人方案，快速匹配您的需求"
+				empty-action
+				empty-action-text="去AI生成方案 →"
+				btn-color="#2563eb"
+				@empty-action="goAI"
+				@retry="loadOrders"
+			>
 			<view class="order-card" v-for="item in filteredOrders" :key="item.id" @click="viewDetail(item)">
 				<!-- 卡片头部 -->
 				<view class="card-header">
@@ -78,13 +92,7 @@
 				</view>
 			</view>
 
-			<!-- ===== 空状态 ===== -->
-			<view class="empty-state" v-if="filteredOrders.length === 0">
-				<view class="empty-icon">🤖</view>
-				<text class="empty-title">暂无订单</text>
-				<text class="empty-desc">去AI生成机器人方案，快速匹配您的需求</text>
-				<view class="empty-btn" @click="goAI">去AI生成方案 →</view>
-			</view>
+			</state-view>
 		</view>
 
 		<!-- ===== 自定义底部导航栏 ===== -->
@@ -94,15 +102,19 @@
 
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
+	import StateView from '@/components/StateView.vue';
 	import { orderApi } from '@/utils/api';
 
 	export default {
 		components: {
-			CustomTabBar
+			CustomTabBar,
+			StateView
 		},
 		data() {
 			return {
 				currentStatus: 'all',
+				loading: true,
+				loadError: '',
 				orders: [],
 			}
 		},
@@ -131,6 +143,8 @@
 				uni.removeStorageSync('intentOrders')
 				const intents = []
 
+				this.loading = true
+				this.loadError = ''
 				let apiOrders = []
 				try {
 					// 通用:始终拉游客单(场景租用/游客单真实数据);登录用户再叠加本人订单(按 id 去重)
@@ -144,13 +158,21 @@
 					}
 					apiOrders = list.map(o => this.mapApiOrder(o))
 				} catch (e) {
+					// ⚠ 故障 ≠「暂无订单」:置错误标记交给 StateView 的错误态(带重试)
+					this.loadError = (e && e.message) || '加载失败'
 					apiOrders = []
+				} finally {
+					this.loading = false
 				}
 
 				// 只看真实单
 				this.orders = apiOrders
-				uni.setStorageSync('orderList', apiOrders)
-				uni.removeStorageSync('orderNeedRefresh')
+				// 拉取失败时**不**把空数组写进缓存 —— 否则一次网络抖动会清掉订单缓存,
+				// 订单详情页(读 orderList 兜底)也跟着查不到单。
+				if (!this.loadError) {
+					uni.setStorageSync('orderList', apiOrders)
+					uni.removeStorageSync('orderNeedRefresh')
+				}
 			},
 
 			// 后端订单 → 前端卡片字段

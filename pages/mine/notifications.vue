@@ -16,14 +16,16 @@
 		</view>
 
 		<scroll-view v-else class="scroll-content" scroll-y="true" show-scrollbar="false">
-			<view v-if="loading" class="empty-state"><text class="empty-text">加载中…</text></view>
-
-			<view v-else-if="!list.length" class="empty-state">
-				<text class="empty-icon">🔔</text>
-				<text class="empty-text">暂无消息</text>
-			</view>
-
-			<view v-else>
+			<!-- 三态:加载中 / 故障(带重试) / 真·暂无消息。故障不再伪装成「暂无消息」 -->
+			<state-view
+				:loading="loading"
+				:error="loadError"
+				:empty="!list.length"
+				empty-icon="🔔"
+				empty-text="暂无消息"
+				btn-color="#ff6b00"
+				@retry="refresh"
+			>
 				<view
 					v-for="n in list"
 					:key="n.id"
@@ -38,7 +40,7 @@
 					<text class="notify-content" v-if="n.content">{{ n.content }}</text>
 					<text class="notify-time">{{ n.created_at }}</text>
 				</view>
-			</view>
+			</state-view>
 
 			<view style="height: 60rpx;"></view>
 		</scroll-view>
@@ -48,12 +50,15 @@
 <script>
 import { notificationApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
+import StateView from '@/components/StateView.vue'
 
 export default {
+	components: { StateView },
 	data() {
 		return {
 			loggedIn: false,
 			loading: true,
+			loadError: '',
 			list: [],
 		}
 	},
@@ -66,9 +71,14 @@ export default {
 		goBack() { uni.navigateBack({ delta: 1 }) },
 		async refresh() {
 			this.loading = true
+			this.loadError = ''
 			try {
-				const res = await notificationApi.list().catch(() => ({ data: [] }))
+				const res = await notificationApi.list()
 				this.list = (res && Array.isArray(res.data)) ? res.data : []
+			} catch (e) {
+				// ⚠ 故障 ≠「暂无消息」:置错误标记交给 StateView 的错误态(带重试)
+				this.loadError = (e && e.message) || '加载失败'
+				this.list = []
 			} finally {
 				this.loading = false
 			}

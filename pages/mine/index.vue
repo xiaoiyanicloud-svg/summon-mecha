@@ -239,7 +239,17 @@
 
 			<view v-if="!showForm" class="address-list-page">
 				<scroll-view class="sub-content" scroll-y="true" show-scrollbar="false">
-					<view class="address-list">
+					<!-- 三态:加载中 / 故障(带重试) / 真·暂无收货地址。故障不再伪装成「暂无地址」 -->
+					<state-view
+						:loading="addressLoading"
+						:error="addressError"
+						:empty="!addressList.length"
+						empty-icon="📍"
+						empty-text="暂无收货地址"
+						empty-hint="点击下方按钮添加新地址"
+						btn-color="#165DFF"
+						@retry="loadAddressData"
+					>
 						<view class="address-card" v-for="(item, index) in addressList" :key="item.id">
 							<view class="address-info">
 								<view class="address-top">
@@ -254,12 +264,7 @@
 								<text class="action-delete" @tap="deleteAddress(item.id)">删除</text>
 							</view>
 						</view>
-					</view>
-					<view class="empty-state" v-if="addressList.length === 0">
-						<text class="empty-icon">📍</text>
-						<text class="empty-text">暂无收货地址</text>
-						<text class="empty-hint">点击下方按钮添加新地址</text>
-					</view>
+					</state-view>
 					<view style="height: 40rpx;"></view>
 				</scroll-view>
 				<view class="address-footer">
@@ -617,13 +622,15 @@
 
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
+	import StateView from '@/components/StateView.vue';
 	import { authApi, addressApi } from '@/utils/api';
 	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION } from '@/utils/config';
 	import { serverToLocal, localToServerPayload } from '@/utils/address';
 
 	export default {
 		components: {
-			CustomTabBar
+			CustomTabBar,
+			StateView
 		},
 		data() {
 			return {
@@ -662,6 +669,8 @@
 
 				// ===== 地址管理数据 =====
 				addressList: [],
+				addressLoading: false,
+				addressError: '',
 				showForm: false,
 				editingId: null,
 				formData: {
@@ -932,16 +941,25 @@
 				const token = uni.getStorageSync(TOKEN_KEY);
 				if (token) {
 					// 已登录:地址走后台接口(真实增删改查)
+					this.addressLoading = true;
+					this.addressError = '';
 					addressApi.getAddresses()
 						.then((res) => {
 							this.addressList = ((res && res.data) || []).map(a => serverToLocal(a));
 						})
-						.catch(() => {
+						.catch((e) => {
+							// ⚠ 故障 ≠「暂无收货地址」:置错误标记交给 StateView 的错误态(带重试)
+							this.addressError = (e && e.message) || '加载失败';
 							this.addressList = [];
+						})
+						.finally(() => {
+							this.addressLoading = false;
 						});
 					return;
 				}
 				// 游客:本地存储,不再注入假数据
+				this.addressLoading = false;
+				this.addressError = '';
 				const data = uni.getStorageSync('addressList');
 				this.addressList = data ? JSON.parse(data) : [];
 			},

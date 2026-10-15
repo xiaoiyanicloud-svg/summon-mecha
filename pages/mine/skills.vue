@@ -16,15 +16,18 @@
 		</view>
 
 		<scroll-view v-else class="scroll-content" scroll-y="true" show-scrollbar="false">
-			<view v-if="loading" class="empty-state"><text class="empty-text">加载中…</text></view>
-
-			<view v-else-if="!skills.length" class="empty-state">
-				<text class="empty-icon">✨</text>
-				<text class="empty-text">还没有开通任何技能</text>
-				<view class="primary-btn" @click="goRobot">去看看技能</view>
-			</view>
-
-			<view v-else>
+			<!-- 三态:加载中 / 故障(带重试) / 真·还没有开通技能。故障不再伪装成「还没有技能」 -->
+			<state-view
+				:loading="loading"
+				:error="loadError"
+				:empty="!skills.length"
+				empty-icon="✨"
+				empty-text="还没有开通任何技能"
+				empty-action
+				empty-action-text="去看看技能"
+				@empty-action="goRobot"
+				@retry="refresh"
+			>
 				<view class="card skill-card" v-for="s in skills" :key="s.id">
 					<view class="skill-head">
 						<view class="skill-info">
@@ -97,7 +100,7 @@
 						<view class="ghost-btn" @click="applyAfterSale(s)">申请售后 / 退款</view>
 					</view>
 				</view>
-			</view>
+			</state-view>
 
 			<view style="height: 60rpx;"></view>
 		</scroll-view>
@@ -107,6 +110,7 @@
 <script>
 import { skillApi, deviceApi, deployApi } from '@/utils/api'
 import { TOKEN_KEY, BASE_URL } from '@/utils/config'
+import StateView from '@/components/StateView.vue'
 
 const STATUS_TEXT = {
 	granted: '已开通',
@@ -125,10 +129,12 @@ const CARRIER_TEXT = {
 }
 
 export default {
+	components: { StateView },
 	data() {
 		return {
 			loggedIn: false,
 			loading: true,
+			loadError: '',
 			skills: [],
 			devices: [],
 			// entitlementId -> 交付物数组;按需拉取,不预加载全部
@@ -164,18 +170,21 @@ export default {
 		},
 		async refresh() {
 			this.loading = true
-			try {
-				const [sk, dv] = await Promise.all([
-					skillApi.mine().catch(() => ({ data: [] })),
-					deviceApi.list().catch(() => ({ data: [] })),
-				])
-				this.skills = (sk && Array.isArray(sk.data)) ? sk.data : []
-				this.devices = (dv && Array.isArray(dv.data)) ? dv.data : []
-				// 已指派设备的技能自动展开交付物,用户不用多点一次
-				this.skills.filter(s => s.device_id).forEach(s => this.loadAssets(s))
-			} finally {
-				this.loading = false
-			}
+			this.loadError = ''
+			// 技能列表(主数据)失败 → 置错误标记,由 StateView 的错误态承载(带重试);
+			// 设备只服务于「指派给…」按钮,拉不到不阻断页面,留 warn 不静默。
+			const [sk, dv] = await Promise.all([
+				skillApi.mine().catch(e => {
+					this.loadError = (e && e.message) || '加载失败'
+					return null
+				}),
+				deviceApi.list().catch(e => { console.warn('[skills] 设备列表加载失败', e); return null }),
+			])
+			this.skills = (sk && Array.isArray(sk.data)) ? sk.data : []
+			this.devices = (dv && Array.isArray(dv.data)) ? dv.data : []
+			// 已指派设备的技能自动展开交付物,用户不用多点一次
+			this.skills.filter(s => s.device_id).forEach(s => this.loadAssets(s))
+			this.loading = false
 		},
 		async assign(skill, device) {
 			try {
@@ -199,6 +208,8 @@ export default {
 					},
 				}
 			} catch (e) {
+				// 交付物拉不到只影响这一块的展开,不阻断整页 —— 留 warn 不静默
+				console.warn('[skills] 交付物加载失败', skill && skill.id, e)
 				this.assetsMap = { ...this.assetsMap, [skill.id]: { list: [], guide: '' } }
 			}
 		},
