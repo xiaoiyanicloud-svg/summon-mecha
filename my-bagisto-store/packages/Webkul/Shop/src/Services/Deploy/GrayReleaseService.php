@@ -14,17 +14,32 @@ use Webkul\Shop\Services\Ops\OperationLogger;
  * 灰度发布 / 自动回滚 —— v3.4 步骤 8(计划 §4.10)。
  *
  * 策略:白名单 DID / 比例分批(5%→20%→50%→100%)。
- * 自动回滚阈值:安装成功率 < 90% 暂停;< 80% 回滚(向已更新设备推回滚任务)。
+ * 自动回滚阈值:安装成功率 < 90% 暂停;< 80% 回滚(向已更新设备推回滚任务);
+ *              崩溃率 > 2% 回滚(计划 §4.10「崩溃率>2% 回滚」)。
  *
  * ── P10 · 灰度与回滚要留痕 ──
  *   回滚是"拿着别人的设备执行动作",发起(人工)与触发(自动)都要能追。故
  *   `rollback_record` 落 `created_by`/`ip`,并把动作写进 `operation_log`。
+ *
+ * ── B-11 · 崩溃率是独立的回滚维度,不能拿成功率替代 ──
+ *   "装上了"与"装上之后不崩"是两件事:设备侧的安装可以 100% success,
+ *   而技能在真机上一跑就崩 —— 只看 success_rate 会把它判成"健康"。
+ *   故 `metrics` 增 `crashes` / `crash_rate` 两个维度,阈值 `CRASH_RATE_ROLLBACK_THRESHOLD`
+ *   (分母与成功率同口径 = 本批 installs,见 `recordMetric()`)。
  */
 class GrayReleaseService
 {
     protected const PAUSE_THRESHOLD = 90.0;   // 成功率 < 90% 暂停
 
     protected const ROLLBACK_THRESHOLD = 80.0; // 成功率 < 80% 回滚
+
+    /**
+     * 崩溃率回滚阈值(百分比)。
+     *
+     * 与成功率阈值**正交**:成功率高的批次仍可能因崩溃率高而回滚。
+     * 计划 §4.10 原文即「崩溃率 > 2% 回滚」。
+     */
+    protected const CRASH_RATE_ROLLBACK_THRESHOLD = 2.0;
 
     /** 自动触发时的操作者标识 —— 与"人按的"区分开,复盘时才看得出发起方。 */
     public const ACTOR_AUTO = 'system';
@@ -58,7 +73,7 @@ class GrayReleaseService
             'strategy'         => $strategy,
             'batch_no'         => $batchNo ?: 'G'.now()->format('ymdHis'),
             'status'           => 'releasing',
-            'metrics'          => ['installs' => 0, 'successes' => 0, 'failures' => 0],
+            'metrics'          => ['installs' => 0, 'successes' => 0, 'failures' => 0, 'crashes' => 0],
         ]);
 
         $this->oplog->log(
@@ -81,8 +96,12 @@ class GrayReleaseService
 
     /**
      * 记录一次批次指标。
+     *
+     * @param  int  $crashes  本批中"装上了但运行崩溃"的设备数(B-11)。默认 0 —— 旧调用方(没这个维度)
+     *                        行为不变;→ 影响 `crash_rate`,进而可能触发崩溃率回滚。
+     *                        ⚠ 崩溃与失败正交:一次 success 之后仍可能崩,故 crashes 不要求 <= failures。
      */
-    public function recordMetric(int $releaseId, int $installs, int $successes, int $failures): ?array
+    public function recordMetric(int $releaseId, int $installs, int $successes, int $failures, int $crashes = 0): ?array
     {
         $release = GrayRelease::find($releaseId);
         if (! $release) {
@@ -93,7 +112,10 @@ class GrayReleaseService
             'installs'  => $installs,
             'successes' => $successes,
             'failures'  => $failures,
+            'crashes'   => $crashes,
             'success_rate' => $installs > 0 ? round($successes / $installs * 100, 2) : null,
+            // 分母与成功率同口径(本批 installs):"这批下发里有多大比例最终崩了"。
+            'crash_rate'   => $installs > 0 ? round($crashes / $installs * 100, 2) : null,
         ];
         $release->save();
 
@@ -102,6 +124,10 @@ class GrayReleaseService
 
     /**
      * 依据指标决定:继续 / 暂停 / 回滚。
+     *
+     * 两个回滚判据**正交**,任一命中即回滚:
+     *   · 成功率 < ROLLBACK_THRESHOLD —— 没装成;
+     *   · 崩溃率 > CRASH_RATE_ROLLBACK_THRESHOLD —— 装成了但一跑就崩(成功率还能是 100%)。
      */
     public function evaluate(GrayRelease $release): array
     {
@@ -109,6 +135,26 @@ class GrayReleaseService
 
         if ($rate === null) {
             return ['action' => 'continue', 'reason' => '暂无数据'];
+        }
+
+        // 崩溃率优先于成功率判据:崩溃是"装上了却不可用",比"没装上"更该立刻下闸。
+        // ⚠ crash_rate 为 null 表示"这批还没有崩溃观测"(installs=0),不得当作 0 之外的东西;
+        //   这里只在非 null 时才比,避免 null 被当 0 判断。
+        $crashRate = $release->metrics['crash_rate'] ?? null;
+
+        if ($crashRate !== null && $crashRate > self::CRASH_RATE_ROLLBACK_THRESHOLD) {
+            $affected = $this->abort(
+                $release,
+                "崩溃率 {$crashRate}% > ".self::CRASH_RATE_ROLLBACK_THRESHOLD.'%,自动回滚',
+                'auto',
+                self::ACTOR_AUTO,
+            );
+
+            return [
+                'action'           => 'rollback',
+                'reason'           => "崩溃率 {$crashRate}% 高于回滚阈值",
+                'affected_devices' => $affected,
+            ];
         }
 
         if ($rate < self::ROLLBACK_THRESHOLD) {
@@ -146,6 +192,9 @@ class GrayReleaseService
      * ⚠ 口径排除**空跑**(P11):带 `PKG_MISSING` 的 success 是"看起来成功、实际没装"
      *   —— 它既不是成功也不是失败,计进任何一边都会让灰度判定失准(成功的虚高会把
      *   该回滚的判成健康)。`DeployTask::scopeNotDryRun()` 是这段口径的唯一出处。
+     *
+     * B-11:崩溃数从设备回报的 `error_code = CRASH` 取 —— 崩溃是**装后**事件,
+     *   与 status 正交(一条 success 的安装任务之后仍可能崩),故单列一维而非并入 failures。
      */
     public function evaluateFromRecords(GrayRelease $release): array
     {
@@ -156,8 +205,9 @@ class GrayReleaseService
         $installs = (clone $tasks)->count();
         $successes = (clone $tasks)->where('status', 'success')->count();
         $failures = (clone $tasks)->whereIn('status', ['failed', 'timeout'])->count();
+        $crashes = (clone $tasks)->where('error_code', DeployTask::ERR_CRASH)->count();
 
-        return $this->recordMetric($release->id, $installs, $successes, $failures) ?? [];
+        return $this->recordMetric($release->id, $installs, $successes, $failures, $crashes) ?? [];
     }
 
     /**

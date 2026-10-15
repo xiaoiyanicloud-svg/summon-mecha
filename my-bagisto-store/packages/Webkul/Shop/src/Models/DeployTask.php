@@ -75,6 +75,16 @@ class DeployTask extends Model
 
     public const ERR_NOT_BOUND = 'NOT_BOUND';               // 服务端:设备从未登记(无 binding)
 
+    /**
+     * 崩溃 —— 设备侧:技能**装上之后**运行崩溃(B-11)。
+     *
+     * ⚠ 与其它码的语义差异值得注意:其余码描述"这一条下发没做成",本码描述
+     *   "下发做成了、跑起来崩了"。故它**与 status 正交** —— 一条 `success` 的安装
+     *   任务之后设备仍可回报 `error_code=CRASH`,崩溃率因此是独立于成功率的回滚维度
+     *   (`GrayReleaseService::CRASH_RATE_ROLLBACK_THRESHOLD`)。
+     */
+    public const ERR_CRASH = 'CRASH';
+
     protected $fillable = [
         'task_no',
         'did',

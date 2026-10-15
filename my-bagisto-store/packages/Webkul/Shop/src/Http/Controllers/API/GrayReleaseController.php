@@ -16,6 +16,8 @@ use Webkul\Shop\Services\Deploy\GrayReleaseService;
  * 范围:开启灰度 → 上报批次指标(驱动 evaluate)→ 自动/手动回滚。
  * **不做**"按比例自动筛选下发目标" —— 下发由各自通道发起,灰度只管评估与回滚。
  *
+ * 自动回滚判据(任一命中):安装成功率跌破阈值,**或**崩溃率超过 2%(B-11)。
+ *
  * 自动回滚有两条触发路径:
  *   1. 设备回报后由 DeployTaskService 自驱(本项目无 cron,这是主路径);
  *   2. 平台端主动 POST metrics(拿到明确计数时最可控)。
@@ -93,8 +95,12 @@ class GrayReleaseController extends APIController
             // 能把灰度判成"健康"或"该回滚",两种都是错的。
             'successes' => ['required', 'integer', 'min:0', 'lte:installs'],
             'failures'  => ['required', 'integer', 'min:0'],
+            // B-11:崩溃数(装后运行崩溃)。上限同为 installs —— 崩过的设备数不可能超过下发的设备数。
+            // ⚠ 与 failures 之间**不设** lte:一次 success 之后仍可能崩,崩溃不是失败的子集。
+            'crashes'   => ['nullable', 'integer', 'min:0', 'lte:installs'],
         ], [
             'successes.lte' => '成功数不能大于安装数。',
+            'crashes.lte'   => '崩溃数不能大于安装数。',
         ]);
 
         $result = $this->gray->recordMetric(
@@ -102,6 +108,7 @@ class GrayReleaseController extends APIController
             (int) $payload['installs'],
             (int) $payload['successes'],
             (int) $payload['failures'],
+            (int) ($payload['crashes'] ?? 0),
         );
 
         return response()->json([
