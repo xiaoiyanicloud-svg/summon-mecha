@@ -163,6 +163,8 @@ export const skillCatalogApi = {
   tags: (type) => http.get('/api/skill-catalog/tags', { data: type ? { type } : {}, loading: false }),
   // B-9 · 筛选面板候选项(机型 / 交付通道 / 风险等级)
   filters: () => http.get('/api/skill-catalog/filters', { loading: false }),
+  // B-16 · 技能发布历史(版本/发布通道/交付通道/变更日志)—— 公开只读
+  versions: (productId) => http.get(`/api/skill-catalog/versions/${productId}`, { loading: false }),
   // B-9 · 技能搜索:名称 q + 四个筛选维度(机型/通道/动作类型/风险等级),空值不发送
   search: (q, filters = {}) => {
     const data = {}

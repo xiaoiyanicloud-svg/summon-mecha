@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\SkillCategory;
 use Webkul\Shop\Models\SkillTag;
+use Webkul\Shop\Models\SkillVersion;
 
 /**
  * 技能类目/标签/筛选 —— 公开读取(v3.4 步骤 6/7)。
@@ -96,6 +97,41 @@ class SkillCatalogController extends APIController
                     ['value' => 'high',   'label' => '高风险'],
                 ],
             ],
+        ]);
+    }
+
+    /**
+     * 技能发布历史(B-16)。
+     *
+     * 只回**已发布 / 已归档**的版本(草稿从未发布,不对外)。新版在前。
+     * 每条带:版本号 / 发布通道(stable|beta)/ 交付通道 / 风险等级 / 发布时间 / 变更日志。
+     *
+     * ⚠ 与 `RiskDisclosureService` 一样用 `status=published` 的最新一条作为"当前版本",
+     *   前端据此展示"当前在用哪一版"。这是**只读**信息,买之前就该看到。
+     */
+    public function versions(int $productId): JsonResponse
+    {
+        $rows = \DB::table('skill_versions')
+            ->where('product_id', $productId)
+            ->whereIn('status', [SkillVersion::STATUS_PUBLISHED, SkillVersion::STATUS_ARCHIVED])
+            ->orderByDesc('released_at')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get(['id', 'version', 'channel', 'status', 'risk_level', 'delivery_channels', 'released_at', 'changelog']);
+
+        return response()->json([
+            'data' => $rows->map(fn ($v) => [
+                'id'                => (int) $v->id,
+                'version'           => $v->version,
+                // 发布通道(stable/beta)—— 与交付通道(delivery_channels)不是一回事,见术语纪律
+                'channel'           => $v->channel,
+                'channel_label'     => $v->channel === 'beta' ? '测试版' : '正式版',
+                'status'            => $v->status,
+                'risk_level'        => $v->risk_level,
+                'delivery_channels' => json_decode((string) $v->delivery_channels, true) ?: [],
+                'released_at'       => $v->released_at,
+                'changelog'         => $v->changelog,
+            ])->values(),
         ]);
     }
 

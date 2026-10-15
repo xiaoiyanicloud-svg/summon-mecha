@@ -7,13 +7,23 @@
 			</template>
 		</nav-bar>
 
+		<!-- 加载失败:如实报错(B-16)。此前用 getMockData() 兜底,拿一段编造的技能
+		     (名称/价格/配图)冒充真实商品 —— 用户会以为页面正常,点进去却买不到东西。 -->
+		<view v-if="loadError" class="load-error">
+			<text class="le-icon">😕</text>
+			<text class="le-text">技能详情加载失败</text>
+			<text class="le-sub">{{ loadError }}</text>
+			<view class="le-btn" @click="loadSkillData(skillId)">重新加载</view>
+		</view>
+
+		<template v-if="!loadError">
 		<!-- 2. 轮播图 -->
 		<swiper class="swiper" indicator-dots autoplay interval="3000" circular>
 			<swiper-item v-for="(img, idx) in skillInfo.images" :key="idx">
 				<image class="swiper-image" :src="img" mode="aspectFill"></image>
 			</swiper-item>
 		</swiper>
-		<view class="swiper-badge">🔥 已服务 {{ skillInfo.served }} 家庭</view>
+		<view class="swiper-badge" v-if="skillInfo.served">🔥 已服务 {{ skillInfo.served }} 家庭</view>
 
 		<!-- 3. 基础信息 -->
 		<view class="info-card">
@@ -98,6 +108,30 @@
 			</view>
 		</view>
 
+		<!-- 5.65 版本历史 + 通道标识(B-16) -->
+		<view class="version-box" v-if="versions.length">
+			<view class="version-head">
+				<text class="version-title">版本历史</text>
+				<text class="chan-badge" v-if="currentVersion" :class="'chan-' + (currentVersion.channel || 'stable')">
+					{{ currentVersion.channel_label }}
+				</text>
+			</view>
+			<!-- 交付方式(与"发布通道"是两条不同的轴,见术语纪律) -->
+			<view class="chan-row" v-if="currentVersion && currentVersion.delivery_channels.length">
+				<text class="chan-title">交付方式</text>
+				<text v-for="c in currentVersion.delivery_channels" :key="c" class="chan-chip">{{ channelLabel(c) }}</text>
+			</view>
+			<view class="version-item" v-for="v in versions" :key="v.id">
+				<view class="vi-top">
+					<text class="vi-ver">v{{ v.version }}</text>
+					<text class="vi-badge" :class="'chan-' + (v.channel || 'stable')">{{ v.channel_label }}</text>
+					<text class="vi-current" v-if="currentVersion && v.id === currentVersion.id">当前</text>
+					<text class="vi-date">{{ (v.released_at || '').slice(0, 10) }}</text>
+				</view>
+				<text v-if="v.changelog" class="vi-log">{{ v.changelog }}</text>
+			</view>
+		</view>
+
 		<!-- 5.7 举报入口(B-7):技能下发到真实机器后,这是用户能按的最后一个刹车。
 		     后端不要求持有该技能 —— 举报对象恰恰不该是我买的东西,所以未购买也能举报。 -->
 		<view class="report-entry" v-if="productId" @click="reportSkill">
@@ -135,11 +169,12 @@
 				</view>
 			</view>
 		</view>
+		</template>
 	</view>
 </template>
 
 <script>
-	import { productApi, skillApi, deviceApi, reviewApi, riskApi } from '@/utils/api'
+	import { productApi, skillApi, deviceApi, reviewApi, riskApi, skillCatalogApi } from '@/utils/api'
 	import { submitSkillReport } from '@/utils/report'
 	import { TOKEN_KEY } from '@/utils/config'
 	import NavBar from '@/components/NavBar.vue'
@@ -150,6 +185,10 @@
 				currentTab: 0,
 				skillId: '',
 				productId: null,
+				// B-16:加载失败如实报错(不再用 mock 兜底冒充真实技能)
+				loadError: '',
+				// B-16:发布历史(版本/发布通道/交付通道/变更日志)
+				versions: [],
 				// 兼容性校验(v3.4):选设备 → 后端判定(含"未知"降级提示)
 				devices: [],
 				deviceLoadError: '',
@@ -190,41 +229,64 @@
 			trialAvailable() {
 				if (!this.pickedDeviceId || !this.compat || !this.compat.compatible) return false
 				return (this.compat.channels || []).indexOf('agent') !== -1
+			},
+			// B-16:当前版本 = 最新一条已发布版本(与后端 RiskDisclosureService 同口径)
+			currentVersion() {
+				return this.versions.find(v => v.status === 'published') || this.versions[0] || null
 			}
 		},
 		methods: {
-			// v3.4:真实商品数据优先,失败回退 mock(不把 mock 当唯一数据源)
+			// B-16:真实商品数据优先,**失败如实报错**。
+			//   此前失败回退 getMockData() —— 拿一段编造的技能(名称/价格/配图/评价)
+			//   冒充真实商品:用户会以为页面正常,点「立即开通」却买不到东西(甚至用假 id 下单)。
+			//   现在与「我的设备」列表同一做法:置错误态 + 可重试,不拿假数据遮住故障。
 			async loadSkillData(id) {
 				const pid = this.productId || id
+				this.loadError = ''
+				if (!pid) { this.loadError = '缺少技能标识'; return }
 				try {
 					const res = await productApi.getProductDetail(pid)
 					const p = (res && (res.data || res)) || null
-					if (p && p.name) {
-						this.productId = pid
-						this.skillInfo = {
-							name: p.name,
-							rating: (p.rating || '') + '',
-							price: p.price || 0,
-							originalPrice: p.special_price || 0,
-							desc: p.short_description || '',
-							served: '',
-							images: this.normalizeImages(p.images || []),
-							features: p.description || p.short_description || '',
-							comments: []
-						}
-						this.loadReviews(pid)
-						this.loadRisk(pid)
-						return
+					if (!p || !p.name) throw new Error('该技能不存在或已下架')
+					this.productId = pid
+					this.skillInfo = {
+						name: p.name,
+						rating: (p.rating || '') + '',
+						price: p.price || 0,
+						originalPrice: p.special_price || 0,
+						desc: p.short_description || '',
+						served: '',
+						images: this.normalizeImages(p.images || []),
+						features: p.description || p.short_description || '',
+						comments: []
 					}
+					this.loadReviews(pid)
+					this.loadRisk(pid)
+					this.loadVersions(pid)
 				} catch (e) {
-					// 回退到 mock —— 真实数据不可用时页面不能白屏。留 warn,免得连错都不知道。
-					console.warn('[jineng] 技能详情接口失败,回退 mock', e)
+					console.warn('[jineng] 技能详情加载失败', e)
+					this.loadError = (e && e.message) || '加载失败'
 				}
-				const data = this.getMockData(id)
-				if (data) this.skillInfo = data
 			},
 			normalizeImages(images) {
 				return (images || []).map(i => (typeof i === 'string' ? i : (i && i.url) || '')).filter(Boolean)
+			},
+			// B-16:发布历史 + 通道标识。拿不到就不展示 —— 版本信息**不能编**。
+			async loadVersions(pid) {
+				try {
+					const res = await skillCatalogApi.versions(pid)
+					this.versions = (res && Array.isArray(res.data)) ? res.data : []
+				} catch (e) {
+					console.warn('[jineng] 版本历史加载失败', e)
+					this.versions = []
+				}
+			},
+			// 交付通道 → 人话(与 D2 三通道一致)
+			channelLabel(c) {
+				if (c === 'agent') return '自动下发'
+				if (c === 'manual') return '人工安装'
+				if (typeof c === 'string' && c.indexOf('vendor:') === 0) return '厂商云·' + c.slice(7)
+				return c
 			},
 			// 评价:复用 Bagisto ProductReview 接口
 			async loadReviews(pid) {
@@ -318,109 +380,6 @@
 				} catch (e) {
 					uni.showToast({ title: (e && e.message) || '试用开通失败', icon: 'none' })
 				}
-			},
-			getMockData(id) {
-				const db = {
-					'20': {
-						name: '智能叠衣',
-						rating: '4.9',
-						price: 299,
-						originalPrice: 599,
-						desc: 'AI视觉识别棉麻丝绸，3分钟叠完一家三口衣物。',
-						served: '1.2万+',
-						images: [
-							'https://picsum.photos/seed/dieyi/750/400',
-							'https://picsum.photos/seed/clothes/750/400'
-						],
-						features: '✅ 支持棉、麻、丝绸、化纤等多种面料识别\n✅ 智能温控蒸汽除菌，除螨率99.9%\n✅ OTA空中升级，技能持续进化\n✅ 适配机甲X3 / X5 / X7系列',
-						comments: [
-							{ avatar: 'https://picsum.photos/seed/user1/100/100', nick: '张*妈', content: '解放双手，叠得比我还整齐！' }
-						]
-					},
-					'21': {
-						name: '全屋扫地',
-						rating: '4.8',
-						price: 199,
-						originalPrice: 399,
-						desc: '激光雷达导航，全屋无死角清扫，自动回充。',
-						served: '5.6万+',
-						images: [
-							'https://picsum.photos/seed/sweep/750/400',
-							'https://picsum.photos/seed/clean/750/400'
-						],
-						features: '✅ LDS激光导航，精准建图\n✅ 5000Pa大吸力，灰尘无处可逃\n✅ 自动回充续扫，省心省力\n✅ 支持地毯增压、悬崖防跌落',
-						comments: [
-							{ avatar: 'https://picsum.photos/seed/user2/100/100', nick: '李*生', content: '扫得很干净，床底都能进去！' },
-							{ avatar: 'https://picsum.photos/seed/user4/100/100', nick: '赵*姐', content: '解放双手，每天干干净净' }
-						]
-					},
-					'22': {
-						name: '厨房助手',
-						rating: '4.7',
-						price: 399,
-						originalPrice: 699,
-						desc: '智能菜谱推荐，自动控温翻炒，做饭不再手忙脚乱。',
-						served: '3.8万+',
-						images: [
-							'https://picsum.photos/seed/kitchen/750/400',
-							'https://picsum.photos/seed/cook/750/400'
-						],
-						features: '✅ 内置200+道智能菜谱，天天不重样\n✅ 自动翻炒、精准控温，堪比大厨\n✅ 油烟自清洁，清洗超方便\n✅ 支持语音控制，解放双手',
-						comments: [
-							{ avatar: 'https://picsum.photos/seed/user3/100/100', nick: '王*姐', content: '做饭变得好简单，孩子都爱吃！' }
-						]
-					},
-					'23': {
-						name: '园艺修剪',
-						rating: '4.6',
-						price: 249,
-						originalPrice: 499,
-						desc: '智能识别植物种类，自动修剪、浇水，打造私家花园。',
-						served: '0.8万+',
-						images: [
-							'https://picsum.photos/seed/garden/750/400',
-							'https://picsum.photos/seed/plant/750/400'
-						],
-						features: '✅ AI识别200+种植物\n✅ 自动修剪、浇水、施肥提醒\n✅ 太阳能充电，节能环保\n✅ 手机远程监控花园状态',
-						comments: [
-							{ avatar: 'https://picsum.photos/seed/user5/100/100', nick: '刘*叔', content: '我的花园全靠它打理！' }
-						]
-					},
-					'24': {
-						name: '宠物管家',
-						rating: '4.9',
-						price: 349,
-						originalPrice: 599,
-						desc: '自动喂食、铲屎、陪玩，让宠物不再孤单。',
-						served: '2.3万+',
-						images: [
-							'https://picsum.photos/seed/pet/750/400',
-							'https://picsum.photos/seed/cat/750/400'
-						],
-						features: '✅ 定时定量自动喂食\n✅ 智能铲屎，除臭抗菌\n✅ 激光逗猫棒，自动陪玩\n✅ 高清摄像头，实时查看宠物动态',
-						comments: [
-							{ avatar: 'https://picsum.photos/seed/user6/100/100', nick: '陈*姐', content: '出差再也不用担心猫猫了！' },
-							{ avatar: 'https://picsum.photos/seed/user7/100/100', nick: '周*哥', content: '铲屎功能太实用了！' }
-						]
-					},
-					'25': {
-						name: '窗户清洁',
-						rating: '4.7',
-						price: 259,
-						originalPrice: 459,
-						desc: '高层外窗自动擦洗，安全高效，玻璃光亮如新。',
-						served: '0.6万+',
-						images: [
-							'https://picsum.photos/seed/window/750/400',
-							'https://picsum.photos/seed/glass/750/400'
-						],
-						features: '✅ 双面擦窗，内外同时清洁\n✅ 智能探测边框，防跌落\n✅ 支持语音控制，一键启动\n✅ 续航长达90分钟',
-						comments: [
-							{ avatar: 'https://picsum.photos/seed/user8/100/100', nick: '孙*姐', content: '擦得真干净，再也不用请人擦窗了！' }
-						]
-					}
-				}
-				return db[id] || null
 			},
 			handleShare() {
 				uni.showToast({ title: '分享功能开发中', icon: 'none' })
@@ -797,4 +756,31 @@
 	.risk-modal-footer { display: flex; gap: 20rpx; margin-top: 28rpx; }
 	.risk-cancel { flex: 1; text-align: center; padding: 20rpx 0; border: 1rpx solid #ddd; border-radius: 40rpx; font-size: 28rpx; color: #666; }
 	.risk-confirm { flex: 2; text-align: center; padding: 20rpx 0; background: linear-gradient(135deg, #ff6b6b, #ee3f4d); color: #fff; border-radius: 40rpx; font-size: 28rpx; }
+
+	/* 版本历史 + 通道标识(B-16) */
+	.version-box { margin: 20rpx 24rpx; padding: 24rpx; background: #fff; border-radius: 16rpx; }
+	.version-head { display: flex; align-items: center; justify-content: space-between; }
+	.version-title { font-size: 28rpx; font-weight: 600; color: #222; }
+	.chan-badge { font-size: 22rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 24rpx; }
+	.chan-badge.chan-stable { background: #eaf7ee; color: #1a9c50; }
+	.chan-badge.chan-beta { background: #fff5e6; color: #d48806; }
+	.chan-row { display: flex; align-items: center; flex-wrap: wrap; margin-top: 14rpx; }
+	.chan-title { font-size: 22rpx; color: #999; margin-right: 12rpx; }
+	.chan-chip { font-size: 22rpx; color: #165DFF; background: #F0F7FF; border: 1rpx solid #cfe0ff; border-radius: 24rpx; padding: 4rpx 18rpx; margin: 0 12rpx 8rpx 0; }
+	.version-item { margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid #f2f2f2; }
+	.vi-top { display: flex; align-items: center; }
+	.vi-ver { font-size: 26rpx; font-weight: 600; color: #333; }
+	.vi-badge { font-size: 20rpx; font-weight: 600; padding: 2rpx 12rpx; border-radius: 20rpx; margin-left: 12rpx; }
+	.vi-badge.chan-stable { background: #eaf7ee; color: #1a9c50; }
+	.vi-badge.chan-beta { background: #fff5e6; color: #d48806; }
+	.vi-current { font-size: 20rpx; color: #fff; background: #165DFF; border-radius: 20rpx; padding: 2rpx 12rpx; margin-left: 12rpx; }
+	.vi-date { margin-left: auto; font-size: 22rpx; color: #bbb; }
+	.vi-log { display: block; margin-top: 8rpx; font-size: 24rpx; color: #666; line-height: 1.5; }
+
+	/* 加载失败态(B-16) */
+	.load-error { display: flex; flex-direction: column; align-items: center; padding: 160rpx 60rpx; }
+	.le-icon { font-size: 90rpx; }
+	.le-text { margin-top: 24rpx; font-size: 30rpx; font-weight: 600; color: #333; }
+	.le-sub { margin-top: 12rpx; font-size: 24rpx; color: #999; text-align: center; }
+	.le-btn { margin-top: 40rpx; padding: 18rpx 70rpx; background: #165DFF; color: #fff; border-radius: 40rpx; font-size: 28rpx; }
 </style>

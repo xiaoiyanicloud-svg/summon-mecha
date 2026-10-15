@@ -315,6 +315,8 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('tags', 'tags')->name('shop.api.skill-catalog.tags');
         // B-9 · 筛选面板候选项(机型/通道/风险等级)
         Route::get('filters', 'filters')->name('shop.api.skill-catalog.filters');
+        // B-16 · 版本历史 + 通道标识(公开只读,买之前就该看到)
+        Route::get('versions/{productId}', 'versions')->whereNumber('productId')->name('shop.api.skill-catalog.versions');
         Route::get('search', 'search')->name('shop.api.skill-catalog.search');
     });
 
