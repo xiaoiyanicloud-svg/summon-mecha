@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\DB;
 use Webkul\Category\Models\Category;
 use Webkul\Product\Models\ProductProxy;
 use Webkul\Sales\Models\OrderProxy;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
 /**
@@ -30,7 +32,10 @@ use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
  */
 class SkillDelivery
 {
-    public function __construct(protected SkillDeliveryManager $manager) {}
+    public function __construct(
+        protected SkillDeliveryManager $manager,
+        protected OperationLogger $oplog,
+    ) {}
 
     /**
      * 订单创建后:为其中的技能条目生成授权并交付。
@@ -57,6 +62,16 @@ class SkillDelivery
         try {
             foreach (SkillEntitlement::where('order_id', $order->id)->get() as $entitlement) {
                 $this->manager->channel($entitlement->delivery_channel)->revoke($entitlement);
+
+                // M8 · 撤销留痕(与发放对称)。
+                $this->oplog->log(
+                    OperationLog::ACTOR_SYSTEM,
+                    null,
+                    'entitlement.revoke',
+                    'skill_entitlement',
+                    $entitlement->id,
+                    ['order_id' => $order->id, 'reason' => 'order_canceled']
+                );
             }
         } catch (\Throwable $e) {
             report($e);
@@ -132,6 +147,7 @@ class SkillDelivery
 
         // 已存在说明这次是重试/重复触发 —— 仍然调一次 deliver()(它幂等),
         // 但不要重复生成 license_key。
+        $created = $entitlement->wasRecentlyCreated;
         $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
 
         try {
@@ -161,6 +177,24 @@ class SkillDelivery
 
         $entitlement->meta = $meta;
         $entitlement->save();
+
+        // M8 · 授权发放留痕。log()(非 logOrFail):本方法跑在建单事务内,
+        // 审计是旁路,绝不能因审计写不进去而拖垮建单(见类注释第 1 条)。
+        $this->oplog->log(
+            OperationLog::ACTOR_SYSTEM,
+            null,
+            'entitlement.grant',
+            'skill_entitlement',
+            $entitlement->id,
+            [
+                'order_id'         => $order->id,
+                'order_item_id'    => $item->id,
+                'product_id'       => $item->product_id,
+                'customer_id'      => $order->customer_id,
+                'delivery_channel' => $entitlement->delivery_channel,
+                'created'          => $created,
+            ]
+        );
     }
 
     /**

@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Webkul\Sales\Models\OrderItemProxy;
 use Webkul\Shop\Models\AfterSale;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\RefundRequest;
 use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\Payment\PaymentManager;
 
 /**
@@ -23,7 +25,10 @@ use Webkul\Shop\Services\Payment\PaymentManager;
  */
 class AfterSaleService
 {
-    public function __construct(protected PaymentManager $payments) {}
+    public function __construct(
+        protected PaymentManager $payments,
+        protected OperationLogger $oplog,
+    ) {}
 
     /**
      * 用户发起售后。返回结果 + 政策依据。
@@ -150,6 +155,23 @@ class AfterSaleService
                 'status'           => $ok ? 'success' : 'pending',
             ]);
 
+            // M8 · 退款/售后审批留痕。此前 Shop 侧资金动作一处都不写 operation_log。
+            // 这是"钱出去"的动作,用 logOrFail():审计写不进去就整个回滚,不留无痕退款。
+            $this->oplog->logOrFail(
+                OperationLog::ACTOR_ADMIN,
+                $reviewerId,
+                'after_sale.approve',
+                'after_sale',
+                $afterSale->id,
+                [
+                    'entitlement_id' => $afterSale->entitlement_id,
+                    'order_item_id'  => $afterSale->order_item_id,
+                    'amount'         => $amount,
+                    'refund_no'      => $outRefundNo,
+                    'refunded'       => $ok,
+                ]
+            );
+
             return [
                 'ok'      => true,
                 'message' => $ok ? '已退款并冻结授权。' : '已冻结授权,退款待支付资质就绪后补打款。',
@@ -176,6 +198,16 @@ class AfterSaleService
             $afterSale->detail = trim(($afterSale->detail ?? '')."\n[驳回] ".$reason);
         }
         $afterSale->save();
+
+        // M8 · 驳回留痕(不涉及资金出账,用 log():审计失败不阻断业务)。
+        $this->oplog->log(
+            OperationLog::ACTOR_ADMIN,
+            $reviewerId,
+            'after_sale.reject',
+            'after_sale',
+            $afterSale->id,
+            ['reason' => $reason]
+        );
 
         return ['ok' => true, 'message' => '已驳回。', 'data' => ['id' => $afterSale->id]];
     }

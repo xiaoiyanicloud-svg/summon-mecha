@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Listeners\SkillDelivery;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\PaymentTransaction;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\Payment\MockGateway;
 use Webkul\Shop\Services\Payment\PaymentManager;
 
@@ -26,7 +28,10 @@ use Webkul\Shop\Services\Payment\PaymentManager;
  */
 class PaymentCallbackController extends APIController
 {
-    public function __construct(protected PaymentManager $payments) {}
+    public function __construct(
+        protected PaymentManager $payments,
+        protected OperationLogger $oplog,
+    ) {}
 
     public function handle(Request $request)
     {
@@ -113,6 +118,24 @@ class PaymentCallbackController extends APIController
             // 触发 v1 既有授权发放(幂等:order_item_id 唯一键兜底)
             app(SkillDelivery::class)->afterOrderCreated($order);
         });
+
+        // M8 · 资金动作留痕:此前 Shop 侧(含支付回调翻状态)一处都不写 operation_log,
+        // 出事要追责时查无此人。回调由网关触发、无登录用户,故记 SYSTEM。
+        // 用 log()(非 logOrFail):留痕是旁路,不应因审计表写不进去而回滚一笔已成功的支付。
+        $this->oplog->log(
+            OperationLog::ACTOR_SYSTEM,
+            null,
+            'payment.callback.paid',
+            'order',
+            $order->id,
+            [
+                'out_trade_no'   => $result->outTradeNo,
+                'transaction_id' => $result->transactionId,
+                'amount'         => $result->amount,
+                'gateway'        => $gateway->key(),
+            ],
+            $request->ip()
+        );
 
         return response()->json([
             'message'  => '支付成功,授权已发放。',
