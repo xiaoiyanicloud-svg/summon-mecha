@@ -504,28 +504,54 @@ select * from cms_pages
 
 ## B 类 · 不需要总负责人介入、纯工程可自行补（每条带代码证据 + 量级）
 
-| 功能闭环（模块） | 现状（代码核实） | 卡点 | 归谁 | 量 |
-|---|---|---|---|---|
-| **B-1 C 端退款"申请→审批→打款"整条链缺审批端** | 申请端已通（`POST /api/after-sale`，`Routes/api.php:275`；`AfterSaleService::apply()` 含 D10 政策判定+行锁防重）；**但 `AfterSaleService::approve()`（`:114`）全仓零调用方**，Admin 无 after-sale 路由/视图（`Admin/src/Routes/*` 无、`views/ops/` 只有 alerts、invoices、overview）。`after_sale` 表**已有 1 行真实申请** → 申请了就**没人能批** | 无（纯工程：补平台端审批入口）。⚠ 部分/整单边界见 A-12 | 工程 | M |
-| **B-2 通知中心缺业务生产者** | 读写端齐（`NotificationController::index/markRead`、`pages/mine/notifications.vue`）；但 `NotificationService::send()` 唯一调用方是 `AdminAlertService.php:69`（发给 admin），`notification` 表 **0 行** → **审核结果/下发完成/试用到期/退款到账四类无生产者** | 无（微信订阅消息另属 A-3） | 工程 | M |
-| **B-3 §4.7 试用 20 分钟闭环整条未落地** | ① 无 `/api/skills/{id}/trial` 路由（`Routes/api.php` 无）；② 无发放（`meta.trial` 仅被 `AfterSaleService.php:60` 读）；③ 无 `expiring` 状态；④ `withSchedule` 5 条命令**无回收 Job**（`bootstrap/app.php:76-110`），`app/Console/Commands` 8 个命令也无；⑤ 前端无试用按钮/倒计时。**已就绪的只有**：`OP_RECLAIM=6` 在 `DeployTask::OPERATIONS` 白名单（`DeployTask.php:27/43`）、`DeployTaskService.php:487` 已处理该操作码、`(status,expires_at)` 索引 | 无 | 工程 | M |
-| **B-4 §4.18/D1 设备解绑未落到真相源** | `DeviceController::destroy()`（`:186`）只置 `devices.bind_status=revoked`（登记视图），**从不改 `device_binding.bind_status`**（枚举 bound/unbound/transferring 已存在）；无 `/api/device-bindings` 路由。**下发链路只认 binding** → 解绑后平台仍认为设备已确权 | 无（工程） | 工程 | M |
-| **B-5 §4.14 L3 风险告知留痕空转** | `risk_acknowledgment` 表**已建**（migration `2026_10_14_000001:17-18`）但全仓**零引用**：无模型/服务/接口/前端弹窗；`/api/risk/acknowledge` 不存在。分级文案随 `manifest.safety.risk_level` 已可读（见本附录 §0） | 无（工程；缺的是"告知+留痕"这半条） | 工程 | M |
-| **B-6 §4.18/§6 我的技能缺 卸载/回退/启停 入口** | 后端已就绪：`DeployController::store()` 的 `operation` 白名单＝`DeployTask::OPERATIONS`（含 2 卸载/3 回滚/4 启用/5 停用）；前端 `pages/mine/skills.vue:229` 只发 `operation: 1`（安装），`deployApi.installs()`（`utils/api.js:173`）无消费方 | 无 | 工程 | S |
-| **B-7 §4.18 技能举报前端零入口** | 后端齐：`POST /api/skill-reports`（`Routes/api.php:314`）+ Admin 处置台（`views/catalog/skill-reports`）；**但 `utils/api.js` 无封装、`pages/` 无入口**（全仓 `report` 只命中事故上报） | 无 | 工程 | S |
-| **B-8 售后单列表未展示** | `skillApi.afterSales()`（`utils/api.js:113`）已封装，**无任何页面消费** → 用户只能"申请"，看不到进度 | 无 | 工程 | S |
-| **B-9 §4.18 技能筛选维度未接** | 服务端搜索已通但**只按 name LIKE**（`SkillCatalogController::search()` `:53-106`，参数仅 `q`）；类目/标签接口有（`/api/skill-catalog/categories|tags`，`utils/api.js:146`）**却零消费方** → 机型/通道/动作类型/风险等级四个筛选维度都没接 | 无 | 工程 | M |
-| **B-10 §4.16/§4.19 工单 ↔ 事故未互链** | `Services/Incident/` 与工单服务之间无任何互引（grep 无命中）；计划要求"用户投诉→工单→若定性事故→incident" | 无 | 工程 | S |
-| **B-11 §4.10 灰度缺"崩溃率"指标** | `GrayReleaseService::recordMetric()` 只算 `installs/successes/failures → success_rate`（`:82-96`）；计划写"崩溃率>2% 回滚"无对应维度。（**自动回滚阈值本身已实现**，见 §0） | 无 | 工程 | S |
-| **B-12 §4.22 F1 per-device 证书** | `VerifyAgentKey` 是**共享密钥**（类注释自认"生产应升级为 per-device 证书"），`agent/register|heartbeat|evt|commands` 四接口共用一把 `AGENT_KEY` → 服务端分不清真身与冒充者。一次性 enroll token 已在（`DeviceController::agentToken()`） | 无（计划已定 mTLS） | 工程 | L |
-| **B-13 §4.22 F1 Agent 自更新 / F3 Uptane 防降级** | 全仓无 `self_update` / `uptane` / `tuf` 命中 | 无 | 工程 | L |
-| **B-14 §4.22 一键配对装机小工具（用户侧）** | 现只有图文＋平台签发命令：`pages/mine/agent-setup.vue`（分三厂步骤，`install` 步取 `deviceApi.agentToken().data.command`）；计划要求的 Windows/Mac **图形化"插网线→点连接"工具**未做 | 真机验证依赖 **E7** | 工程（真机部分待 A） | L |
-| **B-15 §4.18 发票申请入口 + 前端假发票台账** | 无 `/api/invoices` 路由、`API/` 目录无发票控制器（Admin 只有只读台账 `Ops/InvoiceController`）；**而 `pages/mine/index.vue:663-667` 仍硬编码 5 张 `INV-2026-00x` 当真实数据展示** → 本项目铁律里的"会说谎" | 无 | 工程 | M（入口）＋S（去假数据） |
-| **B-16 §6 技能详情页缺 试用/风险告知/版本历史/通道标识** | `pages/home/jineng.vue` 已接 真实商品+评价+兼容性校验+设备选择，**但仍保留 `getMockData()`（`:237`）作为回退**；模板内无试用按钮、无风险告知弹窗、无版本历史、无通道标识（`handleShare()` `:340` 仍是"分享功能开发中"） | 试用/告知依赖 A-12、B-3、B-5 | 工程 | M |
-| **B-17 §4.4.3/§5.1 导入适配器未对开发者开放** | 导入器已实现 2 个（`SkillImport/Importers/{Unitree,RawMotion}Importer.php`，智元 P1 注释留位），注册表 `config/skill_importers.php` 就绪；**唯一入口是 internal.key 的 `POST /api/skill-supply/import`** —— Admin 与开发者门户均无导入 UI/路由 | 无 | 工程 | M |
-| **B-18 §4.18 优惠券对技能单无路径** | 全仓无券与技能/tob-order 关联代码（技能单走 tob-order 不经购物车） | 无（P1） | 工程 | M |
-| **B-19 §4.18 一机一码 `national_code`** | 列已建（`2026_10_13_000002:48`，`DeviceBinding` fillable 含它），**无接口/无录入/无校验** | 无（P1） | 工程 | S |
-| **B-20 §4.18 假动作残留（客服/报修）** | `pages/order/order-detail.vue:316` `reportRepair()` 直接 toast「报修提交成功」**不调后端**；`pages/home/jineng.vue:343` `openCustomer()` 只弹硬编码电话 | 无 | 工程 | S |
+| 功能闭环（模块） | 现状（代码核实） | 卡点 | 归谁 | 量 | 落地提交（2026-10-15） |
+|---|---|---|---|---|---|
+| **B-1 C 端退款"申请→审批→打款"整条链缺审批端** | 申请端已通（`POST /api/after-sale`，`Routes/api.php:275`；`AfterSaleService::apply()` 含 D10 政策判定+行锁防重）；**但 `AfterSaleService::approve()`（`:114`）全仓零调用方**，Admin 无 after-sale 路由/视图（`Admin/src/Routes/*` 无、`views/ops/` 只有 alerts、invoices、overview）。`after_sale` 表**已有 1 行真实申请** → 申请了就**没人能批** | 无（纯工程：补平台端审批入口）。⚠ 部分/整单边界见 A-12 | 工程 | M | ✅ **已完成** `3a7e3ef` |
+| **B-2 通知中心缺业务生产者** | 读写端齐（`NotificationController::index/markRead`、`pages/mine/notifications.vue`）；但 `NotificationService::send()` 唯一调用方是 `AdminAlertService.php:69`（发给 admin），`notification` 表 **0 行** → **审核结果/下发完成/试用到期/退款到账四类无生产者** | 无（微信订阅消息另属 A-3） | 工程 | M | ✅ **已完成** `106789b` |
+| **B-3 §4.7 试用 20 分钟闭环整条未落地** | ① 无 `/api/skills/{id}/trial` 路由（`Routes/api.php` 无）；② 无发放（`meta.trial` 仅被 `AfterSaleService.php:60` 读）；③ 无 `expiring` 状态；④ `withSchedule` 5 条命令**无回收 Job**（`bootstrap/app.php:76-110`），`app/Console/Commands` 8 个命令也无；⑤ 前端无试用按钮/倒计时。**已就绪的只有**：`OP_RECLAIM=6` 在 `DeployTask::OPERATIONS` 白名单（`DeployTask.php:27/43`）、`DeployTaskService.php:487` 已处理该操作码、`(status,expires_at)` 索引 | 无 | 工程 | M | ✅ **已完成** `7e3a81f` |
+| **B-4 §4.18/D1 设备解绑未落到真相源** | `DeviceController::destroy()`（`:186`）只置 `devices.bind_status=revoked`（登记视图），**从不改 `device_binding.bind_status`**（枚举 bound/unbound/transferring 已存在）；无 `/api/device-bindings` 路由。**下发链路只认 binding** → 解绑后平台仍认为设备已确权 | 无（工程） | 工程 | M | ✅ **已完成** `2bd1028` |
+| **B-5 §4.14 L3 风险告知留痕空转** | `risk_acknowledgment` 表**已建**（migration `2026_10_14_000001:17-18`）但全仓**零引用**：无模型/服务/接口/前端弹窗；`/api/risk/acknowledge` 不存在。分级文案随 `manifest.safety.risk_level` 已可读（见本附录 §0） | 无（工程；缺的是"告知+留痕"这半条） | 工程 | M | ✅ **已完成** `b9e39b2` |
+| **B-6 §4.18/§6 我的技能缺 卸载/回退/启停 入口** | 后端已就绪：`DeployController::store()` 的 `operation` 白名单＝`DeployTask::OPERATIONS`（含 2 卸载/3 回滚/4 启用/5 停用）；前端 `pages/mine/skills.vue:229` 只发 `operation: 1`（安装），`deployApi.installs()`（`utils/api.js:173`）无消费方 | 无 | 工程 | S | ✅ **已完成** `db78849` |
+| **B-7 §4.18 技能举报前端零入口** | 后端齐：`POST /api/skill-reports`（`Routes/api.php:314`）+ Admin 处置台（`views/catalog/skill-reports`）；**但 `utils/api.js` 无封装、`pages/` 无入口**（全仓 `report` 只命中事故上报） | 无 | 工程 | S | ✅ **已完成** `ce79cbd` |
+| **B-8 售后单列表未展示** | `skillApi.afterSales()`（`utils/api.js:113`）已封装，**无任何页面消费** → 用户只能"申请"，看不到进度 | 无 | 工程 | S | ✅ **已完成** `6b1d860` |
+| **B-9 §4.18 技能筛选维度未接** | 服务端搜索已通但**只按 name LIKE**（`SkillCatalogController::search()` `:53-106`，参数仅 `q`）；类目/标签接口有（`/api/skill-catalog/categories|tags`，`utils/api.js:146`）**却零消费方** → 机型/通道/动作类型/风险等级四个筛选维度都没接 | 无 | 工程 | M | ✅ **已完成** `bb4375d` |
+| **B-10 §4.16/§4.19 工单 ↔ 事故未互链** | `Services/Incident/` 与工单服务之间无任何互引（grep 无命中）；计划要求"用户投诉→工单→若定性事故→incident" | 无 | 工程 | S | ✅ **已完成** `1efcbd4` |
+| **B-11 §4.10 灰度缺"崩溃率"指标** | `GrayReleaseService::recordMetric()` 只算 `installs/successes/failures → success_rate`（`:82-96`）；计划写"崩溃率>2% 回滚"无对应维度。（**自动回滚阈值本身已实现**，见 §0） | 无 | 工程 | S | ✅ **已完成** `fe3e6f3` |
+| **B-12 §4.22 F1 per-device 证书** | `VerifyAgentKey` 是**共享密钥**（类注释自认"生产应升级为 per-device 证书"），`agent/register|heartbeat|evt|commands` 四接口共用一把 `AGENT_KEY` → 服务端分不清真身与冒充者。一次性 enroll token 已在（`DeviceController::agentToken()`） | 无（计划已定 mTLS） | 工程 | L | ✅ **服务端完成** `ef16217`（⚠ 设备侧 mTLS 待真机，见下「收尾记录」） |
+| **B-13 §4.22 F1 Agent 自更新 / F3 Uptane 防降级** | 全仓无 `self_update` / `uptane` / `tuf` 命中 | 无 | 工程 | L | ✅ **服务端完成** `70f024c`（⚠ 端侧 Uptane 待真机，见下「收尾记录」） |
+| **B-14 §4.22 一键配对装机小工具（用户侧）** | 现只有图文＋平台签发命令：`pages/mine/agent-setup.vue`（分三厂步骤，`install` 步取 `deviceApi.agentToken().data.command`）；计划要求的 Windows/Mac **图形化"插网线→点连接"工具**未做 | 真机验证依赖 **E7** | 工程（真机部分待 A） | L | ✅ **骨架完成** `45c0e89`（⚠ 发现设备/设 IP/SSH 待真机，见下「收尾记录」） |
+| **B-15 §4.18 发票申请入口 + 前端假发票台账** | 无 `/api/invoices` 路由、`API/` 目录无发票控制器（Admin 只有只读台账 `Ops/InvoiceController`）；**而 `pages/mine/index.vue:663-667` 仍硬编码 5 张 `INV-2026-00x` 当真实数据展示** → 本项目铁律里的"会说谎" | 无 | 工程 | M（入口）＋S（去假数据） | ✅ **已完成** `c653c34` |
+| **B-16 §6 技能详情页缺 试用/风险告知/版本历史/通道标识** | `pages/home/jineng.vue` 已接 真实商品+评价+兼容性校验+设备选择，**但仍保留 `getMockData()`（`:237`）作为回退**；模板内无试用按钮、无风险告知弹窗、无版本历史、无通道标识（`handleShare()` `:340` 仍是"分享功能开发中"） | 试用/告知依赖 A-12、B-3、B-5 | 工程 | M | ✅ **已完成** `8e604b6` |
+| **B-17 §4.4.3/§5.1 导入适配器未对开发者开放** | 导入器已实现 2 个（`SkillImport/Importers/{Unitree,RawMotion}Importer.php`，智元 P1 注释留位），注册表 `config/skill_importers.php` 就绪；**唯一入口是 internal.key 的 `POST /api/skill-supply/import`** —— Admin 与开发者门户均无导入 UI/路由 | 无 | 工程 | M | ✅ **已完成（平台端）** `db30583` |
+| **B-18 §4.18 优惠券对技能单无路径** | 全仓无券与技能/tob-order 关联代码（技能单走 tob-order 不经购物车） | 无（P1） | 工程 | M | ✅ **已完成** `8679d9d` |
+| **B-19 §4.18 一机一码 `national_code`** | 列已建（`2026_10_13_000002:48`，`DeviceBinding` fillable 含它），**无接口/无录入/无校验** | 无（P1） | 工程 | S | ✅ **已完成** `627cb7c` |
+| **B-20 §4.18 假动作残留（客服/报修）** | `pages/order/order-detail.vue:316` `reportRepair()` 直接 toast「报修提交成功」**不调后端**；`pages/home/jineng.vue:343` `openCustomer()` 只弹硬编码电话 | 无 | 工程 | S | ✅ **已完成** `97470ab` + `c77ac55` |
+
+### ✅ 收尾记录（2026-10-15）· B 类 20 条全部落地
+
+上表 **20 条已全部落地**（B 类 20 条 → **21 个 B-\* 提交**）。其中 B-20 分两次提交
+（`97470ab` 先清订单详情页两处假动作，`c77ac55` 再清剩余 6 处），故 20 条对应 21 个提交。
+本工作轮另有 2 个收尾提交：`e139a86`（补入库常驻任务安装脚本，计划任务方式 queue 自复活）、
+`f6934c9`（补入库 supervisor-directive 总负责人指令 + 收工记录）。合计 23 个提交（`2bd1028..f6934c9`）。
+
+**量级判断被验证**：上面「量级口径与最该先补」列的**「最该先补的 3 条」全部落地** ——
+B-1（`after_sale` 有真实申请却无人能批）、B-4（解绑只改登记视图、下发仍认 `device_binding`）、
+B-2（通知中心库 0 行、页面永远空白）这三个"已在库里发生、平台接不住"的确定性坏印象，均已消除。
+
+**⚠ 只完成服务端一半、依赖真机/外部、本轮未验证的部分**（**不得当作真机功能可用**）：
+
+| 条目 | 已落地（服务端，有测试） | 待真机 / 外部（**未验证**） |
+|---|---|---|
+| **B-12 per-device 证书**（§4.22 F1） | 服务端签发 + 校验 + 渐进切换（`ef16217`） | **设备侧 mTLS 未接**：真机 Agent 仍用共享 `agent.key`，端到端证书握手**未跑过** → 待 E7 |
+| **B-13 Agent 自更新 / 防降级**（§4.22 F1/F3） | 版本单调（防降级）判定（`70f024c`） | **端侧 Uptane / TUF 未接**：真机自更新与元数据签名验证**未跑过** → 待 E7 |
+| **B-14 一键配对装机工具**（§4.22） | 可验证核心骨架（`45c0e89`） | **实际发现设备 / 设 IP / SSH 未接**：依赖真机与 EMQX，本机**无法给出"已跑通"结论** → 待 E7 |
+
+> 诚实边界：B-12/13/14 的**服务端逻辑有单元/特性测试**，但**端到端链路一次都没在真机上跑过**。
+> 在 E7（三厂真机 + EMQX）到位前，这三条只能标「**服务端落地、端侧未验证**」。
+
+> 附：原「存疑」节里 **§4.5 试用入口顺序依赖**、**§4.16 薅试用/审核 SLA** 两条，
+> 其前置（B-3 试用整条未落地）**已由本轮 B-3 解除** —— 这两条现在**具备可验证条件**，
+> 但本收尾**未重新逐行核实**，仍按「未核实」留待后续。
 
 ## 量级口径与「最该先补」
 
