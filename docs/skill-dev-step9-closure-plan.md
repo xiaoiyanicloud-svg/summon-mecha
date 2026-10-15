@@ -266,7 +266,16 @@ L2 通过 → **两条发布路径都过闸门** → 上架 → 客户端可见 
 | ⑥ 撤回提审 + 开发者下架 | ✅ **完成** | `00f2f7c`。**含一处空动作修复**：见 §2.7 —— "发布"原先不改商品可售性，市场根本搜不到；现由 `SkillPublisher` 在同事务内置商品可售（走事件三步 + 显式带分类）。下架 = 商品置不可售、理由必填留痕、**已售授权不动**（Q3）。接口级验收：发布前搜不到 / 发布后能搜到 |
 | ⑦ 开发者通知 | ✅ **完成** | `a563ef2`。生产端挂 `AuditService::submitLayer0/recordLayer2` 与 `SkillPublisher::publish`（事务提交后），全包 `safe()`；读侧门户收件箱 + 未读角标，可见范围收敛成 `Notification::scopeDeveloperInbox()` 一处。实测 Dev 48 + SkillAudit 49 = 97 例全绿 |
 | 实名发布前置（Q6） | ✅ **完成** | `a104fbd`。`SkillPublisher::ownerQualification()` 置于**闸门之前**（"谁在卖"比"东西过没过审"更靠前）；自营 `seller_id` NULL 不受限；`seller_id` 有值查不到主体 → **fail-closed**；协议未签全 / 实名未过各自独立错误码。连带修：API 侧 `default` 兜底会把新码误标成 `GATE_NOT_PASSED`（已逐个显式映射）；开发者总览页那句"实名不影响你建技能与提审"落地后已成假话（已改）。实测 SkillAudit 55 + Dev 48 = 103 例全绿 |
-| 待清理（两行，下一卡顺带） | 📌 | ① `views/dev/onboarding/form.blade.php` 同主题文案只提"不影响提审"、未提"不能上架"；② `Models/DeveloperProfile.php` 类注释仍写"入驻审核 UI 本轮未做"，而该 UI 早就在 `Admin\Customers\DeveloperController` |
+| 待清理（两行） | ✅ 完成 | `99e14f1` 顺带修掉（`onboarding` 文案 + `DeveloperProfile` 类注释；后者还牵出一句同样已腐坏的"唯一闸门是协议已签"） |
+
+### 第 2 层 · 平台化
+
+| 项 | 状态 | 证据 |
+|---|---|---|
+| ⑧ schema 版本策略 | ✅ **完成** | `99e14f1`。`ManifestValidator` 由"一句话拒绝"改为四类可区分提示（缺失 / 支持 / **太新** / **太旧已停用** / 命名空间不认识）—— 关键在让开发者分得清"太新"与"写错了"，否则只能靠猜。**顺带补了一个真缺口**：`skill_versions.manifest_schema` 此前只有 Admin 导入路径写，开发者通道恒为 NULL，而 `IncidentService` 把它当事故证据快照读 → 开发者技能出事故时证据链最该有的那条是空的；落库点选在 `AuditService::submitLayer0`（三条通道唯一漏斗）。实测 SkillAudit 65 + Dev 48 = 113 例全绿 |
+| ⑨ 包完整性 / manifest 抽取时机 | ⏸ 下一卡 | 目标：同一版本重复上传后，审核快照与落盘文件仍一致（`file_hash` 与审核绑定） |
+| ⑩ permissions 进运行时 | ⏸ | 目标：声明权限 ⊄ 设备能力 → 下发前拒绝并留痕（D6 责任模型的技术支点） |
+| ⑪ 编译层口径降级 | ⏸ | 目标：界面/口径如实说"载体由人工产出/登记"，不再假装能自动编译 |
 
 > **第 1 层（近期闭环）①–⑦ 已全部完成。** 端到端验收链已打通：
 > 入驻 → 签协议 → 建技能 → 改技能 → 建版本 → 传包 → 提审 → **门户看到逐层闸门** → 驳回 → **收到通知** →
