@@ -145,6 +145,17 @@ export const incidentApi = {
   detail: (id) => http.get(`/api/incidents/${id}`, { loading: false }),
 }
 
+// ==================== 技能举报(B-7 · 加固计划 §四 A1) ====================
+// 技能一旦下发、在真实机器上跑起来,用户能按的最后一个刹车就是这个入口。
+// 后端三个刻意口径(见 SkillReportController):不要求持有该技能(举报对象恰恰
+// 不该是我买的东西)、不要求写 detail、命中违禁词也照收(引述违规内容是举报的
+// 必要部分,拦了等于关掉通道 → 改为留痕 + 人工判)。
+export const reportApi = {
+  // data: { target_type: 'skill'|'review', target_id, reason_category, detail? }
+  // 201 = 受理；200 + duplicate:true = 该对象已有未处置举报,本次未新建
+  create: (data) => http.post('/api/skill-reports', data, { loading: true, loadingText: '提交中...' }),
+}
+
 // ==================== 技能类目/标签(v3.4 步骤 7) ====================
 export const skillCatalogApi = {
   categories: () => http.get('/api/skill-catalog/categories', { loading: false }),

@@ -110,6 +110,8 @@
 					<!-- v3.4:申请售后/退款(虚拟商品政策:试用不退 / 未下发可退 / 已激活需人工审) -->
 					<view class="actions">
 						<view class="ghost-btn" @click="applyAfterSale(s)">申请售后 / 退款</view>
+						<!-- 举报入口(B-7):与"售后"并列但视觉弱化 —— 售后是走钱,举报是走内容安全,两回事 -->
+						<text class="report-link" @click="reportSkill(s)">举报该技能</text>
 					</view>
 				</view>
 			</state-view>
@@ -121,6 +123,7 @@
 
 <script>
 import { skillApi, deviceApi, deployApi } from '@/utils/api'
+import { submitSkillReport } from '@/utils/report'
 import { TOKEN_KEY, BASE_URL } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
 import NavBar from '@/components/NavBar.vue'
@@ -422,6 +425,11 @@ export default {
 				},
 			})
 		},
+		// B-7 · 举报该技能(target_id = product_id)。技能下发到真机后,这是用户能按的
+		// 最后一个刹车 —— 所以「我的技能」里也要有入口,不能只在详情页。
+		reportSkill(skill) {
+			submitSkillReport({ targetType: 'skill', targetId: skill.product_id, name: skill.name })
+		},
 		// 下载走鉴权接口(文件在 private 盘,没有公开 URL),所以必须自己带 Authorization 头
 		download(skill, asset) {
 			const token = uni.getStorageSync(TOKEN_KEY)
@@ -505,6 +513,9 @@ export default {
 	display: inline-block; font-size: 26rpx; color: #165DFF;
 	border: 1rpx solid #B9D3FF; border-radius: 30rpx; padding: 10rpx 30rpx;
 }
+
+/* 举报入口(B-7):与"申请售后"并列,但弱化为小字 —— 它不是主操作 */
+.report-link { font-size: 24rpx; color: #9CA3AF; text-decoration: underline; margin-left: 24rpx; }
 
 /* B-6 · 运维操作组:与上面的「一键下发」视觉上分开,且弱化(它是低频危险操作) */
 .ops-label { display: block; font-size: 24rpx; color: #8A9AA8; margin-bottom: 14rpx; }

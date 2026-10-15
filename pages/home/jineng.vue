@@ -98,6 +98,12 @@
 			</view>
 		</view>
 
+		<!-- 5.7 举报入口(B-7):技能下发到真实机器后,这是用户能按的最后一个刹车。
+		     后端不要求持有该技能 —— 举报对象恰恰不该是我买的东西,所以未购买也能举报。 -->
+		<view class="report-entry" v-if="productId" @click="reportSkill">
+			<text class="report-link">举报该技能</text>
+		</view>
+
 		<!-- 6. 底部操作栏 -->
 		<view class="footer-bar">
 			<view class="footer-left" @click="openCustomer">
@@ -134,6 +140,7 @@
 
 <script>
 	import { productApi, skillApi, deviceApi, reviewApi, riskApi } from '@/utils/api'
+	import { submitSkillReport } from '@/utils/report'
 	import NavBar from '@/components/NavBar.vue'
 	export default {
 		components: { NavBar },
@@ -417,6 +424,11 @@
 			handleShare() {
 				uni.showToast({ title: '分享功能开发中', icon: 'none' })
 			},
+			// B-7:举报该技能(target_id = products.id)。选理由 → 可选补充 → 提交。
+			reportSkill() {
+				if (!this.productId) { uni.showToast({ title: '技能信息加载中', icon: 'none' }); return }
+				submitSkillReport({ targetType: 'skill', targetId: this.productId, name: this.skillInfo.name })
+			},
 			openCustomer() {
 				uni.showToast({ title: '联系客服：400-888-9999', icon: 'none' })
 			},
@@ -638,6 +650,17 @@
 		text-align: center;
 		color: #bbb;
 		padding: 60rpx 0;
+	}
+	/* 举报入口(B-7):低干扰的小字入口,放在页尾、底部操作栏之上 */
+	.report-entry {
+		display: flex;
+		justify-content: center;
+		padding: 10rpx 0 30rpx;
+	}
+	.report-link {
+		font-size: 24rpx;
+		color: #9CA3AF;
+		text-decoration: underline;
 	}
 	.footer-bar {
 		position: fixed;
