@@ -1131,6 +1131,7 @@ Agent 插件：宇树=docker load｜智元=拷 tmp+RPC｜众擎=rsync（**插件
 
 | 文档 | 内容 | 对应主计划 |
 |---|---|---|
+| [skill-changes-summary.md](./skill-changes-summary.md) | **近期改动白话汇总**（含未做/待决策；§12 与本文 §4.1–§4.22 逐条对应） | §4 全篇 |
 | [skill-p0-board.md](./skill-p0-board.md) | **P0 可执行看板**（任务/人日/依赖/里程碑） | §7 排期 |
 | [agent-adaptation-plan.md](./agent-adaptation-plan.md) | **Agent 判定 + F1–F5 功能明细 + 协议** | §4.22 |
 | [skill-standardization-chain.md](./skill-standardization-chain.md) | **转换层全链路**（上传↔编译↔下发） | §4.20 |
