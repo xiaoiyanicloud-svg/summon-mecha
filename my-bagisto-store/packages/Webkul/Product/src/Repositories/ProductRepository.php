@@ -287,6 +287,11 @@ class ProductRepository extends Repository
              *
              * 用 `whereNotIn('products.id', …)` 而不是按分类 slug 分支：`skill_blocklist` 里
              * 只可能是技能商品，所以按 id 排除**天然只影响技能**，比"先判分类再拦"更简单、更难写错。
+             *
+             * ⚠ TODO(引擎切换)：本排除只加在**数据库**检索路径（`searchFromDatabase`）。
+             *   当前 `catalog.products.search.engine` 为 `database`（不影响现状）。将来若切到
+             *   `searchFromElastic`，**必须**在那边补上同样的 `exclude_ids` 排除 —— 否则"换引擎"
+             *   会静默让被熔断的技能重新露出（Elastic 侧不认这个参数，等于过滤凭空消失）。
              */
             if (! empty($params['exclude_ids'])) {
                 $ids = is_array($params['exclude_ids'])

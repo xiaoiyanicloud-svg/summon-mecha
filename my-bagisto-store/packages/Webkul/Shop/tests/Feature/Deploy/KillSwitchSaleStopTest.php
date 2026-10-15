@@ -573,3 +573,35 @@ it('S-8 · 后台查询路径不受影响:不带 exclude_ids 的 getAll 仍返�
 
     expect($ids)->toContain($skillId);
 });
+
+// ==================== 10 · 小召 AI 的取数面 ====================
+// fetchCatalog() 把技能库喂给 Coze。熔断是紧急止损,AI 侧也必须排除被熔断技能,
+// 否则"一边下架一边导流"(用户点进去撞 409)。
+
+it('S-8 · 熔断后:小召 AI 的技能库(fetchCatalog)不含被熔断技能;机型库不受影响', function () {
+    $skillId = s8FactoryProductInCategory('skill');
+    $machineId = s8FactoryProductInCategory('rent');
+
+    // fetchCatalog 是 private 且输出只喂给 Coze(外部),无法经公开路由直接观察其取数结果;
+    // 用反射直接取它的**真实输出**做行为断言(不是断言"查询带了参数",是断言结果里真的没了)。
+    $controller = app(\Webkul\Shop\Http\Controllers\API\SummonAiController::class);
+
+    $fetch = function () use ($controller): array {
+        $method = new \ReflectionMethod($controller, 'fetchCatalog');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller);
+    };
+
+    // 熔断前:技能库含它、机型库含机型
+    $before = $fetch();
+    expect(collect($before['skills'])->pluck('id')->map('intval')->all())->toContain($skillId)
+        ->and(collect($before['machines'])->pluck('id')->map('intval')->all())->toContain($machineId);
+
+    s8Engage($skillId, SkillBlocklist::ACTION_BLOCK_ALL);
+
+    // 熔断后:技能库不含它;机型库照常(熔断只针对技能商品,只过滤 skills 段)
+    $after = $fetch();
+    expect(collect($after['skills'])->pluck('id')->map('intval')->all())->not->toContain($skillId)
+        ->and(collect($after['machines'])->pluck('id')->map('intval')->all())->toContain($machineId);
+});

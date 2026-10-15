@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Webkul\Shop\Services\Deploy\KillSwitchService;
 
 /**
  * 小召·召唤引擎 v2(AI 版,由 Coze Agent 驱动)。
@@ -372,6 +373,13 @@ class SummonAiController extends APIController
         $catalog = ['machines' => [], 'skills' => [], 'accessories' => []];
         $seen    = [];
 
+        // S-8 · 熔断即下架:AI 侧同样要过滤被熔断的技能。
+        //   熔断是**紧急止损** —— 若让 AI 继续把小召里的技能推荐给用户,等于"一边下架一边导流":
+        //   用户点进去撞 409,而平台在本该止损时还在扩大曝光。"知道但告知已下架"没有价值,只制造困惑。
+        //   规则复用 `KillSwitchService::saleBlockedSkillIds()`(唯一读取入口),并走仓储的**可选参数**
+        //   `exclude_ids`(不在控制器里自己 filter 集合)。只对 skills 段生效,machines/accessories 不受影响。
+        $blockedSkillIds = app(KillSwitchService::class)->saleBlockedSkillIds();
+
         foreach (self::TYPE_CATEGORIES as $type => $slugs) {
             // 逐个 slug 查——这样能记住每件商品属于哪个分类(租用/购买/技能/配件),
             // AI 需要知道"这台是租还是买"才能给出可执行的建议。
@@ -391,6 +399,8 @@ class SummonAiController extends APIController
                     'channel_id'           => $channel,
                     'status'               => 1,
                     'visible_individually' => 1,
+                    // 只有 skills 段排除被熔断技能;machines/accessories 传空数组 = 不过滤(见上注)。
+                    'exclude_ids'          => $type === 'skills' ? $blockedSkillIds : [],
                 ]);
 
                 foreach ($products as $product) {
