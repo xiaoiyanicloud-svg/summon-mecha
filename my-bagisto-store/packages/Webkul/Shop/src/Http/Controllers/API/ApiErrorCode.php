@@ -239,6 +239,9 @@ final class ApiErrorCode
     public const VERSION_ARCHIVED = 'VERSION_ARCHIVED';
     public const VERSION_HAS_NO_ASSET = 'VERSION_HAS_NO_ASSET';
 
+    /** 未通过发布闸门 —— 两条发布通道共用的同一理由码（见 Services\SkillAudit\SkillPublisher） */
+    public const GATE_NOT_PASSED = 'GATE_NOT_PASSED';
+
     // ── 语音(契约见 TtsController / AsrController 类注释) ────────────────
 
     public const NO_TEXT = 'NO_TEXT';

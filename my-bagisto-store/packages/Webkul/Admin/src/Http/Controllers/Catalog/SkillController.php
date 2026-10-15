@@ -13,7 +13,7 @@ use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillImport;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Ops\OperationLogger;
-use Webkul\Shop\Services\SkillAudit\ReviewGate;
+use Webkul\Shop\Services\SkillAudit\SkillPublisher;
 use Webkul\Shop\Services\SkillImport\SkillImportService;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 
@@ -36,7 +36,7 @@ use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 class SkillController extends Controller
 {
     public function __construct(
-        protected ReviewGate $reviewGate,
+        protected SkillPublisher $publisher,
         protected AssetUploadService $assetUpload,
         protected OperationLogger $oplog,
     ) {}
@@ -232,6 +232,11 @@ class SkillController extends Controller
      * 而本该拦住它的 `AuditService::isFullyApproved()` 当时全库无人调用。
      * 现在闸门由 `ReviewGate` 按 `config/skill_audit.php` 的策略判定，**没有绕过入口**：
      * 想发布，就把审核做掉。
+     *
+     * ⚠ 2026-10-16 修正：上面这句当时只对**本控制器**成立。同名的 API 通道
+     *   `API\SkillAdminController::publish()`（internal.key）**没有**闸门 —— 未过审也能上架。
+     *   发布动作现已收敛到 `Services\SkillAudit\SkillPublisher`：两条通道共用同一实现。
+     *   教训：类注释里"两者不存在两套真相"是**断言**，不是保障；要保障就得让入口唯一。
      */
     public function publish(int $versionId)
     {
@@ -243,33 +248,21 @@ class SkillController extends Controller
             return redirect()->route('admin.catalog.skills.index');
         }
 
-        if ($version->assets->isEmpty()) {
-            session()->flash('error', '该版本还没有交付物,不能发布。');
+        // 发布动作走**统一入口** SkillPublisher —— 与 internal.key 的 API 通道共用同一条闸门。
+        // 交付物检查 / 归档检查 / 闸门 / 状态变更都在那里，这里不再重复实现。
+        $result = $this->publisher->publish($version);
 
-            return redirect()->route('admin.catalog.skills.edit', $version->product_id);
+        if (! $result['ok']) {
+            $gateBlocked = $result['code'] === SkillPublisher::ERR_GATE_NOT_PASSED;
+
+            session()->flash('error', $gateBlocked
+                ? $result['message'].'　请到「审核台」处理。'
+                : $result['message']);
+
+            return $gateBlocked
+                ? redirect()->route('admin.catalog.skill-reviews.show', $version->id)
+                : redirect()->route('admin.catalog.skills.edit', $version->product_id);
         }
-
-        // 发布闸门 —— 未过审不放行(连平台自营的技能也一样)
-        $gate = $this->reviewGate->evaluate($version->product_id, $version->id);
-
-        if (! $gate['ok']) {
-            session()->flash('error', '未通过发布闸门，不能发布：'.$gate['message']
-                .'　请到「审核台」处理。');
-
-            return redirect()->route('admin.catalog.skill-reviews.show', $version->id);
-        }
-
-        // 同一商品同时只保留一个 published,避免下单时锁定到哪个不确定
-        DB::transaction(function () use ($version) {
-            SkillVersion::where('product_id', $version->product_id)
-                ->where('id', '!=', $version->id)
-                ->where('status', SkillVersion::STATUS_PUBLISHED)
-                ->update(['status' => SkillVersion::STATUS_ARCHIVED]);
-
-            $version->status = SkillVersion::STATUS_PUBLISHED;
-            $version->released_at = now();
-            $version->save();
-        });
 
         $this->oplog->log(
             OperationLog::ACTOR_ADMIN,
@@ -280,11 +273,11 @@ class SkillController extends Controller
             [
                 'product_id' => $version->product_id,
                 'version'    => $version->version,
-                'gate'       => collect($gate['layers'])->map(fn ($s) => $s['result_label'])->all(),
+                'gate'       => collect($result['gate']['layers'])->map(fn ($s) => $s['result_label'])->all(),
             ]
         );
 
-        session()->flash('success', "版本 {$version->version} 已发布。");
+        session()->flash('success', $result['message']);
 
         return redirect()->route('admin.catalog.skills.edit', $version->product_id);
     }

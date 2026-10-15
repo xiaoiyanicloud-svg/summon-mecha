@@ -4,9 +4,9 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\SkillAudit\SkillPublisher;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 
 /**
@@ -32,7 +32,10 @@ use Webkul\Shop\Services\SkillSupply\AssetUploadService;
  */
 class SkillAdminController extends APIController
 {
-    public function __construct(protected AssetUploadService $uploads) {}
+    public function __construct(
+        protected AssetUploadService $uploads,
+        protected SkillPublisher $publisher,
+    ) {}
 
     /**
      * 单文件大小上限(KB)。可被 config 覆盖。
@@ -168,29 +171,24 @@ class SkillAdminController extends APIController
             return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
         }
 
-        if ($version->status === SkillVersion::STATUS_ARCHIVED) {
-            return $this->fail(ApiErrorCode::VERSION_ARCHIVED, '已归档的版本不能发布。', 422);
+        // ⚠ 发布动作走**统一入口** SkillPublisher —— 闸门只此一处。
+        //   此处原先没有闸门：未过审的技能可以经 internal.key 通道静默上架（发布旁路，
+        //   2026-10-16 修）。别把这段逻辑再抄回来。
+        $result = $this->publisher->publish($version);
+
+        if (! $result['ok']) {
+            $code = match ($result['code']) {
+                SkillPublisher::ERR_VERSION_ARCHIVED     => ApiErrorCode::VERSION_ARCHIVED,
+                SkillPublisher::ERR_VERSION_HAS_NO_ASSET => ApiErrorCode::VERSION_HAS_NO_ASSET,
+                default                                  => ApiErrorCode::GATE_NOT_PASSED,
+            };
+
+            return $this->fail($code, $result['message'], 422);
         }
-
-        if ($version->assets->isEmpty()) {
-            return $this->fail(ApiErrorCode::VERSION_HAS_NO_ASSET, '该版本还没有任何交付物,不能发布。', 422);
-        }
-
-        // 同一个商品同时只保留一个 published 版本,避免下单时锁定到哪个不确定
-        DB::transaction(function () use ($version) {
-            SkillVersion::where('product_id', $version->product_id)
-                ->where('id', '!=', $version->id)
-                ->where('status', SkillVersion::STATUS_PUBLISHED)
-                ->update(['status' => SkillVersion::STATUS_ARCHIVED]);
-
-            $version->status = SkillVersion::STATUS_PUBLISHED;
-            $version->released_at = now();
-            $version->save();
-        });
 
         return response()->json([
-            'message' => '版本已发布。',
-            'data'    => $this->formatVersion($version->fresh('assets')),
+            'message' => $result['message'],
+            'data'    => $this->formatVersion($result['version']),
         ]);
     }
 
