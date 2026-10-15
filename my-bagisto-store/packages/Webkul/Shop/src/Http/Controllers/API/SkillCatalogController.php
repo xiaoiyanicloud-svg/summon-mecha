@@ -8,6 +8,7 @@ use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\SkillCategory;
 use Webkul\Shop\Models\SkillTag;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Deploy\KillSwitchService;
 
 /**
  * 技能类目/标签/筛选 —— 公开读取(v3.4 步骤 6/7)。
@@ -111,6 +112,13 @@ class SkillCatalogController extends APIController
      */
     public function versions(int $productId): JsonResponse
     {
+        // S-8 · 熔断即下架:被熔断的技能详情**明确报错**,不静默 404 —— 静默消失会让用户
+        //   以为是自己的网络/平台坏了,而这是平台的**有意动作**,应当说清(码 + 人话)。
+        //   与市场搜索同一口径('sale' 门 = 任何生效熔断都拦),故"列表里没有"与"点进来报错"一致。
+        if (app(KillSwitchService::class)->isBlockedFor($productId, 'sale')) {
+            return $this->fail(ApiErrorCode::SKILL_BLOCKED, '该技能已被平台下架,暂不可查看。', 409);
+        }
+
         $rows = \DB::table('skill_versions')
             ->where('product_id', $productId)
             ->whereIn('status', [SkillVersion::STATUS_PUBLISHED, SkillVersion::STATUS_ARCHIVED])
@@ -166,6 +174,14 @@ class SkillCatalogController extends APIController
             // ⚠ 只取当前语言行:多语言行里 name 只在对应语言有值,不过滤会取到 null 行
             ->where('locale', app()->getLocale())
             ->whereNotNull('name');
+
+        // S-8 · 熔断即下架:被熔断的技能**不得出现在市场列表**。
+        //   规则(sale 门 = 任何生效熔断都算停售)收敛在 KillSwitchService,这里只把它的
+        //   结果 whereNotIn 到查询层 —— 可见性判断归查询,不在这里逐行过滤。
+        $blockedIds = app(KillSwitchService::class)->saleBlockedSkillIds();
+        if (! empty($blockedIds)) {
+            $query->whereNotIn('product_id', $blockedIds);
+        }
 
         if ($categoryId) {
             $query->whereIn('product_id', function ($sub) use ($categoryId) {

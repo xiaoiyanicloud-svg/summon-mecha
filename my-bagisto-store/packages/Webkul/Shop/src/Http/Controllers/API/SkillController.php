@@ -13,6 +13,7 @@ use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Deploy\KillSwitchService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillDelivery\DeviceBindingService;
 
@@ -104,10 +105,20 @@ class SkillController extends APIController
 
         $assets = $this->assetsOf($entitlement);
 
+        // S-8 · 熔断提示:block_all 及以上时,该技能的包已停止分发 —— 列表仍展示(权益还在),
+        //   但**明确告知**此刻下载会被拒,别让用户点了下载却只看到一个干巴巴的错误。
+        //   block_new(仅停新增)不在此列:那种强度下既有授权的下载**不受影响**。
+        $blocked = app(KillSwitchService::class)->isBlockedFor((int) $entitlement->product_id, 'download');
+
         return response()->json([
             // 安装指引跟的是"这个技能怎么装进机器" —— 第三方成品机器人改不了固件,
             // 兜底交付就是靠这份说明让用户自己装,所以它和交付物一起返回。
             'install_guide' => optional($this->versionOf($entitlement))->install_guide,
+            // 熔断提示(新增字段,不改既有契约):true 时前端应显眼展示下面的说明。
+            'blocked'       => $blocked,
+            'block_notice'  => $blocked
+                ? '该技能已被平台暂停分发,暂不能下载。如有需要请联系客服处理售后。'
+                : null,
             'data'          => $assets->map(fn (SkillAsset $a) => [
                 'id'           => $a->id,
                 'carrier_type' => $a->carrier_type,
@@ -138,6 +149,19 @@ class SkillController extends APIController
         // 若只认 isUsable() 则"建单未付"也能下包 —— 见 SkillEntitlement::isOrderPaid()。
         if (! $entitlement->isOrderPaid()) {
             return $this->fail(ApiErrorCode::ENTITLEMENT_UNPAID, '订单尚未支付,暂不能下载。', 409);
+        }
+
+        // S-8 · block_all 及以上:明知这个包有问题,就**停止分发** —— 已授权用户也下不到。
+        //   仅 block_all / force_uninstall / force_rollback 才拦;block_new 只停新增,
+        //   不停已有授权的下载(阶梯语义见 KillSwitchService::blocksAction)。
+        //   ⚠ 停止分发 ≠ 用户权益消失(D10):本卡不做退款(需产品裁决 + 支付资质),
+        //     文案引导用户联系客服处理售后;影响面已由 engage() 留痕供运营决定补偿。
+        if (app(KillSwitchService::class)->isBlockedFor((int) $entitlement->product_id, 'download')) {
+            return $this->fail(
+                ApiErrorCode::SKILL_BLOCKED,
+                '该技能已被平台暂停分发,暂不能下载。如有需要请联系客服处理售后。',
+                409
+            );
         }
 
         $asset = $this->assetsOf($entitlement)

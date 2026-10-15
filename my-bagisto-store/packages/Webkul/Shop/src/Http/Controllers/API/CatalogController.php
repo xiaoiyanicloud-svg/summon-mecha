@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Webkul\Category\Models\Category;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Http\Resources\ProductResource;
+use Webkul\Shop\Services\Deploy\KillSwitchService;
 
 /**
  * 目录聚合接口 —— 机器页性能优化专用。
@@ -60,6 +61,24 @@ class CatalogController extends APIController
             ]));
 
         $rows = method_exists($products, 'items') ? $products->items() : $products;
+
+        // S-8 · 熔断即下架：被熔断的技能**不得出现在首页聚合里**（用户第一眼就能看到、点进去）。
+        //   此前只有 `skill-catalog/search` 做了过滤，本聚合（首页数据源）漏了 —— 停售只挡住了搜索一条路。
+        //
+        // ⚠ **只对 `skill` 段生效**：熔断只针对技能商品，租 / 买 / 配件不受影响。
+        //   这里刻意按 slug 分支，绝不把过滤套到整张聚合上（那会把租/买/配件也一起藏了）。
+        //   规则复用 `KillSwitchService::saleBlockedSkillIds()`（"停售"口径的唯一读取入口），
+        //   本控制器不自己判强度。
+        if ($slug === 'skill') {
+            $blocked = app(KillSwitchService::class)->saleBlockedSkillIds();
+
+            if (! empty($blocked)) {
+                $rows = collect($rows)
+                    ->reject(fn ($p) => in_array((int) $p->id, $blocked, true))
+                    ->values()
+                    ->all();
+            }
+        }
 
         return array_map(fn ($p) => (new ProductResource($p))->jsonSerialize(), $rows);
     }

@@ -278,6 +278,24 @@ class ProductRepository extends Repository
                     ->where('product_channels.channel_id', explode(',', $params['channel_id']));
             }
 
+            /**
+             * S-8 · 买家侧商品面统一排除指定商品 id（熔断技能停售用）。
+             *
+             * 由**调用方**（Shop 的 `API\ProductController::index`）显式传入被熔断的技能 id；
+             * 本仓储**不自己判定熔断**，也不默认排除任何商品 —— 后台（Admin）的列表不传这个
+             * 参数，因此**看不到任何过滤**，运营仍能查到被熔断的技能。
+             *
+             * 用 `whereNotIn('products.id', …)` 而不是按分类 slug 分支：`skill_blocklist` 里
+             * 只可能是技能商品，所以按 id 排除**天然只影响技能**，比"先判分类再拦"更简单、更难写错。
+             */
+            if (! empty($params['exclude_ids'])) {
+                $ids = is_array($params['exclude_ids'])
+                    ? $params['exclude_ids']
+                    : explode(',', (string) $params['exclude_ids']);
+
+                $qb->whereNotIn('products.id', $ids);
+            }
+
             if (! empty($params['type'])) {
                 $qb->where('products.type', $params['type']);
 

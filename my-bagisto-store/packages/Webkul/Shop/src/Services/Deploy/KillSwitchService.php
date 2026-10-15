@@ -7,6 +7,7 @@ use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillBlocklist;
+use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Services\Ops\OperationLogger;
 
 /**
@@ -32,6 +33,17 @@ use Webkul\Shop\Services\Ops\OperationLogger;
  *   (`SkillSupplyController::block`)不传 → **每个熔断都记成 admin**,真实调用方丢失。
  *   编造的身份比留空更坏:它看起来像有留痕。现在默认是 `internal`(内部通道),
  *   调用方若能自报身份则记 `internal:<operator>`;动作同时进 `operation_log`(带 IP)。
+ *
+ * ── S-8 · 熔断必须**真的止得住**(停销售 + 停下载),判定收敛成**一处** ──
+ *   此前 `isBlocked()` 全仓只有一处读点(`DeployTaskService::assertNotBlocked` 拦"建新下发任务"),
+ *   于是熔断只挡住了"自动下发"一条路:被熔断的技能**仍出现在市场**、**仍能下单并发放授权**、
+ *   人工通道的包**仍能被下给新用户**。对当前唯一真能跑通的 `manual` 通道,熔断既不退钱也不拦下载。
+ *
+ *   修法:把判定收敛成本类的 {@see self::isBlockedFor()}(唯一的"读"入口,内部再经
+ *   {@see self::blocksAction()} 落地**强度阶梯**),四个调用点各按自己的"门"去问:
+ *     · 新增流通(市场/详情/下单/新下发) → 'new' / 'sale':**任何**生效熔断都拦;
+ *     · 既有授权的下载                   → 'download':仅 block_all 及以上才拦(block_new 不停)。
+ *   阶梯语义见 `SkillBlocklist` 的 ACTION_* 注释,这里不重复。
  */
 class KillSwitchService
 {
@@ -53,7 +65,7 @@ class KillSwitchService
      *
      * @param  string|null  $createdBy  调用方自报的身份(internal[:operator]);null → 记 internal
      * @param  string|null  $ip         来源 IP(HTTP 调用方传 request()->ip())
-     * @return array{blocklist_id: int, affected: int, forced_tasks: int, forced_online: int, forced_offline: int, unable_auto_uninstall: int}
+     * @return array{blocklist_id: int, affected: int, forced_tasks: int, forced_online: int, forced_offline: int, unable_auto_uninstall: int, sold_entitlements: int, installed_entitlements: int, downloaded_entitlements: int}
      */
     public function engage(
         int $skillId,
@@ -65,6 +77,24 @@ class KillSwitchService
     ): array {
         $actor = $createdBy ?: self::ACTOR_INTERNAL;
 
+        // S-8 · 影响面留痕:除"设备"的账,还要有"人"的账 —— 这些是运营判断
+        //   "要不要给用户补偿"的**唯一依据**(D10:停分发 ≠ 权益消失)。
+        //   全部**从库里真算**,不写占位值:
+        //     · 已售授权数   = 该商品(products.id)下的全部 skill_entitlements 行数;
+        //     · 其中已安装   = activations > 0(D1 激活台账:confirm-install 会 +1);
+        //     · 其中已下载   = meta.download_count > 0(下载端点写的真实计数)。
+        $entitlements = SkillEntitlement::query()
+            ->where('product_id', $skillId)
+            ->get(['id', 'activations', 'meta']);
+
+        $soldEntitlements = $entitlements->count();
+        $installedEntitlements = $entitlements->filter(fn ($e) => (int) ($e->activations ?? 0) > 0)->count();
+        $downloadedEntitlements = $entitlements->filter(function ($e) {
+            $meta = is_array($e->meta) ? $e->meta : [];
+
+            return (int) ($meta['download_count'] ?? 0) > 0;
+        })->count();
+
         // 已有生效熔断则不重复(也不留痕 —— 重复点一次不是一次新的安全动作)
         $existing = SkillBlocklist::activeFor($skillId);
         if ($existing) {
@@ -75,6 +105,9 @@ class KillSwitchService
                 'forced_online'         => 0,
                 'forced_offline'        => 0,
                 'unable_auto_uninstall' => 0,
+                'sold_entitlements'     => $soldEntitlements,
+                'installed_entitlements' => $installedEntitlements,
+                'downloaded_entitlements' => $downloadedEntitlements,
             ];
         }
 
@@ -164,6 +197,10 @@ class KillSwitchService
                 'forced_online'         => $forcedOnline,
                 'forced_offline'        => $forcedOffline,
                 'unable_auto_uninstall' => $unable,
+                // S-8 · 影响面(人的账):补偿决策依据,从库真算。
+                'sold_entitlements'     => $soldEntitlements,
+                'installed_entitlements' => $installedEntitlements,
+                'downloaded_entitlements' => $downloadedEntitlements,
             ],
             $ip
         );
@@ -180,6 +217,9 @@ class KillSwitchService
             'forced_online'         => $forcedOnline,
             'forced_offline'        => $forcedOffline,
             'unable_auto_uninstall' => $unable,
+            'sold_entitlements'     => $soldEntitlements,
+            'installed_entitlements' => $installedEntitlements,
+            'downloaded_entitlements' => $downloadedEntitlements,
         ]);
 
         return [
@@ -189,6 +229,9 @@ class KillSwitchService
             'forced_online'         => $forcedOnline,
             'forced_offline'        => $forcedOffline,
             'unable_auto_uninstall' => $unable,
+            'sold_entitlements'     => $soldEntitlements,
+            'installed_entitlements' => $installedEntitlements,
+            'downloaded_entitlements' => $downloadedEntitlements,
         ];
     }
 
@@ -248,15 +291,84 @@ class KillSwitchService
 
     /**
      * 某技能是否已被熔断(下发前校验)。
+     *
+     * ⚠ S-8 起本方法只剩一个**薄壳**:真正的判定收敛在 {@see self::isBlockedFor()}。
+     *   保留它是为了不破坏既有调用点(`DeployTaskService::assertNotBlocked` 传 'new'),
+     *   语义与其等价 —— 'new' 门下任何生效熔断都拦(见 blocksAction)。
+     *
+     * @param  string  $forAction  'new' | 'sale' | 'download'(默认 'new',与旧调用点一致)
      */
     public function isBlocked(int $skillId, string $forAction = 'new'): bool
     {
+        return $this->isBlockedFor($skillId, $forAction);
+    }
+
+    /**
+     * 某技能是否被"以某个强度"熔断 —— 熔断门槛的**唯一读取入口**。
+     *
+     * 全仓所有"该不该拦"的判断都经这里,避免在四处各写一遍(那样迟早互相打架)。
+     * 强度阶梯见 {@see self::blocksAction()} 与 `SkillBlocklist` 的 ACTION_* 注释。
+     *
+     * @param  string  $for  'new'      新增流通(市场展示 / 下单 / 新下发):任何生效熔断都拦
+     *                       'sale'     销售(下单 / 发授权):任何生效熔断都拦(与 new 同档,门名分开只为让调用点自解释)
+     *                       'download' 既有授权的包下载:仅 block_all 及以上才拦(block_new 不停)
+     */
+    public function isBlockedFor(int $skillId, string $for = 'new'): bool
+    {
         $block = SkillBlocklist::activeFor($skillId);
-        if (! $block) {
+
+        return $this->blocksAction($block?->action, $for);
+    }
+
+    /**
+     * 当前**在售口径**下被熔断的技能 id 集合(市场列表用)。
+     *
+     * 为什么单独开一个"集合"形状的入口而不是让控制器自己 `pluck`:规则只该有**一处**
+     * (哪个 action 算"停售")。这里复用 {@see self::blocksAction()} 过滤,控制器拿到的是
+     * 现成的 id 数组,直接 `whereNotIn` 到查询层即可,不必自己再判一遍强度。
+     *
+     * @return array<int, int>
+     */
+    public function saleBlockedSkillIds(): array
+    {
+        return SkillBlocklist::query()
+            ->where('status', SkillBlocklist::STATUS_ACTIVE)
+            ->get(['skill_id', 'action'])
+            ->filter(fn ($b) => $this->blocksAction($b->action, 'sale'))
+            ->pluck('skill_id')
+            ->unique()
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * 强度阶梯的**唯一落地点**:给定生效中的 action 与调用点的"门",返回是否拦截。
+     *
+     *   · 'new' / 'sale'(新增流通 / 销售)—— **任何**生效熔断都拦:
+     *       block_new 就是要"停新增的一切",而"停售"必须先于"停装"生效 ——
+     *       否则会出现"能买不能装"(用户付了钱、平台不下发)这种坏状态。
+     *   · 'download'(既有授权下载)—— 只有 block_all 及以上才拦:
+     *       block_new **不停**已有授权的下载(它只停新增);到 block_all 才"明知包有问题,
+     *       不再继续分发"。force_* 更高,自然也停。
+     *
+     * 阶梯是**递增**的:block_new ⊂ block_all ⊂ force_uninstall / force_rollback。
+     */
+    protected function blocksAction(?string $action, string $for): bool
+    {
+        if ($action === null) {
             return false;
         }
 
-        // block_new 只拦新下发;其余动作也拦新下发
-        return $forAction === 'new';
+        if ($for === 'download') {
+            return in_array($action, [
+                SkillBlocklist::ACTION_BLOCK_ALL,
+                SkillBlocklist::ACTION_FORCE_UNINSTALL,
+                SkillBlocklist::ACTION_FORCE_ROLLBACK,
+            ], true);
+        }
+
+        // 'new' / 'sale'(以及任何未知门名):从严 —— 任何生效熔断都拦
+        return true;
     }
 }

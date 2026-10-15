@@ -9,6 +9,7 @@ use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Deploy\KillSwitchService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
@@ -109,6 +110,39 @@ class SkillDelivery
             report(new \RuntimeException(
                 "技能条目 [{$item->id}] 属于无 customer_id 的订单 [{$order->id}],已跳过授权。"
             ));
+
+            return;
+        }
+
+        // S-8 · fail-closed 兜底:该技能若已被熔断,就**不建授权**。
+        //
+        //   为什么在这里还要判一次:下单入口(TobOrderController)已在下单口拦了一道,但
+        //   **下单源可能不止一条**(后台手工建单、将来其它下单源)—— 那些路径绕过那个闸。
+        //   授权是"谁拥有什么技能"的唯一事实源(见 SkillEntitlement 类注释),在它落库**之前**
+        //   再判一次,才能保证"已熔断技能不产生新授权"这条不变式。
+        //
+        //   ⚠ 这里**不能抛异常**(与 customer_id 缺失那条一样):本监听器跑在建单事务内,
+        //     抛异常会触发 OrderRepository 的建单重试(见类注释 #1)。所以"拒绝"的表现形式是:
+        //     跳过发放 + 明确留痕(report 触发告警 + operation_log),而不是只静默 return。
+        if (app(KillSwitchService::class)->isBlockedFor((int) $item->product_id, 'sale')) {
+            report(new \RuntimeException(
+                "技能条目 [{$item->id}] 属于已熔断技能 [{$item->product_id}],已拒绝发放授权(fail-closed)。"
+            ));
+
+            $this->oplog->log(
+                OperationLog::ACTOR_SYSTEM,
+                null,
+                'entitlement.grant_blocked',
+                'skill',
+                (int) $item->product_id,
+                [
+                    'order_id'      => $order->id,
+                    'order_item_id' => $item->id,
+                    'product_id'    => $item->product_id,
+                    'customer_id'   => $order->customer_id,
+                    'reason'        => 'skill_blocked',
+                ]
+            );
 
             return;
         }
