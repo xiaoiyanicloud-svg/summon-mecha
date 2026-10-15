@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Http\Controllers;
 
 use Illuminate\Http\Response;
+use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Services\Deploy\SigningService;
 
 /**
@@ -55,10 +56,20 @@ class AgentSetupController extends Controller
 
     /**
      * 参考 Agent 本体(Python 3,零依赖:标准库即可,验签优先 cryptography、缺则回退 openssl CLI)。
+     *
+     * ⚠ 脚本里的错误码不手写:经占位符替换成 `DeployTask::ERR_*` 常量 ——
+     *   nowdoc 里不能插值,这与 `installScript()` 替换 `__SERVER__` 是同一手法。
+     *   手写字面量的后果很实在:平台改了码,脚本还在报旧码,而设备端会照旧上报。
      */
     public function agentPy(): Response
     {
-        return response(self::AGENT_PY, 200, [
+        $script = str_replace(
+            ['__ERR_SIG_INVALID__', '__ERR_PKG_MISSING__'],
+            [DeployTask::ERR_SIG_INVALID, DeployTask::ERR_PKG_MISSING],
+            self::AGENT_PY,
+        );
+
+        return response($script, 200, [
             'Content-Type'  => 'text/x-python; charset=utf-8',
             'Cache-Control' => 'no-store',
         ]);
@@ -163,12 +174,19 @@ SH;
 
   enroll  → GET  /api/agent/commands?did=<did>   (轮询即心跳,无需单独高频心跳)
           → 按 canonical 串验签,不通过则拒绝安装
-          → POST /api/agent/evt {task_no, did, phase: downloading|installing|done|failed}
+          → POST /api/agent/evt {task_no, did, phase: downloading|installing|download_failed|done|failed}
 
 canonical 串 = '|'.join([task_id, skill_id, version, package_hash or '', ts])
 签名 = RSA-SHA256(平台私钥) → 用 platform_public.pem 验签。
 
-⚠ package_url 为空时做 dry install(只走状态机,不拉真实包)—— 真实载体分发见文档"诚实边界"。
+⚠ 服务端一律回 X1 信封 {success, code, message, data}。**回报可能被拒**
+  (例如任务已 success 又报 failed → 409 TASK_TRANSITION_INVALID)。这里是机器消费者:
+  必须看 `success`/`code`,不能假设 HTTP 2xx 就等于"服务端接受了",否则端云状态
+  会静默分叉。被拒如实打印,不崩进程(见 evt())。
+
+⚠ package_url 为空 → dry install(只走状态机,不拉真实包)。此时**必须**如实上报
+  error_code=PKG_MISSING:服务端据此把这次 success 认成"空跑"(不落安装事实、不计入
+  灰度成功率)。报成普通 done 等于凭空造一条"已安装"。
 """
 import argparse
 import base64
@@ -239,6 +257,36 @@ def verify(cmd, pubkey_pem):
         return False
 
 
+def evt(base, payload, headers):
+    """上报一步状态。
+
+    ⚠ 机器消费者:服务端回的是 X1 信封,**回报可能被拒**(409 TASK_TRANSITION_INVALID /
+    404 TASK_NOT_FOUND)。必须看 success/code —— 只判断"请求发出去了"会让端侧以为
+    报告成功、云侧状态没动,两边静默分叉。被拒就如实打印并继续,不因一条被拒的
+    回报崩掉整个进程(那样整台设备就下线了,更糟)。
+    """
+    def denied(tag, code, message):
+        print("[agent] %s 回报 %s 被服务端拒绝: %s %s" % (
+            payload.get("task_no"), tag, code, message), flush=True)
+
+    try:
+        body = http("POST", "%s/api/agent/evt" % base, payload, headers)
+    except urllib.error.HTTPError as e:
+        # 4xx/5xx 的响应体就是信封 —— 把它读出来,否则只能看到一句 "HTTP 409"
+        try:
+            body = json.loads(e.read().decode() or "{}")
+        except Exception:
+            body = {}
+        denied("HTTP %s" % e.code, body.get("code"), body.get("message"))
+        return
+    except Exception as e:
+        print("[agent] %s 回报 %s 失败: %s" % (payload.get("task_no"), payload.get("phase"), e), flush=True)
+        return
+
+    if isinstance(body, dict) and body.get("success") is False:
+        denied(payload.get("phase"), body.get("code"), body.get("message"))
+
+
 def run(config):
     base = config["server_url"].rstrip("/")
     did = config["did"]
@@ -269,26 +317,29 @@ def run(config):
 
             if not verify(cmd, pubkey_pem):
                 print("[agent] %s 验签失败,拒绝安装" % task_no, flush=True)
-                http("POST", "%s/api/agent/evt" % base,
-                     {"task_no": task_no, "did": did, "phase": "failed",
-                      "error_code": "SIG_INVALID", "error_msg": "签名校验未通过"},
-                     headers)
+                evt(base, {"task_no": task_no, "did": did, "phase": "failed",
+                           "error_code": "__ERR_SIG_INVALID__", "error_msg": "签名校验未通过"},
+                    headers)
                 continue
 
             print("[agent] %s 验签通过 op=%s" % (task_no, cmd.get("operation")), flush=True)
 
-            http("POST", "%s/api/agent/evt" % base,
-                 {"task_no": task_no, "did": did, "phase": "downloading"}, headers)
-            http("POST", "%s/api/agent/evt" % base,
-                 {"task_no": task_no, "did": did, "phase": "installing"}, headers)
+            evt(base, {"task_no": task_no, "did": did, "phase": "downloading"}, headers)
+            evt(base, {"task_no": task_no, "did": did, "phase": "installing"}, headers)
 
             if cmd.get("package_url"):
                 print("[agent] 下载 %s" % cmd["package_url"], flush=True)
+                # 这里没有真实下载器的位置 —— 真机 Agent 在此拉包,失败时上报
+                # phase="download_failed"(可重试)而不是 done。
+                evt(base, {"task_no": task_no, "did": did, "phase": "done"}, headers)
             else:
-                print("[agent] package_url 为空 → dry install(只走状态机)", flush=True)
+                print("[agent] package_url 为空 → dry install(只走状态机,不拉真实包)", flush=True)
+                # ⚠ 空跑必须打标:不带码的 done 会让服务端落成一条"已安装",
+                #   凭空造出安装事实并污染灰度成功率。
+                evt(base, {"task_no": task_no, "did": did, "phase": "done",
+                           "error_code": "__ERR_PKG_MISSING__",
+                           "error_msg": "未分发技能包(dry install),仅走通状态机"}, headers)
 
-            http("POST", "%s/api/agent/evt" % base,
-                 {"task_no": task_no, "did": did, "phase": "done"}, headers)
             print("[agent] %s 完成" % task_no, flush=True)
 
         time.sleep(interval)

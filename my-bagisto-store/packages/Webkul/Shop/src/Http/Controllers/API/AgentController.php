@@ -185,7 +185,7 @@ class AgentController extends APIController
         $payload = $request->validate([
             'task_no'    => ['required', 'string', 'max:40'],
             'did'        => ['required', 'string', 'max:64'],
-            'phase'      => ['required', 'string', 'in:downloading,installing,done,failed,timeout'],
+            'phase'      => ['required', 'string', 'in:downloading,installing,download_failed,done,failed,timeout'],
             'error_code' => ['nullable', 'string', 'max:32'],
             'error_msg'  => ['nullable', 'string', 'max:512'],
         ]);

@@ -55,8 +55,12 @@ class TimeoutDeployTasks extends Command
         // ---- 2) 在途:已下发(或已取走)但迟迟不回报
         //   · 已取走的看 delivered_at（取走那一刻,最准）;
         //   · 未取走的看 updated_at（进入该状态那一刻）。
+        //
+        // ⚠ `download_failed` 也在列(P11):它是"下载失败、等设备重试"的中间态,
+        //   而重试并没有服务端实现(投递标记保证它不会再被取走)—— 不兜底就是一个
+        //   新的"永远下发中"。到点没重试成功就如实判 timeout。
         $inflight = DeployTask::query()
-            ->whereIn('status', ['dispatching', 'downloading', 'installing'])
+            ->whereIn('status', ['dispatching', 'downloading', 'installing', 'download_failed'])
             ->where(function ($q) use ($inflightCutoff) {
                 $q->where('delivered_at', '<', $inflightCutoff)
                     ->orWhere(function ($q2) use ($inflightCutoff) {

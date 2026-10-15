@@ -53,15 +53,22 @@ class DeployTaskService
 
     /** 合法的状态流转(防乱序/防回退)。 */
     protected const TRANSITIONS = [
-        'pending'        => ['dispatching', 'pending_online', 'cancelled'],
-        'dispatching'    => ['downloading', 'installing', 'success', 'failed', 'timeout', 'pending_online', 'cancelled'],
-        'downloading'    => ['installing', 'success', 'failed', 'timeout', 'cancelled'],
-        'installing'     => ['success', 'failed', 'timeout'],
-        'pending_online' => ['dispatching', 'success', 'failed', 'timeout', 'cancelled'],
-        'success'        => [],
-        'failed'         => [],
-        'timeout'        => [],
-        'cancelled'      => [],
+        // ⚠ `pending` 允许直接到 `failed`:任务刚建、还没交给网关时可能被**下发前的
+        //   前置判定**否掉(设备未登记 NOT_BOUND 等)。这不是"乱序",是还没出门就发现
+        //   发不出去 —— 不许它失败的话,任务会永远停在 pending(用户永远"下发中")。
+        'pending'         => ['dispatching', 'pending_online', 'failed', 'cancelled'],
+        'dispatching'     => ['downloading', 'installing', 'success', 'failed', 'timeout', 'pending_online', 'cancelled'],
+        // download_failed = 下载失败,等待设备重试。P11:此前它只存在于类注释的状态图里,
+        // TRANSITIONS 与 onEvent 的 map 都没有它 —— 设备报"下载失败"会落成泛化的 failed,
+        // 于是"下载失败(可重试)"和"安装失败(不可重试)"在库里长得一模一样。
+        'downloading'     => ['installing', 'download_failed', 'success', 'failed', 'timeout', 'cancelled'],
+        'download_failed' => ['downloading', 'installing', 'failed', 'timeout'],
+        'installing'      => ['success', 'failed', 'timeout'],
+        'pending_online'  => ['dispatching', 'success', 'failed', 'timeout', 'cancelled'],
+        'success'         => [],
+        'failed'          => [],
+        'timeout'         => [],
+        'cancelled'       => [],
     ];
 
     public function __construct(
@@ -195,14 +202,28 @@ class DeployTaskService
 
     /**
      * 经网关下发(签名 + 在线判定)。
+     *
+     * 三条出口都带明确 `error_code`(P11)—— 此前离线 / 未登记一律无码,事后只能
+     * 靠中文 error_msg 反推。
      */
     public function dispatch(DeployTask $task): void
     {
         $gateway = $this->gateways->gateway();
 
+        // 设备**从未登记**(没有 binding):等它上线是等不到的 —— 这条路只可能是
+        // 配错了 did 或给了别人的设备。直接判失败并标 NOT_BOUND,不挂起 24 小时
+        // 让用户对着"下发中"干等。
+        if (! DeviceBinding::query()->where('did', $task->did)->exists()) {
+            $this->failWith($task, DeployTask::ERR_NOT_BOUND, '设备未登记(找不到设备绑定记录)。');
+
+            return;
+        }
+
         // 设备离线 → 挂起(pending_online),上线(轮询)后再发
         if (! $gateway->isOnline($task->did)) {
             $this->transition($task, 'pending_online');
+            $this->stampError($task, DeployTask::ERR_OFFLINE, '设备离线,任务已挂起,待设备上线后取走。');
+
             return;
         }
 
@@ -214,6 +235,46 @@ class DeployTaskService
             $task->error_msg = $result['message'];
             $task->save();
         }
+    }
+
+    /**
+     * 置为失败并带码(经状态机,不硬写)。
+     *
+     * ⚠ 只在任务还处于合法前态时才生效:`transition()` 命中 0 行即视为竞态落败
+     *   (设备刚好回报了结果),此时**不覆盖**它,并把内存态改回去,免得调用方
+     *   拿着一个与库不一致的对象继续跑。
+     */
+    protected function failWith(DeployTask $task, string $code, string $message): void
+    {
+        $prevCode = $task->error_code;
+        $prevMsg = $task->error_msg;
+
+        // 先把字段设到模型上 —— transition() 会把 getDirty() 一并纳入条件更新
+        $task->error_code = $code;
+        $task->error_msg = $message;
+
+        if (! $this->transition($task, 'failed')) {
+            $task->error_code = $prevCode;
+            $task->error_msg = $prevMsg;
+        }
+    }
+
+    /**
+     * 给**非终态**任务盖一个服务端判定的 error_code(如 pending_online 的 OFFLINE)。
+     *
+     * 用条件更新:状态在本次读取之后变了(设备上线取走了)就不写,避免把一个
+     * 已经在装的任务标成"离线挂起"。
+     */
+    protected function stampError(DeployTask $task, string $code, string $message): void
+    {
+        $status = $task->status;
+
+        DeployTask::query()
+            ->whereKey($task->id)
+            ->where('status', $status)
+            ->update(['error_code' => $code, 'error_msg' => $message]);
+
+        $task->forceFill(['error_code' => $code, 'error_msg' => $message])->syncOriginal();
     }
 
     /**
@@ -259,15 +320,22 @@ class DeployTaskService
         }
 
         $map = [
-            'downloading' => 'downloading',
-            'installing'  => 'installing',
-            'done'        => 'success',
-            'failed'      => 'failed',
-            'timeout'     => 'timeout',
+            'downloading'     => 'downloading',
+            'installing'      => 'installing',
+            'download_failed' => 'download_failed',
+            'done'            => 'success',
+            'failed'          => 'failed',
+            'timeout'         => 'timeout',
         ];
         $target = $map[$phase] ?? null;
         if (! $target) {
             return $task;
+        }
+
+        // P11:下载失败要有自己的码 —— 否则它和"安装失败"在库里长得一样,
+        // 而前者是可重试的、后者不是。
+        if (! $errorCode && $target === 'download_failed') {
+            $errorCode = DeployTask::ERR_DOWNLOAD_FAILED;
         }
 
         if ($errorCode) {
@@ -295,7 +363,18 @@ class DeployTaskService
 
         // 成功 → 按 operation 落 install_record(装/升级/回滚/卸载语义不同)
         if ($target === 'success') {
-            $this->recordInstall($task);
+            // ⚠ 空跑不落 install_record(P11):带 PKG_MISSING 的 success 是"走通了状态机
+            //   但什么都没装"(设备没拿到包)。照落一条 `installed` 等于**凭空造**一条安装事实,
+            //   下游(灰度回滚靶子 / 事故影响面 / 设备已装列表)都会把这台设备算进去。
+            if ($task->isDryRun()) {
+                Log::warning('下发任务空跑(无包),不落安装事实', [
+                    'task_no' => $task->task_no,
+                    'did'     => $task->did,
+                    'skill_id' => $task->skill_id,
+                ]);
+            } else {
+                $this->recordInstall($task);
+            }
         }
 
         // 灰度自驱:本版本若有进行中的灰度,回报后重算指标并评估。

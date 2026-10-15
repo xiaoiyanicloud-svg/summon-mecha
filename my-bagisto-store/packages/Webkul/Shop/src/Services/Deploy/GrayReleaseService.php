@@ -142,10 +142,16 @@ class GrayReleaseService
      * 从库中聚合指标并评估 —— 自驱路径(设备回报后由 DeployTaskService 调用)。
      *
      * 口径:该版本下所有下发任务的 总数 / success / failed+timeout。
+     *
+     * ⚠ 口径排除**空跑**(P11):带 `PKG_MISSING` 的 success 是"看起来成功、实际没装"
+     *   —— 它既不是成功也不是失败,计进任何一边都会让灰度判定失准(成功的虚高会把
+     *   该回滚的判成健康)。`DeployTask::scopeNotDryRun()` 是这段口径的唯一出处。
      */
     public function evaluateFromRecords(GrayRelease $release): array
     {
-        $tasks = DeployTask::query()->where('skill_version_id', $release->skill_version_id);
+        $tasks = DeployTask::query()
+            ->where('skill_version_id', $release->skill_version_id)
+            ->notDryRun();
 
         $installs = (clone $tasks)->count();
         $successes = (clone $tasks)->where('status', 'success')->count();
