@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
+use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\LifecycleNotifier;
 
@@ -391,6 +392,10 @@ class DeployTaskService
             if ($task->operation === DeployTask::OP_INSTALL && ! $task->isDryRun()) {
                 $this->notifier->deliveryCompleted($task);
             } elseif ($task->operation === DeployTask::OP_RECLAIM) {
+                // 回收成功 = 试用授权的终态。B-3：`expiring`(回收中) → `expired`(已回收)。
+                // 不放在建任务那一刻：设备离线时回收会挂很久，那一刻落 `expired` 会让
+                // "设备上还残留着过期试用"这件事在库里消失。
+                $this->markEntitlementExpired($task);
                 $this->notifier->trialExpired($task);
             }
         }
@@ -483,6 +488,24 @@ class DeployTaskService
      * "升级"(updated)是灰度回滚的靶子:GrayReleaseService::abort() 找的正是
      * `status='updated'` 的设备,所以这个值必须真的被写出来,否则自动回滚空转。
      */
+    /**
+     * 试用回收成功 → 把授权从 `expiring` 落成 `expired`（B-3）。
+     *
+     * 条件更新（`where status = expiring`）：回收任务可能对一条早已被撤销/已终态的
+     * 授权迟到回报，此时不该把它**从别的状态**改写成 expired。命中 0 行即视为"不由本次回收收尾"。
+     */
+    protected function markEntitlementExpired(DeployTask $task): void
+    {
+        if (! $task->entitlement_id) {
+            return;
+        }
+
+        SkillEntitlement::query()
+            ->whereKey($task->entitlement_id)
+            ->where('status', SkillEntitlement::STATUS_EXPIRING)
+            ->update(['status' => SkillEntitlement::STATUS_EXPIRED, 'updated_at' => now()]);
+    }
+
     protected function recordInstall(DeployTask $task): void
     {
         // 无技能版本就无法标识"装了什么" —— 跳过(install_record 的唯一键是 did+skill_version_id)

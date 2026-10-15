@@ -110,6 +110,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('ops:timeout-deploy-tasks')
             ->everyTenMinutes()
             ->withoutOverlapping();
+
+        /**
+         * B-3 · 试用到期回收（D4 / 计划 §4.7「20 分钟自动回收」）。
+         *
+         * 为什么是**每分钟**而不是像上面几条那样天级/小时级：试用的窗口只有 20 分钟，
+         * "到期"与"回收"之间的滞后必须远小于窗口本身，否则用户在倒计时归零后
+         * 还能继续跑上一段时间。计划 §3.4 的 `(status, expires_at)` 索引就是为这条建的。
+         *
+         * 命令本身只做"发现 + 发回收任务"；设备回报成功后由
+         * `DeployTaskService::onEvent()` 落 `expired` 并发站内通知 —— 与既有下发状态机同源。
+         */
+        $schedule->command('ops:reclaim-expired-trials')
+            ->everyMinute()
+            ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions) {
         /**

@@ -94,6 +94,8 @@
 			</view>
 			<view class="footer-actions">
 				<button class="btn-price" @click="handlePrice">￥{{ skillInfo.price }}</button>
+				<!-- 试用(B-3 · D4):仅当所选设备命中 agent 在线通道时出现。人工通道 20 分钟后收不回来,不给试用 -->
+				<button v-if="trialAvailable" class="btn-trial" @click="startTrial">试用20分钟</button>
 				<button class="btn-buy" @click="handleBuy">立即开通</button>
 			</view>
 		</view>
@@ -138,6 +140,14 @@
 			this.productId = options.productId || null
 			this.loadSkillData(this.skillId)
 			this.loadDevices()
+		},
+		computed: {
+			// 试用按钮(B-3):必须已选设备、兼容、且命中 agent 在线通道。
+			// 判定口径与后端一致(后端还会再校验一遍,前端只是不展示注定被拒的按钮)。
+			trialAvailable() {
+				if (!this.pickedDeviceId || !this.compat || !this.compat.compatible) return false
+				return (this.compat.channels || []).indexOf('agent') !== -1
+			}
 		},
 		methods: {
 			// v3.4:真实商品数据优先,失败回退 mock(不把 mock 当唯一数据源)
@@ -232,6 +242,25 @@
 					uni.showToast({ title: (e && e.message) || '校验失败', icon: 'none' })
 				} finally {
 					this.compatLoading = false
+				}
+			},
+			// 试用(B-3 · D4):发放 20 分钟在线授权并直接下发;到期由平台定时回收。
+			async startTrial() {
+				if (!this.pickedDeviceId) { uni.showToast({ title: '请先选一台设备', icon: 'none' }); return }
+				if (!this.productId) { uni.showToast({ title: '技能信息加载中', icon: 'none' }); return }
+				try {
+					const res = await skillApi.trial(this.productId, this.pickedDeviceId)
+					const d = (res && res.data) || {}
+					uni.showModal({
+						title: '试用已开通',
+						content: '20 分钟试用已开始，正在下发到设备。到期后平台会自动回收，无需手动卸载。',
+						showCancel: false,
+						success: () => uni.navigateTo({ url: '/pages/mine/skills' })
+					})
+					// 进入"我的技能"能看到倒计时；这里不额外处理 d，避免与后端契约耦合
+					return d
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '试用开通失败', icon: 'none' })
 				}
 			},
 			getMockData(id) {
@@ -575,6 +604,21 @@
 		color: #fff;
 		box-shadow: 0 4rpx 12rpx rgba(238, 63, 77, 0.3);
 	}
+	/* 试用按钮(B-3):与"立即开通"区分,用页面既有的橙色描边样式,不与主买断按钮抢视觉 */
+	.btn-trial {
+		flex: 0.9;
+		height: 76rpx;
+		line-height: 76rpx;
+		border-radius: 40rpx;
+		font-size: 28rpx;
+		font-weight: 600;
+		text-align: center;
+		padding: 0;
+		background: #fff;
+		color: #ff6b00;
+		border: 1rpx solid #ffd9b8;
+	}
+	.btn-trial:active { opacity: 0.7; }
 	.btn-price:active { opacity: 0.7; }
 	.btn-buy:active { opacity: 0.8; }
 

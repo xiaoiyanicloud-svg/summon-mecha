@@ -79,6 +79,12 @@ class SkillController extends APIController
                     'device_did'          => $binding?->did,
                     'granted_at'        => optional($e->granted_at)->toDateTimeString(),
                     'expires_at'        => optional($e->expires_at)->toDateTimeString(),
+                    // B-3 · 试用：是试用就不该被当成买断展示（前端据此显示倒计时/「试用」角标）。
+                    // `trial_remaining_seconds` 由服务端按当前时间算，避免端侧时钟偏差把倒计时算歪。
+                    'trial'             => $e->isTrial(),
+                    'trial_remaining_seconds' => ($e->isTrial() && $e->expires_at && ! $e->expires_at->isPast())
+                        ? (int) now()->diffInSeconds($e->expires_at)
+                        : 0,
                     'usable'            => $e->isUsable(),
                 ];
             })->values(),
@@ -480,6 +486,51 @@ class SkillController extends APIController
             ->check($customer->id, $productId, (int) $payload['device_id']);
 
         return response()->json(['data' => $result]);
+    }
+
+    /**
+     * 发起试用（B-3 · D4 / 计划 §4.7）。
+     *
+     * 发放一条 20 分钟的在线授权（`meta.trial=true`）并直接下发到指定设备。
+     * 全部规则在 {@see \Webkul\Shop\Services\SkillDelivery\TrialService}：
+     * 仅 agent 通道、设备须已确权、7 天冷却、已买断不发。
+     */
+    public function trial(Request $request, int $productId): JsonResponse
+    {
+        $customer = auth()->guard('customer')->user();
+
+        $payload = $request->validate([
+            'device_id'        => ['required', 'integer'],
+            'skill_version_id' => ['nullable', 'integer'],
+        ]);
+
+        $result = app(\Webkul\Shop\Services\SkillDelivery\TrialService::class)
+            ->start(
+                (int) $customer->id,
+                $productId,
+                (int) $payload['device_id'],
+                $payload['skill_version_id'] ?? null,
+            );
+
+        if (! $result['ok']) {
+            return $this->fail($result['code'], $result['message'], $result['status'] ?? 200);
+        }
+
+        /** @var \Webkul\Shop\Models\SkillEntitlement $entitlement */
+        $entitlement = $result['entitlement'];
+        $task = $result['task'];
+
+        return response()->json([
+            'message' => $result['message'],
+            'data'    => [
+                'entitlement_id' => $entitlement->id,
+                'trial'          => true,
+                'expires_at'     => optional($entitlement->expires_at)->toDateTimeString(),
+                'delivery_channel' => $entitlement->delivery_channel,
+                'task_no'        => $task?->task_no,
+                'task_status'    => $task?->status,
+            ],
+        ], 201);
     }
 
     /**

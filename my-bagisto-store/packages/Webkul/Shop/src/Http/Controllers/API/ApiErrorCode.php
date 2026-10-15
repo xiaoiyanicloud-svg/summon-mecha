@@ -101,6 +101,22 @@ final class ApiErrorCode
     public const SKILL_DELIVERY_FAILED = 'SKILL_DELIVERY_FAILED';
     public const SKILL_LOGIN_REQUIRED = 'SKILL_LOGIN_REQUIRED';
 
+    // ── 试用（B-3 · 计划 §4.7 / D4）──────────────────────────────────────
+
+    /**
+     * 该技能没有在线（agent）通道 → 不提供试用。
+     *
+     * 计划 D4：「仅限在线通道；人工安装通道技能无试用」。这不是"暂时不可用"，
+     * 是**设计如此** —— 人工通道无法在 20 分钟后把技能从机器上收回来。
+     */
+    public const TRIAL_CHANNEL_UNSUPPORTED = 'TRIAL_CHANNEL_UNSUPPORTED';
+
+    /** 同一用户、同一技能的试用冷却期内已试过（§4.15「每用户每技能 7 天内 1 次」）。 */
+    public const TRIAL_LIMIT_REACHED = 'TRIAL_LIMIT_REACHED';
+
+    /** 已买断该技能 —— 无需（也不该）再发一条 20 分钟的临时授权。 */
+    public const TRIAL_ALREADY_OWNED = 'TRIAL_ALREADY_OWNED';
+
     // ── 下发 ─────────────────────────────────────────────────────────────
 
     public const TASK_NOT_FOUND = 'TASK_NOT_FOUND';

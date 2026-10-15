@@ -243,6 +243,9 @@ Route::group(['prefix' => 'api'], function () {
         // v3.4 步骤 5:兼容性校验(机型 × 技能通道)
         Route::get('{productId}/compatibility', 'compatibility')->name('shop.api.skills.compatibility');
 
+        // B-3 · D4:试用(20 分钟,仅在线通道)。发放带 meta.trial 的授权并直接下发。
+        Route::post('{productId}/trial', 'trial')->middleware('throttle:write')->name('shop.api.skills.trial');
+
         Route::get('entitlements/{entitlementId}/assets', 'assets')->name('shop.api.skills.assets');
 
         Route::get('entitlements/{entitlementId}/assets/{assetId}/download', 'download')->name('shop.api.skills.download');

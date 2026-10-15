@@ -28,7 +28,7 @@
 							<text class="skill-name">{{ s.name }}</text>
 							<text class="skill-meta" v-if="s.version">版本 v{{ s.version }}</text>
 						</view>
-						<text class="status" :class="s.status">{{ statusText(s.status) }}</text>
+						<text class="status" :class="s.status">{{ statusLabel(s) }}</text>
 					</view>
 
 					<!-- 交付信息 -->
@@ -36,6 +36,10 @@
 						<view class="row">
 							<text class="row-label">指派设备</text>
 							<text class="row-value">{{ s.device_sn || '尚未指派' }}</text>
+						</view>
+						<view class="row" v-if="s.trial">
+							<text class="row-label">试用剩余</text>
+							<text class="row-value" style="color:#ff6b00;font-weight:600;">{{ countdownText(s) }}</text>
 						</view>
 						<view class="row">
 							<text class="row-label">开通时间</text>
@@ -114,6 +118,8 @@ const STATUS_TEXT = {
 	pending_bind: '待指派设备',
 	expired: '已过期',
 	revoked: '已撤销',
+	// B-3 · 试用到期、正在回收（设备回报成功后才落 expired）
+	expiring: '回收中',
 }
 
 const CARRIER_TEXT = {
@@ -134,14 +140,57 @@ export default {
 			devices: [],
 			// entitlementId -> 交付物数组;按需拉取,不预加载全部
 			assetsMap: {},
+			// B-3 · 试用倒计时:entitlementId -> 剩余秒数(以**后端**给的值为起点本地递减,
+			// 不用本地时钟去解析服务端时间戳 —— 端侧时钟偏一点倒计时就错)
+			remaining: {},
+			tickTimer: null,
 		}
 	},
 	onShow() {
 		this.loggedIn = !!uni.getStorageSync(TOKEN_KEY)
 		if (this.loggedIn) this.refresh()
 		else this.loading = false
+		this.startTick()
+	},
+	onHide() {
+		this.stopTick()
+	},
+	onUnload() {
+		this.stopTick()
 	},
 	methods: {
+		startTick() {
+			this.stopTick()
+			this.tickTimer = setInterval(() => {
+				const next = {}
+				let anyLive = false
+				Object.keys(this.remaining).forEach((id) => {
+					const v = this.remaining[id] - 1
+					if (v > 0) { next[id] = v; anyLive = true }
+					else next[id] = 0
+				})
+				this.remaining = next
+				// 全部归零:不用一直空转;到期后状态由服务端在下一轮回收里推进
+				if (!anyLive) this.stopTick()
+			}, 1000)
+		},
+		stopTick() {
+			if (this.tickTimer) { clearInterval(this.tickTimer); this.tickTimer = null }
+		},
+		// 秒 → mm:ss
+		countdownText(s) {
+			const sec = this.remaining[s.id]
+			if (sec === undefined) return s.usable ? '—' : '已结束'
+			if (sec <= 0) return '已到期'
+			const m = Math.floor(sec / 60)
+			const ss = sec % 60
+			return m + ':' + (ss < 10 ? '0' : '') + ss
+		},
+		// 试用行不按普通状态展示:试用的"active"其实是"试用中",直接显示容易读成买断
+		statusLabel(s) {
+			if (s.trial && s.status !== 'expired' && s.status !== 'expiring' && s.status !== 'revoked') return '试用中'
+			return STATUS_TEXT[s.status] || s.status
+		},
 		goBack() { uni.navigateBack({ delta: 1 }) },
 		goRobot() { uni.switchTab({ url: '/pages/robot/index' }) },
 		goDevices() { uni.navigateTo({ url: '/pages/mine/devices' }) },
@@ -177,6 +226,13 @@ export default {
 			])
 			this.skills = (sk && Array.isArray(sk.data)) ? sk.data : []
 			this.devices = (dv && Array.isArray(dv.data)) ? dv.data : []
+			// B-3 · 试用倒计时起点:取后端算好的剩余秒数(见 SkillController::index 的 trial_remaining_seconds)
+			const rem = {}
+			this.skills.forEach((s) => {
+				if (s.trial) rem[s.id] = Number(s.trial_remaining_seconds) || 0
+			})
+			this.remaining = rem
+			if (Object.keys(rem).length) this.startTick()
 			// 已指派设备的技能自动展开交付物,用户不用多点一次
 			this.skills.filter(s => s.device_id).forEach(s => this.loadAssets(s))
 			this.loading = false

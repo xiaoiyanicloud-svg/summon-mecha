@@ -43,6 +43,28 @@ class SkillEntitlement extends Model
     public const STATUS_REVOKED = 'revoked';
 
     /**
+     * 试用**已到期、回收中**（B-3，计划 §4.7）。
+     *
+     * 为什么不是直接跳到 `expired`：试用到期要做两件不同的事 ——
+     *   ① 授权本身失效（时间到了，用户不能再跑它）；
+     *   ② 把设备上的技能**回收**（下发一条 operation=6 的任务）。
+     * ②依赖设备在线，可能挂很久（`pending_online`）。若第一步就写成 `expired`，
+     * 这段"已到期但还没回收"的中间态在库里没有任何痕迹 —— 运营看不出哪些设备
+     * 上还残留着过期试用。`expiring` 就是这段中间态，回收成功后由
+     * `DeployTaskService::onEvent()` 落成 `expired`。
+     *
+     * ⚠ 它**不可用**：`isUsable()` 把 `expired`/`revoked` 判死，`expiring` 也必须一并判死
+     *   （时间已到，别让用户借"还没回收完"多跑一会儿）。
+     */
+    public const STATUS_EXPIRING = 'expiring';
+
+    /** 试用时长（分钟）—— D4：20 分钟。写死为常量，避免散落的魔法数字。 */
+    public const TRIAL_MINUTES = 20;
+
+    /** 同一用户、同一技能两次试用之间的冷却（天）—— 计划 §4.15「每用户每技能 7 天内 1 次」。 */
+    public const TRIAL_COOLDOWN_DAYS = 7;
+
+    /**
      * The table associated with the model.
      */
     protected $table = 'skill_entitlements';
@@ -126,11 +148,24 @@ class SkillEntitlement extends Model
      */
     public function isUsable(): bool
     {
-        if (in_array($this->status, [self::STATUS_REVOKED, self::STATUS_EXPIRED], true)) {
+        if (in_array($this->status, [self::STATUS_REVOKED, self::STATUS_EXPIRED, self::STATUS_EXPIRING], true)) {
             return false;
         }
 
         return ! ($this->expires_at && $this->expires_at->isPast());
+    }
+
+    /**
+     * 是不是一条**试用**授权（B-3，计划 D4：`meta.trial=true`）。
+     *
+     * 单一判据出口 —— 此前 `meta['trial']` 只在 `AfterSaleService` 里就地读了一次，
+     * 各处自己拼字符串判断迟早会写歪（少个 true / 判成 '1'）。
+     */
+    public function isTrial(): bool
+    {
+        $meta = is_array($this->meta) ? $this->meta : [];
+
+        return ! empty($meta['trial']);
     }
 
     /**

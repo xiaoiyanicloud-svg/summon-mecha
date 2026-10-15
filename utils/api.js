@@ -113,6 +113,9 @@ export const skillApi = {
   afterSales: () => http.get('/api/after-sale', { loading: false }),
   // 发起售后 data: { entitlement_id, reason_category?, detail? }
   applyAfterSale: (data) => http.post('/api/after-sale', data, { loading: true, loadingText: '提交中...' }),
+  // 试用(B-3 · D4):发放 20 分钟在线授权并**直接下发**到该设备。
+  // 仅声明了 agent 通道的技能可试用(人工通道 20 分钟后收不回来,后端会拒)。
+  trial: (productId, deviceId) => http.post(`/api/skills/${productId}/trial`, { device_id: deviceId }, { loading: true, loadingText: '开通试用中...' }),
 }
 
 // ==================== 通知中心(v3.4 步骤 7) ====================
