@@ -89,7 +89,7 @@ class TicketController extends APIController
             ->first();
 
         if (! $ticket) {
-            return response()->json(['message' => '工单不存在。'], 404);
+            return $this->fail(ApiErrorCode::TICKET_NOT_FOUND, '工单不存在。', 404);
         }
 
         return response()->json([

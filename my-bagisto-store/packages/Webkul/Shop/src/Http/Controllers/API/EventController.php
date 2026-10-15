@@ -29,7 +29,7 @@ class EventController extends APIController
         $event = Event::find($id);
 
         if (! $event) {
-            return response()->json(['message' => '赛事不存在。'], 404);
+            return $this->fail(ApiErrorCode::EVENT_NOT_FOUND, '赛事不存在。', 404);
         }
 
         return response()->json(['data' => $this->format($event)]);
@@ -43,11 +43,11 @@ class EventController extends APIController
         $event = Event::find($id);
 
         if (! $event) {
-            return response()->json(['success' => false, 'message' => '赛事不存在。'], 404);
+            return $this->fail(ApiErrorCode::EVENT_NOT_FOUND, '赛事不存在。', 404);
         }
 
         if ($event->status === 'ended') {
-            return response()->json(['success' => false, 'message' => '该赛事已结束报名。'], 422);
+            return $this->fail(ApiErrorCode::EVENT_ENDED, '该赛事已结束报名。', 422);
         }
 
         $request->validate([
@@ -65,7 +65,7 @@ class EventController extends APIController
             ->exists();
 
         if ($exists) {
-            return response()->json(['success' => false, 'message' => '该手机号已报名过此赛事。'], 422);
+            return $this->fail(ApiErrorCode::EVENT_ALREADY_REGISTERED, '该手机号已报名过此赛事。', 422);
         }
 
         $registration = EventRegistration::create([

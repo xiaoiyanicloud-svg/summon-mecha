@@ -96,7 +96,7 @@ class AgentController extends APIController
         $agentKey = config('deploy_gateways.agent_key');
 
         if (blank($agentKey)) {
-            return response()->json(['message' => 'Agent 通道未启用(未配置 AGENT_KEY)。'], 503);
+            return $this->fail(ApiErrorCode::AGENT_CHANNEL_NOT_CONFIGURED, 'Agent 通道未启用(未配置 AGENT_KEY)。', 503);
         }
 
         $payload = $request->validate([
@@ -113,13 +113,13 @@ class AgentController extends APIController
             ->first(fn (DeviceBinding $b) => ($b->meta['agent_enroll']['token_hash'] ?? null) === $hash);
 
         if (! $binding) {
-            return response()->json(['message' => '安装 token 无效。'], 401);
+            return $this->fail(ApiErrorCode::ENROLL_TOKEN_INVALID, '安装 token 无效。', 401);
         }
 
         $enroll = $binding->meta['agent_enroll'] ?? [];
 
         if (empty($enroll['expires_at']) || now()->greaterThan(\Illuminate\Support\Carbon::parse($enroll['expires_at']))) {
-            return response()->json(['message' => '安装 token 已过期,请重新获取。'], 401);
+            return $this->fail(ApiErrorCode::ENROLL_TOKEN_EXPIRED, '安装 token 已过期,请重新获取。', 401);
         }
 
         // 一次性:用掉即清
@@ -159,7 +159,7 @@ class AgentController extends APIController
 
         $binding = DeviceBinding::query()->where('did', $payload['did'])->first();
         if (! $binding) {
-            return response()->json(['message' => '设备未注册。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_REGISTERED, '设备未注册。', 404);
         }
 
         // 心跳就是这台设备刚连上来的证据（其余三处握手/配对/取指令同理）
@@ -191,7 +191,7 @@ class AgentController extends APIController
         $owned = DeployTask::query()->where('task_no', $payload['task_no'])->first();
 
         if (! $owned || $owned->did !== $payload['did']) {
-            return response()->json(['message' => '任务不存在。'], 404);
+            return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
         $task = $this->deploy->onEvent(
@@ -202,7 +202,7 @@ class AgentController extends APIController
         );
 
         if (! $task) {
-            return response()->json(['message' => '任务不存在。'], 404);
+            return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
         return response()->json(['message' => 'ok', 'data' => ['task_no' => $task->task_no, 'status' => $task->status]]);
@@ -220,7 +220,7 @@ class AgentController extends APIController
 
         $binding = DeviceBinding::query()->where('did', $did)->first();
         if (! $binding) {
-            return response()->json(['message' => '设备未注册。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_REGISTERED, '设备未注册。', 404);
         }
 
         // 轮询即心跳

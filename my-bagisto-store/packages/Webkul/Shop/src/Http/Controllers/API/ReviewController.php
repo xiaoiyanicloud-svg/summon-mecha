@@ -103,9 +103,7 @@ class ReviewController extends APIController
         $review = $this->productReviewRepository->find($reviewId);
 
         if ($review?->status !== self::STATUS_APPROVED) {
-            return new JsonResponse([
-                'message' => trans('shop::app.products.view.reviews.empty-review'),
-            ], 400);
+            return $this->fail(ApiErrorCode::REVIEW_NOT_APPROVED, trans('shop::app.products.view.reviews.empty-review'), 400);
         }
 
         $currentLocale = core()->getCurrentLocale();
@@ -132,9 +130,7 @@ class ReviewController extends APIController
                 'content' => $response,
             ]);
         } catch (\Exception $e) {
-            return new JsonResponse([
-                'message' => trans('shop::app.errors.500.title'),
-            ], 500);
+            return $this->fail(ApiErrorCode::REVIEW_TRANSLATE_FAILED, trans('shop::app.errors.500.title'), 500);
         }
     }
 

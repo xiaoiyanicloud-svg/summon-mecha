@@ -53,11 +53,11 @@ class TtsController extends APIController
         $text = trim((string) $request->input('text', ''));
 
         if ($text === '') {
-            return $this->reject('NO_TEXT', '文本为空');
+            return $this->reject(ApiErrorCode::NO_TEXT, '文本为空');
         }
 
         if (mb_strlen($text) > (int) config('tts.max_total_chars')) {
-            return $this->reject('TOO_LONG', '文本过长');
+            return $this->reject(ApiErrorCode::TOO_LONG, '文本过长');
         }
 
         // ② 组装 provider。配置不完整(缺密钥等)→ 明确告知,不发任何外部请求、不报错
@@ -65,7 +65,7 @@ class TtsController extends APIController
         $provider = $this->resolveProvider();
 
         if ($provider === null) {
-            return $this->fail('TTS_NOT_CONFIGURED', '语音合成尚未配置');
+            return $this->fail(ApiErrorCode::TTS_NOT_CONFIGURED, '语音合成尚未配置');
         }
 
         // ③ 合成 —— 超长拆段,逐段请求
@@ -102,10 +102,10 @@ class TtsController extends APIController
             // 给一个**独立的 code**,让前端立刻放弃并明确提示 ——
             // 否则用户遇到的就是"点了没声音"这种无从诊断的黑盒。
             if ($e instanceof TtsApiException && $e->isSystemic()) {
-                return $this->fail('TTS_UNAVAILABLE', '朗读功能暂时不可用');
+                return $this->fail(ApiErrorCode::TTS_UNAVAILABLE, '朗读功能暂时不可用');
             }
 
-            return $this->fail('TTS_FAILED', '语音合成失败');
+            return $this->fail(ApiErrorCode::TTS_FAILED, '语音合成失败');
         }
 
         // ⚠ 只要有一段失败就整体失败(在 catch 里抛出),不在后端悄悄丢内容 ——
@@ -244,28 +244,4 @@ class TtsController extends APIController
         return $out;
     }
 
-    /**
-     * 业务性失败:HTTP 200 + success=false。
-     * 前端只判 success,与"没配好"走同一套静默跳过。
-     */
-    private function fail(string $code, string $message): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'code'    => $code,
-            'message' => $message,
-        ]);
-    }
-
-    /**
-     * 请求本身非法(空文本/超长):才用 422。
-     */
-    private function reject(string $code, string $message): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'code'    => $code,
-            'message' => $message,
-        ], 422);
-    }
 }

@@ -45,7 +45,7 @@ class DeployController extends APIController
         $binding = $this->resolveOwnedBinding($customer->id, (int) $payload['device_id']);
 
         if (! $binding) {
-            return response()->json(['message' => '设备不存在或不属于你。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在或不属于你。', 404);
         }
 
         // 技能授权必须属于本人(防止给别人的技能下发)
@@ -57,7 +57,7 @@ class DeployController extends APIController
                 ->first();
 
             if (! $entitlement) {
-                return response()->json(['message' => '技能授权不存在或不属于你。'], 404);
+                return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在或不属于你。', 404);
             }
         }
 
@@ -86,7 +86,7 @@ class DeployController extends APIController
             );
         } catch (SkillBlockedException $e) {
             // 熔断命中 —— 明确 409,不落任何任务(见 DeployTaskService::assertNotBlocked)
-            return response()->json(['message' => $e->getMessage(), 'code' => 'SKILL_BLOCKED'], 409);
+            return $this->fail(ApiErrorCode::SKILL_BLOCKED, $e->getMessage(), 409);
         }
 
         return response()->json([
@@ -105,7 +105,7 @@ class DeployController extends APIController
         $task = $this->findOwnedTask($customer->id, $taskNo);
 
         if (! $task) {
-            return response()->json(['message' => '任务不存在。'], 404);
+            return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
         return response()->json(['data' => $this->format($task)]);
@@ -120,13 +120,13 @@ class DeployController extends APIController
 
         // 先过归属:不是本人的任务直接 404 —— 不给"这个单号存在但你没权限"的差异
         if (! $this->findOwnedTask($customer->id, $taskNo)) {
-            return response()->json(['message' => '任务不存在。'], 404);
+            return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
         $task = $this->service->cancel($taskNo);
 
         if (! $task) {
-            return response()->json(['message' => '任务不存在。'], 404);
+            return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
         return response()->json(['message' => '已取消。', 'data' => $this->format($task)]);
@@ -142,7 +142,7 @@ class DeployController extends APIController
         $binding = $this->resolveOwnedBinding($customer->id, $deviceId);
 
         if (! $binding) {
-            return response()->json(['message' => '设备不存在。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在。', 404);
         }
 
         $rows = InstallRecord::query()->where('did', $binding->did)->get();

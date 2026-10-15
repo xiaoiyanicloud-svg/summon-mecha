@@ -89,7 +89,7 @@ class SkillController extends APIController
         $entitlement = $this->findOwnedEntitlement($entitlementId);
 
         if (! $entitlement) {
-            return response()->json(['message' => '技能授权不存在。'], 404);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
         }
 
         $assets = $this->assetsOf($entitlement);
@@ -117,28 +117,28 @@ class SkillController extends APIController
         $entitlement = $this->findOwnedEntitlement($entitlementId);
 
         if (! $entitlement) {
-            return response()->json(['message' => '技能授权不存在。'], 404);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
         }
 
         if (! $entitlement->isUsable()) {
-            return response()->json(['message' => '该技能授权已失效。'], 403);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
         }
 
         // 付费墙:交付物(技能包)以"订单已支付"为前提。授权在建单时就落库,
         // 若只认 isUsable() 则"建单未付"也能下包 —— 见 SkillEntitlement::isOrderPaid()。
         if (! $entitlement->isOrderPaid()) {
-            return response()->json(['message' => '订单尚未支付,暂不能下载。'], 409);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_UNPAID, '订单尚未支付,暂不能下载。', 409);
         }
 
         $asset = $this->assetsOf($entitlement)
             ->firstWhere('id', $assetId);
 
         if (! $asset || ! $asset->isFile()) {
-            return response()->json(['message' => '该交付物不可下载。'], 404);
+            return $this->fail(ApiErrorCode::SKILL_ASSET_NOT_FOUND, '该交付物不可下载。', 404);
         }
 
         if (! $asset->fileExists()) {
-            return response()->json(['message' => '文件不存在,请联系客服。'], 404);
+            return $this->fail(ApiErrorCode::SKILL_ASSET_FILE_MISSING, '文件不存在,请联系客服。', 404);
         }
 
         // P0 只记录"下载过一次",不在这里扣 activations —— 激活次数是 P1 设备侧的语义
@@ -177,11 +177,11 @@ class SkillController extends APIController
         $entitlement = $this->findOwnedEntitlement($entitlementId);
 
         if (! $entitlement) {
-            return response()->json(['message' => '技能授权不存在。'], 404);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
         }
 
         if (! $entitlement->isUsable()) {
-            return response()->json(['message' => '该技能授权已失效。'], 403);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
         }
 
         $payload = $request->validate([
@@ -197,7 +197,7 @@ class SkillController extends APIController
             ->first();
 
         if (! $device) {
-            return response()->json(['message' => '设备不存在或不属于你。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在或不属于你。', 404);
         }
 
         // v3.4 步骤 2「设备唯一真相源=binding」：归属以 binding 为准。
@@ -206,7 +206,7 @@ class SkillController extends APIController
         $resolved = app(DeviceBindingService::class)->resolveForCustomer($device, $customer->id, heal: true);
 
         if (! $resolved['ok']) {
-            return response()->json(['message' => $resolved['reason'] ?: '设备不存在或不属于你。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, $resolved['reason'] ?: '设备不存在或不属于你。', 404);
         }
 
         $binding = $resolved['binding'];
@@ -255,17 +255,17 @@ class SkillController extends APIController
         $entitlement = $this->findOwnedEntitlement($entitlementId);
 
         if (! $entitlement) {
-            return response()->json(['message' => '技能授权不存在。'], 404);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
         }
 
         $device = $entitlement->device;
 
         if (! $device) {
-            return response()->json(['message' => '请先给这个技能绑定一台设备。'], 422);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_BINDING_REQUIRED, '请先给这个技能绑定一台设备。', 422);
         }
 
         if (! $entitlement->isUsable()) {
-            return response()->json(['message' => '该技能授权已失效。'], 403);
+            return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
         }
 
         // D1 幂等:已 active 直接返回既有状态,不再重复计数。
@@ -288,10 +288,7 @@ class SkillController extends APIController
 
         // D1 max_activations 硬闸:激活次数是许可与计费的核心账目,不能形同虚设。
         if ($entitlement->max_activations !== null && $entitlement->activations >= $entitlement->max_activations) {
-            return response()->json([
-                'message' => '激活次数已达上限。',
-                'code'    => 'MAX_ACTIVATIONS_REACHED',
-            ], 409);
+            return $this->fail(ApiErrorCode::MAX_ACTIVATIONS_REACHED, '激活次数已达上限。', 409);
         }
 
         // v3.4 步骤 2：设备归属以 binding 为准（heal=true —— 历史设备在此自愈）
@@ -300,7 +297,7 @@ class SkillController extends APIController
         $resolved = app(DeviceBindingService::class)->resolveForCustomer($device, $customer->id, heal: true);
 
         if (! $resolved['ok']) {
-            return response()->json(['message' => $resolved['reason'] ?: '设备不存在或不属于你。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, $resolved['reason'] ?: '设备不存在或不属于你。', 404);
         }
 
         $binding = $resolved['binding'];
@@ -336,10 +333,7 @@ class SkillController extends APIController
                 ]);
             }
 
-            return response()->json([
-                'message' => '激活次数已达上限。',
-                'code'    => 'MAX_ACTIVATIONS_REACHED',
-            ], 409);
+            return $this->fail(ApiErrorCode::MAX_ACTIVATIONS_REACHED, '激活次数已达上限。', 409);
         }
 
         // 安装事实落在 meta(非计数,与上面的原子自增分开写)

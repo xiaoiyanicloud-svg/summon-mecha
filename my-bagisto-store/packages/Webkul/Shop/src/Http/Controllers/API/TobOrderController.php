@@ -74,10 +74,7 @@ class TobOrderController extends APIController
         // 游客单 customer_id 为空,授权无处挂靠 —— 与其事后补,不如在下单口就拦住。
         // 其余类型(租/买/配件/定制)仍允许游客,行为不变。
         if ($type === 'skill' && ! auth()->guard('customer')->user()) {
-            return response()->json([
-                'success' => false,
-                'message' => '购买技能需要先登录。',
-            ], 401);
+            return $this->fail(ApiErrorCode::SKILL_LOGIN_REQUIRED, '购买技能需要先登录。', 401);
         }
 
         try {
@@ -127,10 +124,7 @@ class TobOrderController extends APIController
                 $anchor = $this->productRepository->findByField('sku', 'LEAD-CUSTOM')->first();
 
                 if (! $anchor) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => '缺少线索锚点商品:请在后台创建 sku 为 LEAD-CUSTOM 的商品',
-                    ], 422);
+                    return $this->fail(ApiErrorCode::LEAD_ANCHOR_MISSING, '缺少线索锚点商品:请在后台创建 sku 为 LEAD-CUSTOM 的商品', 422);
                 }
 
                 $lines[0]['product_id'] = $anchor->id;
@@ -147,10 +141,7 @@ class TobOrderController extends APIController
                 $product = $this->productRepository->with('parent')->find($line['product_id']);
 
                 if (! $product) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => '商品不存在(ID: '.$line['product_id'].')',
-                    ], 422);
+                    return $this->fail(ApiErrorCode::PRODUCT_NOT_FOUND, '商品不存在(ID: '.$line['product_id'].')', 422);
                 }
 
                 $days = $type === 'rent' ? $line['rent_days'] : 1;
@@ -291,10 +282,7 @@ class TobOrderController extends APIController
                 'status'       => $order->status,
             ]);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+            return $this->fail(ApiErrorCode::ORDER_CREATE_FAILED, $e->getMessage(), 500);
         }
     }
 

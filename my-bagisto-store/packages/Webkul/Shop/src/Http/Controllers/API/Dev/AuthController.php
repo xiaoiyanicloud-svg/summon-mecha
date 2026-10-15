@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Webkul\Customer\Models\Customer;
 use Webkul\Shop\Http\Controllers\API\APIController;
+use Webkul\Shop\Http\Controllers\API\ApiErrorCode;
 use Webkul\Shop\Models\DeveloperProfile;
 
 /**
@@ -38,10 +39,7 @@ class AuthController extends APIController
 
         // 统一失败话术：不区分"邮箱不存在"与"密码错"，避免账号枚举
         if (! $customer || ! Hash::check($payload['password'], $customer->password)) {
-            return response()->json([
-                'message' => '邮箱或密码不正确。',
-                'code'    => 'INVALID_CREDENTIALS',
-            ], 401);
+            return $this->fail(ApiErrorCode::INVALID_CREDENTIALS, '邮箱或密码不正确。', 401);
         }
 
         $ttlDays = max(1, (int) config('developer_portal.token_ttl_days', 30));

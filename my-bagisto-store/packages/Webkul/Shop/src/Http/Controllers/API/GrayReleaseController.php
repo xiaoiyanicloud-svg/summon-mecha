@@ -55,7 +55,7 @@ class GrayReleaseController extends APIController
         $release = GrayRelease::find($id);
 
         if (! $release) {
-            return response()->json(['message' => '灰度不存在。'], 404);
+            return $this->fail(ApiErrorCode::GRAY_RELEASE_NOT_FOUND, '灰度不存在。', 404);
         }
 
         return response()->json(['data' => $this->format($release)]);
@@ -69,7 +69,7 @@ class GrayReleaseController extends APIController
         $release = GrayRelease::find($id);
 
         if (! $release) {
-            return response()->json(['message' => '灰度不存在。'], 404);
+            return $this->fail(ApiErrorCode::GRAY_RELEASE_NOT_FOUND, '灰度不存在。', 404);
         }
 
         $payload = $request->validate([
@@ -99,7 +99,7 @@ class GrayReleaseController extends APIController
         $release = GrayRelease::find($id);
 
         if (! $release) {
-            return response()->json(['message' => '灰度不存在。'], 404);
+            return $this->fail(ApiErrorCode::GRAY_RELEASE_NOT_FOUND, '灰度不存在。', 404);
         }
 
         $payload = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);

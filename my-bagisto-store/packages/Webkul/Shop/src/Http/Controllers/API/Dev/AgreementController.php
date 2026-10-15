@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API\Dev;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Shop\Http\Controllers\API\APIController;
+use Webkul\Shop\Http\Controllers\API\ApiErrorCode;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Services\Developer\DeveloperOnboardingService;
 
@@ -63,7 +64,7 @@ class AgreementController extends APIController
         $result = $this->onboarding->signAgreements($this->profile($request), $accepted, $request);
 
         if (! $result['ok']) {
-            return response()->json(['message' => $result['message'], 'code' => 'AGREEMENT_INCOMPLETE'], 422);
+            return $this->fail(ApiErrorCode::AGREEMENT_INCOMPLETE, $result['message'], 422);
         }
 
         return response()->json([

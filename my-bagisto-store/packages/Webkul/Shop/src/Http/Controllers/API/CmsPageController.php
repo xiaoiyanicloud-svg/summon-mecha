@@ -56,10 +56,7 @@ class CmsPageController extends APIController
             ->first();
 
         if (! $page) {
-            return response()->json([
-                'message' => '平台上没有这一页。',
-                'code'    => 'CMS_PAGE_NOT_FOUND',
-            ], 404);
+            return $this->fail(ApiErrorCode::CMS_PAGE_NOT_FOUND, '平台上没有这一页。', 404);
         }
 
         return response()->json([

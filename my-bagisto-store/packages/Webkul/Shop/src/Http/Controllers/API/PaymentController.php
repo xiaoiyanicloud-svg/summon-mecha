@@ -32,13 +32,13 @@ class PaymentController extends APIController
             ->first();
 
         if (! $order) {
-            return response()->json(['message' => '订单不存在。'], 404);
+            return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单不存在。', 404);
         }
 
         try {
             $payload = $this->payments->gateway()->createPayment($order);
         } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 503);
+            return $this->fail(ApiErrorCode::PAYMENT_GATEWAY_UNAVAILABLE, $e->getMessage(), 503);
         }
 
         return response()->json([

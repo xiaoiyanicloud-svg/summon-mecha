@@ -59,9 +59,16 @@ class AfterSaleController extends APIController
             $payload['detail'] ?? null,
         );
 
+        if (! $result['ok']) {
+            // 申请被拒(未购 / 已过申诉期 / 已达终态等)是**业务规则**拒绝,不是服务端故障
+            return $this->fail(ApiErrorCode::AFTER_SALE_REJECTED, (string) $result['message'], 422, ['data' => $result['data'] ?? null]);
+        }
+
+        // ⚠ 成功路径保持原样:X1 只统一**失败**结构。给成功体也加 success 字段是另一件事,
+        //   没必要为统一而改一个没人抱怨的契约。
         return response()->json(
             ['message' => $result['message'], 'data' => $result['data'] ?? null],
-            $result['ok'] ? 201 : 422
+            201
         );
     }
 }

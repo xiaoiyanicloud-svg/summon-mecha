@@ -202,10 +202,7 @@ class OrderController extends APIController
             $guestKey = $this->guestKey($request);
 
             if (! $guestKey) {
-                return response()->json([
-                    'success' => false,
-                    'message' => '订单不存在。',
-                ]);
+                return $this->fail(ApiErrorCode::GUEST_KEY_REQUIRED, '订单不存在。', 200);
             }
 
             $query->whereNull('customer_id')->where('guest_key', $guestKey);
@@ -214,17 +211,11 @@ class OrderController extends APIController
         $order = $query->first();
 
         if (! $order) {
-            return response()->json([
-                'success' => false,
-                'message' => '订单不存在。',
-            ]);
+            return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单不存在。', 200);
         }
 
         if ($order->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => '仅待处理订单可自助取消，请联系客服。',
-            ]);
+            return $this->fail(ApiErrorCode::ORDER_NOT_CANCELABLE, '仅待处理订单可自助取消，请联系客服。', 200);
         }
 
         $order->status = 'canceled';

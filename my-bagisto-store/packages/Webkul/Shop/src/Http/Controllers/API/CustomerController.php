@@ -47,10 +47,7 @@ class CustomerController extends APIController
         $lockKey = 'login:fail:'.sha1(Str::lower((string) $request->input('email')).'|'.$request->ip());
 
         if (Cache::get($lockKey.':lock')) {
-            return response()->json([
-                'code'    => 'ACCOUNT_LOCKED',
-                'message' => '失败次数过多,账号已临时锁定,请稍后再试。',
-            ], Response::HTTP_TOO_MANY_REQUESTS);
+            return $this->fail(ApiErrorCode::ACCOUNT_LOCKED, '失败次数过多,账号已临时锁定,请稍后再试。', Response::HTTP_TOO_MANY_REQUESTS);
         }
 
         if (! auth()->guard('customer')->attempt($request->only(['email', 'password']))) {
@@ -62,9 +59,7 @@ class CustomerController extends APIController
                 Cache::forget($lockKey);
             }
 
-            return response()->json([
-                'message' => trans('shop::app.customers.login-form.invalid-credentials'),
-            ], Response::HTTP_FORBIDDEN);
+            return $this->fail(ApiErrorCode::INVALID_CREDENTIALS, trans('shop::app.customers.login-form.invalid-credentials'), Response::HTTP_FORBIDDEN);
         }
 
         // 登录成功:清掉失败计数
@@ -73,9 +68,7 @@ class CustomerController extends APIController
         if (! auth()->guard('customer')->user()->status) {
             auth()->guard('customer')->logout();
 
-            return response()->json([
-                'message' => trans('shop::app.customers.login-form.not-activated'),
-            ], Response::HTTP_FORBIDDEN);
+            return $this->fail(ApiErrorCode::ACCOUNT_NOT_ACTIVATED, trans('shop::app.customers.login-form.not-activated'), Response::HTTP_FORBIDDEN);
         }
 
         if (! auth()->guard('customer')->user()->is_verified) {
@@ -85,9 +78,7 @@ class CustomerController extends APIController
 
             auth()->guard('customer')->logout();
 
-            return response()->json([
-                'message' => trans('shop::app.customers.login-form.verify-first'),
-            ], Response::HTTP_FORBIDDEN);
+            return $this->fail(ApiErrorCode::ACCOUNT_NOT_VERIFIED, trans('shop::app.customers.login-form.verify-first'), Response::HTTP_FORBIDDEN);
         }
 
         /**
@@ -147,10 +138,7 @@ class CustomerController extends APIController
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'message' => 'The given data was invalid.',
-                'errors'  => $validator->errors(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->fail(ApiErrorCode::VALIDATION_ERROR, 'The given data was invalid.', Response::HTTP_UNPROCESSABLE_ENTITY, ['errors' => $validator->errors()]);
         }
 
         $customerGroup = core()->getConfigData('customer.settings.create_new_account_options.default_group');

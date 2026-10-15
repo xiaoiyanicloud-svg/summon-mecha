@@ -53,7 +53,7 @@ class NotificationController extends APIController
             ->first();
 
         if (! $n) {
-            return response()->json(['message' => '通知不存在。'], 404);
+            return $this->fail(ApiErrorCode::NOTIFICATION_NOT_FOUND, '通知不存在。', 404);
         }
 
         if (! $n->read_at) {

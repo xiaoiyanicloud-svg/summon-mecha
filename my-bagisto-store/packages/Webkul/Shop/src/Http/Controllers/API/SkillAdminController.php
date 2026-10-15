@@ -94,7 +94,7 @@ class SkillAdminController extends APIController
         $version = SkillVersion::find($versionId);
 
         if (! $version) {
-            return response()->json(['message' => '版本不存在。'], 404);
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
         }
 
         $payload = $request->validate([
@@ -111,10 +111,9 @@ class SkillAdminController extends APIController
         $result = $this->uploads->store($version, $payload, $request->file('file'));
 
         if (! $result->ok) {
-            return response()->json(
-                array_merge(['message' => $result->message], $result->extra),
-                $result->status
-            );
+            // 失败原因由 AssetUploadService 给(缺文件 / 超体积 / sha256 不符 / 落盘失败),
+            // 状态码也由它定 —— 这里只负责套上统一信封,不再自己拼 `message + extra`。
+            return $this->fail(ApiErrorCode::SKILL_ASSET_UPLOAD_REJECTED, $result->message, $result->status, $result->extra);
         }
 
         return response()->json([
@@ -134,7 +133,7 @@ class SkillAdminController extends APIController
         $version = SkillVersion::find($versionId);
 
         if (! $version) {
-            return response()->json(['message' => '版本不存在。'], 404);
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
         }
 
         $payload = $request->validate([
@@ -166,15 +165,15 @@ class SkillAdminController extends APIController
         $version = SkillVersion::with('assets')->find($versionId);
 
         if (! $version) {
-            return response()->json(['message' => '版本不存在。'], 404);
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
         }
 
         if ($version->status === SkillVersion::STATUS_ARCHIVED) {
-            return response()->json(['message' => '已归档的版本不能发布。'], 422);
+            return $this->fail(ApiErrorCode::VERSION_ARCHIVED, '已归档的版本不能发布。', 422);
         }
 
         if ($version->assets->isEmpty()) {
-            return response()->json(['message' => '该版本还没有任何交付物,不能发布。'], 422);
+            return $this->fail(ApiErrorCode::VERSION_HAS_NO_ASSET, '该版本还没有任何交付物,不能发布。', 422);
         }
 
         // 同一个商品同时只保留一个 published 版本,避免下单时锁定到哪个不确定

@@ -12,6 +12,7 @@ use Webkul\Sales\Transformers\OrderResource;
 use Webkul\Shipping\Facades\Shipping;
 use Webkul\Shop\Http\Requests\CartAddressRequest;
 use Webkul\Shop\Http\Resources\CartResource;
+use Webkul\Shop\Services\OrderValidationException;
 
 class OnepageController extends APIController
 {
@@ -101,9 +102,11 @@ class OnepageController extends APIController
             || ! $validatedData['shipping_method']
             || ! Cart::saveShippingMethod($validatedData['shipping_method'])
         ) {
-            return response()->json([
+            // ⚠ 保留 403 与 redirect_url(前端靠它跳转),只补上信封的 code/message ——
+            //   此前这个响应体只有 redirect_url,`utils/request.js` 拿不到任何提示文案。
+            return $this->fail(ApiErrorCode::CHECKOUT_STEP_FAILED, '购物车状态已变化,请返回重新选择配送方式。', Response::HTTP_FORBIDDEN, [
                 'redirect_url' => '/admin',
-            ], Response::HTTP_FORBIDDEN);
+            ]);
         }
 
         Cart::collectTotals();
@@ -127,9 +130,9 @@ class OnepageController extends APIController
             || ! $validatedData['payment']
             || ! Cart::savePaymentMethod($validatedData['payment'])
         ) {
-            return response()->json([
+            return $this->fail(ApiErrorCode::CHECKOUT_STEP_FAILED, '购物车状态已变化,请返回重新选择支付方式。', Response::HTTP_FORBIDDEN, [
                 'redirect_url' => '/admin',
-            ], Response::HTTP_FORBIDDEN);
+            ]);
         }
 
         Cart::collectTotals();
@@ -157,10 +160,12 @@ class OnepageController extends APIController
 
         try {
             $this->validateOrder();
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], 500);
+        } catch (OrderValidationException $e) {
+            // M7:此前一律包成 500 —— 而 validateOrder 抛的是"账号被停用 / 未选地址"
+            // 这类**用户可纠正**的错误,500 会让前端把它当服务端故障去重试/上报。
+            // 现在只有这里声明的业务校验失败走 4xx;其它异常**不再被吞**,
+            // 交给全局异常处理 → 500(那才是真正的"未预期")。
+            return $this->fail($e->errorCode, $e->getMessage(), $e->status);
         }
 
         $cart = Cart::getCart();
@@ -189,7 +194,13 @@ class OnepageController extends APIController
     /**
      * Validate order before creation.
      *
-     * @return void|\Exception
+     * ⚠ M7:每一条都抛 {@see OrderValidationException}(带错误码 + 状态码),
+     *   不再抛裸 `\Exception` —— 否则调用方只能连"用户可纠正的校验失败"和
+     *   "服务端真出事了"一起 catch,只能给出 500。
+     *
+     * @return void
+     *
+     * @throws OrderValidationException 任一校验不通过
      */
     public function validateOrder()
     {
@@ -201,37 +212,61 @@ class OnepageController extends APIController
             auth()->guard('customer')->check()
             && auth()->guard('customer')->user()->is_suspended
         ) {
-            throw new \Exception(trans('shop::app.checkout.cart.suspended-account-message'));
+            // 账号状态类 → 409:请求没错,是与账号当前状态冲突(用户需联系客服,重试无用)
+            throw new OrderValidationException(
+                ApiErrorCode::ACCOUNT_SUSPENDED,
+                trans('shop::app.checkout.cart.suspended-account-message'),
+                409,
+            );
         }
 
         if (
             auth()->guard('customer')->user()
             && ! auth()->guard('customer')->user()->status
         ) {
-            throw new \Exception(trans('shop::app.checkout.cart.inactive-account-message'));
+            throw new OrderValidationException(
+                ApiErrorCode::ACCOUNT_INACTIVE,
+                trans('shop::app.checkout.cart.inactive-account-message'),
+                409,
+            );
         }
 
         if (! Cart::haveMinimumOrderAmount()) {
-            throw new \Exception(trans('shop::app.checkout.cart.minimum-order-message', ['amount' => core()->currency($minimumOrderAmount)]));
+            throw new OrderValidationException(
+                ApiErrorCode::MINIMUM_ORDER_AMOUNT_NOT_MET,
+                trans('shop::app.checkout.cart.minimum-order-message', ['amount' => core()->currency($minimumOrderAmount)]),
+            );
         }
 
         if ($cart->haveStockableItems() && ! $cart->shipping_address) {
-            throw new \Exception(trans('shop::app.checkout.onepage.address.check-shipping-address'));
+            throw new OrderValidationException(
+                ApiErrorCode::SHIPPING_ADDRESS_REQUIRED,
+                trans('shop::app.checkout.onepage.address.check-shipping-address'),
+            );
         }
 
         if (! $cart->billing_address) {
-            throw new \Exception(trans('shop::app.checkout.onepage.address.check-billing-address'));
+            throw new OrderValidationException(
+                ApiErrorCode::BILLING_ADDRESS_REQUIRED,
+                trans('shop::app.checkout.onepage.address.check-billing-address'),
+            );
         }
 
         if (
             $cart->haveStockableItems()
             && ! $cart->selected_shipping_rate
         ) {
-            throw new \Exception(trans('shop::app.checkout.cart.specify-shipping-method'));
+            throw new OrderValidationException(
+                ApiErrorCode::SHIPPING_METHOD_REQUIRED,
+                trans('shop::app.checkout.cart.specify-shipping-method'),
+            );
         }
 
         if (! $cart->payment) {
-            throw new \Exception(trans('shop::app.checkout.cart.specify-payment-method'));
+            throw new OrderValidationException(
+                ApiErrorCode::PAYMENT_METHOD_REQUIRED,
+                trans('shop::app.checkout.cart.specify-payment-method'),
+            );
         }
     }
 }

@@ -35,16 +35,22 @@ class SkillSupplyController extends APIController
         $path = $request->file('package')->getRealPath();
         $result = $this->inspector->inspect($path);
 
-        return response()->json([
-            'message' => $result['ok'] ? '包检查通过。' : '包检查未通过。',
-            'data'    => [
-                'ok'       => $result['ok'],
-                'errors'   => $result['errors'],
-                'warnings' => $result['warnings'],
-                'manifest' => $result['manifest'],
-                'files'    => array_slice($result['files'], 0, 50),
-            ],
-        ], $result['ok'] ? 200 : 422);
+        $data = [
+            'ok'       => $result['ok'],
+            'errors'   => $result['errors'],
+            'warnings' => $result['warnings'],
+            'manifest' => $result['manifest'],
+            'files'    => array_slice($result['files'], 0, 50),
+        ];
+
+        if (! $result['ok']) {
+            // 包不合规是**调用方可修正**的输入问题 → 422 + 码,而不是 200 里塞个 ok:false
+            // (后者会让脚本消费者必须解析 body 才知道失败,HTTP 层看不见)。
+            return $this->fail(ApiErrorCode::SKILL_PACKAGE_INVALID, '包检查未通过。', 422, ['data' => $data]);
+        }
+
+        // ⚠ data 里仍保留 ok:true —— 成功体不动(X1 只统一失败结构)
+        return response()->json(['message' => '包检查通过。', 'data' => $data]);
     }
 
     /**
@@ -60,7 +66,13 @@ class SkillSupplyController extends APIController
 
         $result = $this->importer->import($payload['input'], null, $payload['source_ref'] ?? null);
 
-        return response()->json($result, $result['ok'] ? 201 : 422);
+        if (! $result['ok']) {
+            return $this->fail(ApiErrorCode::SKILL_IMPORT_FAILED, (string) ($result['message'] ?? '导入失败。'), 422, [
+                'result' => $result['result'] ?? null,
+            ]);
+        }
+
+        return response()->json($result, 201);
     }
 
     /**
@@ -91,10 +103,12 @@ class SkillSupplyController extends APIController
 
         $result = $this->audit->submitLayer0($payload['skill_id'], $versionId, $payload['manifest']);
 
-        return response()->json([
-            'message' => $result['result'] === 1 ? 'L0 机审通过。' : 'L0 机审未通过。',
-            'data'    => $result,
-        ], $result['result'] === 1 ? 200 : 422);
+        if ($result['result'] !== 1) {
+            // L0 机审未过 = 制品有可定位的问题(缺字段 / 声明与实物不符),调用方需改了再提
+            return $this->fail(ApiErrorCode::SKILL_L0_AUDIT_FAILED, 'L0 机审未通过。', 422, ['data' => $result]);
+        }
+
+        return response()->json(['message' => 'L0 机审通过。', 'data' => $result]);
     }
 
     /**
@@ -117,13 +131,10 @@ class SkillSupplyController extends APIController
     public function review(Request $request, int $versionId): JsonResponse
     {
         if ($request->filled('auditor_id')) {
-            return response()->json([
-                'message' => '本通道不接受 auditor_id：internal.key 是单一平台密钥，不代表具体的人，'
+            return $this->fail(ApiErrorCode::AUDITOR_ID_NOT_ACCEPTED_HERE, '本通道不接受 auditor_id：internal.key 是单一平台密钥，不代表具体的人，'
                     .'因此这里传入的"审核人"无法核验。写入一个无法核验的审核人，'
                     .'会让审核记录看上去像是某位真人审过 —— 请改在平台控制台'
-                    .'（技能审核台）以登录身份做 L2 人审；本通道用于提交 L1 仿真结果。',
-                'code'    => 'AUDITOR_ID_NOT_ACCEPTED_HERE',
-            ], 422);
+                    .'（技能审核台）以登录身份做 L2 人审；本通道用于提交 L1 仿真结果。', 422);
         }
 
         $payload = $request->validate([
@@ -201,9 +212,10 @@ class SkillSupplyController extends APIController
     {
         $ok = app(\Webkul\Shop\Services\Deploy\KillSwitchService::class)->lift($skillId);
 
-        return response()->json(
-            ['message' => $ok ? '已解除熔断。' : '无生效中的熔断。'],
-            $ok ? 200 : 404
-        );
+        if (! $ok) {
+            return $this->fail(ApiErrorCode::KILL_SWITCH_NOT_ENGAGED, '无生效中的熔断。', 404);
+        }
+
+        return response()->json(['message' => '已解除熔断。']);
     }
 }

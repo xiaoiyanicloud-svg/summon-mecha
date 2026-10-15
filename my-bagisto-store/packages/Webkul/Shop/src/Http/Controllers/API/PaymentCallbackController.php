@@ -44,29 +44,26 @@ class PaymentCallbackController extends APIController
         try {
             $gateway = $this->payments->gateway();
         } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 503);
+            return $this->fail(ApiErrorCode::PAYMENT_GATEWAY_UNAVAILABLE, $e->getMessage(), 503);
         }
 
         $result = $gateway->handleCallback($request->all());
 
         if (! $result->paid) {
-            return response()->json(['message' => '支付未成功:'.$result->message], 422);
+            return $this->fail(ApiErrorCode::PAYMENT_FAILED, '支付未成功:'.$result->message, 422);
         }
 
         // 从 out_trade_no 反查订单(mock 里 out_trade_no 末段是 order id;真实网关用订单号映射)
         $order = $this->resolveOrder($result->outTradeNo);
 
         if (! $order) {
-            return response()->json(['message' => '订单未找到。'], 404);
+            return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单未找到。', 404);
         }
 
         // 金额核对(M3):回调金额必须等于订单应付。
         // 此前 `PaymentResult::amount` 拿到了却从未参与判定 —— 任何人可以自报任意金额。
         if (! $this->amountMatches($order, $result->amount)) {
-            return response()->json([
-                'message' => '回调金额与订单应付不一致,已拒绝。',
-                'code'    => 'AMOUNT_MISMATCH',
-            ], 409);
+            return $this->fail(ApiErrorCode::AMOUNT_MISMATCH, '回调金额与订单应付不一致,已拒绝。', 409);
         }
 
         // 幂等 + 落流水(M6):以商户订单号 out_trade_no 唯一键为锚点。

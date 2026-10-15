@@ -61,7 +61,7 @@ class SummonController extends APIController
         $q = trim((string) $request->input('q', ''));
 
         if ($q === '') {
-            return response()->json(['success' => false, 'message' => '请描述你的需求'], 422);
+            return $this->fail(ApiErrorCode::SUMMON_QUERY_REQUIRED, '请描述你的需求', 422);
         }
 
         // 1. 词集:原句 + 拆词 + 同义词展开

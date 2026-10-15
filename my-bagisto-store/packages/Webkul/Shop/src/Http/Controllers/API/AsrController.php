@@ -43,11 +43,11 @@ class AsrController extends APIController
         $file = $request->file('audio');
 
         if (! $file || ! $file->isValid()) {
-            return $this->reject('NO_AUDIO', '未收到音频');
+            return $this->reject(ApiErrorCode::NO_AUDIO, '未收到音频');
         }
 
         if ($file->getSize() > (int) config('asr.max_bytes')) {
-            return $this->reject('TOO_LARGE', '音频过大');
+            return $this->reject(ApiErrorCode::TOO_LARGE, '音频过大');
         }
 
         // 客户端声明的格式**仅作兜底**,不再据此拒请求 —— 真实容器由 AudioNormalizer
@@ -74,7 +74,7 @@ class AsrController extends APIController
         if (! config('asr.enabled')
             || (string) config('asr.secret_id') === ''
             || (string) config('asr.secret_key') === '') {
-            return $this->fail('ASR_NOT_CONFIGURED', '语音识别尚未配置');
+            return $this->fail(ApiErrorCode::ASR_NOT_CONFIGURED, '语音识别尚未配置');
         }
 
         // ④ 归一化 —— 嗅探真实容器;腾讯不收的(webm / mp4)用 ffmpeg 转 16k 单声道 WAV。
@@ -93,14 +93,14 @@ class AsrController extends APIController
             // 容器认不出来,或 ffmpeg 缺失 / 超时 / 转码失败。细节进日志,前端只当"请求非法"。
             report($e);
 
-            return $this->reject('UNSUPPORTED_FORMAT', '音频格式无法识别或不支持');
+            return $this->reject(ApiErrorCode::UNSUPPORTED_FORMAT, '音频格式无法识别或不支持');
         }
 
         // ⚠ 体积上限必须在转码**之后**再判一次:转码会放大体积
         //   (模拟器的 webm 才 45KB,转成 60s 的 16k 单声道 WAV 约 1.9MB),
         //   而腾讯的上限是按**送出去的字节**算的,不是按上传的字节。
         if (strlen($bytes) > (int) config('asr.max_bytes')) {
-            return $this->reject('TOO_LARGE', '音频过大');
+            return $this->reject(ApiErrorCode::TOO_LARGE, '音频过大');
         }
 
         // ⑤ 识别
@@ -120,35 +120,11 @@ class AsrController extends APIController
             //    把"签名失败"和"没听清"呈现成两种不同提示(用户看不懂也没法处理)
             report($e);
 
-            return $this->fail('ASR_FAILED', '识别失败,请重试');
+            return $this->fail(ApiErrorCode::ASR_FAILED, '识别失败,请重试');
         }
 
         // text 为空串是**正常结果**(听清了但没内容),前端据此提示"没听清"即可
         return response()->json(['success' => true, 'text' => $text]);
     }
 
-    /**
-     * 业务性失败:HTTP 200 + success=false。
-     * 前端只判 success,与"没听清"走同一套处理。
-     */
-    private function fail(string $code, string $message): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'code' => $code,
-            'message' => $message,
-        ]);
-    }
-
-    /**
-     * 请求本身非法(缺文件 / 超体积 / 格式不支持):才用 422。
-     */
-    private function reject(string $code, string $message): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'code' => $code,
-            'message' => $message,
-        ], 422);
-    }
 }

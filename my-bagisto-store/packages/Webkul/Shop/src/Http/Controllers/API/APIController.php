@@ -2,11 +2,85 @@
 
 namespace Webkul\Shop\Http\Controllers\API;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Shop\Http\Controllers\Controller;
 
+/**
+ * `api/*` 所有控制器的基类。
+ *
+ * ── 统一响应信封(X1) ──
+ *
+ *   成功:  { "success": true,  "message"?: string, "data"?: mixed, ...extra }
+ *   失败:  { "success": false, "code": string, "message": string, ...extra }
+ *
+ * 为什么失败体里**保留** `success` 字段:在 X1 之前,TtsController / AsrController
+ * 已经是 `{success,code,message}` 且前端(utils/tts.js、utils/voice.js)按 `success` 分支。
+ * 统一信封不能顺手改掉这个契约 —— 所以 `{code,message}` 是子集,`success` 是超集,
+ * 老前端(N)与新前端(N+1)都能读。**新增字段是加,不是改。**
+ *
+ * 状态码约定(与 TtsController / AsrController 类注释一致,不是新发明):
+ *   · 请求本身非法(参数错 / 未认证 / 不存在 / 状态冲突)→ 明确 4xx。用 `reject()`(422)
+ *     或 `fail($code, $message, 404)` 这类显式状态码。
+ *   · 业务性失败(配额用尽 / 下游没听清 / 未配置)是**预期内的常态**,用 4xx 表达不准确
+ *     → `fail()` 默认 200,由 `code` 区分。这类失败前端只做提示,不做协议层分支。
+ *   · ⚠ 401 要慎用:utils/request.js 见到 401 会**清空登录态**。游客可用的入口
+ *     (语音、AI 召唤)绝不能返 401,否则一次朗读把用户踢下线。
+ *
+ * 错误码一律取自 {@see ApiErrorCode}(单一事实源),禁止在控制器里手写字面量。
+ */
 class APIController extends Controller
 {
+    /**
+     * 成功信封。
+     *
+     * @param  mixed  $data     业务数据;为 null 时不输出 `data` 键
+     * @param  string  $message  提示文案;为空串时不输出 `message` 键
+     * @param  array  $extra    额外顶层字段(如分页、计数)
+     */
+    protected function ok($data = null, string $message = '', array $extra = []): JsonResponse
+    {
+        $body = ['success' => true];
+
+        if ($message !== '') {
+            $body['message'] = $message;
+        }
+
+        if ($data !== null) {
+            $body['data'] = $data;
+        }
+
+        return response()->json(array_merge($body, $extra));
+    }
+
+    /**
+     * 失败信封。
+     *
+     * `$status` 默认 200 —— 见类注释:业务性失败是常态,只有"请求本身非法"才用 4xx。
+     * 默认值刻意与 TtsController / AsrController 原有的私有 `fail()` 保持一致,
+     * 这样把它们的样板提到基类**不改变任何既有行为**。
+     *
+     * @param  string  $code    取自 {@see ApiErrorCode}
+     * @param  array  $extra    额外顶层字段(如 errors / data)
+     */
+    protected function fail(string $code, string $message, int $status = 200, array $extra = []): JsonResponse
+    {
+        return response()->json(array_merge([
+            'success' => false,
+            'code'    => $code,
+            'message' => $message,
+        ], $extra), $status);
+    }
+
+    /**
+     * 请求本身非法 —— `fail(..., 422)` 的糖,对应 TtsController / AsrController 原来的
+     * 私有 `reject()`。空文本 / 超长 / 缺文件 / 格式不支持走这里。
+     */
+    protected function reject(string $code, string $message, array $extra = []): JsonResponse
+    {
+        return $this->fail($code, $message, 422, $extra);
+    }
+
     /**
      * 本机游客标识 —— 由前端首次生成并持久化,随每个请求以 X-Guest-Key 头带来。
      *

@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API\Dev;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Shop\Http\Controllers\API\APIController;
+use Webkul\Shop\Http\Controllers\API\ApiErrorCode;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
@@ -59,7 +60,7 @@ class DeveloperSkillController extends APIController
         $product = $this->skills->createSkill($this->profile($request), $payload);
 
         if (! $product) {
-            return response()->json(['message' => '开发者主体不完整。', 'code' => 'DEVELOPER_SELLER_MISSING'], 403);
+            return $this->fail(ApiErrorCode::DEVELOPER_SELLER_MISSING, '开发者主体不完整。', 403);
         }
 
         return response()->json([
@@ -76,7 +77,7 @@ class DeveloperSkillController extends APIController
 
         if (! $product) {
             // 他人的与不存在的返回同一个 404 —— 状态码与 code 都一致，避免被用来枚举他人资源 id
-            return response()->json(['message' => '技能不存在。', 'code' => 'SKILL_NOT_FOUND'], 404);
+            return $this->fail(ApiErrorCode::SKILL_NOT_FOUND, '技能不存在。', 404);
         }
 
         $versions = SkillVersion::query()
@@ -122,7 +123,7 @@ class DeveloperSkillController extends APIController
         $version = $this->skills->createVersion($this->profile($request), $skillId, $payload);
 
         if (! $version) {
-            return response()->json(['message' => '技能不存在。', 'code' => 'SKILL_NOT_FOUND'], 404);
+            return $this->fail(ApiErrorCode::SKILL_NOT_FOUND, '技能不存在。', 404);
         }
 
         return response()->json([
@@ -149,14 +150,13 @@ class DeveloperSkillController extends APIController
         );
 
         if (! $result) {
-            return response()->json(['message' => '版本不存在。', 'code' => 'VERSION_NOT_FOUND'], 404);
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
         }
 
         if (! $result->ok) {
-            return response()->json(
-                array_merge(['message' => $result->message], $result->extra),
-                $result->status
-            );
+            // 与 internal.key 通道(SkillAdminController::storeAsset)共用 AssetUploadService,
+            // 失败结构与错误码保持一致,免得同一个原因两条通道给前端两种形状。
+            return $this->fail(ApiErrorCode::SKILL_ASSET_UPLOAD_REJECTED, $result->message, $result->status, $result->extra);
         }
 
         return response()->json([
@@ -176,7 +176,7 @@ class DeveloperSkillController extends APIController
         $result = $this->skills->submitForReview($this->profile($request), $versionId);
 
         if (! $result) {
-            return response()->json(['message' => '版本不存在。', 'code' => 'VERSION_NOT_FOUND'], 404);
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
         }
 
         return response()->json([

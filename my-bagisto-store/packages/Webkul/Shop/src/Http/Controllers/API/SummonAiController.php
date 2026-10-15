@@ -62,7 +62,7 @@ class SummonAiController extends APIController
         $q = trim((string) $request->input('q', ''));
 
         if ($q === '') {
-            return response()->json(['success' => false, 'message' => '请描述你的需求'], 422);
+            return $this->fail(ApiErrorCode::SUMMON_QUERY_REQUIRED, '请描述你的需求', 422);
         }
 
         // 前端把已有对话带上,机器人才能记住上文(详见 normalizeHistory 的注释)
@@ -136,7 +136,7 @@ class SummonAiController extends APIController
         $q = trim((string) $request->input('q', ''));
 
         if ($q === '') {
-            return response()->json(['success' => false, 'message' => '请描述你的需求'], 422);
+            return $this->fail(ApiErrorCode::SUMMON_QUERY_REQUIRED, '请描述你的需求', 422);
         }
 
         // 前端把已有对话带上,机器人才能记住上文(详见 normalizeHistory 的注释)

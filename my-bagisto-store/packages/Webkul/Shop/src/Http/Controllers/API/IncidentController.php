@@ -77,10 +77,7 @@ class IncidentController extends APIController
                 ->exists();
 
             if (! $owned) {
-                return response()->json([
-                    'message' => '该设备不在你的设备列表里。',
-                    'code'    => 'DEVICE_NOT_OWNED',
-                ], 422);
+                return $this->fail(ApiErrorCode::DEVICE_NOT_OWNED, '该设备不在你的设备列表里。', 422);
             }
         }
 
@@ -123,7 +120,7 @@ class IncidentController extends APIController
             ->first();
 
         if (! $incident) {
-            return response()->json(['message' => '事故记录不存在。', 'code' => 'NOT_FOUND'], 404);
+            return $this->fail(ApiErrorCode::NOT_FOUND, '事故记录不存在。', 404);
         }
 
         return response()->json([

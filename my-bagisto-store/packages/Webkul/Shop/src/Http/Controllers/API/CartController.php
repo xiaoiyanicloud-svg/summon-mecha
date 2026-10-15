@@ -75,10 +75,10 @@ class CartController extends APIController
                 'message' => trans('shop::app.checkout.cart.item-add-to-cart'),
             ], $response));
         } catch (\Exception $exception) {
-            return response()->json([
+            // X1:统一信封。redirect_uri 是既有契约(前台已停用 → /admin),放进 extra 不丢。
+            return $this->fail(ApiErrorCode::CART_ADD_FAILED, $exception->getMessage(), Response::HTTP_BAD_REQUEST, [
                 'redirect_uri' => '/admin', // 前台已停用
-                'message'      => $exception->getMessage(),
-            ], Response::HTTP_BAD_REQUEST);
+            ]);
         }
     }
 
@@ -209,18 +209,16 @@ class CartController extends APIController
                 $coupon = $this->cartRuleCouponRepository->findOneByField('code', $validatedData['code']);
 
                 if (! $coupon) {
-                    return (new JsonResource([
-                        'data'     => new CartResource(Cart::getCart()),
-                        'message'  => trans('shop::app.checkout.coupon.invalid'),
-                    ]))->response()->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
+                    return $this->fail(ApiErrorCode::COUPON_INVALID, trans('shop::app.checkout.coupon.invalid'), Response::HTTP_UNPROCESSABLE_ENTITY, [
+                        'data' => new CartResource(Cart::getCart()),
+                    ]);
                 }
 
                 if ($coupon->cart_rule->status) {
                     if (Cart::getCart()->coupon_code == $coupon->code) {
-                        return (new JsonResource([
-                            'data'     => new CartResource(Cart::getCart()),
-                            'message'  => trans('shop::app.checkout.coupon.already-applied'),
-                        ]))->response()->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
+                        return $this->fail(ApiErrorCode::COUPON_ALREADY_APPLIED, trans('shop::app.checkout.coupon.already-applied'), Response::HTTP_UNPROCESSABLE_ENTITY, [
+                            'data' => new CartResource(Cart::getCart()),
+                        ]);
                     }
 
                     Cart::setCouponCode($coupon->code)->collectTotals();
@@ -233,16 +231,14 @@ class CartController extends APIController
                     }
                 }
 
-                return (new JsonResource([
-                    'data'     => new CartResource(Cart::getCart()),
-                    'message'  => trans('Coupon not found.'),
-                ]))->response()->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
+                return $this->fail(ApiErrorCode::COUPON_NOT_FOUND, trans('Coupon not found.'), Response::HTTP_UNPROCESSABLE_ENTITY, [
+                    'data' => new CartResource(Cart::getCart()),
+                ]);
             }
         } catch (\Exception $e) {
-            return (new JsonResource([
-                'data'    => new CartResource(Cart::getCart()),
-                'message' => trans('shop::app.checkout.coupon.error'),
-            ]))->response()->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->fail(ApiErrorCode::COUPON_APPLY_FAILED, trans('shop::app.checkout.coupon.error'), Response::HTTP_INTERNAL_SERVER_ERROR, [
+                'data' => new CartResource(Cart::getCart()),
+            ]);
         }
     }
 

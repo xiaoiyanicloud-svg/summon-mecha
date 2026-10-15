@@ -68,7 +68,7 @@ class DeviceController extends APIController
         $sn = trim($payload['sn']);
 
         if ($sn === '') {
-            return response()->json(['message' => '请填写设备 SN。'], 422);
+            return $this->fail(ApiErrorCode::DEVICE_SN_REQUIRED, '请填写设备 SN。', 422);
         }
 
         // 同一账号下 SN 不能重复。这里显式查一次是为了给前端一句人话,
@@ -80,7 +80,7 @@ class DeviceController extends APIController
             ->exists();
 
         if ($exists) {
-            return response()->json(['message' => "设备 {$sn} 已经登记过了。"], 422);
+            return $this->fail(ApiErrorCode::DEVICE_SN_DUPLICATE, "设备 {$sn} 已经登记过了。", 422);
         }
 
         $device = Device::create([
@@ -120,7 +120,7 @@ class DeviceController extends APIController
         $device = $this->findOwned($customer->id, $id);
 
         if (! $device) {
-            return response()->json(['message' => '设备不存在。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在。', 404);
         }
 
         $payload = $request->validate([
@@ -157,7 +157,7 @@ class DeviceController extends APIController
         $device = $this->findOwned($customer->id, $id);
 
         if (! $device) {
-            return response()->json(['message' => '设备不存在。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在。', 404);
         }
 
         $device->bind_status = Device::STATUS_REVOKED;
@@ -179,7 +179,7 @@ class DeviceController extends APIController
         $device = $this->findOwned($customer->id, $id);
 
         if (! $device) {
-            return response()->json(['message' => '设备不存在。'], 404);
+            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在。', 404);
         }
 
         // 确保 binding 存在(登记时补建若被吞掉异常,这里再兜一次)
@@ -187,7 +187,7 @@ class DeviceController extends APIController
             ?: app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)->ensureForDevice($device);
 
         if (! $binding) {
-            return response()->json(['message' => '设备绑定尚未建立,请重新登记设备。'], 422);
+            return $this->fail(ApiErrorCode::DEVICE_BINDING_MISSING, '设备绑定尚未建立,请重新登记设备。', 422);
         }
 
         $plain = bin2hex(random_bytes(24));

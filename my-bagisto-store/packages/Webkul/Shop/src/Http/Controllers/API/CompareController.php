@@ -62,9 +62,7 @@ class CompareController extends APIController
         ]);
 
         if ($compareProduct) {
-            return (new JsonResource([
-                'message' => trans('shop::app.compare.already-added'),
-            ]))->response()->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->fail(ApiErrorCode::COMPARE_ALREADY_ADDED, trans('shop::app.compare.already-added'), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         Event::dispatch('customer.compare.create.before');

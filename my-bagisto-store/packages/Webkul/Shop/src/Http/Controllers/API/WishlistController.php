@@ -2,6 +2,7 @@
 
 namespace Webkul\Shop\Http\Controllers\API;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
 use Webkul\Checkout\Facades\Cart;
@@ -91,7 +92,7 @@ class WishlistController extends APIController
      *
      * @param  int  $id
      */
-    public function moveToCart($id): JsonResource
+    public function moveToCart($id): JsonResource|JsonResponse
     {
         $wishlistItem = $this->wishlistRepository->findOneWhere([
             'id'          => $id,
@@ -99,7 +100,9 @@ class WishlistController extends APIController
         ]);
 
         if (! $wishlistItem) {
-            abort(404);
+            // X1:原先 `abort(404)` —— 响应体是 Laravel 默认错误页(不是本仓信封),
+            // 前端拿不到 code。这里改成统一信封(状态码仍是 404,不改变"形如不存在"的语义)。
+            return $this->fail(ApiErrorCode::WISHLIST_NOT_FOUND, '收藏项不存在。', 404);
         }
 
         try {
