@@ -19,6 +19,7 @@ use Webkul\Admin\Http\Controllers\Catalog\SkillCategoryController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillReportController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillReviewController;
+use Webkul\Admin\Http\Controllers\Catalog\SkillReviewModerationController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillTagController;
 
 /**
@@ -219,6 +220,18 @@ Route::prefix('catalog')->group(function () {
         Route::get('', 'index')->name('admin.catalog.skill-reports.index');
         Route::get('{id}', 'show')->whereNumber('id')->name('admin.catalog.skill-reports.show');
         Route::post('{id}/dispose', 'dispose')->whereNumber('id')->name('admin.catalog.skill-reports.dispose');
+    });
+
+    /**
+     * 评价处置台（加固计划 §四 A1）。
+     *
+     * ⚠ 与审核台（skill-reviews）只差英文名：审核台审**技能版本准入**（skill_versions），
+     * 本台管**用户写的技能评价**（skill_review）。
+     */
+    Route::controller(SkillReviewModerationController::class)->prefix('skill-review-moderation')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.skill-review-moderation.index');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.catalog.skill-review-moderation.show');
+        Route::post('{id}/moderate', 'moderate')->whereNumber('id')->name('admin.catalog.skill-review-moderation.moderate');
     });
 
     /**

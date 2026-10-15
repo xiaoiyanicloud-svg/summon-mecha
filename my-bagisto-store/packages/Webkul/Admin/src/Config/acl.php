@@ -301,6 +301,17 @@ return [
         'route' => 'admin.catalog.skill-reports.show',
         'sort'  => 1,
     ], [
+        // 评价处置台（加固 §四 A1）
+        'key'   => 'catalog.skill-review-moderation',
+        'name'  => '评价处置台',
+        'route' => 'admin.catalog.skill-review-moderation.index',
+        'sort'  => 12,
+    ], [
+        'key'   => 'catalog.skill-review-moderation.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.catalog.skill-review-moderation.show',
+        'sort'  => 1,
+    ], [
         'key'   => 'catalog.attributes',
         'name'  => 'admin::app.acl.attributes',
         'route' => 'admin.catalog.attributes.index',

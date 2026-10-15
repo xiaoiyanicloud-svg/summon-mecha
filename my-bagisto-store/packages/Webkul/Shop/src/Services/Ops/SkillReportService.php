@@ -3,10 +3,10 @@
 namespace Webkul\Shop\Services\Ops;
 
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Webkul\Product\Models\Product;
 use Webkul\Shop\Models\ContentSecurityRecord;
 use Webkul\Shop\Models\SkillReport;
+use Webkul\Shop\Models\SkillReview;
 use Webkul\Shop\Services\ContentSafety\ContentSafetyManager;
 use Webkul\Shop\Services\ContentSafety\ContentScanRecorder;
 use Webkul\Shop\Services\ContentSafety\ScanResult;
@@ -39,9 +39,7 @@ class SkillReportService
      * 受理一条举报。
      *
      * @param  string  $reasonCategory  取值见 {@see SkillReport::REASON_LABELS}
-     * @return array{report: SkillReport, duplicate: bool}
-     *                                               duplicate=true 表示"同一对象已有一条未处置的举报，
-     *                                               本次未新建，返回的是那条"
+     * @return array{report: SkillReport, duplicate: bool} duplicate=true 表示"同一对象已有一条未处置的举报，本次未新建，返回的是那条"
      */
     public function submit(
         int $customerId,
@@ -131,7 +129,8 @@ class SkillReportService
     {
         return match ($targetType) {
             SkillReport::TARGET_SKILL  => Product::query()->whereKey($targetId)->exists(),
-            SkillReport::TARGET_REVIEW => DB::table('skill_review')->where('id', $targetId)->exists(),
+            // 评价域本轮才落地（见 SkillReview / 迁移 000009），此前的存在性探针是直查表
+            SkillReport::TARGET_REVIEW => SkillReview::query()->whereKey($targetId)->exists(),
             default                    => false,
         };
     }

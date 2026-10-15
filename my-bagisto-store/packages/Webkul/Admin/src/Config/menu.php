@@ -155,6 +155,12 @@ return [
         'sort'       => 10,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.skill-review-moderation',
+        'name'       => '评价处置台',
+        'route'      => 'admin.catalog.skill-review-moderation.index',
+        'sort'       => 11,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.attributes',
         'name'       => 'admin::app.components.layouts.sidebar.attributes',
         'route'      => 'admin.catalog.attributes.index',

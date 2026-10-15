@@ -192,6 +192,9 @@ final class ApiErrorCode
     public const REVIEW_NOT_APPROVED = 'REVIEW_NOT_APPROVED';
     public const REVIEW_TRANSLATE_FAILED = 'REVIEW_TRANSLATE_FAILED';
 
+    /** 一人一技能一条（加固 §四 A1）—— 第二次提交不是"失败"，是"已经评过了" */
+    public const REVIEW_ALREADY_EXISTS = 'REVIEW_ALREADY_EXISTS';
+
     // ── 举报（加固 §四 A1）────────────────────────────────────────────────
 
     /** 举报对象（技能/评价）不存在 —— 举报必须落在真实对象上 */

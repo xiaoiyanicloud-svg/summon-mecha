@@ -34,6 +34,7 @@ use Webkul\Shop\Http\Controllers\API\SkillAdminController;
 use Webkul\Shop\Http\Controllers\API\SkillCatalogController;
 use Webkul\Shop\Http\Controllers\API\SkillController;
 use Webkul\Shop\Http\Controllers\API\SkillReportController;
+use Webkul\Shop\Http\Controllers\API\SkillReviewController;
 use Webkul\Shop\Http\Controllers\API\SkillSupplyController;
 use Webkul\Shop\Http\Controllers\API\SummonAiController;
 use Webkul\Shop\Http\Controllers\API\SummonController;
@@ -289,6 +290,17 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('categories', 'categories')->name('shop.api.skill-catalog.categories');
         Route::get('tags', 'tags')->name('shop.api.skill-catalog.tags');
         Route::get('search', 'search')->name('shop.api.skill-catalog.search');
+    });
+
+    /**
+     * 加固计划 §四 A1 · 技能评价（用户侧，增长功能）。
+     *
+     * 买了才能评（`skill_entitlements`）+ 一人一技能一条；内容安全命中即不可见
+     * （不是拒收 —— 落档留痕，人工才改得回误判）。写入口挂 `write` 档，
+     * 与售后/工单/事故同档（评价的对象只能是自己的授权，滥用面比举报小）。
+     */
+    Route::controller(SkillReviewController::class)->prefix('skill-reviews')->middleware(['customer'])->group(function () {
+        Route::post('', 'store')->middleware('throttle:write')->name('shop.api.skill-reviews.store');
     });
 
     /**
