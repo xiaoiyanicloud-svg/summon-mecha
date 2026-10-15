@@ -4,12 +4,15 @@ namespace Webkul\Shop\Services\Deploy;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
+use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\LifecycleNotifier;
+use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
 
 /**
  * 下发任务服务 —— 状态机 —— v3.4 步骤 8(计划 §4.6)。
@@ -77,6 +80,11 @@ class DeployTaskService
         protected SigningService $signing,
         protected AgentGatewayManager $gateways,
         protected LifecycleNotifier $notifier,
+        /**
+         * 包指纹的唯一实现（任务卡 D-7）—— 下发指令里的 `package_hash` 必须复用它。
+         * 另算一套 = 把"审的就是发的"交给两份实现去兑现，它们迟早漂移。
+         */
+        protected PackageFingerprint $fingerprint,
     ) {}
 
     /**
@@ -133,6 +141,10 @@ class DeployTaskService
                 return $existing;
             }
 
+            // 包地址/哈希在**这唯一漏斗**里推导 —— 三个调用点(用户下发 / 试用 / 回收)
+            // 谁都不用改,也不会各写一套(见 resolvePackage)。
+            [$resolvedUrl, $resolvedHash] = $this->resolvePackage($skillVersionId, $operation, $packageUrl, $packageHash);
+
             $task = DeployTask::create([
                 'task_no'          => $this->newTaskNo(),
                 'did'              => $did,
@@ -142,15 +154,115 @@ class DeployTaskService
                 'entitlement_id'   => $entitlementId,
                 'operation'        => $operation,
                 'status'           => 'pending',
-                'package_url'      => $packageUrl,
-                'package_hash'     => $packageHash,
+                'package_url'      => $resolvedUrl,
+                'package_hash'     => $resolvedHash,
                 'created_by'       => $createdBy,
             ]);
+
+            // 「无包可下发」如实打标(任务卡 S-1):该版本没有文件类交付物时,resolvePackage
+            //   不发出可下载的假地址,但**必须留下原因** —— 否则事后从 `package_url IS NULL`
+            //   根本分不清"忘了填"还是"本来就没有包"。
+            //   用 ERR_PKG_MISSING:模型里它本就同时覆盖"平台侧没分发交付物"这一情形;
+            //   且设备空跑回报成功时,本任务会被判成空跑(不落 install_record、不进灰度成功率)。
+            if (DeployTask::needsPackage($operation) && $skillVersionId && $resolvedHash === null) {
+                $task->error_code = DeployTask::ERR_PKG_MISSING;
+                $task->error_msg = '该版本没有文件类交付物,无包可下发(设备将只走状态机,不落安装事实)。';
+                $task->save();
+            }
 
             $this->dispatch($task);
 
             return $task->fresh();
         });
+    }
+
+    /**
+     * 推导一条任务该带什么样的包地址/哈希（任务卡 S-1）。
+     *
+     * ⚠ 位置：放在 create() 这**唯一漏斗**里，而不是三个调用点
+     *   （用户下发 DeployController / 试用 TrialService::start / 回收 TrialService::reclaimDue）。
+     *   "带哪个包"是这条任务基于 (operation, skill_version_id) 的**固有属性**，
+     *   不是调用方各自的选择 —— 放在调用点，任何**新增**的调用点都会漏填，
+     *   而漏填的表现恰恰是"设备什么都没装"（还看不出是忘了带包）。
+     *
+     * @param  string|null  $overrideUrl   显式覆盖（测试 / 平台特例）
+     * @param  string|null  $overrideHash  显式覆盖（测试 / 平台特例）
+     * @return array{0: ?string, 1: ?string}  [package_url, package_hash]
+     */
+    protected function resolvePackage(?int $versionId, int $operation, ?string $overrideUrl, ?string $overrideHash): array
+    {
+        // 显式覆盖优先：给测试与平台特例留的口子（默认路径一律自动推导）。
+        if ($overrideUrl !== null || $overrideHash !== null) {
+            return [$overrideUrl, $overrideHash];
+        }
+
+        // 非安装类操作（卸 / 回收 / 启停）不需要包 —— 不挂地址（见 DeployTask::PACKAGE_OPERATIONS）。
+        if (! DeployTask::needsPackage($operation)) {
+            return [null, null];
+        }
+
+        // 没有版本就无法定位"发哪个包"。
+        if (! $versionId) {
+            return [null, null];
+        }
+
+        // 指纹 = 该版本文件类交付物集合的唯一判据（复用 D-7 那**一处**实现，不另算一套）。
+        $hash = $this->fingerprint->forVersion($versionId);
+
+        // null = 该版本没有文件类交付物（没有字节可发）。
+        //   **绝不**发一个"可下载"的假地址：那会让设备去拉一个不存在的包，
+        //   或更糟 —— 平台自己都说不清在发什么。调用方据此把任务如实标成"无包"。
+        if ($hash === null) {
+            return [null, null];
+        }
+
+        // ⚠ 还必须能拿到"被下载的那个文件"的字节 sha256 —— 端侧靠它复算，且它会被签进指令。
+        //   历史行可能 `file_hash` 为空（上传核早已一律写入，但存量 NULL 是可能的）：此时
+        //   **不发地址** —— 发出去端侧也无从验证，只会把一份无法证明来源的字节装上。
+        //   这与下载端点"记录为空即拒绝输出"是同一取舍，只是把它提前到了下发之前。
+        //   于是形成一条硬不变式：`package_url` 非空 ⟺ `package_sha256` 非空
+        //   （有包任务必须两者都有，见签名的取舍）。
+        $sha256 = SkillAsset::defaultFileForVersion($versionId)?->file_hash;
+
+        if (! is_string($sha256) || $sha256 === '') {
+            return [null, null];
+        }
+
+        return [$this->packageUrlFor($versionId), $hash];
+    }
+
+    /**
+     * 签发一个**限时**的技能包下载地址（任务卡 S-1）。
+     *
+     * 用 Laravel 自带签名 URL，不引入新依赖：`expires` 与 `signature` 是查询串的一部分，
+     * 改 `versionId` 或改 `expires` 都会让签名失配（见路由挂的 `signed` 中间件）。
+     * 这只是**第一重**闸 —— 端点同时还要求 agent 身份（`agent.key`），
+     * 故 URL 即便泄露，没有设备凭据也拿不到包。
+     */
+    protected function packageUrlFor(int $versionId): string
+    {
+        $ttl = (int) config('deploy_gateways.package_url_ttl_minutes', 10);
+
+        return URL::temporarySignedRoute(
+            'shop.api.agent.package.download',
+            now()->addMinutes($ttl),
+            ['versionId' => $versionId],
+        );
+    }
+
+    /**
+     * 指令里 `package_sha256` 的值 —— 默认下发的那**一个**文件类交付物的 sha256。
+     *
+     * 与下载端点的默认选片（{@see SkillAsset::defaultFileForVersion()}）是**同一处**判据：
+     * 端侧拿到的字节就是这个文件，它复算出的 sha256 就该等于这里给的值。
+     */
+    protected function packageSha256For(DeployTask $task): ?string
+    {
+        if ($task->package_hash === null || ! $task->skill_version_id) {
+            return null;
+        }
+
+        return SkillAsset::defaultFileForVersion((int) $task->skill_version_id)?->file_hash;
     }
 
     /**
@@ -302,21 +414,48 @@ class DeployTaskService
         $version = $task->skill_version_id ? SkillVersion::find($task->skill_version_id) : null;
 
         $ts = now()->timestamp;
+
+        // 端侧复算的靶子 —— 被下载的**那个文件**的 sha256（= skill_assets.file_hash）。
+        // ⚠ **必须先算出来、再进签名串**：它被签住，端侧"复算比对"这道防线才有意义
+        //   （否则能改指令的攻击者可同时换掉 URL 与这个哈希，让复算白白通过）。
+        $packageSha256 = $this->packageSha256For($task);
+
         $canonical = $this->signing->canonical([
-            'task_id'      => $task->task_no,
-            'skill_id'     => $task->skill_id,
-            'version'      => $version?->version,
-            'package_hash' => $task->package_hash,
-            'ts'           => $ts,
+            'task_id'        => $task->task_no,
+            'skill_id'       => $task->skill_id,
+            'version'        => $version?->version,
+            'package_hash'   => $task->package_hash,
+            'package_sha256' => $packageSha256,
+            'ts'             => $ts,
         ]);
+
+        // ⚠ 包地址在**取指令的这一刻**重新签发，不用建任务时存下的那一条。
+        //   URL 是**限时**的，而"设备什么时候来取"不确定（离线挂起后可能几小时后才上线）。
+        //   沿用旧 URL 会让一条本来有效的下发因为"等太久"而被拒 —— 那是把限时设计
+        //   用错了地方。`deploy_task.package_url` 里存的那条是**记录**（排查/审计用），
+        //   这里给出的是**当下可用**的那条。
+        //
+        //   URL 本身**不入签名串**（见 SigningService::canonical）：地址可以变，
+        //   但字节必须匹配签住的 package_sha256 —— 签住哈希就锁死了内容。
+        $packageUrl = ($task->package_hash !== null && $task->skill_version_id)
+            ? $this->packageUrlFor((int) $task->skill_version_id)
+            : null;
 
         return [
             'task_id'      => $task->task_no,
             'operation'    => $task->operation,
             'skill_id'     => $task->skill_id,
             'version'      => $version?->version,
-            'package_url'  => $task->package_url,
+            'package_url'  => $packageUrl,
             'package_hash' => $task->package_hash,
+            // 端侧复算的靶子：被下载的**那个文件**的 sha256（= skill_assets.file_hash）。
+            // 与 package_hash（整个交付物集合的指纹）分工不同：
+            //   · package_hash   —— 集合指纹，锁定"审的就是这一套交付物"；
+            //   · package_sha256 —— 单文件字节 sha256，端侧下载后能自己复算并与指令比对，
+            //                       不符即拒装（PKG_HASH_MISMATCH）。
+            // 两者都进签名串（见 canonical），端侧一次只下到一个文件，能复算的是后者。
+            // （契约只加不改：既有键一个未动，这里补一个 package_sha256。）
+            'package_sha256' => $packageSha256,
             'signature'    => $this->signing->sign($canonical),
             'ts'           => $ts,
         ];

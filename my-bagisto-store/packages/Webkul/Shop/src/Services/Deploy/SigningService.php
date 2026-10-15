@@ -58,6 +58,28 @@ class SigningService
 
     /**
      * 构造待签名的规范串 —— 集中一处,避免端上各写各的。
+     *
+     * 串的构成:`task_id|skill_id|version|package_hash|package_sha256|ts`(六段,`|` 连接)。
+     *
+     * ⚠ 为什么 `package_sha256` **必须**进签名串(任务卡 S-1 追加):
+     *   端侧"下载 → 复算 sha256 → 与指令比对"这道防线,**只有在比对靶子被签住时才成立**。
+     *   若 `package_sha256` 不在串里,能改写指令的攻击者可以**同时**把 `package_url`
+     *   指到自己的服务器、并把 `package_sha256` 改成那个恶意文件的哈希 —— 端侧复算
+     *   会**通过**,然后装上恶意包。那样这道防线在有主动攻击者时形同虚设,只挡得住传输损坏。
+     *
+     *   `package_url` **本身不入串**,也是刻意的:URL 是每次取指令时**重新签发**的短时地址
+     *   (见 `DeployTaskService::buildCommand`),把它写死进签名会让"离线后重新取"失效。
+     *   而"地址指向哪里"并不重要 —— 重要的是**字节必须匹配签住的 `package_sha256`**。
+     *   签住哈希,就同时锁死了内容,无论 URL 被改成什么。
+     *
+     * ⚠ `package_hash`(集合指纹)与 `package_sha256`(单文件字节 sha256)分工见
+     *   `DeployTaskService::buildCommand`;两者都签,前者锁"审的是哪一套交付物",
+     *   后者锁"发出去的这份字节"。
+     *
+     * ⚠ 无包的 dry install:两个哈希都为空,拼成空段。**签名照常成立、照常可验**
+     *   (`?? ''` 只是让缺字段退化成空段,不会让整条串无法构造)。这不构成弱化:
+     *   端侧对"两个哈希皆空"的指令**不下载任何东西**(见参考 Agent 的判据 —— 触发条件是
+     *   签住的 `package_sha256`,不是未签名的 `package_url`)。
      */
     public function canonical(array $fields): string
     {
@@ -66,6 +88,7 @@ class SigningService
             (string) ($fields['skill_id'] ?? ''),
             (string) ($fields['version'] ?? ''),
             (string) ($fields['package_hash'] ?? ''),
+            (string) ($fields['package_sha256'] ?? ''),
             (string) ($fields['ts'] ?? ''),
         ]);
     }

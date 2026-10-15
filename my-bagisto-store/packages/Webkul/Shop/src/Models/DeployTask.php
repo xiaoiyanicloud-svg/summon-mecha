@@ -44,6 +44,34 @@ class DeployTask extends Model
     ];
 
     /**
+     * **需要拿到技能包**才能执行的操作 —— 决定下发指令要不要带包地址(任务卡 S-1)。
+     *
+     * 为什么单列一张表而不是在各处 `in_array($op, [OP_INSTALL, OP_ROLLBACK])`:
+     *   全仓至少有两处要判它(建任务时推导包地址、取指令时重建签名 URL),
+     *   各写一份迟早漂移 —— 而漂移的那次会给一条"卸包"指令挂上一个可下载地址,
+     *   让"这条指令要拉什么"变得不可信。
+     *
+     * 只有两个操作真的需要字节:
+     *   · 安装(OP_INSTALL,含升级)—— 要把某版本的包装进机器;
+     *   · 回滚(OP_ROLLBACK)—— 回滚 = 把**旧版本**的包再装一遍,同样要字节。
+     * 卸/回收/启停**不需要包**:它们是"把东西撤掉"或"改一个开关",没有字节可拉。
+     *   给它们挂一个下载地址不是"多给了点东西",而是让设备端无法相信 package_url
+     *   的含义(装了包的操作和没装包的操作长得一样)。
+     */
+    public const PACKAGE_OPERATIONS = [
+        self::OP_INSTALL,
+        self::OP_ROLLBACK,
+    ];
+
+    /**
+     * 该操作是否需要技能包(唯一判据 —— 见 {@see self::PACKAGE_OPERATIONS})。
+     */
+    public static function needsPackage(int $operation): bool
+    {
+        return in_array($operation, self::PACKAGE_OPERATIONS, true);
+    }
+
+    /**
      * 下发侧的**错误码词汇表** —— 写进 `deploy_task.error_code` 的机器可读值。
      *
      * ⚠ 为什么必须有这张表(P11):此前只有签名失败一个码,离线 / 无包 / 未确权
@@ -84,6 +112,19 @@ class DeployTask extends Model
      *   (`GrayReleaseService::CRASH_RATE_ROLLBACK_THRESHOLD`)。
      */
     public const ERR_CRASH = 'CRASH';
+
+    /**
+     * 包哈希不符 —— 设备侧:**下载到的字节**的 sha256 与指令声明的哈希对不上(任务卡 S-1)。
+     *
+     * ⚠ 与 `ERR_DOWNLOAD_FAILED` 分开:那是"没拿到包"(可重试),这是"拿到了,但不是我该装的那一份"
+     *   —— **不可重试**,必须停手。它对应的是"审核之后包被换掉""下载被中间人篡改""缓存串包"
+     *   这类**完整性事故**,设备绝不能静默继续安装。
+     *
+     * 比对靶子是下发指令里的 `package_sha256`(单个交付物的字节 sha256),
+     * **不是** `package_hash`(整个交付物集合的指纹)—— 端侧只下到一个文件,
+     * 能复算的是那一个文件的 sha256。两者的分工见 `DeployTaskService::buildCommand`。
+     */
+    public const ERR_PKG_HASH_MISMATCH = 'PKG_HASH_MISMATCH';
 
     protected $fillable = [
         'task_no',

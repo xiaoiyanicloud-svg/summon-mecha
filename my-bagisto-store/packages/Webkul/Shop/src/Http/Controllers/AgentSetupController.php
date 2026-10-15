@@ -64,8 +64,8 @@ class AgentSetupController extends Controller
     public function agentPy(): Response
     {
         $script = str_replace(
-            ['__ERR_SIG_INVALID__', '__ERR_PKG_MISSING__'],
-            [DeployTask::ERR_SIG_INVALID, DeployTask::ERR_PKG_MISSING],
+            ['__ERR_SIG_INVALID__', '__ERR_PKG_MISSING__', '__ERR_PKG_HASH_MISMATCH__'],
+            [DeployTask::ERR_SIG_INVALID, DeployTask::ERR_PKG_MISSING, DeployTask::ERR_PKG_HASH_MISMATCH],
             self::AGENT_PY,
         );
 
@@ -176,10 +176,24 @@ SH;
 
   enroll  → GET  /api/agent/commands?did=<did>   (轮询即心跳,无需单独高频心跳)
           → 按 canonical 串验签,不通过则拒绝安装
+          → 有 package_url 时:限时签名 URL 下载 → **复算 sha256 与指令里的
+            package_sha256 比对** → 不符则上报 PKG_HASH_MISMATCH 并**拒绝安装**
           → POST /api/agent/evt {task_no, did, phase: downloading|installing|download_failed|done|failed}
 
-canonical 串 = '|'.join([task_id, skill_id, version, package_hash or '', ts])
+canonical 串 = '|'.join([task_id, skill_id, version, package_hash or '',
+                         package_sha256 or '', ts])
 签名 = RSA-SHA256(平台私钥) → 用 platform_public.pem 验签。
+
+⚠ 两个哈希分工不同,别混 —— **两个都被签住**:
+  · package_hash   —— 整个交付物集合的**指纹**(绑定"审的是哪一套交付物")。
+                      端侧**复算不出**它(需要所有交付物的元信息),只用于验签。
+  · package_sha256 —— 被下载的**那一个文件**的 sha256。端侧下载后能自己复算,
+                      拿它与 package_sha256 比对,不符即拒装(真正的完整性检查)。
+                      它**必须被签住**:否则能改指令的攻击者可同时换掉 package_url 与
+                      package_sha256,复算会白白通过 —— 那样这道防线在有主动攻击者时形同虚设。
+  ⚠ package_url **本身不在签名串里**(每次取指令重新签发)。因此"有没有包"的判据取
+    **签住的 package_sha256**,不取未签名的 package_url:有哈希才下载、且字节必须匹配;
+    只有地址、没有哈希 → 拒绝安装(否则给一条无包指令挂个恶意地址就能绕过复算)。
 
 ⚠ 服务端一律回 X1 信封 {success, code, message, data}。**回报可能被拒**
   (例如任务已 success 又报 failed → 409 TASK_TRANSITION_INVALID)。这里是机器消费者:
@@ -192,6 +206,7 @@ canonical 串 = '|'.join([task_id, skill_id, version, package_hash or '', ts])
 """
 import argparse
 import base64
+import hashlib
 import json
 import subprocess
 import sys
@@ -222,6 +237,7 @@ def canonical(cmd):
         str(cmd.get("skill_id") or ""),
         str(cmd.get("version") or ""),
         str(cmd.get("package_hash") or ""),
+        str(cmd.get("package_sha256") or ""),
         str(cmd.get("ts") or ""),
     ])
 
@@ -260,6 +276,29 @@ def verify(cmd, pubkey_pem):
         return p.returncode == 0
     except Exception:
         return False
+
+
+def fetch_sha256(url, headers):
+    """下载 package_url 指向的技能包,流式复算 sha256(不整包读进内存)。
+
+    ⚠ 取包要带**与指令相同的 agent 凭据**:下载端点同时要求签名 URL 与 agent 身份,
+      缺一不可(见服务端 `api/agent/packages/{versionId}` 的双重中间件)。
+
+    返回十六进制 sha256;网络/HTTP 错误直接抛出,由调用方转成 download_failed(可重试)。
+    """
+    req = urllib.request.Request(url, method="GET")
+    for k, v in (headers or {}).items():
+        req.add_header(k, v)
+
+    h = hashlib.sha256()
+    with urllib.request.urlopen(req, timeout=60) as r:
+        while True:
+            chunk = r.read(65536)
+            if not chunk:
+                break
+            h.update(chunk)
+
+    return h.hexdigest()
 
 
 def evt(base, payload, headers):
@@ -358,20 +397,63 @@ def run(config):
             print("[agent] %s 验签通过 op=%s" % (task_no, cmd.get("operation")), flush=True)
 
             evt(base, {"task_no": task_no, "did": did, "phase": "downloading"}, headers)
-            evt(base, {"task_no": task_no, "did": did, "phase": "installing"}, headers)
 
-            if cmd.get("package_url"):
-                print("[agent] 下载 %s" % cmd["package_url"], flush=True)
-                # 这里没有真实下载器的位置 —— 真机 Agent 在此拉包,失败时上报
-                # phase="download_failed"(可重试)而不是 done。
+            # 「有没有包」的判据取**签住的** package_sha256，**不取未签名的 package_url**：
+            #   · 有哈希   → 下载，且字节必须匹配（哈希已被签名覆盖，改它即失签）；
+            #   · 只有地址 → 指令自相矛盾 / 被人挂了个地址 → 拒装；
+            #   · 两者皆无 → 无包 dry install。
+            expected = (cmd.get("package_sha256") or "").lower()
+            url = cmd.get("package_url")
+
+            if expected:
+                if not url:
+                    print("[agent] %s 有哈希却无地址，指令自相矛盾 → 拒绝安装" % task_no, flush=True)
+                    evt(base, {"task_no": task_no, "did": did, "phase": "failed",
+                               "error_code": "__ERR_SIG_INVALID__",
+                               "error_msg": "指令声明了包哈希却没有包地址"}, headers)
+                    continue
+
+                print("[agent] 下载 %s" % url, flush=True)
+
+                try:
+                    got = fetch_sha256(url, headers)
+                except Exception as e:
+                    # 没拿到包 = 可重试的下载失败，不是安装失败（两者处置不同）。
+                    print("[agent] %s 下载失败:%s" % (task_no, e), flush=True)
+                    evt(base, {"task_no": task_no, "did": did, "phase": "download_failed",
+                               "error_msg": "技能包下载失败:%s" % e}, headers)
+                    continue
+
+                # ⚠ 拿到了，但**不是我该装的那一份** → 不安装，如实上报（不可重试）。
+                #   静默装下一份来路不明的字节，是这条链路上最危险的一步。
+                if got != expected:
+                    print("[agent] %s 包哈希不符:期望 %s 实际 %s → 拒绝安装"
+                          % (task_no, expected, got), flush=True)
+                    evt(base, {"task_no": task_no, "did": did, "phase": "failed",
+                               "error_code": "__ERR_PKG_HASH_MISMATCH__",
+                               "error_msg": "下载到的技能包 sha256 与指令声明不一致"}, headers)
+                    continue
+
+                print("[agent] %s 已取包(sha256=%s)，进入安装" % (task_no, got), flush=True)
+                evt(base, {"task_no": task_no, "did": did, "phase": "installing"}, headers)
+                # 这里没有真实安装器的位置 —— 真机 Agent 在此把包装进机器，失败上报 failed。
                 evt(base, {"task_no": task_no, "did": did, "phase": "done"}, headers)
+            elif url:
+                # ⚠ 有地址却没有**签住的**哈希 —— 平台绝不会这样发，只可能是指令被改过
+                #   （给一条无包指令挂个恶意地址正是这条攻击的形态）。顺着它下载 = 把一份
+                #   无从验证的字节装上，宁可不装。
+                print("[agent] %s 有地址却无可复算的哈希 → 拒绝安装" % task_no, flush=True)
+                evt(base, {"task_no": task_no, "did": did, "phase": "failed",
+                           "error_code": "__ERR_SIG_INVALID__",
+                           "error_msg": "指令带有包地址却没有可复算的哈希，无法验证，拒绝安装"}, headers)
             else:
-                print("[agent] package_url 为空 → dry install(只走状态机,不拉真实包)", flush=True)
-                # ⚠ 空跑必须打标:不带码的 done 会让服务端落成一条"已安装",
+                print("[agent] 无包 → dry install(只走状态机，不拉真实包)", flush=True)
+                evt(base, {"task_no": task_no, "did": did, "phase": "installing"}, headers)
+                # ⚠ 空跑必须打标：不带码的 done 会让服务端落成一条"已安装"，
                 #   凭空造出安装事实并污染灰度成功率。
                 evt(base, {"task_no": task_no, "did": did, "phase": "done",
                            "error_code": "__ERR_PKG_MISSING__",
-                           "error_msg": "未分发技能包(dry install),仅走通状态机"}, headers)
+                           "error_msg": "未分发技能包(dry install)，仅走通状态机"}, headers)
 
             print("[agent] %s 完成" % task_no, flush=True)
 

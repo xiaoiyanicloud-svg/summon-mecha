@@ -152,6 +152,16 @@ final class ApiErrorCode
     public const GRAY_RELEASE_NOT_FOUND = 'GRAY_RELEASE_NOT_FOUND';
     public const KILL_SWITCH_NOT_ENGAGED = 'KILL_SWITCH_NOT_ENGAGED';
 
+    /**
+     * 包完整性自检未过（任务卡 S-1）：盘上字节的**实时 sha256** ≠ 记录里的 `file_hash`。
+     *
+     * 下载端点**拒绝输出**并用此码明确报错 —— 宁可让这次下发失败，也绝不把
+     * "跟记录对不上的字节"发给设备。与 `SKILL_ASSET_FILE_MISSING`（文件整个不见了）分开：
+     * 那是"没东西"，这是"有东西，但不是该发的那一份"（被改动 / 损坏 / 串包）——
+     * 处置完全不同，混成一个码会把排查引向错的地方。
+     */
+    public const PACKAGE_INTEGRITY_MISMATCH = 'PACKAGE_INTEGRITY_MISMATCH';
+
     // ── 订单与支付 ───────────────────────────────────────────────────────
 
     public const ORDER_NOT_FOUND = 'ORDER_NOT_FOUND';

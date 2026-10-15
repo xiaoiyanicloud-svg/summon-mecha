@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Webkul\Shop\Http\Controllers\API\AddressController;
 use Webkul\Shop\Http\Controllers\API\AfterSaleController;
 use Webkul\Shop\Http\Controllers\API\AgentController;
+use Webkul\Shop\Http\Controllers\API\AgentPackageController;
 use Webkul\Shop\Http\Controllers\API\DeployController;
 use Webkul\Shop\Http\Controllers\API\NotificationController;
 use Webkul\Shop\Http\Controllers\API\PaymentCallbackController;
@@ -388,6 +389,23 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('commands', 'commands')->name('shop.api.agent.commands');
         // §4.22 F1(B-13):Agent 自更新工件(只提供更高版本,防降级)
         Route::get('self-update', 'selfUpdate')->name('shop.api.agent.self-update');
+
+        /**
+         * 任务卡 S-1 · 技能包限时下载。
+         *
+         * 本组已挂 `agent.key`（Agent 身份）；这里再叠一层 `signed`（Laravel 签名 URL）。
+         * **两重控制缺一不可**：签名 URL 会进日志/代理/截图，只靠"地址隐蔽"不构成访问控制；
+         * 而只靠 agent 凭据，则任何拿到共享密钥的人可以遍历 versionId 拉走所有包。
+         * 文件名 `packages` 而非 `assets`：这是**下发通道**的取包口，与 C 端鉴权下载
+         * （`skills/entitlements/.../download`）是两条身份模型不同的通道。
+         *
+         * URL 由 `DeployTaskService::packageUrlFor()` 签发（有效期见
+         * `config/deploy_gateways.package_url_ttl_minutes`）。
+         */
+        Route::get('packages/{versionId}', [AgentPackageController::class, 'download'])
+            ->whereNumber('versionId')
+            ->middleware('signed')
+            ->name('shop.api.agent.package.download');
     });
 
     /**

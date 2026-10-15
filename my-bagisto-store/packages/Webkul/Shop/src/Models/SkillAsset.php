@@ -145,4 +145,36 @@ class SkillAsset extends Model
             && $this->file_path
             && Storage::disk(static::disk())->exists($this->file_path);
     }
+
+    /**
+     * 某版本的**文件类**交付物，按 `(carrier_type, sort_order)` 升序 —— **与包指纹同序**。
+     *
+     * ⚠ 顺序刻意与 {@see \Webkul\Shop\Services\SkillPackage\PackageFingerprint::forVersion()}
+     *   保持一致：指纹按此序拼串，下载端点按此序取"第一个"。两处若用不同的序，
+     *   会出现"指纹说的是 A、发出去的是 B"—— 判据与交付物对不上。
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function fileAssetsForVersion(int $versionId)
+    {
+        return static::query()
+            ->where('skill_version_id', $versionId)
+            ->orderBy('carrier_type')
+            ->orderBy('sort_order')
+            ->get()
+            ->filter(fn (self $asset) => $asset->isFile())
+            ->values();
+    }
+
+    /**
+     * 某版本**默认下发**的那一个文件类交付物（排序第一个）—— 没有则 null。
+     *
+     * 这是"一次下发只交付一个文件"的落点（多交付物的打包属编译层，不在下发这一层）。
+     * `AssetUploadService` 对 `(version, carrier_type, sort_order)` 幂等 upsert，
+     * 同一版本内的 `(carrier_type, sort_order)` 唯一，故"第一个"是确定的，不存在并列。
+     */
+    public static function defaultFileForVersion(int $versionId): ?self
+    {
+        return static::fileAssetsForVersion($versionId)->first();
+    }
 }
