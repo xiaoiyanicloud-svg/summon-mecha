@@ -70,6 +70,20 @@
 						<view class="ghost-btn" @click="loadAssets(s)">查看交付物</view>
 					</view>
 
+					<!-- 运维操作(B-6):卸载 / 回退 / 启停 —— 与「一键下发」共用 POST /api/deploy/tasks,
+						 只是 operation 不同(白名单 = DeployTask::OPERATIONS)。每一次都建一条独立下发任务、
+						 由 Agent 执行,所以不可逆的操作(卸载/回退)必须先二次确认。
+						 ⚠ 仅 agent 可交付技能可见:人工通道平台碰不到那台机器,给了按钮也执行不了。 -->
+					<view class="actions ops" v-if="canOperate(s)">
+						<text class="ops-label">设备运维</text>
+						<view class="ops-row">
+							<view class="ops-btn" @click="runOperation(s, OP.UNINSTALL)">卸载</view>
+							<view class="ops-btn" @click="runOperation(s, OP.ROLLBACK)">回退版本</view>
+							<view class="ops-btn" @click="runOperation(s, OP.ENABLE)">启用</view>
+							<view class="ops-btn" @click="runOperation(s, OP.DISABLE)">停用</view>
+						</view>
+					</view>
+
 					<!-- 交付物清单 -->
 					<view class="assets" v-if="assetsOf(s.id).length">
 						<view class="asset-item" v-for="a in assetsOf(s.id)" :key="a.id">
@@ -129,10 +143,42 @@ const CARRIER_TEXT = {
 	api_bundle: '接口包',
 }
 
+// B-6 · 下发操作码 —— **与后端 DeployTask::OPERATIONS 对齐**(值即契约,改名可以、改值须报批)。
+// 前端此前只会发 operation:1(安装),卸载/回退/启停四个码在后端白名单里却零入口。
+const OP = { INSTALL: 1, UNINSTALL: 2, ROLLBACK: 3, ENABLE: 4, DISABLE: 5 }
+
+// 每种操作的二次确认文案。卸载/回退不可逆(平台侧会改 install_record 终态),按危险操作红色确认。
+const OP_CONFIRM = {
+	[OP.UNINSTALL]: {
+		title: '卸载技能',
+		okText: '确认卸载',
+		danger: true,
+		build: (s) => `确认从设备 ${s.device_sn || '（当前设备）'} 卸载「${s.name}」？卸载后该技能在这台设备上不再可用。`,
+	},
+	[OP.ROLLBACK]: {
+		title: '回退版本',
+		okText: '确认回退',
+		danger: true,
+		build: (s) => `确认把「${s.name}」回退到上一版本？当前版本（v${s.version || '未知'}）在这台设备上的安装记录会标记为已回滚。`,
+	},
+	[OP.ENABLE]: {
+		title: '启用技能',
+		okText: '确认启用',
+		build: (s) => `确认在设备 ${s.device_sn || '（当前设备）'} 上启用「${s.name}」？`,
+	},
+	[OP.DISABLE]: {
+		title: '停用技能',
+		okText: '确认停用',
+		build: (s) => `确认在设备 ${s.device_sn || '（当前设备）'} 上停用「${s.name}」？停用后技能在这台设备上暂停运行。`,
+	},
+}
+
 export default {
 	components: { StateView, NavBar },
 	data() {
 		return {
+			// 模板要按操作码区分按钮,把常量暴露出去(Options API 模板看不到模块级 const)
+			OP,
 			loggedIn: false,
 			loading: true,
 			loadError: '',
@@ -295,6 +341,47 @@ export default {
 				},
 			})
 		},
+		// B-6 · 运维操作是否可见。
+		// 只有 agent 可交付的技能能远程操作(人工通道平台碰不到那台机器);
+		// 已终态(过期/撤销/回收中)的技能不再给操作入口 —— 那些授权已经收回来了。
+		canOperate(s) {
+			if (!s || !s.device_id || !s.agent_deliverable || !s.skill_version_id) return false
+			return ['granted', 'active', 'pending_bind'].indexOf(s.status) >= 0
+		},
+		// B-6 · 卸载 / 回退 / 启停 —— 与「一键下发」同一条通道,只是 operation 不同。
+		// 后端 DeployController::store() 的 operation 白名单 = DeployTask::OPERATIONS,
+		// 所以这里只需把码传对,归属校验 / 熔断 / 建任务都在服务端。
+		runOperation(skill, operation) {
+			const conf = OP_CONFIRM[operation]
+			if (!conf) return
+			uni.showModal({
+				title: conf.title,
+				content: conf.build(skill),
+				confirmText: conf.okText,
+				confirmColor: conf.danger ? '#D93025' : '#165DFF',
+				success: async (r) => {
+					if (!r.confirm) return
+					try {
+						const res = await deployApi.create({
+							device_id: skill.device_id,
+							// ⚠ skill_id 传 product_id —— entitlement 的 id 是授权单号,不是技能商品
+							skill_id: skill.product_id,
+							skill_version_id: skill.skill_version_id,
+							entitlement_id: skill.id,
+							operation,
+							channel: 'agent',
+						})
+						const task = (res && res.data) || {}
+						// 和安装一样去进度页看结果:设备离线时任务会排队,不在这一页假装已完成
+						uni.navigateTo({
+							url: `/pages/mine/deploy?taskNo=${encodeURIComponent(task.task_no || '')}&skillName=${encodeURIComponent(skill.name || '')}`,
+						})
+					} catch (e) {
+						uni.showToast({ title: (e && e.message) || '操作失败', icon: 'none' })
+					}
+				},
+			})
+		},
 		// 用户自报安装完成。平台无法验证安装结果,这是兜底通道的终点
 		confirmInstall(skill) {
 			uni.showModal({
@@ -417,6 +504,14 @@ export default {
 .ghost-btn {
 	display: inline-block; font-size: 26rpx; color: #165DFF;
 	border: 1rpx solid #B9D3FF; border-radius: 30rpx; padding: 10rpx 30rpx;
+}
+
+/* B-6 · 运维操作组:与上面的「一键下发」视觉上分开,且弱化(它是低频危险操作) */
+.ops-label { display: block; font-size: 24rpx; color: #8A9AA8; margin-bottom: 14rpx; }
+.ops-row { display: flex; flex-wrap: wrap; }
+.ops-btn {
+	font-size: 24rpx; color: #6B7280; background: #F4F6F9;
+	border-radius: 24rpx; padding: 10rpx 26rpx; margin: 0 12rpx 12rpx 0;
 }
 
 .assets { margin-top: 18rpx; }
