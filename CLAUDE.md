@@ -78,6 +78,7 @@
 - **扩展优先走配置注册表**:`config/{skill_delivery,deploy_gateways,payment_gateways,skill_builders,skill_importers,developer_portal}.php`
 - **现状提醒**:队列/缓存是 `database` 驱动,**没有常驻 worker、没有 scheduler**,别假设定时任务存在
 - **进度**以 [docs/skill-dev-steps.md](docs/skill-dev-steps.md) 的【进度快照】为准;`NAVIGATION.md` 有过期描述,以代码为准
+- **改动总览**以 [docs/skill-changes-summary.md](docs/skill-changes-summary.md) 为准(白话+表格;含未做/待决策,让后来者一眼看懂这几天改了什么)
 
 ## 【输出与交付标准】
 

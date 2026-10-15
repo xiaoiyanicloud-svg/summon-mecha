@@ -2,6 +2,7 @@
 
 > 作用：让 Claude 每次执行任务前快速定位代码，省 token。
 > 用法：先读本文件，按 ✅/🔶/❌ 判断相关工作区，直接跳到对应文件，不要通读无关目录。
+> 近期改动总览(白话+表格,含未做/待决策):见 [docs/skill-changes-summary.md](docs/skill-changes-summary.md)
 
 ## 项目全貌（一图流）
 
