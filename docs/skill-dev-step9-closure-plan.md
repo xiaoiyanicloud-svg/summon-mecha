@@ -98,6 +98,19 @@
 - **但**：`developer_profile`、`developer_agreement`、`developer_team_member`、`skill_review`、`skill_report`、
   `skill_blocklist`、`gray_release`、`rollback_record`、`compliance_filing`、`incident` 等**有模型且有真实调用**。
 
+### 2.7 【新发现 2026-10-16 · 复核 D-2 时抓到】发布动作没让商品可售 —— "上架"是空动作
+
+- 市场搜索接口 `SkillCatalogController::search`（`:163-168`）第一条约束就是
+  `product_flat.status = 1` AND `visible_individually = 1`；前端 `utils/api.js:160-175` 用的正是 `/api/skill-catalog/search`。
+- 而 `DeveloperSkillService::createSkill()` 建商品写 **`status => 0`**；
+  发布动作 `SkillPublisher::publish()` **只改版本状态**，全仓**没有任何地方**把技能商品置为 1（已 grep 三处相关目录确认）。
+- **后果**：开发者技能走完"提审 → L2 通过 → 发布"，版本是 published，**但商品仍禁用 → 市场搜不到**。
+  也就是说 **⑥「上架/下架」此前既没有上、也没有下的落点**。
+- **处置**（已进 D-3 任务卡）：发布动作追加"商品置为可售"（走 `ProductRepository::update()` + 事件三步，
+  不直接写 `product_flat`）；下架 = 商品 `status = 0`；两者共用同一条商品更新通道。
+- **验收方式的一条教训**：这类问题**字段断言证明不了** —— 必须用**接口级**断言
+  （发布后 `GET /api/skill-catalog/search` 能搜到该技能、发布前搜不到）。
+
 ---
 
 ## 3. 分层路线图（判据：这层修完，上层会不会推翻它）
@@ -249,7 +262,15 @@ L2 通过 → **两条发布路径都过闸门** → 上架 → 客户端可见 
 | ① 发布闸门唯一化 | ✅ **完成** | 新增 `Services/SkillAudit/SkillPublisher`（发布动作唯一入口）；`Admin\Catalog\SkillController::publish` 与 `API\SkillAdminController::publish` 均改为调用它；`ApiErrorCode` 增 `GATE_NOT_PASSED`。新增 `SkillPublishGateTest` **7 例通过**；`SkillReviewGateTest`(20) + `SkillAdminAssetTest`(10) 回归**全绿** |
 | ③ 门户展示逐层闸门 | ✅ **完成** | `Dev\SkillController::show` 注入 `ReviewGate` 并传 `evaluate()` 结果（**门户不重算判定**）；`views/dev/skills/show.blade.php` 增"发布闸门"卡。新增 `DeveloperGateVisibilityTest` **3 例通过**；`Feature/Dev` 全目录 **29 例通过** |
 | ④ 技能信息可编辑 | ✅ **完成** | Claude Code 执行（任务卡 D-1）+ 我验收：`Feature/Dev` **34 例通过**（29 旧 + 5 新）；Admin Catalog **38 例通过**。边界覆盖：跨租户改他人技能 404、未登录跳登录、负价被拦、请求体夹带 `status` 被丢弃、`product_flat` 同步刷新（证明事件三步真的派发了） |
-| ⑤⑥⑦ + 发布前置（实名） | ⏸ 下一批 | 裁决见上表 Q2/Q3/Q4/Q6 |
+| ② 状态真相源收敛 + ⑤ 提审前置收紧 | ✅ **完成** | `5c96f8f`。新增 `SkillVersionState`（显式迁移白名单，无 `draft→published`）；状态写入**下沉到 `AuditService`**（门户 / internal.key / 运营后台三条通道的唯一漏斗，故平台自营路径也自动落 `in_review`，队列口径自然统一）；审核台队列由 `draft` 改为 `in_review|rejected`；新增 `skill:backfill-version-status` 回填历史。实测 `SkillAudit`+`Dev` 79 例全绿，失败集与基线完全一致 |
+| ⑥ 撤回提审 + 开发者下架 | ✅ **完成** | `00f2f7c`。**含一处空动作修复**：见 §2.7 —— "发布"原先不改商品可售性，市场根本搜不到；现由 `SkillPublisher` 在同事务内置商品可售（走事件三步 + 显式带分类）。下架 = 商品置不可售、理由必填留痕、**已售授权不动**（Q3）。接口级验收：发布前搜不到 / 发布后能搜到 |
+| ⑦ 开发者通知 + 实名发布前置（Q4/Q6） | ⏸ **下一批** | 通知需生产+读侧同开（读侧 `NotificationController` 硬过滤 `recipient_type='customer'`）；实名前置为发布动作的前置校验（自营 `seller_id` 为 NULL 不受限） |
+
+### 已验证的"零新增失败"口径（可复用的验收方法）
+
+两轮 D-2 / D-3 都把四条 pest 的**失败类名**逐条与 `docs/skill-test-baseline.md` 比对，而不是只看总数：
+`Admin/Feature/Catalog` 恒定失败 4 个原生类（Attribute / AttributeFamily / Category / Products\ProductTest），
+`Shop/Feature/API` 恒定失败 `CategoryProductTest` 2 条。**不在清单上的才叫新问题。**
 
 ### 分工与验收方式（2026-10-16 起）
 
