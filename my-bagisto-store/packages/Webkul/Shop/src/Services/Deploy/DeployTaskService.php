@@ -688,8 +688,36 @@ class DeployTaskService
             default:
                 // 安装:此前已装同 skill 的其它版本 → updated,否则 installed
                 $status = $this->isUpgrade($task, $version) ? 'updated' : 'installed';
-                InstallRecord::updateOrCreate($key, $attrs + ['status' => $status, 'installed_at' => now()]);
+                InstallRecord::updateOrCreate($key, $attrs + [
+                    'status'       => $status,
+                    'installed_at' => now(),
+                    // S-5 · 落**真实交付通道**,让熔断能分清"能自动卸载"与"不能"(见 installChannelFor)。
+                    'channel'      => $this->installChannelFor($task),
+                ]);
         }
+    }
+
+    /**
+     * 这条安装记录该记的**交付通道**(任务卡 S-5)。
+     *
+     * 以**本次下发任务的通道**为准 —— 它才是"这条技能实际是怎么落到设备上的"
+     * (agent 推送 → `agent`;用户在 DeployController 选 `manual` → `manual`)。
+     *
+     * ⚠ 为什么**不优先** `skill_entitlement.delivery_channel`:那一列在建单时由
+     *   `AppChannel` 落成 `app`(试用才是 `agent`),之后**不随下发更新** ——
+     *   一次经 agent 推送的**买断**安装,其授权通道仍然是 `app`。若以授权通道为准,
+     *   这类安装会被误记成 `app`,熔断据此判定"无法自动卸载",而它明明有 agent 回程。
+     *   故授权通道只在**任务通道缺失**时兜底(防御式:任务通道正常不为空)。
+     */
+    protected function installChannelFor(DeployTask $task): ?string
+    {
+        if (is_string($task->channel) && $task->channel !== '') {
+            return $task->channel;
+        }
+
+        return $task->entitlement_id
+            ? optional(SkillEntitlement::find($task->entitlement_id))->delivery_channel
+            : null;
     }
 
     /**

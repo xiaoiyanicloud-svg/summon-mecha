@@ -435,6 +435,11 @@ class SkillController extends APIController
                     'status'          => 'installed',
                     'current_version' => $entitlement->version?->version,
                     'installed_at'    => now(),
+                    // S-5 · 自报安装路径**没有下发任务**,通道只能取自该授权本身 ——
+                    // `skill_entitlement.delivery_channel`(人工交付为 `app`)。
+                    // 这条路径产的正是"人工通道安装",熔断据此把它归入"无法自动卸载",
+                    // 而不是照建一条拉不动的 agent 卸载任务。
+                    'channel'         => $entitlement->delivery_channel,
                 ]
             );
         }

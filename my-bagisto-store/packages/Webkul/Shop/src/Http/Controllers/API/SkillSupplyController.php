@@ -202,7 +202,12 @@ class SkillSupplyController extends APIController
     }
 
     /**
-     * 技能熔断(v3.4 步骤 8,§4.19):阻断新下发 + 可选强制卸载/回滚已装设备。
+     * 技能熔断(v3.4 步骤 8,§4.19)。
+     *
+     * ⚠ 生效范围(S-5 校准后的口径):**对新下发即时阻断**;对已装设备只在
+     *   **该设备下次上线**时经 agent 卸载/回滚;**人工通道安装的当前无法自动卸载**。
+     *   返回的 `data` 把三类数字分列(forced_online / forced_offline /
+     *   unable_auto_uninstall),**不**把"建了几条任务"笼统报成"已全部禁用"。
      */
     public function block(Request $request, int $skillId): JsonResponse
     {
@@ -223,7 +228,19 @@ class SkillSupplyController extends APIController
             $request->ip(),
         );
 
-        return response()->json(['message' => '已熔断。', 'data' => $res]);
+        // 提示语如实说清生效范围,别让调用方以为"一键已全停"。
+        $message = '已熔断:新下发即时阻断。';
+
+        if ($res['forced_tasks'] > 0 || $res['unable_auto_uninstall'] > 0) {
+            $message .= sprintf(
+                '已装设备:在线即时卸载/回滚 %d 台,离线待下次上线 %d 台,无法自动卸载 %d 台。',
+                $res['forced_online'],
+                $res['forced_offline'],
+                $res['unable_auto_uninstall'],
+            );
+        }
+
+        return response()->json(['message' => $message, 'data' => $res]);
     }
 
     /**
