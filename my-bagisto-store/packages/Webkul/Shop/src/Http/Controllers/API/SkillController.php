@@ -9,9 +9,11 @@ use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillDelivery\DeviceBindingService;
 
 /**
@@ -27,6 +29,8 @@ use Webkul\Shop\Services\SkillDelivery\DeviceBindingService;
  */
 class SkillController extends APIController
 {
+    public function __construct(protected OperationLogger $oplog) {}
+
     /**
      * 我的技能授权列表。
      */
@@ -159,6 +163,18 @@ class SkillController extends APIController
             $locked->save();
         });
 
+        // X4 · 下载留痕:技能包是私有交付物,"谁在何时下了哪个包"是事后追溯的硬需求。
+        //   放在计数事务之后、返回文件之前。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $entitlement->customer_id,
+            'skill.download',
+            'skill_entitlement',
+            $entitlement->id,
+            ['asset_id' => $asset->id, 'file_name' => $asset->file_name],
+            request()->ip(),
+        );
+
         return Storage::disk(SkillAsset::disk())->download(
             $asset->file_path,
             $asset->file_name ?: basename($asset->file_path)
@@ -220,6 +236,22 @@ class SkillController extends APIController
         }
         $entitlement->meta = $meta;
         $entitlement->save();
+
+        // X4 · 技能→设备绑定留痕。绑定决定了技能下发到哪台物理机器,是事故追溯的起点。
+        //   放在 save 之后、下发之前 —— 即便随后下发失败,这次绑定也确实发生了,必须留痕。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'skill.bind_device',
+            'skill_entitlement',
+            $entitlement->id,
+            [
+                'device_id' => $device->id,
+                'device_sn' => $device->sn,
+                'device_did' => $binding?->did,
+            ],
+            $request->ip(),
+        );
 
         // 重跑交付,让状态从 pending_bind 走到 granted
         //
@@ -400,6 +432,22 @@ class SkillController extends APIController
                 ]
             );
         }
+
+        // X4 · 自报安装留痕:这是"技能真的装到机器上了"的唯一人工确认点,
+        //   事故追溯时会问"这包到底是什么时候、被谁确认装上的"。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $entitlement->customer_id,
+            'skill.confirm_install',
+            'skill_entitlement',
+            $entitlement->id,
+            [
+                'activations' => $entitlement->activations,
+                'device_id'   => $device->id,
+                'device_did'  => $binding?->did,
+            ],
+            request()->ip(),
+        );
 
         return response()->json([
             'message' => '已标记为安装完成。',

@@ -6,11 +6,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\JsonResponse;
 use Webkul\Sales\Models\Order;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
 class OrderController extends APIController
 {
+    public function __construct(protected OperationLogger $oplog) {}
 
     /**
      * Order listings of the authenticated customer.
@@ -225,6 +228,19 @@ class OrderController extends APIController
         // 走与 OrderRepository::cancel() 相同的统一事件 —— 撤销逻辑只此一处(listener 已挂),
         // 不在这里各写各的。
         \Illuminate\Support\Facades\Event::dispatch('sales.order.cancel.after', $order);
+
+        // X4 · 订单取消留痕。取消会**对称撤销技能授权**(M4),是一次会影响交付的资金/授权动作,
+        //   此前 Shop 侧一处不留痕。用 log() 非 logOrFail:取消是用户的正当自助动作,
+        //   审计写不进去不该让取消失败。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer?->id,
+            'order.cancel',
+            'order',
+            $order->id,
+            ['order_increment_id' => $order->increment_id, 'status' => 'canceled'],
+            $request->ip(),
+        );
 
         return response()->json([
             'success' => true,

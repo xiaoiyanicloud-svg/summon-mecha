@@ -7,7 +7,9 @@ use Illuminate\Http\Request;
 use Webkul\Product\Models\ProductProxy;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Services\Ops\OperationLogger;
 
 /**
  * 我的设备 —— 用户登记/管理自己实际拥有的机器。
@@ -30,6 +32,8 @@ use Webkul\Shop\Models\SkillEntitlement;
  */
 class DeviceController extends APIController
 {
+    public function __construct(protected OperationLogger $oplog) {}
+
     /**
      * 我的设备列表,每台带上已获得的技能。
      */
@@ -105,6 +109,19 @@ class DeviceController extends APIController
         // 认领里每条都有 try/catch(见 claimPendingEntitlements),不会把登记整体打成 500。
         $claim = $this->claimPendingEntitlements($customer->id, $device);
 
+        // X4 · 设备登记留痕(D1 设备真相源)。设备绑定/解绑此前 Shop 侧一处不留痕,
+        //   出事要追"谁改绑了设备"时查无此人。log() 非 logOrFail:登记是用户的正常动作,
+        //   审计写不进去不该让登记失败。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'device.register',
+            'device',
+            $device->id,
+            ['sn' => $device->sn, 'product_id' => $device->product_id],
+            $request->ip(),
+        );
+
         return response()->json([
             // 有技能没下来就直说 —— 否则用户看到"已登记"、却发现技能页还是"待安装",无从判断
             'message' => $claim['failed'] > 0
@@ -143,6 +160,17 @@ class DeviceController extends APIController
 
         $device->save();
 
+        // X4 · 设备改动留痕(改机型会影响兼容性判定,值得留痕)
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'device.update',
+            'device',
+            $device->id,
+            ['sn' => $device->sn, 'product_id' => $device->product_id, 'display_name' => $device->display_name],
+            $request->ip(),
+        );
+
         return response()->json([
             'message' => '已更新。',
             'data'    => $this->format($device->fresh(['product', 'entitlements.product'])),
@@ -167,6 +195,17 @@ class DeviceController extends APIController
 
         $device->bind_status = Device::STATUS_REVOKED;
         $device->save();
+
+        // X4 · 解绑留痕:谁在何时把哪台设备解绑了 —— 这是事故复盘时的高频问题。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'device.unbind',
+            'device',
+            $device->id,
+            ['sn' => $device->sn],
+            request()->ip(),
+        );
 
         return response()->json(['message' => '已解绑。']);
     }
@@ -205,6 +244,17 @@ class DeviceController extends APIController
         ];
         $binding->meta = $meta;
         $binding->save();
+
+        // X4 · 一次性 Agent 安装 token 的签发留痕(不记明文 token —— 那等于把凭据抄进审计表)。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'device.agent_token_issue',
+            'device',
+            $device->id,
+            ['sn' => $device->sn, 'expires_at' => $expiresAt->toDateTimeString()],
+            request()->ip(),
+        );
 
         $base = rtrim(config('app.url'), '/');
 

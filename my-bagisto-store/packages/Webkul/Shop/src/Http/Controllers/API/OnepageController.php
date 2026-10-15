@@ -12,6 +12,8 @@ use Webkul\Sales\Transformers\OrderResource;
 use Webkul\Shipping\Facades\Shipping;
 use Webkul\Shop\Http\Requests\CartAddressRequest;
 use Webkul\Shop\Http\Resources\CartResource;
+use Webkul\Shop\Models\OperationLog;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\OrderValidationException;
 
 class OnepageController extends APIController
@@ -23,7 +25,8 @@ class OnepageController extends APIController
      */
     public function __construct(
         protected OrderRepository $orderRepository,
-        protected CustomerRepository $customerRepository
+        protected CustomerRepository $customerRepository,
+        protected OperationLogger $oplog,
     ) {}
 
     /**
@@ -180,6 +183,23 @@ class OnepageController extends APIController
         $data = (new OrderResource($cart))->jsonSerialize();
 
         $order = $this->orderRepository->create($data);
+
+        // X4 · 下单留痕。订单是所有后续动作(授权发放、退款、事故追溯)的源头,
+        //   此前 Shop 侧零留痕 —— 出事要追"谁在何时下了哪一单"查无此人。
+        //   actor_id 可能为 null(游客下单),此时按 customer 类型记 null 即可。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $order->customer_id,
+            'order.create',
+            'order',
+            $order->id,
+            [
+                'order_increment_id' => $order->increment_id,
+                'grand_total'        => $order->grand_total,
+                'channel'            => $order->channel_name ?? null,
+            ],
+            request()->ip(),
+        );
 
         Cart::deActivateCart();
 

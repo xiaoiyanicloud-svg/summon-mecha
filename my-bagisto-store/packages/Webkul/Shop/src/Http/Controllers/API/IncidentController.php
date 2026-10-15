@@ -6,7 +6,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Webkul\Shop\Models\Incident;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Services\Incident\IncidentService;
+use Webkul\Shop\Services\Ops\OperationLogger;
 
 /**
  * 事故上报 —— 用户侧（v3.4 计划 §4.19）。
@@ -21,7 +23,10 @@ use Webkul\Shop\Services\Incident\IncidentService;
  */
 class IncidentController extends APIController
 {
-    public function __construct(protected IncidentService $incidents) {}
+    public function __construct(
+        protected IncidentService $incidents,
+        protected OperationLogger $oplog,
+    ) {}
 
     /**
      * 我上报过的事故。
@@ -106,6 +111,24 @@ class IncidentController extends APIController
             'description' => $payload['description'],
             'evidence'    => $payload['evidence'] ?? null,
         ]);
+
+        // X4 · 用户报案留痕。此前 Shop 侧零留痕,出事追责时"谁在何时报了哪起案"查无此人,
+        //   且历史无法补。用 log()(非 logOrFail):留痕是旁路,不能因为审计表写不进去
+        //   就把"刚出过事的人"的报案打回 —— 与 PaymentCallback 同一取舍。
+        $this->oplog->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'incident.report',
+            'incident',
+            $incident->id,
+            [
+                'incident_no' => $incident->incident_no,
+                'severity'    => $incident->severity,
+                'skill_id'    => $incident->skill_id,
+                'device_id'   => $payload['device_id'] ?? null,
+            ],
+            request()->ip(),
+        );
 
         return response()->json([
             'message' => '事故已上报，我们会尽快联系你。',
