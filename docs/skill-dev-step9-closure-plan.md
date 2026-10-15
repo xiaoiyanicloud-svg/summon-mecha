@@ -323,6 +323,37 @@ L2 通过 → **两条发布路径都过闸门** → 上架 → 客户端可见 
 按 `type` 前缀过滤即可保证买家事务不混进开发者中心。原方案的"独占 developer 类型"没有带来实际收益，
 却要多开一条读路径。
 
+---
+
+## 10. 供需深度优化（2026-10-16 · 依据 A-1 审计）
+
+> 审计报告：`C:\Users\Administrator\.claude\plans\a-1-iterative-whale.md`（26KB，只读审计）。
+> 最硬的几条已由我逐行复核（`DeployController:82-90` 不传 packageUrl/Hash、`SigningService:68` 用 `?? ''`、
+> 开发者通道 manifest 字段落 NULL、MQTT 零代码、CLAUDE.md 与 bootstrap/app.php 的 scheduler 口径冲突）。
+
+### 排序理由（为什么不是先做"包分发"）
+
+审计把"包分发端点"列为最高杠杆，我同意它**是**最高杠杆，但排在第二张卡：
+分发要用 `package_hash`，而该哈希**必须取自一个可交付、且已验证存在的产物**。
+顺序反了，就会把"根本给不出去的包"签进签名里 —— 签名覆盖了一个不可交付的东西，比不签更坏。
+
+### 卡片
+
+| 卡 | 内容 | 状态 |
+|---|---|---|
+| S-2 | **供给侧字段与闸门的正确性**：开发者 manifest 的 `delivery_channels`/`risk_level`/`pricing_mode` 落库（原先恒 NULL → 试用恒被拒、兼容性恒降级人工、风险告知"未分级"）；发布前置补"可交付性"（文件类交付物必须真的在盘上，否则用户付钱后下载才暴露） | ✅ `1893fb3` |
+| S-1 | **面向 Agent 的签名限时下载 + 真实 `package_hash`**：让 `deploy_task` 不再是空的，Agent 通道不再"按构造干跑"；签名覆盖真实哈希，防"审核后换包"在平台侧成立（端侧复算待 E7） | ⏸ 下一卡（最高杠杆） |
+| S-3 | **上架交接**：开发者链封顶在 `in_review` —— L2 通过不等于上架，而门户没有入口也没有信号，技能可能无限期停在半路 | ⏸ |
+| S-4 | 常量收口：`license_mode`/`pricing_mode`/`channel` 字面量散落多个控制器，与"单一真相"纪律相悖（`SkillAsset::CARRIER_TYPES` 是既有正面样板） | ⏸ 卫生项，不急 |
+
+### 两条要顺手校准的"口径腐坏"（审计抓到，我复核成立）
+
+1. **`CLAUDE.md:79` 写着"没有常驻 worker、没有 scheduler"**，而 `bootstrap/app.php:53` 已注册 6 条定时任务
+   （每天 09:10/09:15、每小时 25/40 分、每分钟）。准确说法是"**scheduler 代码有了、常驻进程没起**"。
+   现在这句话会让任何接手的 AI 得出"这里不存在定时任务"的**错误结论** —— 包括我自己。
+2. **`manifest.yaml` 在本机根本解析不了**（`symfony/yaml` 未安装，`ManifestParser` 回落报错），
+   而文档钦定的中立清单格式写的是 `.yaml`。实际只有 `manifest.json` 可用。
+
 ### 分工与验收方式（2026-10-16 起）
 
 - **Claude Code = 执行**（`claude -p` headless，任务卡式；`--permission-mode acceptEdits`，
