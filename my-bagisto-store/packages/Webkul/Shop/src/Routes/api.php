@@ -29,6 +29,7 @@ use Webkul\Shop\Http\Controllers\API\OnepageController;
 use Webkul\Shop\Http\Controllers\API\OrderController;
 use Webkul\Shop\Http\Controllers\API\ProductController;
 use Webkul\Shop\Http\Controllers\API\ReviewController;
+use Webkul\Shop\Http\Controllers\API\RiskController;
 use Webkul\Shop\Http\Controllers\API\SceneController;
 use Webkul\Shop\Http\Controllers\API\SkillAdminController;
 use Webkul\Shop\Http\Controllers\API\SkillCatalogController;
@@ -254,6 +255,17 @@ Route::group(['prefix' => 'api'], function () {
 
         // 兜底通道终点:用户自报"已装到机器上"。平台无法验证,见控制器注释。
         Route::post('entitlements/{entitlementId}/confirm-install', 'confirmInstall')->name('shop.api.skills.confirm-install');
+    });
+
+    /**
+     * B-5 · 风险告知与留痕(计划 §4.14 / D6)。
+     * GET 不带 customer —— 告知要在"买之前"就能看到,游客也该读得到。
+     */
+    Route::controller(RiskController::class)->prefix('risk')->group(function () {
+        Route::get('{productId}', 'profile')->whereNumber('productId')->name('shop.api.risk.profile');
+
+        // 留痕必须登录:留的是"谁确认的",没有主体就无从留起。
+        Route::post('acknowledge', 'acknowledge')->middleware(['customer', 'throttle:write'])->name('shop.api.risk.acknowledge');
     });
 
     /**

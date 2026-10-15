@@ -86,6 +86,18 @@
 			</view>
 		</view>
 
+		<!-- 5.6 风险告知(B-5 · 计划 §4.14):按 risk_level 分档展示 -->
+		<view class="risk-box" v-if="risk">
+			<view class="risk-head">
+				<text class="risk-label" :class="'lv-' + (risk.risk_level || 'unknown')">{{ risk.label }}</text>
+				<text class="risk-title">安全告知</text>
+			</view>
+			<text class="risk-summary">{{ risk.summary }}</text>
+			<view class="risk-items" v-if="risk.items && risk.items.length">
+				<text v-for="(it, i) in risk.items" :key="it.key" class="risk-item">· {{ it.text }}</text>
+			</view>
+		</view>
+
 		<!-- 6. 底部操作栏 -->
 		<view class="footer-bar">
 			<view class="footer-left" @click="openCustomer">
@@ -99,11 +111,29 @@
 				<button class="btn-buy" @click="handleBuy">立即开通</button>
 			</view>
 		</view>
+
+		<!-- 风险告知弹窗(B-5):high 风险逐条勾选后落库留痕 -->
+		<view v-if="showRiskModal" class="risk-mask" @click="cancelRisk">
+			<view class="risk-modal" @click.stop="noop">
+				<text class="risk-modal-title">安全告知 · {{ risk.label }}</text>
+				<text class="risk-modal-summary">{{ risk.summary }}</text>
+				<view class="risk-modal-items">
+					<view class="risk-check-row" v-for="it in risk.items" :key="it.key" @click="riskChecked[it.key] = !riskChecked[it.key]">
+						<text class="risk-check-box" :class="{ on: riskChecked[it.key] }">{{ riskChecked[it.key] ? '✓' : '' }}</text>
+						<text class="risk-check-text">{{ it.text }}</text>
+					</view>
+				</view>
+				<view class="risk-modal-footer">
+					<view class="risk-cancel" @click="cancelRisk">取消</view>
+					<view class="risk-confirm" @click="confirmRisk">{{ riskSubmitting ? '提交中…' : '我已确认，继续开通' }}</view>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script>
-	import { productApi, skillApi, deviceApi, reviewApi } from '@/utils/api'
+	import { productApi, skillApi, deviceApi, reviewApi, riskApi } from '@/utils/api'
 	import NavBar from '@/components/NavBar.vue'
 	export default {
 		components: { NavBar },
@@ -118,6 +148,11 @@
 				pickedDeviceId: '',
 				compat: null,
 				compatLoading: false,
+				// 风险告知(B-5):分档文案 + high 风险逐条勾选留痕
+				risk: null,
+				showRiskModal: false,
+				riskChecked: {},
+				riskSubmitting: false,
 				// 写评价(v3.4)
 				reviewRating: 5,
 				reviewText: '',
@@ -170,6 +205,7 @@
 							comments: []
 						}
 						this.loadReviews(pid)
+						this.loadRisk(pid)
 						return
 					}
 				} catch (e) {
@@ -242,6 +278,18 @@
 					uni.showToast({ title: (e && e.message) || '校验失败', icon: 'none' })
 				} finally {
 					this.compatLoading = false
+				}
+			},
+			// 风险告知(B-5):按 manifest.safety.risk_level 拉分档文案。拿不到就不展示 ——
+			// 风险信息**不能编**(编一个"低风险"比不展示更坏)。
+			async loadRisk(productId) {
+				try {
+					const res = await riskApi.profile(productId)
+					this.risk = (res && res.data) || null
+					this.riskChecked = {}
+				} catch (e) {
+					console.warn('[jineng] 风险告知加载失败', e)
+					this.risk = null
 				}
 			},
 			// 试用(B-3 · D4):发放 20 分钟在线授权并直接下发;到期由平台定时回收。
@@ -380,6 +428,48 @@
 				})
 			},
 			handleBuy() {
+				// 高风险技能(B-5):先弹分级告知,逐条勾选并留痕后才放行。
+				// 勾选留痕是"告知"的凭据 —— 不能只弹个"确定"就当告知过了。
+				if (this.risk && this.risk.require_checklist) {
+					// 预先建好每一项的 key —— Vue2 对"运行时新增的对象属性"不响应,
+					// 直接把 riskChecked 换成一份带全 key 的新对象才是可靠的
+					const checked = {}
+					;(this.risk.items || []).forEach((it) => { checked[it.key] = false })
+					this.riskChecked = checked
+					this.showRiskModal = true
+					return
+				}
+				this.goCheckout()
+			},
+			cancelRisk() {
+				this.showRiskModal = false
+			},
+			// 阻止弹窗内容点击冒泡到遮罩(点内容不该关掉弹窗)
+			noop() {},
+			async confirmRisk() {
+				const items = (this.risk && this.risk.items) || []
+				const missing = items.filter((it) => !this.riskChecked[it.key])
+				if (missing.length) {
+					uni.showToast({ title: '请逐条勾选确认后再继续', icon: 'none' })
+					return
+				}
+				this.riskSubmitting = true
+				try {
+					await riskApi.acknowledge({
+						product_id: this.productId,
+						skill_version_id: this.risk.skill_version_id,
+						channel: (this.compat && this.compat.channels && this.compat.channels[0]) || null,
+						checked: items.map((it) => it.key),
+					})
+					this.showRiskModal = false
+					this.goCheckout()
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })
+				} finally {
+					this.riskSubmitting = false
+				}
+			},
+			goCheckout() {
 				// 开通 → 进入确认订单（复用商品购买下单逻辑）
 				const skill = this.skillInfo
 				const url =
@@ -645,4 +735,30 @@
 	.wr-star.on { color: #ffb400; }
 	.wr-input { margin-top: 16rpx; width: 100%; min-height: 120rpx; padding: 16rpx; background: #f7f8fa; border-radius: 12rpx; font-size: 26rpx; box-sizing: border-box; }
 	.wr-btn { margin-top: 16rpx; text-align: center; padding: 18rpx 0; background: #ff6b00; color: #fff; border-radius: 40rpx; font-size: 28rpx; }
+
+	/* 风险告知(B-5) */
+	.risk-box { margin: 20rpx 24rpx; padding: 24rpx; background: #fff; border-radius: 16rpx; }
+	.risk-head { display: flex; align-items: center; }
+	.risk-label { font-size: 24rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 24rpx; margin-right: 12rpx; }
+	.risk-label.lv-low { background: #eaf7ee; color: #1a9c50; }
+	.risk-label.lv-medium { background: #fff5e6; color: #d48806; }
+	.risk-label.lv-high { background: #fdecec; color: #cf1322; }
+	.risk-label.lv-unknown { background: #f2f2f2; color: #888; }
+	.risk-title { font-size: 28rpx; font-weight: 600; color: #222; }
+	.risk-summary { display: block; margin-top: 12rpx; font-size: 24rpx; color: #666; line-height: 1.5; }
+	.risk-items { margin-top: 10rpx; }
+	.risk-item { display: block; margin-top: 4rpx; font-size: 22rpx; color: #999; }
+
+	.risk-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+	.risk-modal { width: 660rpx; background: #fff; border-radius: 24rpx; padding: 40rpx 32rpx 24rpx; box-sizing: border-box; }
+	.risk-modal-title { display: block; font-size: 32rpx; font-weight: 600; color: #222; text-align: center; }
+	.risk-modal-summary { display: block; margin-top: 16rpx; font-size: 26rpx; color: #666; line-height: 1.5; }
+	.risk-modal-items { margin-top: 20rpx; }
+	.risk-check-row { display: flex; align-items: flex-start; padding: 16rpx 0; }
+	.risk-check-box { width: 40rpx; height: 40rpx; line-height: 40rpx; text-align: center; border: 1rpx solid #ccc; border-radius: 8rpx; font-size: 26rpx; color: #fff; flex-shrink: 0; margin-right: 16rpx; box-sizing: border-box; }
+	.risk-check-box.on { background: #ff6b00; border-color: #ff6b00; }
+	.risk-check-text { flex: 1; font-size: 26rpx; color: #333; line-height: 1.4; }
+	.risk-modal-footer { display: flex; gap: 20rpx; margin-top: 28rpx; }
+	.risk-cancel { flex: 1; text-align: center; padding: 20rpx 0; border: 1rpx solid #ddd; border-radius: 40rpx; font-size: 28rpx; color: #666; }
+	.risk-confirm { flex: 2; text-align: center; padding: 20rpx 0; background: linear-gradient(135deg, #ff6b6b, #ee3f4d); color: #fff; border-radius: 40rpx; font-size: 28rpx; }
 </style>

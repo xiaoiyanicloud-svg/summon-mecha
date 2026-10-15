@@ -117,6 +117,14 @@ final class ApiErrorCode
     /** 已买断该技能 —— 无需（也不该）再发一条 20 分钟的临时授权。 */
     public const TRIAL_ALREADY_OWNED = 'TRIAL_ALREADY_OWNED';
 
+    // ── 风险告知留痕（B-5 · 计划 §4.14 / D6 三层责任）───────────────────
+
+    /** high 风险技能：必须逐条勾选告知项后才允许继续（下单/下发）。 */
+    public const RISK_ACK_REQUIRED = 'RISK_ACK_REQUIRED';
+
+    /** 该技能没有可展示的风险分级（无已发布版本）。 */
+    public const RISK_PROFILE_NOT_FOUND = 'RISK_PROFILE_NOT_FOUND';
+
     // ── 下发 ─────────────────────────────────────────────────────────────
 
     public const TASK_NOT_FOUND = 'TASK_NOT_FOUND';

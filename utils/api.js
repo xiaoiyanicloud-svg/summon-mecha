@@ -152,6 +152,16 @@ export const skillCatalogApi = {
   tags: (type) => http.get('/api/skill-catalog/tags', { data: type ? { type } : {}, loading: false }),
 }
 
+// ==================== 风险告知与留痕(B-5 · 计划 §4.14 / D6) ====================
+// 分档文案按 manifest.safety.risk_level(low/medium/high)。high 风险必须逐条勾选才可提交，
+// 落 risk_acknowledgment 留痕(含勾选明细 + 当时文案指纹 + IP)。
+export const riskApi = {
+  // 取该技能的风险告知档案(游客可读 —— 买之前就该看到)
+  profile: (productId) => http.get(`/api/risk/${productId}`, { loading: false }),
+  // data: { product_id(必填), skill_version_id?, entitlement_id?, channel?, checked?:string[] }
+  acknowledge: (data) => http.post('/api/risk/acknowledge', data, { loading: true, loadingText: '提交中...' }),
+}
+
 // ==================== 商品评价(v3.4 步骤 7) ====================
 // 复用 Bagisto 原生 ProductReview 接口(服务端已有,表/模型/API 齐)
 export const reviewApi = {
