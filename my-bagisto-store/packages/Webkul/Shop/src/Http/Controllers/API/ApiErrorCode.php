@@ -102,6 +102,13 @@ final class ApiErrorCode
     // ── 下发 ─────────────────────────────────────────────────────────────
 
     public const TASK_NOT_FOUND = 'TASK_NOT_FOUND';
+    /**
+     * 设备回报的状态流转不合法(对已 success 的任务报 failed 等)—— P9。
+     *
+     * ⚠ 此前这类被拒的回报**静默丢弃并仍返 200 ok**:端侧以为报成功了、云侧状态没动,
+     *   端云永久分叉且没有任何痕迹。机器消费者必须能凭码区分"收到了"与"没被接受"。
+     */
+    public const TASK_TRANSITION_INVALID = 'TASK_TRANSITION_INVALID';
     /** Agent 部署通道未配置(缺 AGENT_KEY)。 */
     public const AGENT_CHANNEL_NOT_CONFIGURED = 'AGENT_CHANNEL_NOT_CONFIGURED';
     public const ENROLL_TOKEN_INVALID = 'ENROLL_TOKEN_INVALID';

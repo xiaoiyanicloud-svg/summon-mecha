@@ -8,12 +8,21 @@ use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Services\Deploy\AgentGatewayManager;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
+use Webkul\Shop\Services\Deploy\IllegalTaskTransitionException;
 
 /**
  * Agent 接入接口 —— v3.4 步骤 8(计划 §5.2)。
  *
  * 供设备端 Agent(或本地模拟器)调用:注册换 DID → 心跳 → 上报任务回报 → 拉取指令。
  * 鉴权为共享密钥(agent.key);生产应升级 per-device 证书(§4.22 F1)。
+ *
+ * ── 契约(P9)· 机器消费者一律走 X1 信封 ──
+ *   Agent 不是 UI,是**机器消费者**:它按结构解析、按码分支,没有"人看着办"的余地。
+ *   故本控制器**全部**出口统一为 APIController 的 `ok()`/`fail()`:
+ *     成功 {success:true, message?, data}
+ *     失败 {success:false, code, message}
+ *   此前这里是"成功返裸 data、失败只有中文 message 无 code"的混合体 ——
+ *   端侧无法用统一逻辑判断成败,只能猜文案。
  */
 class AgentController extends APIController
 {
@@ -72,16 +81,13 @@ class AgentController extends APIController
 
         $binding->save();
 
-        return response()->json([
-            'message' => '注册成功。',
-            'data'    => [
-                'did'          => $binding->did,
-                'bind_status'  => $binding->bind_status,
-                'online'       => true,
-                // 生产应返回 per-device 证书;dev 返回共享说明
-                'auth_hint'    => '请用 X-Agent-Key 头访问后续接口。',
-            ],
-        ], 201);
+        return $this->ok([
+            'did'          => $binding->did,
+            'bind_status'  => $binding->bind_status,
+            'online'       => true,
+            // 生产应返回 per-device 证书;dev 返回共享说明
+            'auth_hint'    => '请用 X-Agent-Key 头访问后续接口。',
+        ], '注册成功。')->setStatusCode(201);
     }
 
     /**
@@ -137,17 +143,14 @@ class AgentController extends APIController
 
         $binding->save();
 
-        return response()->json([
-            'message' => '已配对。',
-            'data'    => [
-                'did'               => $binding->did,
-                'sn'                => $binding->sn,
-                'agent_key'         => $agentKey,
-                'server_url'        => rtrim(config('app.url'), '/'),
-                'server_public_key' => app(\Webkul\Shop\Services\Deploy\SigningService::class)->publicKeyPem(),
-                'auth_hint'         => '后续请求带 X-Agent-Key 头。',
-            ],
-        ]);
+        return $this->ok([
+            'did'               => $binding->did,
+            'sn'                => $binding->sn,
+            'agent_key'         => $agentKey,
+            'server_url'        => rtrim(config('app.url'), '/'),
+            'server_public_key' => app(\Webkul\Shop\Services\Deploy\SigningService::class)->publicKeyPem(),
+            'auth_hint'         => '后续请求带 X-Agent-Key 头。',
+        ], '已配对。');
     }
 
     /**
@@ -166,7 +169,7 @@ class AgentController extends APIController
         $binding->markSeen('agent');
         $binding->save();
 
-        return response()->json(['message' => 'ok', 'data' => ['did' => $binding->did, 'online' => true]]);
+        return $this->ok(['did' => $binding->did, 'online' => true], 'ok');
     }
 
     /**
@@ -194,18 +197,27 @@ class AgentController extends APIController
             return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
-        $task = $this->deploy->onEvent(
-            $payload['task_no'],
-            $payload['phase'],
-            $payload['error_code'] ?? null,
-            $payload['error_msg'] ?? null,
-        );
+        try {
+            $task = $this->deploy->onEvent(
+                $payload['task_no'],
+                $payload['phase'],
+                $payload['error_code'] ?? null,
+                $payload['error_msg'] ?? null,
+            );
+        } catch (IllegalTaskTransitionException $e) {
+            // 非法回报 —— 明确 409 + 码,而不是"200 ok 但其实没动"。
+            // Agent 是机器消费者:它要靠码判断"这条回报被接受了没有";
+            // 静默成功会让端云状态永久分叉(端侧继续等、云侧停在原地)。
+            return $this->fail(ApiErrorCode::TASK_TRANSITION_INVALID, $e->getMessage(), 409, [
+                'data' => ['task_no' => $e->taskNo, 'status' => $e->from],
+            ]);
+        }
 
         if (! $task) {
             return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
-        return response()->json(['message' => 'ok', 'data' => ['task_no' => $task->task_no, 'status' => $task->status]]);
+        return $this->ok(['task_no' => $task->task_no, 'status' => $task->status], 'ok');
     }
 
     /**
@@ -258,6 +270,6 @@ class AgentController extends APIController
             $commands[] = $this->deploy->buildCommand($t);
         }
 
-        return response()->json(['data' => $commands]);
+        return $this->ok($commands);
     }
 }

@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Services\Deploy;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
@@ -246,7 +247,9 @@ class DeployTaskService
     /**
      * 接收设备回报,推进状态机。
      *
-     * @param  string  $phase  downloading|installing|done|failed
+     * @param  string  $phase  downloading|installing|done|failed|timeout
+     *
+     * @throws IllegalTaskTransitionException 回报与当前状态不构成合法流转(见 P9)
      */
     public function onEvent(string $taskNo, string $phase, ?string $errorCode = null, ?string $errorMsg = null): ?DeployTask
     {
@@ -274,7 +277,21 @@ class DeployTaskService
             $task->error_msg = $errorMsg;
         }
 
-        $this->transition($task, $target);
+        // 非法流转 → 明确拒绝(P9),不再"静默丢弃 + 返 200"。
+        //
+        // 此前这里忽略 transition() 的返回值:设备对一条已 success 的任务报 failed,
+        // 服务端**什么都没做**却回 200 'ok'。端侧据此认为回报已被接受、云侧状态没动 ——
+        // 端云永久分叉,而且服务端一行日志都不留(告警无从谈起)。
+        if (! $this->transition($task, $target)) {
+            Log::warning('下发回报被拒:非法状态流转', [
+                'task_no' => $task->task_no,
+                'did'     => $task->did,
+                'from'    => $task->status,
+                'to'      => $target,
+            ]);
+
+            throw new IllegalTaskTransitionException($task->task_no, $task->status, $target);
+        }
 
         // 成功 → 按 operation 落 install_record(装/升级/回滚/卸载语义不同)
         if ($target === 'success') {
