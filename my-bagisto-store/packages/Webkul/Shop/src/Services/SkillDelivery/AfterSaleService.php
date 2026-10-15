@@ -32,60 +32,71 @@ class AfterSaleService
 
     /**
      * 用户发起售后。返回结果 + 政策依据。
+     *
+     * A3 · 防重复申请此前是**事务外的 check-then-act**:两次并发申请都读到"没有处理中"、
+     * 都建单。现在整段收进事务,并对该授权行 `lockForUpdate()` —— 同一授权的申请串行化,
+     * 后到的会在锁上等到先到的提交,再重查就能看到已存在的处理中单。
+     *
+     * ⚠ 这里锁的是**授权行**而不是 after_sale 表:要防的竞态是"针对同一授权重复申请",
+     *   被争用的资源是那条授权 —— 锁它,语义最直白,也不依赖 after_sale 上加约束
+     *   (那条约束本仓刻意不加,见 migration 2026_10_15_000006 的说明)。
      */
     public function apply(int $customerId, int $entitlementId, ?string $reasonCategory, ?string $detail): array
     {
-        $entitlement = SkillEntitlement::query()
-            ->where('customer_id', $customerId)
-            ->where('id', $entitlementId)
-            ->first();
+        return DB::transaction(function () use ($customerId, $entitlementId, $reasonCategory, $detail) {
+            $entitlement = SkillEntitlement::query()
+                ->where('customer_id', $customerId)
+                ->where('id', $entitlementId)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $entitlement) {
-            return ['ok' => false, 'message' => '技能授权不存在。'];
-        }
+            if (! $entitlement) {
+                return ['ok' => false, 'message' => '技能授权不存在。'];
+            }
 
-        $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
+            $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
 
-        // 试用不退
-        if (! empty($meta['trial'])) {
-            return ['ok' => false, 'message' => '试用技能不支持退款。'];
-        }
+            // 试用不退
+            if (! empty($meta['trial'])) {
+                return ['ok' => false, 'message' => '试用技能不支持退款。'];
+            }
 
-        // 判定政策依据:未下发可退 / 已激活需人工审
-        $isActivated = $entitlement->status === SkillEntitlement::STATUS_ACTIVE
-            || $entitlement->activations > 0;
+            // 判定政策依据:未下发可退 / 已激活需人工审
+            $isActivated = $entitlement->status === SkillEntitlement::STATUS_ACTIVE
+                || $entitlement->activations > 0;
 
-        $policyBasis = $isActivated ? 'activated' : 'not_installed';
+            $policyBasis = $isActivated ? 'activated' : 'not_installed';
 
-        // 防重复申请
-        $existing = AfterSale::query()
-            ->where('customer_id', $customerId)
-            ->where('entitlement_id', $entitlementId)
-            ->whereIn('status', [AfterSale::STATUS_APPLIED, AfterSale::STATUS_REVIEWING, AfterSale::STATUS_APPROVED])
-            ->exists();
+            // 防重复申请(在行锁内重查:并发下第二个请求这时才看得到第一个建的单)
+            $existing = AfterSale::query()
+                ->where('customer_id', $customerId)
+                ->where('entitlement_id', $entitlementId)
+                ->whereIn('status', [AfterSale::STATUS_APPLIED, AfterSale::STATUS_REVIEWING, AfterSale::STATUS_APPROVED])
+                ->exists();
 
-        if ($existing) {
-            return ['ok' => false, 'message' => '该技能已有处理中的售后申请。'];
-        }
+            if ($existing) {
+                return ['ok' => false, 'message' => '该技能已有处理中的售后申请。'];
+            }
 
-        $afterSale = AfterSale::create([
-            'order_id'        => $entitlement->order_id,
-            'order_item_id'   => $entitlement->order_item_id,
-            'entitlement_id'  => $entitlementId,
-            'customer_id'     => $customerId,
-            'type'            => AfterSale::TYPE_REFUND,
-            'reason_category' => $reasonCategory,
-            'detail'          => $detail,
-            'policy_basis'    => $policyBasis,
-            // 未下发的可自动通过;已激活的进人工审
-            'status'          => $isActivated ? AfterSale::STATUS_REVIEWING : AfterSale::STATUS_APPLIED,
-        ]);
+            $afterSale = AfterSale::create([
+                'order_id'        => $entitlement->order_id,
+                'order_item_id'   => $entitlement->order_item_id,
+                'entitlement_id'  => $entitlementId,
+                'customer_id'     => $customerId,
+                'type'            => AfterSale::TYPE_REFUND,
+                'reason_category' => $reasonCategory,
+                'detail'          => $detail,
+                'policy_basis'    => $policyBasis,
+                // 未下发的可自动通过;已激活的进人工审
+                'status'          => $isActivated ? AfterSale::STATUS_REVIEWING : AfterSale::STATUS_APPLIED,
+            ]);
 
-        return [
-            'ok'      => true,
-            'message' => $isActivated ? '已提交,等待人工审核(已激活技能原则上不退)。' : '已受理,可退款(未下发)。',
-            'data'    => ['id' => $afterSale->id, 'policy_basis' => $policyBasis, 'status' => $afterSale->status],
-        ];
+            return [
+                'ok'      => true,
+                'message' => $isActivated ? '已提交,等待人工审核(已激活技能原则上不退)。' : '已受理,可退款(未下发)。',
+                'data'    => ['id' => $afterSale->id, 'policy_basis' => $policyBasis, 'status' => $afterSale->status],
+            ];
+        });
     }
 
     /**
