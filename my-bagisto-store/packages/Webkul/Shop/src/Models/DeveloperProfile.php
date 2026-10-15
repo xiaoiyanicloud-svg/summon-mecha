@@ -16,8 +16,10 @@ use Webkul\Customer\Models\Customer;
  *     （skill_versions.seller_id）都由它派生。平台自营的 seller_id 为 NULL，
  *     与开发者（恒非 NULL）天然隔离，这是"两条通道不串"的机制。
  *
- * ⚠ realname_status 的审核动作属平台端（Admin 入驻审核 UI，本轮未做）。
- *   本轮它停在 pending **且不据此拦流程** —— 唯一的流程闸门是"协议已签"。
+ * ⚠ realname_status 的审核动作属平台端，Admin 入驻审核 UI 已实现
+ *   （`Webkul\Admin\Http\Controllers\Customers\DeveloperController::approveRealname` / `rejectRealname`）。
+ *   它**不拦提审**（拦提审的唯一闸门是"协议已签"），但**拦上架** ——
+ *   SkillPublisher 要求主体 realname_status = approved 才准发布（任务卡 D-5 · 裁决 Q6）。
  *   不要为了"看起来完整"伪造 approved。
  */
 class DeveloperProfile extends Model

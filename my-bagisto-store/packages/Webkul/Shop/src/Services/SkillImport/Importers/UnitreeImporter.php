@@ -4,6 +4,7 @@ namespace Webkul\Shop\Services\SkillImport\Importers;
 
 use Webkul\Shop\Services\SkillImport\ImportResult;
 use Webkul\Shop\Services\SkillImport\SkillImporter;
+use Webkul\Shop\Services\SkillPackage\SkillManifest;
 
 /**
  * 宇树 UniStore 包导入器 —— v3.4 步骤 6。
@@ -28,7 +29,7 @@ class UnitreeImporter implements SkillImporter
         ];
 
         $manifest = [
-            'schema'            => 'zhaohuan.skill/v2',
+            'schema'            => SkillManifest::SCHEMA,
             'kind'              => 'app',
             'name'              => ['zh_CN' => (string) ($input['name'] ?? '导入的宇树应用'), 'en' => (string) ($input['name'] ?? 'Imported Unitree App')],
             'version'           => (string) ($input['version'] ?? '1.0.0'),

@@ -46,6 +46,18 @@ class AuditService
             $reasons[] = RejectionReason::TECH_FORMAT.':'.implode(' / ', $m['errors']);
         }
 
+        // 1.5) schema 落库 —— 补齐**所有通道**（含开发者门户）。
+        //   submitLayer0 是门户 / internal.key / 运营后台三条通道的**唯一漏斗**，
+        //   写在这一处即全覆盖；写进控制器必然漏掉某条 —— 此前只有 Admin 导入路径写
+        //   `manifest_schema`，于是开发者技能出事故时，IncidentService 读到的"证据快照"
+        //   这一项恒为 NULL（正好是最该有、却又最缺的一条）。
+        //   ⚠ 只写这一列：source_format / imported_meta 归导入器所有，这里不碰；
+        //   ⚠ manifest 缺 schema 时**不写**（保持原值 NULL），别把空串写进去冒充有值。
+        $schema = $manifest['schema'] ?? null;
+        if (is_string($schema) && $schema !== '') {
+            SkillVersion::where('id', $version)->update(['manifest_schema' => $schema]);
+        }
+
         // 2) 内容安全 —— 走 ContentSafety 层（v3.4 步骤 6）。
         //    此前这里是空数组占位；现在换成真实的扫描器（本地词表可换 msgSecCheck）。
         $screen = $this->contentSafety->scanner()->scan($this->flattenText($manifest));

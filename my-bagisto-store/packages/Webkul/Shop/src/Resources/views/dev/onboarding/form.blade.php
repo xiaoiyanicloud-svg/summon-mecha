@@ -7,7 +7,8 @@
 
     <div class="card" style="max-width:560px">
         <p class="muted">
-            提交后即可创建技能。<strong>实名审核由平台完成</strong>，审核期间不影响你建技能与提审。
+            提交后即可创建技能。<strong>实名审核由平台完成</strong>，审核期间不影响你建技能与提审；
+            但<strong>未通过实名审核不能上架</strong>。
         </p>
 
         <form method="POST" action="{{ route('shop.dev.onboarding.store') }}">

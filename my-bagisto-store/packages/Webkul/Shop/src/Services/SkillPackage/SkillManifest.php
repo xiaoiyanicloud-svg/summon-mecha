@@ -14,6 +14,23 @@ class SkillManifest
 {
     public const SCHEMA = 'zhaohuan.skill/v2';
 
+    /**
+     * schema 族名（命名空间部分）—— 与具体版本解耦。
+     *
+     * 用途：分辨"是不是本平台的清单"。族内换版本（/v2 → /v3）仍是我们的；
+     * 族外（别的命名空间）直接判为"不认识"，不当作版本问题。
+     */
+    public const SCHEMA_FAMILY = 'zhaohuan.skill';
+
+    /**
+     * 平台**当前接受**的具体版本清单。
+     *
+     * 这里现在只有一个 v2；将来新增版本 = 往数组里加一项，判定逻辑自动覆盖
+     * （`SCHEMA` 仍是"当前推荐版本"，用于给开发者的提示文案）。
+     * ⚠ 本卡只做"分清来的是哪个版本"，**不做自动升级/降级**——那是转换层的职责。
+     */
+    public const SCHEMA_SUPPORTED = [self::SCHEMA];
+
     /** 技能形态。 */
     public const KIND_MOTION = 'motion';       // 纯动作(可跨本体重定向)
 
@@ -87,5 +104,33 @@ class SkillManifest
     public function riskLevel(): string
     {
         return (string) ($this->safety['risk_level'] ?? '');
+    }
+
+    /**
+     * 从 schema 串里解析出版本号：`zhaohuan.skill/v2` → 2。
+     *
+     * 判据：必须以本族命名空间 `zhaohuan.skill/` 开头，且其后是 `v<正整数>`。
+     * 非本族（命名空间不同）或格式不对 → null —— 调用方据此把"版本问题"
+     * 与"根本不认识"分开（两者对开发者意味着完全不同的改法）。
+     *
+     * ⚠ 只识别、不转换：拿到 null 不代表要升级，只表示"这个串我没法归到某个版本"。
+     */
+    public static function parseSchemaVersion(string $schema): ?int
+    {
+        $prefix = self::SCHEMA_FAMILY.'/';
+
+        if (! str_starts_with($schema, $prefix)) {
+            return null;
+        }
+
+        $tail = substr($schema, strlen($prefix));
+
+        // 只接受 `v<digits>`（如 v2 / v10）；`zhaohuan.skill`（无斜杠）走不到这，
+        // `zhaohuan.skill/`、`zhaohuan.skill/v`、`.../v2.1` 等一律判为不合法 → null。
+        if (! preg_match('/^v(\d+)$/', $tail, $m)) {
+            return null;
+        }
+
+        return (int) $m[1];
     }
 }

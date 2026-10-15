@@ -19,6 +19,8 @@ my-bagisto-store2 备份/storage/
 
 # AI 备份目录（与 git 双保险分层，独立存在）
 .claude/backup/
+# 嵌套的 .claude 备份：上面的写法带斜杠、锚定在仓库根，覆盖不到 my-bagisto-store/ 下的同类目录
+my-bagisto-store/.claude/
 
 # 平台历史备份目录（2026-10-15 由 my-bagisto-store2 改名而来，磁盘上仍在，只是退出 git）
 # ⚠ 目录名**带空格与中文**，原先的 my-bagisto-store2/vendor|storage 两条规则匹配不到它，

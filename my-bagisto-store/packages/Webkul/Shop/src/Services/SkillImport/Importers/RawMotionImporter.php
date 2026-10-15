@@ -4,6 +4,7 @@ namespace Webkul\Shop\Services\SkillImport\Importers;
 
 use Webkul\Shop\Services\SkillImport\ImportResult;
 use Webkul\Shop\Services\SkillImport\SkillImporter;
+use Webkul\Shop\Services\SkillPackage\SkillManifest;
 
 /**
  * 通用动捕导入器(BVH/SMPL-X)—— v3.4 步骤 6。
@@ -26,7 +27,7 @@ class RawMotionImporter implements SkillImporter
         $format = strtolower((string) $input['motion_format']);
 
         $manifest = [
-            'schema'            => 'zhaohuan.skill/v2',
+            'schema'            => SkillManifest::SCHEMA,
             'kind'              => 'motion',
             'name'              => ['zh_CN' => (string) ($input['name'] ?? '导入的动作'), 'en' => (string) ($input['name'] ?? 'Imported Motion')],
             'version'           => (string) ($input['version'] ?? '1.0.0'),
