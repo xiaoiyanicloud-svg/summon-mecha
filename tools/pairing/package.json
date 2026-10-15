@@ -1,0 +1,10 @@
+{
+  "name": "@zhjj/pairing-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "召唤机甲 · 一键配对装机工具（CLI 骨架，零依赖；GUI 待真机验证后套壳）",
+  "scripts": {
+    "test": "node --test"
+  }
+}
