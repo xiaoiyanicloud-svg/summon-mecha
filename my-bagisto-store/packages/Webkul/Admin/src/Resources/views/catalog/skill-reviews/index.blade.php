@@ -10,7 +10,8 @@
     <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         <p class="font-semibold">这里决定一个技能能不能上架</p>
         <p class="mt-1 leading-relaxed">
-            队列里是<b>已经提审、还没过闸门</b>的技能版本。发布闸门要求下列层全部通过才允许发布
+            队列里是<b>已经提审</b>的技能版本 —— 既包含<b>还没过闸门</b>的，也包含
+            <b>已过闸门、等待平台上架</b>的（后者等的是运营点发布）。发布闸门要求下列层全部通过才允许发布
             （在「技能管理」页点发布时生效）：
         </p>
         <ul class="mt-1 list-disc pl-5 leading-relaxed">
@@ -44,10 +45,17 @@
             ];
         @endphp
         @foreach ($tabs as $key => [$label, $count])
+            @php
+                $active = $filter === $key;
+                // 「已过闸门」有货时醒目提示（任务卡 S-3a）：这些版本已具备上架条件，
+                // 等的是运营点发布 —— 别让它沉在页签里被漏掉。**只加样式**，不改默认页签、不改文案。
+            @endphp
             <a href="{{ route('admin.catalog.skill-reviews.index', ['status' => $key]) }}"
-               class="rounded-full border px-3 py-1 {{ $filter === $key
+               class="rounded-full border px-3 py-1 {{ $active
                    ? 'border-blue-500 bg-blue-500 text-white'
-                   : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200' }}">
+                   : ($key === 'approved' && $count > 0
+                       ? 'border-amber-400 bg-amber-50 font-semibold text-amber-800 ring-2 ring-amber-300 dark:border-amber-500 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-700'
+                       : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200') }}">
                 {{ $label }} <span class="opacity-75">({{ $count }})</span>
             </a>
         @endforeach
@@ -101,6 +109,12 @@
                         <td class="px-4 py-3 text-xs">
                             @if ($row['gate']['ok'])
                                 <span class="text-green-700">闸门已过，可发布</span>
+                                {{-- 开发者已申请上架（任务卡 S-3a）—— 交接信号，运营据此排发布 --}}
+                                @if ($row['listing_requested_at'] ?? null)
+                                    <div class="mt-1 font-semibold text-amber-700">
+                                        开发者已申请上架（{{ $row['listing_requested_at'] }}）
+                                    </div>
+                                @endif
                             @else
                                 <span class="text-red-700">
                                     {{ implode('；', array_map(fn ($u) => $u['label'].'（'.$u['reason'].'）', $row['gate']['unmet'])) }}

@@ -74,6 +74,10 @@ Route::controller(SkillController::class)->prefix($devPrefix)->middleware('devel
     // 下架：影响买家可见性的动作，理由必填、留痕。**刻意没有 online 入口**（见控制器注释）。
     Route::post('skills/{id}/offline', 'offline')->whereNumber('id')->name('shop.dev.skills.offline');
 
+    // 申请上架（任务卡 S-3a）：闸门已过的版本，开发者只能"申请"，不能自助上架 ——
+    // 上架权归运营。本动作只写一条交接信号（operation_log），不改任何状态。
+    Route::post('skills/{id}/request-listing', 'requestListing')->whereNumber('id')->name('shop.dev.skills.request-listing');
+
     Route::post('skills/{id}/versions', 'storeVersion')->whereNumber('id')->name('shop.dev.skills.versions.store');
 
     Route::post('versions/{versionId}/upload', 'upload')->whereNumber('versionId')->name('shop.dev.versions.upload');

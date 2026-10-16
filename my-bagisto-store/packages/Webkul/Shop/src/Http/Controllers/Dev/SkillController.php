@@ -147,7 +147,11 @@ class SkillController extends Controller
             ? $this->publisher->ownerQualification($versions->first())
             : null;
 
-        return view('shop::dev.skills.show', compact('product', 'versions', 'gates', 'ownerQualification'));
+        // 逐版本的「申请上架」时间（任务卡 S-3a）—— 只有一个读法（service 内），
+        // 视图据此把「申请上架」按钮换成"已于 … 申请，等待处理"。
+        $listingRequestedAt = $this->skills->listingRequestedAt($versions->pluck('id')->all());
+
+        return view('shop::dev.skills.show', compact('product', 'versions', 'gates', 'ownerQualification', 'listingRequestedAt'));
     }
 
     public function storeVersion(Request $request, int $id)
@@ -300,6 +304,41 @@ class SkillController extends Controller
             $id,
             ['reason' => $payload['reason']]
         );
+
+        return back()->with('success', $result['message']);
+    }
+
+    /**
+     * 申请上架（任务卡 S-3a）—— 把「闸门已过、还没上架」的版本交接给运营。
+     *
+     * ⚠ 这不是发布：上架权归运营（2026-10-16 拍板）。本动作**只产生一条交接信号 + 留痕**
+     *   （写 `operation_log`），绝不动版本/商品状态、绝不调 `SkillPublisher`。
+     *   受理条件（闸门已过、商品尚不可售、同版本未重复申请）全部收敛在
+     *   `DeveloperSkillService::requestListing()`，控制器只做校验 + 调 service + 重定向。
+     *
+     * 归属过滤在 service 查询层；拿不到（不属于我 / 版本不属于该技能）→ 404（不用 403，避免枚举 id）。
+     * 版本号由表单 body 传入（技能 id 在 URL）—— 闸门是**逐版本**判的，信号也挂在版本上。
+     */
+    public function requestListing(Request $request, int $id)
+    {
+        $payload = $request->validate([
+            'version_id' => ['required', 'integer'],
+        ]);
+
+        $result = $this->skills->requestListing(
+            $this->profile($request),
+            $id,
+            (int) $payload['version_id']
+        );
+
+        if (! $result) {
+            abort(404);
+        }
+
+        if (! $result['ok']) {
+            // 错误码 + 人话（如 GATE_NOT_PASSED / ALREADY_SELLABLE）—— 开发者据此知道下一步做什么
+            return back()->withErrors(['request_listing' => $result['message']]);
+        }
 
         return back()->with('success', $result['message']);
     }

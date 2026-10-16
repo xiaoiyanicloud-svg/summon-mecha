@@ -9,6 +9,7 @@ use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Developer\DeveloperSkillService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillAudit\AuditService;
 use Webkul\Shop\Services\SkillAudit\RejectionReason;
@@ -58,9 +59,13 @@ class SkillReviewController extends Controller
 
         $records = $this->auditRecordsFor($versions);
 
+        // 开发者「申请上架」交接信号（任务卡 S-3a）—— 按版本批量取，逐版本查库会退化成 N+1。
+        // 读法与门户**同源**（同一 action 常量 + 同一 target_type），两边不会漂移。
+        $listingRequestedAt = $this->listingRequestedAt($versions->pluck('id')->all());
+
         $rows = $versions
             ->filter(fn ($v) => $records->has($this->key($v->product_id, $v->id)))
-            ->map(function (SkillVersion $v) use ($records) {
+            ->map(function (SkillVersion $v) use ($records, $listingRequestedAt) {
                 $gate = $this->gate->evaluate($v->product_id, $v->id);
                 $own = $records->get($this->key($v->product_id, $v->id));
 
@@ -70,6 +75,8 @@ class SkillReviewController extends Controller
                     'bucket'       => $this->bucket($gate),
                     'submitted_at' => $own->max('submitted_at'),
                     'record_count' => $own->count(),
+                    // 该版本开发者是否已申请上架（时间字符串或 null）—— 见 S-3a
+                    'listing_requested_at' => $listingRequestedAt[$v->id] ?? null,
                 ];
             })
             ->values();
@@ -297,6 +304,36 @@ class SkillReviewController extends Controller
     protected function key(int $productId, int $versionId): string
     {
         return $productId.':'.$versionId;
+    }
+
+    /**
+     * 一组版本的「申请上架」时间（versionId => 'Y-m-d H:i'）—— 任务卡 S-3a。
+     *
+     * ⚠ action / target_type 引用 `DeveloperSkillService` 的常量，**不在这里另抄字面量**：
+     *   两处各写一份字符串，改了生产端忘了读端，队列上就再也标不出"开发者已申请上架"，
+     *   而且**不会报错**（静默失效）。
+     *
+     * @param  array<int, int|string>  $versionIds
+     * @return array<int, string>
+     */
+    protected function listingRequestedAt(array $versionIds): array
+    {
+        $versionIds = array_values(array_filter(array_map('intval', $versionIds)));
+
+        if ($versionIds === []) {
+            return [];
+        }
+
+        return OperationLog::query()
+            ->where('action', DeveloperSkillService::ACTION_LISTING_REQUESTED)
+            ->where('target_type', DeveloperSkillService::TARGET_SKILL_VERSION)
+            ->whereIn('target_id', $versionIds)
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (OperationLog $log) => [
+                (int) $log->target_id => optional($log->created_at)->format('Y-m-d H:i'),
+            ])
+            ->all();
     }
 
     /**

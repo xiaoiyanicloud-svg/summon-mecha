@@ -104,7 +104,7 @@ it('L1 仿真层未接入 → 显示「未接入」，不伪装成「通过」',
         ->assertSeeText('未接入');
 });
 
-it('两层都过 → 页面显示「可以发布」', function () {
+it('两层都过 → 显示「审核已通过，等待平台上架」并给出「申请上架」，不再出现「可以发布」', function () {
     [$profile, $productId] = dgDeveloper();
 
     $version = SkillVersion::create([
@@ -118,7 +118,11 @@ it('两层都过 → 页面显示「可以发布」', function () {
     dgAudit($productId, $version->id, AuditRecord::LAYER_MACHINE, AuditRecord::RESULT_PASS);
     dgAudit($productId, $version->id, AuditRecord::LAYER_HUMAN, AuditRecord::RESULT_PASS);
 
+    // 审核全过 ≠ 已上架：上架权归运营 —— 门户如实说"等待平台上架"并给「申请上架」，
+    // 不再说"可以发布"（那句话会被读成"马上能上架"）。见任务卡 S-3a。
     get(route('shop.dev.skills.show', $productId))
         ->assertOk()
-        ->assertSeeText('可以发布');
+        ->assertSeeText('等待平台上架')
+        ->assertSeeText('申请上架')
+        ->assertDontSeeText('可以发布');
 });

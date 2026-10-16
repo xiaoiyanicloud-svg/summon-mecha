@@ -171,15 +171,54 @@
                         </tr>
                     @endforeach
                 </table>
-                <p class="muted" style="margin-top:8px">
-                    @if ($gate['ok'])
-                        <span class="badge ok">可以发布</span>
+                @if ($gate['ok'])
+                    {{--
+                        R1（任务卡 S-3a）：审核全过 ≠ 已经上架 —— 上架权归运营（2026-10-16 拍板）。
+                        这里回答开发者真正的问题「我现在在等什么」。
+                        ⚠ 刻意**不渲染** $gate['message']：闸门 ok 时它的措辞是"…可以发布。"，
+                          会被读成"马上能上架"，与新的"等待平台上架"口径自相矛盾。
+                    --}}
+                    <p class="muted" style="margin-top:8px">
+                        @if ($product->status)
+                            <span class="badge ok">审核已通过（该技能已上架）</span>
+                        @else
+                            <span class="badge ok">审核已通过，等待平台上架</span>
+                        @endif
+                    </p>
+
+                    @php($requestedAt = $listingRequestedAt[$version->id] ?? null)
+
+                    @if (! $product->status)
+                        <p class="muted" style="margin-top:4px">
+                            <b>你现在在等什么：</b>审核已经全部通过 —— 但<b>上架由平台运营完成</b>
+                            （上架代表平台承担交易与合规责任，开发者不能自助上架）。
+                            点「申请上架」把"这个版本已经可以上架了"交给运营，之后就无需再做别的。
+                        </p>
+
+                        @if ($requestedAt)
+                            <p class="muted" style="margin-top:8px">
+                                ✅ 你已于 <b>{{ $requestedAt }}</b> 申请上架，平台运营会尽快处理。
+                            </p>
+                        @else
+                            <form method="POST" action="{{ route('shop.dev.skills.request-listing', $product->id) }}" style="margin-top:10px">
+                                @csrf
+                                <input type="hidden" name="version_id" value="{{ $version->id }}">
+                                <button type="submit">申请上架</button>
+                                <span class="muted">审核已通过，等待平台上架 —— 点击后由运营完成上架。</span>
+                            </form>
+                        @endif
                     @else
-                        <span class="badge">还不能发布</span>
+                        <p class="muted" style="margin-top:4px">
+                            <span class="badge ok">已上架</span> 用户现在可以买到该技能。
+                        </p>
                     @endif
-                    {{ $gate['message'] }}
-                </p>
-                {{-- 审核层全过 ≠ 一定能上架：主体资格是**另一道**前置，这里明说，别让"可以发布"被误读成"已经能上架" --}}
+                @else
+                    <p class="muted" style="margin-top:8px">
+                        <span class="badge">还不能发布</span>
+                        {{ $gate['message'] }}
+                    </p>
+                @endif
+                {{-- 审核层全过 ≠ 一定能上架：主体资格是**另一道**前置，这里明说，别让"审核已通过"被误读成"已经能上架" --}}
                 @if ($ownerQualification && ! $ownerQualification['ok'])
                     <p class="muted" style="margin-top:4px">
                         ⚠ 主体资格未通过 —— <b>即使审核层全部通过，也不能上架</b>；请先按上一行的提示处理主体资格问题。

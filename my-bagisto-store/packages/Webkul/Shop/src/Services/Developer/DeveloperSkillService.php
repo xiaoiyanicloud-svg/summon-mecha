@@ -12,9 +12,12 @@ use Webkul\Product\Models\ProductProxy;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\DeveloperProfile;
+use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillAudit\AuditService;
+use Webkul\Shop\Services\SkillAudit\ReviewGate;
 use Webkul\Shop\Services\SkillAudit\SkillVersionState;
 use Webkul\Shop\Services\SkillPackage\PackageInspector;
 use Webkul\Shop\Services\SkillSupply\AssetUploadResult;
@@ -43,12 +46,28 @@ class DeveloperSkillService
         protected PackageInspector $inspector,
         protected AuditService $audit,
         protected SkillVersionState $states,
+        protected ReviewGate $gate,
+        protected OperationLogger $ops,
     ) {}
 
     /**
      * 开发者的技能挂在这个分类下（categories 表 slug='skill'）。
      */
     protected const SKILL_CATEGORY_SLUG = 'skill';
+
+    /**
+     * 开发者「申请上架」的**交接信号** —— 写进 `operation_log.action` 的值（任务卡 S-3a）。
+     *
+     * ⚠ 这个字符串是**唯一定义处**：门户写入（本类）、运营审核台读取（SkillReviewController）
+     *   都引用它。两边各写一份字面量迟早漂移 —— 读的那边会静默读不到（队列上再也标不出
+     *   "开发者已申请上架"），且不会报错。
+     */
+    public const ACTION_LISTING_REQUESTED = 'skill.listing.requested';
+
+    /**
+     * 留痕/信号的目标类型 —— 信号挂在**版本**上（闸门是逐版本判的）。
+     */
+    public const TARGET_SKILL_VERSION = 'skill_version';
 
     // ==================== 归属解析（安全唯一入口） ====================
 
@@ -491,6 +510,165 @@ class DeveloperSkillService
             'code'    => 'OFFLINED',
             'message' => '技能已下架（只停新增销售，已售授权不受影响）。',
         ];
+    }
+
+    // ==================== 申请上架（交接信号 · 任务卡 S-3a） ====================
+
+    /**
+     * 申请上架 —— 开发者把「闸门已过、但还没上架」的版本**交接给运营**。
+     *
+     * **为什么只是一个信号，而不是发布**：发布 = 承担交易与合规责任的对外动作。
+     *   2026-10-16 拍板「上架权归运营」——开发者侧只给「申请上架」这一个**交接信号**，
+     *   不做自助上架。所以本方法刻意：
+     *     · 只在**闸门已过**、且商品**尚不可售**时受理；
+     *     · 作用**仅限**写一条 `operation_log`（谁 / 何时 / 哪个技能与版本）——
+     *       绝不改 `skill_versions.status`、不改商品 `status`、**不调用 `SkillPublisher`**；
+     *     · **幂等**：同一版本重复申请不产生第二条信号，如实回"已于 … 申请过"。
+     *
+     * 归属过滤在查询层：技能不属于我、或版本不属于该技能 → null（控制器 404）。
+     *
+     * @return array{ok:bool,code:string,message:string,requested_at?:string|null}|null
+     */
+    public function requestListing(DeveloperProfile $profile, int $productId, int $versionId): ?array
+    {
+        // 技能归属（查询层过滤）：不属于我 → null
+        if (! $this->findOwnedSkill($profile, $productId)) {
+            return null;
+        }
+
+        // 版本归属（查询层）：必须属于这个技能、且属于本主体 —— 三条件一起过滤，
+        // 避免"拿自己的技能 id 配别人的版本 id"这种拼接越权。
+        $version = SkillVersion::query()
+            ->where('id', $versionId)
+            ->where('product_id', $productId)
+            ->where('seller_id', $profile->seller_id)
+            ->first();
+
+        if (! $version) {
+            return null;
+        }
+
+        // 幂等：同版本已有信号 → 不重复写，如实回上次时间（不静默、不报错）
+        $existing = $this->listingRequestLog($versionId);
+
+        if ($existing) {
+            return [
+                'ok'           => true,
+                'code'         => 'ALREADY_REQUESTED',
+                'message'      => '已于 '.$existing->created_at->format('Y-m-d H:i').' 申请上架，请等待平台处理。',
+                'requested_at' => $existing->created_at->format('Y-m-d H:i'),
+            ];
+        }
+
+        // 闸门必须已过 —— 复用唯一定义处 `ReviewGate::evaluate()`，门户/后台**不另判一套**
+        if (! $this->gate->evaluate($productId, $versionId)['ok']) {
+            return [
+                'ok'      => false,
+                'code'    => 'GATE_NOT_PASSED',
+                'message' => '发布闸门尚未通过，还不能申请上架。请先按「发布闸门」表补齐未通过的审核层。',
+            ];
+        }
+
+        // 商品必须**尚未可售**：已可售 = 已上架，没有可交接的东西
+        //（判据与门户「已上架」角标同源：product_flat.status，见 isProductSellable）。
+        if ($this->isProductSellable($productId)) {
+            return [
+                'ok'      => false,
+                'code'    => 'ALREADY_SELLABLE',
+                'message' => '该技能当前已可售（已上架），无需申请上架。',
+            ];
+        }
+
+        // 信号 + 留痕**同一条**：`operation_log` 既是给运营的交接信号，也是审计留痕。
+        // 走唯一入口 OperationLogger（与下架/撤回同源）。
+        $log = $this->ops->log(
+            OperationLog::ACTOR_SELLER,
+            $profile->seller_id,
+            self::ACTION_LISTING_REQUESTED,
+            self::TARGET_SKILL_VERSION,
+            $versionId,
+            [
+                'product_id' => $productId,
+                'version'    => $version->version,
+            ]
+        );
+
+        // ⚠ 这个动作的**全部意义**就是留下这条信号 —— 写不进去就等于什么都没做。
+        //   绝不静默报成"已申请"（那会让开发者以为交出去了，运营那边其实什么都没有）。
+        if (! $log) {
+            return [
+                'ok'      => false,
+                'code'    => 'SIGNAL_WRITE_FAILED',
+                'message' => '申请信号写入失败，请稍后重试（平台未收到这次申请）。',
+            ];
+        }
+
+        return [
+            'ok'           => true,
+            'code'         => 'REQUESTED',
+            'message'      => '已申请上架。审核通过 ≠ 自动上架 —— 上架由平台运营完成，请等待处理。',
+            'requested_at' => $log->created_at?->format('Y-m-d H:i'),
+        ];
+    }
+
+    /**
+     * 某版本已有的「申请上架」信号（幂等判据）。
+     */
+    public function listingRequestLog(int $versionId): ?OperationLog
+    {
+        return OperationLog::query()
+            ->where('action', self::ACTION_LISTING_REQUESTED)
+            ->where('target_type', self::TARGET_SKILL_VERSION)
+            ->where('target_id', $versionId)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * 批量取一组版本的「申请上架」时间（versionId => 'Y-m-d H:i'）——
+     * 门户详情页与运营审核台**共用同一读法**，避免逐版本查库（N+1），
+     * 也避免两处各写一份 WHERE（action 字符串漂移时就有一边读不到）。
+     *
+     * @param  array<int, int|string>  $versionIds
+     * @return array<int, string>
+     */
+    public function listingRequestedAt(array $versionIds): array
+    {
+        $versionIds = array_values(array_filter(array_map('intval', $versionIds)));
+
+        if ($versionIds === []) {
+            return [];
+        }
+
+        // 幂等保证同版本至多一条，但万一有历史多条，orderBy('id') + mapWithKeys
+        // 让**后写（更大 id）覆盖先写**，留在手里的是最新一次申请时间。
+        return OperationLog::query()
+            ->where('action', self::ACTION_LISTING_REQUESTED)
+            ->where('target_type', self::TARGET_SKILL_VERSION)
+            ->whereIn('target_id', $versionIds)
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (OperationLog $log) => [
+                (int) $log->target_id => optional($log->created_at)->format('Y-m-d H:i'),
+            ])
+            ->all();
+    }
+
+    /**
+     * 商品当前是否**可售**（= 已上架）。
+     *
+     * 判据刻意与门户「已上架」角标同源（`product_flat.status`，见 skillSummary）——
+     * 若这里另判 `visible_individually`，会出现"页面显示未上架、按钮却说已上架"的自相矛盾。
+     */
+    protected function isProductSellable(int $productId): bool
+    {
+        $status = DB::table('product_flat')
+            ->where('product_id', $productId)
+            ->where('channel', core()->getDefaultChannelCode())
+            ->where('locale', $this->defaultLocaleCode())
+            ->value('status');
+
+        return (int) $status === 1;
     }
 
     // ==================== 内部 ====================
