@@ -31,9 +31,14 @@ class SkillController extends Controller
 
     public function index(Request $request)
     {
+        $profile = $this->profile($request);
+
         return view('shop::dev.skills.index', [
-            'profile' => $this->profile($request),
-            'skills'  => $this->skills->listSkills($this->profile($request)),
+            'profile' => $profile,
+            'skills'  => $this->skills->listSkills($profile),
+            // 列表页的「创建技能」按钮据此决定：未实名不跳创建页，改为打开实名引导弹窗（S-12d）。
+            // 判定统一走 service（唯一实现），门户不另判一套。弹窗只是引导，服务端拦截在 store()。
+            'createGate' => $this->skills->canCreateSkill($profile),
         ]);
     }
 

@@ -7,9 +7,11 @@
 
     <div class="card" style="max-width:560px">
         <p class="muted">
-            提交后即完成入驻。<strong>实名审核（公司认证 + 操作人认证两层）由平台完成</strong>；
-            <strong>两层实名通过后才能创建技能</strong>，未通过实名也不能上架。
-            提审（提交审核）不受实名影响 —— 但前提是先能建出技能。
+            提交后即完成入驻。<strong>实名审核（公司认证 + 操作人认证两层）由平台人工完成</strong>；
+            <strong>两层实名都通过后才能创建技能</strong>，未通过实名也不能上架。
+            实名资料在入驻后到
+            <a href="{{ route('shop.dev.realname') }}">实名认证</a>
+            页提交（公司主体名 + 统一社会信用代码 + 营业执照；操作人姓名 + 证件号）。
         </p>
 
         <form method="POST" action="{{ route('shop.dev.onboarding.store') }}">

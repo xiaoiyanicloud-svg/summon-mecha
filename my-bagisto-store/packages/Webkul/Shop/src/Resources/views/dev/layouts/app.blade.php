@@ -51,6 +51,7 @@
         @auth('developer')
             <a href="{{ route('shop.dev.dashboard') }}" class="{{ request()->routeIs('shop.dev.dashboard') ? 'on' : '' }}">总览</a>
             <a href="{{ route('shop.dev.skills.index') }}" class="{{ request()->routeIs('shop.dev.skills.*') ? 'on' : '' }}">我的技能</a>
+            <a href="{{ route('shop.dev.realname') }}" class="{{ request()->routeIs('shop.dev.realname*') ? 'on' : '' }}">实名认证</a>
             <a href="{{ route('shop.dev.audits.index') }}" class="{{ request()->routeIs('shop.dev.audits.*') ? 'on' : '' }}">审核状态</a>
             <a href="{{ route('shop.dev.notifications.index') }}" class="{{ request()->routeIs('shop.dev.notifications.*') ? 'on' : '' }}">
                 通知@if (($devUnreadCount ?? 0) > 0)<span class="nav-badge">{{ $devUnreadCount }}</span>@endif

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Webkul\Shop\Http\Controllers\Dev\NotificationController;
 use Webkul\Shop\Http\Controllers\Dev\OnboardingController;
 use Webkul\Shop\Http\Controllers\Dev\PortalController;
+use Webkul\Shop\Http\Controllers\Dev\RealnameController;
 use Webkul\Shop\Http\Controllers\Dev\SkillController;
 
 /**
@@ -55,6 +56,16 @@ Route::controller(OnboardingController::class)->prefix($devPrefix)->middleware('
 Route::controller(OnboardingController::class)->prefix($devPrefix)->middleware('developer')->group(function () {
     Route::get('onboarding/agreements', 'agreements')->name('shop.dev.agreements');
     Route::post('onboarding/agreements', 'signAgreements')->name('shop.dev.agreements.sign');
+});
+
+/**
+ * 实名认证（S-12b）—— 与「我的技能」同门槛（已入驻且状态正常）。
+ * 门户实名提交页是「弹窗引导」的落点：`shop.dev.realname` 这个路由名必须存在，
+ * 否则未实名开发者点弹窗里的「去实名」会指向一个死链（拍板 §11.8 拆卡理由）。
+ */
+Route::controller(RealnameController::class)->prefix($devPrefix)->middleware('developer')->group(function () {
+    Route::get('realname', 'form')->name('shop.dev.realname');
+    Route::post('realname', 'store')->name('shop.dev.realname.store');
 });
 
 Route::controller(SkillController::class)->prefix($devPrefix)->middleware('developer')->group(function () {

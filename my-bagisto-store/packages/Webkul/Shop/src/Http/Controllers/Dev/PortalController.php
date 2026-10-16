@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\Dev;
 use Illuminate\Http\Request;
 use Webkul\Shop\Http\Controllers\Controller;
 use Webkul\Shop\Models\DeveloperProfile;
+use Webkul\Shop\Services\Developer\DeveloperSkillService;
 use Webkul\Shop\Services\Ops\OpsMetricsService;
 
 /**
@@ -17,7 +18,10 @@ use Webkul\Shop\Services\Ops\OpsMetricsService;
  */
 class PortalController extends Controller
 {
-    public function __construct(protected OpsMetricsService $metrics) {}
+    public function __construct(
+        protected OpsMetricsService $metrics,
+        protected DeveloperSkillService $skills,
+    ) {}
     public function showLogin()
     {
         if (auth('developer')->check()) {
@@ -92,6 +96,9 @@ class PortalController extends Controller
             'metrics'           => $metrics,
             'gaps'              => $gaps,
             'subjectIncomplete' => $profile && ! $profile->seller_id,
+            // 未实名时 dashboard 的「创建技能」按钮改为打开实名引导弹窗（S-12d）、
+            // 并显示一条非阻断提示条（R3）。判定统一走 service（唯一实现）。
+            'createGate'        => $profile ? $this->skills->canCreateSkill($profile) : null,
         ]);
     }
 }

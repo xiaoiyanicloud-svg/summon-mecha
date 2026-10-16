@@ -140,6 +140,9 @@ Route::prefix('customers')->group(function () {
         Route::get('', 'index')->name('admin.customers.developers.index');
         Route::get('{id}', 'show')->whereNumber('id')->name('admin.customers.developers.show');
 
+        // 营业执照附件下载（S-12b）—— 私有盘没有公开 URL，运营经本鉴权路由查看
+        Route::get('{id}/cert', 'downloadCert')->whereNumber('id')->name('admin.customers.developers.cert.download');
+
         Route::post('{id}/realname/approve', 'approveRealname')->whereNumber('id')->name('admin.customers.developers.realname.approve');
         Route::post('{id}/realname/reject', 'rejectRealname')->whereNumber('id')->name('admin.customers.developers.realname.reject');
         Route::post('{id}/status', 'toggleStatus')->whereNumber('id')->name('admin.customers.developers.status');

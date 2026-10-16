@@ -124,6 +124,81 @@
         </div>
     </div>
 
+    {{-- 实名两层资料（S-12b）—— 运营**只读**展示，看得见再决定批不批（逐层审批台 S-12c 再做） --}}
+    <div class="mt-4 box-shadow rounded bg-white p-4 dark:bg-gray-900">
+        <p class="mb-1 font-semibold text-gray-800 dark:text-white">实名两层资料</p>
+        <p class="mb-3 text-xs text-amber-700">
+            ⚠ 这是开发者在门户提交的实名资料（<b>结构化文本 + 营业执照附件</b>）。
+            平台<b>人工审核</b>，<b>未接入</b> OCR / 工商核验 —— 「通过」≠ 已完成身份核验。
+        </p>
+
+        @php
+            $layer = function (?string $status): array {
+                return match ($status) {
+                    \Webkul\Shop\Models\DeveloperProfile::REALNAME_APPROVED => ['已通过', 'bg-green-100 text-green-800'],
+                    \Webkul\Shop\Models\DeveloperProfile::REALNAME_REJECTED => ['已驳回', 'bg-red-100 text-red-800'],
+                    \Webkul\Shop\Models\DeveloperProfile::REALNAME_PENDING  => ['待审核', 'bg-amber-100 text-amber-800'],
+                    default                                                 => ['未提交', 'bg-gray-100 text-gray-700'],
+                };
+            };
+        @endphp
+
+        <table class="w-full text-sm">
+            <tbody>
+                <tr class="border-b dark:border-gray-800">
+                    <td class="py-2 text-xs text-gray-500">企业层（公司认证）</td>
+                    <td class="py-2">
+                        @php [$l1, $c1] = $layer($profile->company_realname_status); @endphp
+                        <span class="rounded px-2 py-0.5 text-xs {{ $c1 }}">{{ $l1 }}</span>
+                    </td>
+                </tr>
+                <tr class="border-b dark:border-gray-800">
+                    <td class="py-2 text-xs text-gray-500">公司主体名</td>
+                    <td class="py-2">{{ $profile->company_name ?? '—' }}</td>
+                </tr>
+                <tr class="border-b dark:border-gray-800">
+                    <td class="py-2 text-xs text-gray-500">统一社会信用代码</td>
+                    <td class="py-2">{{ $profile->company_credit_code ?? '—' }}</td>
+                </tr>
+                <tr class="border-b dark:border-gray-800">
+                    <td class="py-2 text-xs text-gray-500">营业执照附件</td>
+                    <td class="py-2">
+                        @if ($profile->company_cert_name)
+                            <span>{{ $profile->company_cert_name }}</span>
+                            <a href="{{ route('admin.customers.developers.cert.download', $profile->id) }}"
+                               class="ml-2 text-blue-600 hover:underline">下载</a>
+                        @else
+                            <span class="text-gray-500">未提交</span>
+                        @endif
+                    </td>
+                </tr>
+                <tr class="border-b dark:border-gray-800">
+                    <td class="py-2 text-xs text-gray-500">操作人层（操作人认证）</td>
+                    <td class="py-2">
+                        @php [$l2, $c2] = $layer($profile->operator_realname_status); @endphp
+                        <span class="rounded px-2 py-0.5 text-xs {{ $c2 }}">{{ $l2 }}</span>
+                    </td>
+                </tr>
+                <tr class="border-b dark:border-gray-800">
+                    <td class="py-2 text-xs text-gray-500">操作人姓名</td>
+                    <td class="py-2">{{ $profile->operator_name ?? '—' }}</td>
+                </tr>
+                <tr class="border-b dark:border-gray-800">
+                    <td class="py-2 text-xs text-gray-500">操作人证件号</td>
+                    <td class="py-2">{{ $profile->operator_cert_no ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="py-2 text-xs text-gray-500">最近提交时间</td>
+                    <td class="py-2 text-xs">{{ $profile->realname_submitted_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="mt-3 text-xs text-gray-500">
+            本卡只做<b>只读</b>展示；<b>逐层审批</b>与留痕是 S-12c。一期仍用下方「人工确认通过」置<b>总状态</b>。
+        </p>
+    </div>
+
     {{-- 账号状态 --}}
     <div class="mt-4 box-shadow rounded bg-white p-4 dark:bg-gray-900">
         <p class="mb-2 font-semibold text-gray-800 dark:text-white">账号处置</p>

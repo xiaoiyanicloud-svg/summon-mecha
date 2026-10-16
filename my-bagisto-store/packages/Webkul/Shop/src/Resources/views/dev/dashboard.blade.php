@@ -12,6 +12,33 @@
             <a class="btn" href="{{ route('shop.dev.onboarding') }}">开始入驻</a>
         </div>
     @else
+        {{--
+            R3 · 存量非阻断提示：未实名的开发者看到一条**只提示、不阻断**的横条。
+            **不动其已有技能**（存量不追溯，拍板 §11.6）。可关闭 —— 纯 CSS（`:target` + 相邻兄弟
+            选择器），不引 JS：点「×」把 fragment 设成 `#hide-realname-banner`，
+            空 span 命中 `:target` → 紧邻的横条隐藏。
+        --}}
+        @if ($createGate && ! $createGate['ok'])
+            <style>
+                .realname-banner {
+                    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                    background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+                    border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px;
+                }
+                .realname-banner .spacer { flex: 1; }
+                .realname-banner-close { color: #92400e; font-size: 20px; line-height: 1; padding: 0 4px; }
+                /* 关闭：命中隐藏锚点时，隐藏紧邻的横条（纯 CSS，无 JS） */
+                #hide-realname-banner:target + .realname-banner { display: none; }
+            </style>
+            <span id="hide-realname-banner"></span>
+            <div class="realname-banner">
+                <span>你还没有完成<strong>实名认证</strong>，暂时不能<strong>创建新技能</strong>；已有技能不受影响。</span>
+                <span class="spacer"></span>
+                <a class="btn small" href="{{ route('shop.dev.realname') }}">去实名</a>
+                <a class="realname-banner-close" href="#hide-realname-banner" aria-label="关闭提示">×</a>
+            </div>
+        @endif
+
         <div class="card">
             <h2>开发者信息</h2>
             <table>
@@ -42,7 +69,12 @@
 
             <div style="margin-top:16px">
                 <a class="btn" href="{{ route('shop.dev.skills.index') }}">我的技能</a>
-                <a class="btn ghost" href="{{ route('shop.dev.skills.create') }}">创建技能</a>
+                {{-- 未实名：不跳创建页，改为打开实名引导弹窗（S-12d）；已实名正常跳转 --}}
+                @if ($createGate && $createGate['ok'])
+                    <a class="btn ghost" href="{{ route('shop.dev.skills.create') }}">创建技能</a>
+                @else
+                    <a class="btn ghost" href="#realname-modal">创建技能</a>
+                @endif
             </div>
         </div>
 
@@ -106,6 +138,11 @@
                     这些数字都只统计<strong>你自己的</strong>技能，实时取自平台数据库。
                 </p>
             </div>
+        @endif
+
+        {{-- 未实名时的实名引导弹窗（纯 CSS :target，partial 复用） --}}
+        @if ($createGate && ! $createGate['ok'])
+            @include('shop::dev.partials.realname-modal')
         @endif
     @endif
 @endsection

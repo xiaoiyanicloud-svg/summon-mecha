@@ -4,10 +4,12 @@ namespace Webkul\Admin\Http\Controllers\Customers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Webkul\Admin\DataGrids\Customers\DeveloperProfileDataGrid;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\OperationLog;
+use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Services\Ops\OperationLogger;
 
 /**
@@ -122,6 +124,29 @@ class DeveloperController extends Controller
         session()->flash('success', $next === DeveloperProfile::STATUS_ACTIVE ? '已恢复。' : '已停用。');
 
         return redirect()->route('admin.customers.developers.show', $id);
+    }
+
+    /**
+     * 下载开发者的营业执照附件（S-12b）—— 运营**只读**查看用。
+     *
+     * ⚠ 附件在**私有盘**（`SkillAsset::disk()`），没有公开 URL；只能经本鉴权路由流式下载。
+     *   `company_cert_path` **绝不出现在任何买家侧接口**里（本方法只在 Admin 后台）。
+     *   文件不存在（历史主体没提交过 / 已被覆盖删掉）→ 如实提示，不 500。
+     */
+    public function downloadCert(int $id)
+    {
+        $profile = DeveloperProfile::findOrFail($id);
+
+        $path = $profile->company_cert_path;
+
+        if (! $path || ! Storage::disk(SkillAsset::disk())->exists($path)) {
+            session()->flash('error', '营业执照附件不存在（可能未提交，或已被后续提交覆盖）。');
+
+            return redirect()->route('admin.customers.developers.show', $id);
+        }
+
+        return Storage::disk(SkillAsset::disk())
+            ->download($path, $profile->company_cert_name ?: basename($path));
     }
 
     protected function log(Request $request, string $action, int $targetId, array $payload): void

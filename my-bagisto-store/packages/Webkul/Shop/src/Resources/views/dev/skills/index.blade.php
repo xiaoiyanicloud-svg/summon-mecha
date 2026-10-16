@@ -5,7 +5,13 @@
 @section('content')
     <div style="display:flex;align-items:center;justify-content:space-between">
         <h1>我的技能</h1>
-        <a class="btn" href="{{ route('shop.dev.skills.create') }}">创建技能</a>
+        {{-- 未实名：不跳创建页，改为打开实名引导弹窗（S-12d）；已实名正常跳转。
+             判定取自 createGate（DeveloperSkillService::canCreateSkill() 唯一实现），门户不重算。 --}}
+        @if ($createGate['ok'])
+            <a class="btn" href="{{ route('shop.dev.skills.create') }}">创建技能</a>
+        @else
+            <a class="btn" href="#realname-modal">创建技能</a>
+        @endif
     </div>
 
     <div class="card">
@@ -29,4 +35,9 @@
             <p class="muted">还没有技能。点右上角「创建技能」开始。</p>
         @endforelse
     </div>
+
+    {{-- 未实名时的实名引导弹窗（纯 CSS :target，partial 复用） --}}
+    @unless ($createGate['ok'])
+        @include('shop::dev.partials.realname-modal')
+    @endunless
 @endsection

@@ -411,7 +411,9 @@ class DeveloperSkillService
             ];
         }
 
-        // 唯一的流程闸门：协议必须签全（realname 审核不拦，见 DeveloperProfile 注释）
+        // 提审的**唯一**流程闸门：协议必须签全。
+        // ⚠ 实名**不拦提审**，但**拦建技能**（S-12a）—— 提审的前提是先建出技能，
+        //   所以"未实名"实际走不到这里（见 DeveloperProfile 类注释）。
         if (! $profile->hasSignedAllAgreements()) {
             return [
                 'ok'      => false,

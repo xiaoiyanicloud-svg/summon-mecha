@@ -29,9 +29,14 @@ use Webkul\Customer\Models\Customer;
  * ⚠ 实名**拆两层**（S-12a）：除总状态 `realname_status` 外，另有
  *   `company_realname_status`（公司认证）与 `operator_realname_status`（操作人认证）两列。
  *   两层由 `recomputeRealnameStatus()` **显式重算**回总状态（两层都 approved → approved；
- *   任一层 rejected → rejected；否则 pending）。本卡**只加列与方法、不接调用点** ——
- *   实名提交（S-12b）与运营两层审批台（S-12c）后续接入。
+ *   任一层 rejected → rejected；否则 pending）。S-12a 只加列与方法；**S-12b 接入提交调用点**
+ *   （开发者门户实名提交页 → `DeveloperRealnameService::submit()` 写两层=pending 并重算总状态）；
+ *   运营两层审批台（S-12c）后续接入。
  *   **存量不追溯**：历史主体只写了 realname_status=approved、两层列为 NULL，照旧放行。
+ *
+ *   S-12b 另加了四个**结构化文本**列（`company_name` / `company_credit_code` /
+ *   `operator_name` / `operator_cert_no`）—— 拍板 E2 的口径是"加列、**不复用 `cert_payload`**、
+ *   不建独立表"，故文本字段落在这里，**不可**改塞进 cert_payload。
  */
 class DeveloperProfile extends Model
 {
@@ -72,6 +77,11 @@ class DeveloperProfile extends Model
         'realname_submitted_at',
         'company_cert_path',
         'company_cert_name',
+        // S-12b · 实名「结构化文本」（E2：加列、不复用 cert_payload、不建表）
+        'company_name',
+        'company_credit_code',
+        'operator_name',
+        'operator_cert_no',
         'cert_payload',
         'agreement_signed_at',
         'api_quota',
