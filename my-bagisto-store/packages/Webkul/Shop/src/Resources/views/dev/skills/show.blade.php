@@ -70,7 +70,11 @@
                     <tr><th>载体</th><th>文件</th><th>大小</th><th>状态</th></tr>
                     @foreach ($version->assets as $asset)
                         <tr>
-                            <td>{{ $asset->carrier_type }}</td>
+                            {{-- 中文标签集中取自 SkillAsset::CARRIER_LABELS（唯一来源），不在视图里另抄一份映射 --}}
+                            <td>
+                                {{ \Webkul\Shop\Models\SkillAsset::CARRIER_LABELS[$asset->carrier_type] ?? $asset->carrier_type }}
+                                <span class="muted">（{{ $asset->carrier_type }}）</span>
+                            </td>
                             <td>{{ $asset->file_name ?: '—' }}</td>
                             <td>{{ $asset->file_size ? number_format($asset->file_size / 1024, 1).' KB' : '—' }}</td>
                             <td>{{ $asset->fileExists() ? '已落盘' : '无文件' }}</td>
@@ -88,9 +92,11 @@
                     <div>
                         <label>载体类型</label>
                         <select name="carrier_type" required>
-                            {{-- 白名单取自模型常量，不在视图里另写一份 --}}
+                            {{-- 白名单取自模型常量，不在视图里另写一份；中文标签同样取自 CARRIER_LABELS --}}
                             @foreach (\Webkul\Shop\Models\SkillAsset::CARRIER_TYPES as $type)
-                                <option value="{{ $type }}" @selected($type === 'file')>{{ $type }}</option>
+                                <option value="{{ $type }}" @selected($type === 'file')>
+                                    {{ \Webkul\Shop\Models\SkillAsset::CARRIER_LABELS[$type] ?? $type }}（{{ $type }}）
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -99,6 +105,9 @@
                         <input type="file" name="file">
                     </div>
                 </div>
+                <p class="muted" style="margin-top:8px">
+                    载体由开发者上传/登记，平台不做自动编译；多机型适配需自行产出后登记。
+                </p>
                 <div style="margin-top:12px">
                     <button type="submit" class="btn small">上传</button>
                 </div>

@@ -139,11 +139,17 @@ const STATUS_TEXT = {
 	expiring: '回收中',
 }
 
+// 载体类型 → 中文标签。⚠ 与后端 `SkillAsset::CARRIER_LABELS` **语义须一致**（两门语言，
+// 无法共用一份常量，改动时两处一起改）。v3.4 新增的三类此前在此缺失，导致 carrierLabel()
+// 返回原始英文码（如 app_package）、买家看不懂（有 || c 兜底，不是空白）。
 const CARRIER_TEXT = {
 	file: '文件包',
 	cloud_config: '云端配置',
 	remote_service: '远程协助',
 	api_bundle: '接口包',
+	motion_data: '动作数据',
+	app_package: '应用包',
+	vendor_package: '厂商资源包',
 }
 
 // B-6 · 下发操作码 —— **与后端 DeployTask::OPERATIONS 对齐**(值即契约,改名可以、改值须报批)。

@@ -231,6 +231,16 @@ final class ApiErrorCode
     public const SKILL_IMPORT_FAILED = 'SKILL_IMPORT_FAILED';
     public const SKILL_L0_AUDIT_FAILED = 'SKILL_L0_AUDIT_FAILED';
 
+    /**
+     * 编译(转换层)：**全部**目标机型都没能登记成功（D-9）。
+     *
+     * 起因：`POST /skill-supply/versions/{id}/compile` 此前无论 per-model 结果如何都返
+     * 200 + "编译已登记。" —— 于是 kind 不支持 / 清单缺段这类**调用方可修正**的输入问题，
+     * HTTP 层完全看不见，脚本消费者必须解析 body 才知道一件都没登记上。
+     * 全失败时改用 422 + 本码（与 `SKILL_PACKAGE_INVALID` 同一处置逻辑）。
+     */
+    public const SKILL_COMPILE_NOTHING_REGISTERED = 'SKILL_COMPILE_NOTHING_REGISTERED';
+
     /** 版本当前状态不允许提审 —— 只有「草稿」/「被驳回」可提（堵重复提审已发布版本）。 */
     public const VERSION_NOT_SUBMITTABLE = 'VERSION_NOT_SUBMITTABLE';
 
@@ -253,7 +263,9 @@ final class ApiErrorCode
     public const VERSION_HAS_NO_ASSET = 'VERSION_HAS_NO_ASSET';
 
     /**
-     * 声明为文件的交付物在存储上取不到 → 不得上架（见 `SkillPublisher::ERR_ASSET_FILE_MISSING`）。
+     * 声明为需落盘载体（file / motion_data / app_package / vendor_package）的交付物
+     * 在存储上取不到 → 不得上架（见 `SkillPublisher::ERR_ASSET_FILE_MISSING`；D-9 起
+     * 判据从"只认 file"放宽到全部需落盘载体）。
      *
      * ⚠ 与 `SKILL_ASSET_FILE_MISSING` 分开：那个是**下载时**发现文件没了（用户已经买了、
      *   要人工介入）；这个是**发布前置**就挡住了（还没卖出去，运营自己重传即可）。

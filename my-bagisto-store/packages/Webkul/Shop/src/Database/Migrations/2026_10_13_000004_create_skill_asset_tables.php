@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Schema;
  *  skill_category / skill_tag / skill_tag_pivot —— 技能类目与标签(驱动筛选)
  *  skill_search_index   —— 搜索物化表(MySQL 5.7 不能索引 JSON,必须拍平成列)
  *  skill_build          —— 技能编译记录(中立定义 → 各机型载体,§4.20)
+ *                          ⚠ 口径更正(2026-10-16 · D-9):本表记的是**编排意图/登记**,
+ *                          不是已产出的载体 —— 产物需外部重定向工具或人工回填
+ *                          (`artifact_asset_id`),平台侧**当前没有生产者**,故 status
+ *                          恒为 pending。本表**不在交付链路上**(交付只认 skill_assets)。
+ *                          此处仅更正注释,**表结构一字未动**。
  *  skill_quality        —— 质量分级(过审后好/一般,§4.21;不合格不在此表)
  */
 return new class extends Migration

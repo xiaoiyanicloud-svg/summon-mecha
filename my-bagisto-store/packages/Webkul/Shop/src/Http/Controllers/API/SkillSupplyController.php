@@ -80,6 +80,14 @@ class SkillSupplyController extends APIController
 
     /**
      * 编译(转换层):中立清单 → 目标机型载体。
+     *
+     * ⚠ 本端点报的是**登记**结果,不是"编译完成"(D-9 口径更正)。`skill_build` 记的是
+     *   编排意图,真正的产物需外部重定向工具产出或人工回填 —— 平台侧当前没有生产者。
+     *   三种结果分开如实说,不再一律 200 + "编译已登记。":
+     *     · 全部机型 failed → **422** + `SKILL_COMPILE_NOTHING_REGISTERED`
+     *       (kind 不支持 / 清单缺段是**调用方可修正**的输入问题,HTTP 层应当看得见);
+     *     · 部分 failed     → 200,message **点名**哪些机型没登记、为什么;
+     *     · 有 pending       → 200,message 如实说"待人工/外部产出,产物就绪前不可交付"。
      */
     public function compile(Request $request, int $versionId): JsonResponse
     {
@@ -91,7 +99,69 @@ class SkillSupplyController extends APIController
 
         $results = $this->builder->compile($versionId, $payload['manifest'], $payload['target_models']);
 
-        return response()->json(['message' => '编译已登记。', 'data' => $results]);
+        $total = count($results);
+        $failed = array_values(array_filter($results, fn (array $r) => $r['status'] === 'failed'));
+        $pending = array_values(array_filter($results, fn (array $r) => $r['status'] === 'pending'));
+
+        // 全部失败:一件都没登记上 —— 调用方可修正(换 kind / 补齐清单段),用 422 + 码,
+        // 而不是 200 里塞个"编译已登记"(后者让 HTTP 层看不见失败)。
+        if ($failed && count($failed) === $total) {
+            return $this->fail(
+                ApiErrorCode::SKILL_COMPILE_NOTHING_REGISTERED,
+                sprintf(
+                    '没有任何机型登记成功(共 %d 个目标机型全部失败):%s',
+                    $total,
+                    $this->failedModelDetails($failed)
+                ),
+                422,
+                ['data' => $results],
+            );
+        }
+
+        // 部分失败:登记到了一部分,但必须**点名**没登记上的那些与原因 —— 不允许笼统"编译已登记"。
+        if ($failed) {
+            return response()->json([
+                'message' => sprintf(
+                    '已登记 %d/%d 个机型;另有 %d 个机型未登记(%s)。',
+                    $total - count($failed),
+                    $total,
+                    count($failed),
+                    $this->failedModelDetails($failed)
+                ),
+                'data' => $results,
+            ]);
+        }
+
+        // 全部(或部分)pending:如实说清是"已登记为待产出",不是"编译完成"。
+        if ($pending) {
+            return response()->json([
+                'message' => sprintf(
+                    '已登记 %d 个机型的产出任务:待人工/外部产出,产物就绪前不可交付。',
+                    count($pending)
+                ),
+                'data' => $results,
+            ]);
+        }
+
+        // 走到这里说明有 success —— 平台侧当前没有生产者(见 SkillBuild 类注释),故现实中
+        // 不可达;保留这个真话分支,等真构建器接进来即可用,不必改本端点。
+        return response()->json([
+            'message' => sprintf('编译完成:%d 个机型已产出产物。', $total),
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * 失败机型的"model(原因)"明细串 —— 全失败与部分失败共用,保证两处措辞一致。
+     *
+     * @param  array<int, array{model: string, status: string, error: ?string}>  $failed
+     */
+    protected function failedModelDetails(array $failed): string
+    {
+        return implode('；', array_map(
+            fn (array $r) => ($r['model'] ?? '?').'('.(($r['error'] ?? '') !== '' ? $r['error'] : '未知原因').')',
+            $failed
+        ));
     }
 
     /**

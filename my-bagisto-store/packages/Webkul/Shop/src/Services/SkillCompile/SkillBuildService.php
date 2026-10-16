@@ -10,7 +10,15 @@ use Webkul\Shop\Models\SkillBuild;
  * 把一个"中立技能版本"编译成"若干目标机型的载体":
  *   中立定义 + 目标机型 → CarrierBuilder → skill_build 记录(+ 产物回填)
  *
- * 一个技能版本 → N 条 skill_build(每目标机型一条)。→ "传一次、多机型可下"由此成立。
+ * 一个技能版本 → N 条 skill_build(每目标机型一条)。
+ *
+ * ⚠ 口径更正(2026-10-16 · D-9):`skill_build` 记的是**编排意图/登记**,不是已经产出的载体。
+ *   真正把中立动作映射到各机型关节的产物(`artifact_asset_id` → skill_assets.id),
+ *   需**外部重定向工具产出或人工回填** —— **平台侧当前没有生产者**。因此受支持的
+ *   kind(motion/composite)经本服务构建后 status 恒为 `pending`,**不是**"编译完成"。
+ *   "传一次、多机型可下"是**目标**,当前并未成立:本表也**不在交付链路上**
+ *   (唯一读点是 internal.key 的回读接口 `SkillSupplyController::builds()`)。
+ *
  * 构建器可插拔(见 config/skill_builders.php),本服务只做编排 + 落库。
  */
 class SkillBuildService

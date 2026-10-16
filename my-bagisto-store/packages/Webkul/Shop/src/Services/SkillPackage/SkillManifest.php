@@ -8,6 +8,11 @@ namespace Webkul\Shop\Services\SkillPackage;
  * 这是"开发者传一份、平台转各机型"的**唯一契约**(计划 §4.20)。
  * 它只是数据的**形状**,不做校验(校验在 ManifestValidator),不做转换(在转换层)。
  *
+ * ⚠ 口径更正(2026-10-16 · D-9):"平台转各机型"是**目标**,当前并未成立 ——
+ *   转换层只做**编排与登记**(`SkillBuildService` → `skill_build` 表),真正的转换产物
+ *   需**外部重定向工具产出或人工回填**,平台侧**当前没有生产者**。这份契约锁的是
+ *   清单的**形状**,**不承诺**平台会自动把它编译成任何机型的可下发产物。
+ *
  * schema 固定为 zhaohuan.skill/v2。语言码用 `en` 对齐 Bagisto(不是 en_US)。
  */
 class SkillManifest

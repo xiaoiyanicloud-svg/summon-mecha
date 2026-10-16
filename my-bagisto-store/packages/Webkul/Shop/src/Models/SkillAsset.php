@@ -58,6 +58,41 @@ class SkillAsset extends Model
     ];
 
     /**
+     * **需要落盘**的载体 —— 这些交付物在盘上必须有文件，否则"有交付物"只是空头支票。
+     *
+     * ⚠ 与 {@see self::CARRIER_TYPES} 的区别：v3.4 新增 `motion_data` / `app_package` /
+     *   `vendor_package` 之后，**"文件类"不再等价于 `carrier_type === 'file'`**。
+     *   这 4 类都要落盘，发布前置必须查在盘性（否则一个只声明 app_package、盘上却没文件的
+     *   版本能上架：买家付钱后拿到"文件缺失"）。
+     *
+     * `cloud_config` / `remote_service` / `api_bundle` 按设计**不落盘**（只有 payload），
+     * 刻意**不在**此集合内 —— 把它们算进来会把本来正常的版本全部拦死。
+     */
+    public const FILE_BACKED_CARRIERS = [
+        self::CARRIER_FILE,
+        self::CARRIER_MOTION_DATA,
+        self::CARRIER_APP_PACKAGE,
+        self::CARRIER_VENDOR_PACKAGE,
+    ];
+
+    /**
+     * 载体类型 → 中文标签（可见化的**唯一** PHP 来源）。
+     *
+     * 用途：开发者门户的交付物表等需要把 `carrier_type` 渲染成人话
+     * （"文件包"而不是 `file`）。⚠ 别在视图里再抄一份映射 —— 抄一份就会有两份各自漂移。
+     * （C 端 `pages/mine/skills.vue` 是另一门语言，另有一份 JS 映射，两处**语义须一致**。）
+     */
+    public const CARRIER_LABELS = [
+        self::CARRIER_FILE           => '文件包',
+        self::CARRIER_CLOUD_CONFIG   => '云端配置',
+        self::CARRIER_REMOTE_SERVICE => '远程协助',
+        self::CARRIER_API_BUNDLE     => '接口包',
+        self::CARRIER_MOTION_DATA    => '动作数据',
+        self::CARRIER_APP_PACKAGE    => '应用包',
+        self::CARRIER_VENDOR_PACKAGE => '厂商资源包',
+    ];
+
+    /**
      * 私密盘名 —— 技能包不能走 public。
      *
      * ⚠ 这是**默认值**，不是唯一答案：实际用哪个盘由 `config('skill_delivery.asset_disk')` 决定
@@ -122,10 +157,26 @@ class SkillAsset extends Model
 
     /**
      * 是否是文件类载体。
+     *
+     * ⚠ 这只认 `carrier_type === 'file'`（D-7 · ⑨ 起，"审的就是发的"这条判据——
+     *   包指纹与 C 端鉴权下载——只针对它）。**不要**把 v3.4 的新载体（app_package 等）
+     *   并进这里：那会污染指纹口径（指纹掺进没有字节的东西就不再蕴含"字节相同"）。
+     *   要判"需不需要落盘、盘上有没有"，用 {@see self::isFileBacked()} / {@see self::fileExists()}。
      */
     public function isFile(): bool
     {
         return $this->carrier_type === self::CARRIER_FILE;
+    }
+
+    /**
+     * 是否是**需要落盘**的载体（见 {@see self::FILE_BACKED_CARRIERS}）。
+     *
+     * 发布前置（`SkillPublisher::missingAssetFiles`）用它把 v3.4 新载体一并纳入
+     * "必须在盘上"的判定；`cloud_config` 等不落盘载体返回 false（豁免）。
+     */
+    public function isFileBacked(): bool
+    {
+        return in_array($this->carrier_type, self::FILE_BACKED_CARRIERS, true);
     }
 
     /**
@@ -137,11 +188,16 @@ class SkillAsset extends Model
     }
 
     /**
-     * 文件是否真实存在于私密盘。
+     * 需落盘载体在盘上是否真的有东西。
+     *
+     * 2026-10-16（D-9）：判据从 `isFile()` 放宽到 `isFileBacked()` —— v3.4 的
+     *   `app_package` / `motion_data` / `vendor_package` 同样要落盘。**file 类语义一字未变**
+     *   （`isFileBacked()` 对 `file` 恒为真），不落盘载体依旧恒为 false（`file_path` 为 NULL）。
+     * ⚠ 与 {@see self::isFile()} 的分工见其注释：指纹/下载仍走 isFile，本方法是"盘上有没有"。
      */
     public function fileExists(): bool
     {
-        return $this->isFile()
+        return $this->isFileBacked()
             && $this->file_path
             && Storage::disk(static::disk())->exists($this->file_path);
     }
