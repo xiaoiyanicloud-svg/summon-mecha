@@ -2,9 +2,11 @@
 
 namespace Webkul\Shop\Services\Deploy;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
@@ -55,6 +57,15 @@ class DeployTaskService
         'installing',
         'pending_online',
     ];
+
+    /**
+     * 建任务时,「task_no 撞 `uk_deploy_task_no`」的换号重试上限(Task S-10)。
+     *
+     * 与 `TicketController::createTicket()` 的既有上限**保持一致(5)** —— 全仓唯一一处
+     * 已成型的"造号撞唯一键 → 换号重试"写法就在那里,这里照它的口径,不另立标准。
+     * 5 次仍撞(既是概率上可忽略,也说明号池配置或时钟出了问题),就照常抛出,不吞。
+     */
+    protected const TASK_NO_RETRY_LIMIT = 5;
 
     /** 合法的状态流转(防乱序/防回退)。 */
     protected const TRANSITIONS = [
@@ -129,51 +140,79 @@ class DeployTaskService
         //   锁 device_binding 而不是 deploy_task —— 首次下发时 deploy_task 里**还没有行**,
         //   `SELECT ... FOR UPDATE` 对不存在的行不产生任何锁,两个并发请求会双双"查无重复"
         //   然后各建一条,等于没锁。
-        return DB::transaction(function () use (
-            $did, $skillId, $skillVersionId, $entitlementId, $operation,
-            $channel, $createdBy, $packageUrl, $packageHash
-        ) {
-            $this->lockDevice($did);
+        // ⚠ 造号撞唯一键 → 换号重试(Task S-10)。
+        //
+        //   任务号是 `DT` + 秒级时间戳 + 随机后缀。同一秒内**跨设备**下发并不互斥
+        //   (下面只锁各自的 device_binding 行,是刻意的),于是"两台不同设备在同一秒
+        //   抽到同一个后缀"就会撞 `uk_deploy_task_no`。此前这里**没有任何兜底** ——
+        //   裸 QueryException 直接冒到接口层 = 下发 500。这是交付主路径上的崩溃,
+        //   必须自愈,不能让用户看到一次 500。
+        //
+        //   照抄 `TicketController::createTicket()` 的既有模式(同仓唯一一处成型写法):
+        //   try 包住事务 → 捕获 QueryException → 只认本表唯一键 → 换号重试,上限一致(5)。
+        //
+        //   ⚠ 重试重跑的是整段事务,但撞号发生在 `DeployTask::create` 这**最早**的一点,
+        //     此刻事务里还没有任何副作用(dispatch 尚未执行),故重跑等价于"只重插一次"。
+        //     事务回滚保证失败那一轮不留半条记录。
+        $attempts = 0;
 
-            $existing = $this->findOpenTask($did, $skillVersionId, $operation);
+        while (true) {
+            try {
+                return DB::transaction(function () use (
+                    $did, $skillId, $skillVersionId, $entitlementId, $operation,
+                    $channel, $createdBy, $packageUrl, $packageHash
+                ) {
+                    $this->lockDevice($did);
 
-            if ($existing) {
-                return $existing;
+                    $existing = $this->findOpenTask($did, $skillVersionId, $operation);
+
+                    if ($existing) {
+                        return $existing;
+                    }
+
+                    // 包地址/哈希在**这唯一漏斗**里推导 —— 三个调用点(用户下发 / 试用 / 回收)
+                    // 谁都不用改,也不会各写一套(见 resolvePackage)。
+                    [$resolvedUrl, $resolvedHash] = $this->resolvePackage($skillVersionId, $operation, $packageUrl, $packageHash);
+
+                    $task = DeployTask::create([
+                        'task_no'          => $this->newTaskNo(),
+                        'did'              => $did,
+                        'channel'          => $channel,
+                        'skill_id'         => $skillId,
+                        'skill_version_id' => $skillVersionId,
+                        'entitlement_id'   => $entitlementId,
+                        'operation'        => $operation,
+                        'status'           => 'pending',
+                        'package_url'      => $resolvedUrl,
+                        'package_hash'     => $resolvedHash,
+                        'created_by'       => $createdBy,
+                    ]);
+
+                    // 「无包可下发」如实打标(任务卡 S-1):该版本没有文件类交付物时,resolvePackage
+                    //   不发出可下载的假地址,但**必须留下原因** —— 否则事后从 `package_url IS NULL`
+                    //   根本分不清"忘了填"还是"本来就没有包"。
+                    //   用 ERR_PKG_MISSING:模型里它本就同时覆盖"平台侧没分发交付物"这一情形;
+                    //   且设备空跑回报成功时,本任务会被判成空跑(不落 install_record、不进灰度成功率)。
+                    if (DeployTask::needsPackage($operation) && $skillVersionId && $resolvedHash === null) {
+                        $task->error_code = DeployTask::ERR_PKG_MISSING;
+                        $task->error_msg = '该版本没有文件类交付物,无包可下发(设备将只走状态机,不落安装事实)。';
+                        $task->save();
+                    }
+
+                    $this->dispatch($task);
+
+                    return $task->fresh();
+                });
+            } catch (QueryException $e) {
+                // 不是"本表 task_no 撞号" → 照常抛:别的原因(别的唯一约束、连接错误)不该被
+                // "换号重试"掩盖;试满上限仍撞 → 也照常抛(不留半条记录,事务已回滚)。
+                if (! $this->isTaskNoDuplicate($e) || ++$attempts >= self::TASK_NO_RETRY_LIMIT) {
+                    throw $e;
+                }
+
+                // 撞号 → 下一轮 newTaskNo() 会造一个新号再试
             }
-
-            // 包地址/哈希在**这唯一漏斗**里推导 —— 三个调用点(用户下发 / 试用 / 回收)
-            // 谁都不用改,也不会各写一套(见 resolvePackage)。
-            [$resolvedUrl, $resolvedHash] = $this->resolvePackage($skillVersionId, $operation, $packageUrl, $packageHash);
-
-            $task = DeployTask::create([
-                'task_no'          => $this->newTaskNo(),
-                'did'              => $did,
-                'channel'          => $channel,
-                'skill_id'         => $skillId,
-                'skill_version_id' => $skillVersionId,
-                'entitlement_id'   => $entitlementId,
-                'operation'        => $operation,
-                'status'           => 'pending',
-                'package_url'      => $resolvedUrl,
-                'package_hash'     => $resolvedHash,
-                'created_by'       => $createdBy,
-            ]);
-
-            // 「无包可下发」如实打标(任务卡 S-1):该版本没有文件类交付物时,resolvePackage
-            //   不发出可下载的假地址,但**必须留下原因** —— 否则事后从 `package_url IS NULL`
-            //   根本分不清"忘了填"还是"本来就没有包"。
-            //   用 ERR_PKG_MISSING:模型里它本就同时覆盖"平台侧没分发交付物"这一情形;
-            //   且设备空跑回报成功时,本任务会被判成空跑(不落 install_record、不进灰度成功率)。
-            if (DeployTask::needsPackage($operation) && $skillVersionId && $resolvedHash === null) {
-                $task->error_code = DeployTask::ERR_PKG_MISSING;
-                $task->error_msg = '该版本没有文件类交付物,无包可下发(设备将只走状态机,不落安装事实)。';
-                $task->save();
-            }
-
-            $this->dispatch($task);
-
-            return $task->fresh();
-        });
+        }
     }
 
     /**
@@ -771,9 +810,55 @@ class DeployTaskService
         app(\Webkul\Shop\Services\Deploy\GrayReleaseService::class)->evaluateFromRecords($release);
     }
 
+    /**
+     * 生成下发任务号:`DT` + 秒级时间戳 + 随机后缀(Task S-10)。
+     *
+     * ⚠ 后缀是**6 位大写 base36**(36^6 ≈ 2.18e9 档),不是唯一性保证 —— 唯一性由
+     *   `uk_deploy_task_no` + {@see self::create()} 的换号重试兜底。它只是把同一秒内
+     *   跨设备碰撞的概率压到可忽略,让重试那条路径几乎不会走到。
+     *
+     *   此前后缀是 `random_int(1000, 9999)` —— 只有 **9000 档**。秒级时间戳在同一秒内
+     *   是常量,唯一性只剩这点随机数,并发下发撞号是生日问题级别:实测(见
+     *   TestUniqueNoGuardS9Test)同秒两条就可能撞 `uk_deploy_task_no`,而当时**没有**
+     *   任何重试兜底,一次撞号就是下发接口 500。这里把熵放宽到 base36×6,再叠加兜底重试。
+     *
+     *   写法与 `TicketController::generateTicketNo()` 对齐(同为"前缀+时间戳+随机后缀"),
+     *   只是本表沿用既有 `DT` 直连(列宽 40,`DT`+12+1+6 = 21,够放)。前缀与时间戳均在,
+     *   运维仍可按 `DT` + 日期在日志里检索;`task_no` 全仓只作**不透明字符串**用,无人按位解析。
+     */
     protected function newTaskNo(): string
     {
-        return 'DT'.now()->format('ymdHis').random_int(1000, 9999);
+        return 'DT'.now()->format('ymdHis').'-'.Str::upper(Str::random(6));
+    }
+
+    /**
+     * 这次 QueryException 是不是「task_no 撞了 `uk_deploy_task_no`」—— 决定要不要换号重试。
+     *
+     * 与 `TicketController::isDuplicateKey()` **同思路**(MySQL 1062 / `Duplicate entry` /
+     * SQLite `UNIQUE constraint failed`),但**多收一道**,理由:
+     *
+     * ⚠ 换号重试的前提是"冲突由 task_no 引起,换一个号就能成"。`deploy_task` 表**当前**
+     *   唯一的唯一键确实是 `uk_deploy_task_no`,但迁移日后完全可能再加别家的唯一约束。
+     *   届时若只按"是不是唯一键冲突"判,那条**与造号无关**的冲突会被误当成撞号 ——
+     *   无谓地换号重试 5 次,最后把真实错误吞进"重试耗尽"的异常里,根因被掩盖。
+     *   故这里连**约束名/列名**一起认,只认本表这一条:
+     *     · MySQL  —— 报文含 `uk_deploy_task_no`(8.0 带上表名 `deploy_task.uk_deploy_task_no`,
+     *                 子串命中;5.7 即索引名本身);
+     *     · SQLite —— 报文含 `deploy_task.task_no`。
+     *   两者都不含 → 不是本表撞号,交回调用方照常抛(宁可少重试,也不误吞)。
+     */
+    protected function isTaskNoDuplicate(QueryException $e): bool
+    {
+        $isDuplicate = ($e->errorInfo[1] ?? null) === 1062
+            || str_contains($e->getMessage(), 'Duplicate entry')
+            || str_contains($e->getMessage(), 'UNIQUE constraint failed');
+
+        if (! $isDuplicate) {
+            return false;
+        }
+
+        return str_contains($e->getMessage(), 'uk_deploy_task_no')
+            || str_contains($e->getMessage(), 'deploy_task.task_no');
     }
 
     /**
