@@ -43,6 +43,7 @@ class DeveloperProfile extends Model
     protected $fillable = [
         'customer_id',
         'seller_id',
+        'invite_id',
         'dev_type',
         'realname_status',
         'cert_payload',
@@ -54,6 +55,7 @@ class DeveloperProfile extends Model
     protected $casts = [
         'customer_id'          => 'integer',
         'seller_id'            => 'integer',
+        'invite_id'            => 'integer',
         'cert_payload'         => 'array',
         'api_quota'            => 'array',
         'agreement_signed_at'  => 'datetime',
