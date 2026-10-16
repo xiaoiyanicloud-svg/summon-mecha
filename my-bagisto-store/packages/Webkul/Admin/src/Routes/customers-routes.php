@@ -145,6 +145,13 @@ Route::prefix('customers')->group(function () {
 
         Route::post('{id}/realname/approve', 'approveRealname')->whereNumber('id')->name('admin.customers.developers.realname.approve');
         Route::post('{id}/realname/reject', 'rejectRealname')->whereNumber('id')->name('admin.customers.developers.realname.reject');
+
+        // 逐层审批台（S-12c）—— `layer` ∈ {company, operator}（合法性在控制器用模型常量校验）。
+        // 「两层一起通过」是便捷入口，但它写**两条**痕，不是一条"总通过"。
+        Route::post('{id}/realname/layer/{layer}/approve', 'approveRealnameLayer')->whereNumber('id')->name('admin.customers.developers.realname.layer.approve');
+        Route::post('{id}/realname/layer/{layer}/reject', 'rejectRealnameLayer')->whereNumber('id')->name('admin.customers.developers.realname.layer.reject');
+        Route::post('{id}/realname/layer/approve-all', 'approveAllRealnameLayers')->whereNumber('id')->name('admin.customers.developers.realname.layer.approve_all');
+
         Route::post('{id}/status', 'toggleStatus')->whereNumber('id')->name('admin.customers.developers.status');
     });
 

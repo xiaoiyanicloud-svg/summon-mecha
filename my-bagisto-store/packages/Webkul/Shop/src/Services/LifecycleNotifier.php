@@ -145,6 +145,49 @@ class LifecycleNotifier
     }
 
     /**
+     * 开发者实名**被驳回**（S-12c）—— 运营逐层裁定后告知开发者。
+     *
+     * 收件人 = 开发者本人的 customer 账号（与 `skillReviewDecided` 同源：开发者就是那个客户，
+     * 用同一批 `notification` 行）。于是**用户侧「消息通知」页**（`API\NotificationController`
+     * 按 `recipient_type='customer'` 取全部，无 type 前缀过滤）就能看到这条 ——
+     * 开发者不必在群里追问"我到底哪一层没过、为什么没过"。
+     *
+     * ⚠ 类型用 `realname.rejected`（**刻意不带 `skill.` 前缀**）。
+     *   后果要如实说清：开发者**门户收件箱**的可见范围是 `Notification::scopeDeveloperInbox`，
+     *   它只收 `skill.%` —— 所以**这一条不会出现在门户收件箱**，只在用户侧消息中心可见。
+     *   本卡**没有**为了让它进门户而改写 D-4 定下的 `skill.%` 口径（那属未报批的读侧变更）；
+     *   这是 S-12c 如实报告的一处未闭合，最小修法见交付报告 R4 段。
+     */
+    public function developerRealnameRejected(DeveloperProfile $profile, string $layer, string $reason): void
+    {
+        $this->safe(function () use ($profile, $layer, $reason) {
+            $customerId = (int) $profile->customer_id;
+
+            // 找不到归属就不发 —— **不臆造一个收件人**
+            if (! $customerId) {
+                return;
+            }
+
+            $label = $layer === DeveloperProfile::REALNAME_LAYER_COMPANY
+                ? '企业层（公司认证）'
+                : '操作人层（操作人认证）';
+
+            $this->notifications->toCustomer(
+                $customerId,
+                'realname.rejected',
+                '实名审核未通过',
+                "你的实名资料「{$label}」未通过审核。理由：{$reason}。"
+                    .'实名未通过期间不能创建技能，也不能上架技能；修正后可重新提交。',
+                [
+                    'layer'                => $layer,
+                    'reason'               => $reason,
+                    'developer_profile_id' => $profile->id,
+                ],
+            );
+        });
+    }
+
+    /**
      * 技能已上架（任务卡 D-4）—— 发布成功后告知开发者，商品已经真正可售。
      */
     public function skillPublished(int $productId, int $versionId, string $version): void

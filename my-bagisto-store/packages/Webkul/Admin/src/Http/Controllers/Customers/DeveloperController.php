@@ -10,6 +10,7 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Services\LifecycleNotifier;
 use Webkul\Shop\Services\Ops\OperationLogger;
 
 /**
@@ -104,6 +105,76 @@ class DeveloperController extends Controller
     }
 
     /**
+     * 实名**按层**通过（S-12c）—— `layer` = 企业层 or 操作人层。
+     *
+     * 与上面 `approveRealname`（直接置总状态）**不是一回事**：这里只推进**一层**，
+     * 再由 `recomputeRealnameStatus()` 合并回总状态（唯一规则在模型里，本处不重写）。
+     * 每次动作写**一条** `operation_log`（含 layer）—— 两层动作就是两条痕，
+     * 事后能分清"哪一层是谁何时审的"。
+     */
+    public function approveRealnameLayer(int $id, string $layer)
+    {
+        $profile = $this->profileForLayerAction($id, $layer);
+
+        $this->applyLayerDecision($profile, $layer, DeveloperProfile::REALNAME_APPROVED);
+
+        session()->flash('success', $this->layerResultMessage($layer, true, $profile));
+
+        return redirect()->route('admin.customers.developers.show', $id);
+    }
+
+    /**
+     * 实名**按层**驳回（S-12c）—— **理由必填**。
+     *
+     * 校验刻意放在**任何状态变更与留痕之前**：`validate()` 抛 ValidationException 时
+     * 状态一字未改、`operation_log` 一行未写（R1 的硬要求）。
+     *
+     * 驳回后**通知开发者**（R4）：复用 `LifecycleNotifier` → `NotificationService::toCustomer`
+     * 那条线，收件人是开发者本人的 customer 账号；通知是**副作用**，写不进去也不回滚判定。
+     */
+    public function rejectRealnameLayer(Request $request, int $id, string $layer)
+    {
+        $profile = $this->profileForLayerAction($id, $layer);
+
+        $data = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $this->applyLayerDecision($profile, $layer, DeveloperProfile::REALNAME_REJECTED, $data['reason']);
+
+        app(LifecycleNotifier::class)->developerRealnameRejected($profile->fresh(), $layer, $data['reason']);
+
+        session()->flash('success', $this->layerResultMessage($layer, false, $profile->fresh()));
+
+        return redirect()->route('admin.customers.developers.show', $id);
+    }
+
+    /**
+     * 「两层一起通过」便捷按钮（S-12c）。
+     *
+     * 运营日常就是一次看两份资料，所以给一个一次点完的入口；但它**绝不是**一条"总通过"痕 ——
+     * 内部逐层调用，**两层各写一条** `operation_log`（见 R2/R3，不许为了省事合并成一条）。
+     */
+    public function approveAllRealnameLayers(int $id)
+    {
+        $profile = DeveloperProfile::findOrFail($id);
+
+        // 逐层落：每层各自 recompute + 各写一条痕
+        foreach ($this->allowedLayers() as $layer) {
+            $this->applyLayerDecision($profile, $layer, DeveloperProfile::REALNAME_APPROVED);
+        }
+
+        $profile->refresh();
+
+        session()->flash(
+            'success',
+            '两层已一并通过（企业层 / 操作人层各留一条审核痕）；实名总状态：'.$this->totalLabel($profile->realname_status).'。'
+        );
+
+        return redirect()->route('admin.customers.developers.show', $id);
+    }
+
+    /**
      * 停用 / 恢复开发者账号。
      *
      * 这是"平台能把一个开发者停下来"的手段。停用**不删数据**：
@@ -160,5 +231,114 @@ class DeveloperController extends Controller
             $payload,
             $request->ip()
         );
+    }
+
+    // ───────────────────────── S-12c · 逐层审批的内部支撑 ─────────────────────────
+
+    /**
+     * 合法的实名层 —— **只认模型上的常量**，别处不许写裸字符串 `'company'`/`'operator'`。
+     *
+     * @return array<int, string>
+     */
+    protected function allowedLayers(): array
+    {
+        return [
+            DeveloperProfile::REALNAME_LAYER_COMPANY,
+            DeveloperProfile::REALNAME_LAYER_OPERATOR,
+        ];
+    }
+
+    /**
+     * 解析并校验 `layer`，拿到要处置的主体。
+     *
+     * 非法 layer → **明确报错**（422，不改任何东西）；主体不存在 → 404（`findOrFail`）。
+     */
+    protected function profileForLayerAction(int $id, string $layer): DeveloperProfile
+    {
+        if (! in_array($layer, $this->allowedLayers(), true)) {
+            abort(422, '非法实名层级：'.$layer.'（只接受 company / operator）。');
+        }
+
+        return DeveloperProfile::findOrFail($id);
+    }
+
+    /**
+     * 层 → 列名。写操作只经这里落列，避免字符串散落。
+     */
+    protected function layerColumn(string $layer): string
+    {
+        return match ($layer) {
+            DeveloperProfile::REALNAME_LAYER_COMPANY  => 'company_realname_status',
+            DeveloperProfile::REALNAME_LAYER_OPERATOR => 'operator_realname_status',
+        };
+    }
+
+    /**
+     * 层 → 人话标签（界面、flash、留痕、通知共用一处，避免四处各写一份迟早漂移）。
+     */
+    protected function layerLabel(string $layer): string
+    {
+        return match ($layer) {
+            DeveloperProfile::REALNAME_LAYER_COMPANY  => '企业层（公司认证）',
+            DeveloperProfile::REALNAME_LAYER_OPERATOR => '操作人层（操作人认证）',
+        };
+    }
+
+    /**
+     * 总状态 → 人话标签。
+     */
+    protected function totalLabel(string $status): string
+    {
+        return match ($status) {
+            DeveloperProfile::REALNAME_APPROVED => '已通过',
+            DeveloperProfile::REALNAME_REJECTED => '已驳回',
+            DeveloperProfile::REALNAME_PENDING  => '待审核',
+            default                             => (string) $status,
+        };
+    }
+
+    /**
+     * 落一层的判定：改该层列 → `recomputeRealnameStatus()` 重算总状态 → 存 → **写一条痕**。
+     *
+     * 单层动作与「两层一起通过」都走这里：后者调两次 = 两条痕（这是刻意的，不许合并）。
+     */
+    protected function applyLayerDecision(DeveloperProfile $profile, string $layer, string $status, ?string $reason = null): void
+    {
+        $profile->{$this->layerColumn($layer)} = $status;
+
+        // R2：每次动作后显式重算总状态（两层都 approved → approved；任一层 rejected → rejected；否则 pending）
+        $profile->recomputeRealnameStatus();
+        $profile->save();
+
+        $this->log(
+            request(),
+            $status === DeveloperProfile::REALNAME_APPROVED
+                ? 'developer.realname.layer.approve'
+                : 'developer.realname.layer.reject',
+            $profile->id,
+            [
+                'layer'           => $layer,
+                'layer_label'     => $this->layerLabel($layer),
+                'reason'          => $reason,
+                'realname_status' => $profile->realname_status,
+            ]
+        );
+    }
+
+    /**
+     * 单层动作后的 flash 文案 —— 如实说清后果（R5）：
+     * 驳回任一层 → 总状态 rejected → 该主体**既不能建技能、也不能上架**（有意语义，不是提示）。
+     */
+    protected function layerResultMessage(string $layer, bool $approved, DeveloperProfile $profile): string
+    {
+        $label = $this->layerLabel($layer);
+        $total = $this->totalLabel($profile->realname_status);
+
+        if ($approved) {
+            return "「{$label}」已通过；实名总状态：{$total}。";
+        }
+
+        return "已驳回「{$label}」；实名总状态：{$total}。"
+            .'驳回任一层即失去资格 —— 该主体既不能创建技能、也不能上架（需修正后重新提交）。';
     }
 }
