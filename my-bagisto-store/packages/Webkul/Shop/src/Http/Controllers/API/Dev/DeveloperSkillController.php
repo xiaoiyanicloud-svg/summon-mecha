@@ -58,7 +58,21 @@ class DeveloperSkillController extends APIController
             'description'       => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $product = $this->skills->createSkill($this->profile($request), $payload);
+        $profile = $this->profile($request);
+
+        // 主体前置（S-12a）：未过**直接不建**。码是伞码 `OWNER_NOT_VERIFIED`
+        // （在册于 ApiErrorCode，不另造），客户端**按码分支**、不靠文案；
+        // `extra.realname` 带两层状态明细，前端据此引导到该补的那一层。
+        // 归属缺失是另一回事，走 `DEVELOPER_SELLER_MISSING`（各自成码，不混）。
+        $gate = $this->skills->canCreateSkill($profile);
+
+        if (! $gate['ok']) {
+            return $this->fail($gate['code'], $gate['message'], 403, [
+                'extra' => ['realname' => $gate['realname']],
+            ]);
+        }
+
+        $product = $this->skills->createSkill($profile, $payload);
 
         if (! $product) {
             return $this->fail(ApiErrorCode::DEVELOPER_SELLER_MISSING, '开发者主体不完整。', 403);

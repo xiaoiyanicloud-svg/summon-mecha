@@ -408,6 +408,10 @@ it('命中违禁词：扫描记录落 block，且处置状态待人处理', func
     ]);
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
+
+    // S-12a：建技能前置实名（平台审核动作，测试直接置 approved）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     post(route('shop.dev.skills.store'), ['name' => '抓取技能', 'price' => 199]);
     $productId = (int) DB::table('products')->where('seller_id', $profile->seller_id)->value('id');
 

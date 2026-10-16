@@ -140,6 +140,9 @@ it('纯 API 跑完整闭环：登录→入驻→签协议→建技能→建版�
 
     expect($profile->fresh()->hasSignedAllAgreements())->toBeTrue();
 
+    // S-12a：建技能前置实名（平台审核动作，测试直接置 approved）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     // 建技能
     $skillId = null;
     postJson(route('shop.api.dev.skills.store'), [

@@ -45,6 +45,9 @@ function dgDeveloper(): array
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->firstOrFail();
 
+    // S-12a：建技能前置实名（平台审核动作，测试直接置 approved）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     post(route('shop.dev.skills.store'), ['name' => '闸门可见性技能', 'price' => 99]);
     $productId = (int) DB::table('products')->where('seller_id', $profile->seller_id)->value('id');
 

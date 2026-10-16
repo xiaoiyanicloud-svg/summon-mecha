@@ -43,6 +43,9 @@ function makeDev(string $prefix = 'dev'): array
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
 
+    // S-12a：建技能前置实名（平台审核动作，测试直接置 approved）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     post(route('shop.dev.skills.store'), ['name' => '技能-'.$prefix, 'price' => 10]);
     $productId = DB::table('products')->where('seller_id', $profile->seller_id)->value('id');
 
@@ -146,6 +149,9 @@ it('/api/dev/* 未签协议提审 → 422 AGREEMENT_REQUIRED', function () {
     post(route('shop.dev.onboarding.store'), ['dev_type' => 'personal']);
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
+
+    // S-12a：建技能前置实名 —— 本用例测的是"协议未签"，先过实名这道门才能建出技能
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
 
     post(route('shop.dev.skills.store'), ['name' => '未签技能', 'price' => 1]);
     $productId = DB::table('products')->where('seller_id', $profile->seller_id)->value('id');

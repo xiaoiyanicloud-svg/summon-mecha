@@ -141,6 +141,9 @@ it('建技能：商品归属到我的 seller，且生成 product_flat（不是�
     post(route('shop.dev.onboarding.store'), ['dev_type' => 'personal']);
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
 
+    // S-12a：建技能前置实名（平台审核动作，测试直接置 approved —— 否则会被 fail-closed 拦住）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     post(route('shop.dev.skills.store'), [
         'name'  => '抓取技能',
         'price' => 199,
@@ -170,6 +173,9 @@ it('传包 → 提审：走的是既有审核服务（audit_record 出现 L0）'
     ]);
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
+
+    // S-12a：建技能前置实名（见上）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
 
     post(route('shop.dev.skills.store'), ['name' => '抓取技能', 'price' => 199]);
     $productId = DB::table('products')->where('seller_id', $profile->seller_id)->value('id');
@@ -215,6 +221,9 @@ it('未签协议不能提审；没传包不能提审', function () {
 
     post(route('shop.dev.onboarding.store'), ['dev_type' => 'personal']);
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
+
+    // S-12a：建技能前置实名（见上）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
 
     post(route('shop.dev.skills.store'), ['name' => '技能A', 'price' => 1]);
     $productId = DB::table('products')->where('seller_id', $profile->seller_id)->value('id');

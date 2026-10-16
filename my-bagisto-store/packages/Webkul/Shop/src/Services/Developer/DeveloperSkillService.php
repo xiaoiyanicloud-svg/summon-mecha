@@ -194,14 +194,62 @@ class DeveloperSkillService
     // ==================== 写操作 ====================
 
     /**
+     * 建技能的**主体前置判定**（S-12a · 2026-10-16 拍板改判）——
+     * 门户 `shop.dev.skills.store` 与 API `shop.api.dev.skills.store` **共用这一处**，
+     * 不各写一份（两份判定迟早漂移）。
+     *
+     * 判定顺序 **归属 → 实名**，两条各自成码（不混）：
+     *   - 归属缺失（seller_id 为 NULL）→ `DEVELOPER_SELLER_MISSING`：
+     *     账号没建全，处置是"去补入驻"，**不是**实名问题，混码会把人引去实名页空转；
+     *   - 实名未通过 → `OWNER_NOT_VERIFIED`（伞码，与上架闸门同码）：
+     *     与"未签协议""归属异常"等区分开（见 ApiErrorCode::OWNER_NOT_VERIFIED）。
+     *
+     * ⚠ 判据走 `DeveloperProfile::isRealnameApproved()`（读总状态 `realname_status`）——
+     *   存量不追溯、且与上架闸门口径一致，理由见该方法注释。
+     *
+     * @return array{ok:bool, code:?string, message:?string, realname:array{company:?string, operator:?string}}
+     */
+    public function canCreateSkill(DeveloperProfile $profile): array
+    {
+        $realname = [
+            'company'  => $profile->company_realname_status,
+            'operator' => $profile->operator_realname_status,
+        ];
+
+        if (! $profile->seller_id) {
+            return [
+                'ok'       => false,
+                'code'     => 'DEVELOPER_SELLER_MISSING',
+                'message'  => '开发者主体不完整（缺少归属），无法建技能；请先完成开发者入驻。',
+                'realname' => $realname,
+            ];
+        }
+
+        if (! $profile->isRealnameApproved()) {
+            return [
+                'ok'       => false,
+                'code'     => 'OWNER_NOT_VERIFIED',
+                'message'  => '请先完成实名认证（公司认证 + 操作人认证两层均需通过），再创建技能。',
+                'realname' => $realname,
+            ];
+        }
+
+        return ['ok' => true, 'code' => null, 'message' => null, 'realname' => $realname];
+    }
+
+    /**
      * 建技能（= 建一个 Bagisto 商品，归属到我的 seller）。
      *
      * 走框架自己的 ProductRepository：EAV 属性值 / product_flat / inventory
      * 这些由它负责，不手搓（手搓必出半截商品）。
+     *
+     * ⚠ 入口**再**加一道主体前置（S-12a）：控制器层已拦，这里**漏斗式 fail-closed** ——
+     *   未来任何新调用方（如新的 API 通道、批量导入）绕开控制器时，也不会建出
+     *   "未实名主体的技能"。与控制器共用 `canCreateSkill()`，不各判一套。
      */
     public function createSkill(DeveloperProfile $profile, array $data)
     {
-        if (! $profile->seller_id) {
+        if (! $this->canCreateSkill($profile)['ok']) {
             return null;
         }
 

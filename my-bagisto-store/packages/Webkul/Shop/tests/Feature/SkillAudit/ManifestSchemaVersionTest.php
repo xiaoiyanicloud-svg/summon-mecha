@@ -214,6 +214,9 @@ it('端到端：开发者提审 v2 包 → skill_versions.manifest_schema 由 NU
 
     $profile = DeveloperProfile::where('customer_id', $customer->id)->first();
 
+    // S-12a：建技能前置实名（平台审核动作，测试直接置 approved）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
     post(route('shop.dev.skills.store'), ['name' => '版本策略技能', 'price' => 199]);
     $productId = DB::table('products')->where('seller_id', $profile->seller_id)->value('id');
 

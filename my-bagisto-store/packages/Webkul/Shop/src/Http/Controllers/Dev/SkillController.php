@@ -37,9 +37,15 @@ class SkillController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('shop::dev.skills.create');
+        $profile = $this->profile($request);
+
+        // 入口页如实说明"还差不差实名"（S-12a）—— 判定统一走 service，门户不另判一套。
+        // 弹窗是 S-12d，本卡只在页面上如实提示。
+        return view('shop::dev.skills.create', [
+            'createGate' => $this->skills->canCreateSkill($profile),
+        ]);
     }
 
     public function store(Request $request)
@@ -51,7 +57,19 @@ class SkillController extends Controller
             'description'       => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $product = $this->skills->createSkill($this->profile($request), $payload);
+        $profile = $this->profile($request);
+
+        // 主体前置（S-12a）：未过**直接不建**，并给可识别的**固定 key** 错误 ——
+        // 不靠前端弹窗兜（前端只是引导）。key 随码固定：未实名 → 'realname'，归属缺失 → 'name'。
+        $gate = $this->skills->canCreateSkill($profile);
+
+        if (! $gate['ok']) {
+            return back()->withInput()->withErrors([
+                $gate['code'] === 'OWNER_NOT_VERIFIED' ? 'realname' : 'name' => $gate['message'],
+            ]);
+        }
+
+        $product = $this->skills->createSkill($profile, $payload);
 
         if (! $product) {
             return back()->withErrors(['name' => '开发者主体不完整，无法建技能。']);

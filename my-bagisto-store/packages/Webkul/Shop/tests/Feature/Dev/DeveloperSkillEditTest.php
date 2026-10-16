@@ -48,7 +48,12 @@ function devEditOnboarded(string $prefix = 'edit'): array
         'accept_safety_commitment' => 1,
     ]);
 
-    return [$customer, DeveloperProfile::where('customer_id', $customer->id)->firstOrFail()];
+    $profile = DeveloperProfile::where('customer_id', $customer->id)->firstOrFail();
+
+    // S-12a：建技能前置实名（平台审核动作，测试直接置 approved）
+    $profile->update(['realname_status' => DeveloperProfile::REALNAME_APPROVED]);
+
+    return [$customer, $profile];
 }
 
 /** 通过门户建一个技能（走 HTTP），返回商品 id。 */
