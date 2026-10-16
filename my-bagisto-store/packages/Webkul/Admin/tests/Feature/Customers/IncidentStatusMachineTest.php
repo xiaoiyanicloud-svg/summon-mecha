@@ -15,7 +15,7 @@ use function Pest\Laravel\post;
 function a6AdminIncident(string $status = Incident::STATUS_REPORTED): Incident
 {
     return Incident::create([
-        'incident_no'    => 'I'.now()->format('ymdHis').'-'.uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'severity'       => Incident::SEVERITY_MODERATE,
         'occurred_at'    => now()->subDay(),
         'description'    => 'x',

@@ -30,7 +30,7 @@ function a6Customer(): Customer
 function a6Incident(string $status = Incident::STATUS_REPORTED): Incident
 {
     return Incident::create([
-        'incident_no'    => 'I'.now()->format('ymdHis').'-'.uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'customer_id'    => a6Customer()->id,
         'severity'       => Incident::SEVERITY_MODERATE,
         'occurred_at'    => now()->subDay(),

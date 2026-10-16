@@ -33,7 +33,7 @@ function p7Binding(): DeviceBinding
 function p7Task(DeviceBinding $binding, string $status): DeployTask
 {
     return DeployTask::create([
-        'task_no'          => 'DT'.now()->format('ymdHis').random_int(1000, 9999),
+        'task_no'          => testUniqueNo('DT'),
         'did'              => $binding->did,
         'channel'          => 'agent',
         'skill_id'         => 930000 + random_int(1, 9999),

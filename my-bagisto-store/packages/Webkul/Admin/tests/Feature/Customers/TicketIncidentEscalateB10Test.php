@@ -32,7 +32,7 @@ function b10AdminCustomer(): Customer
 function b10AdminTicket(?int $customerId = null): SupportTicket
 {
     return SupportTicket::create([
-        'ticket_no'   => 'T'.uniqid(),
+        'ticket_no'   => testUniqueNo('T'),
         'customer_id' => $customerId,
         'channel'     => 'app',
         'category'    => 'other',
@@ -102,7 +102,7 @@ it('B-10 · 工单详情页显示已定性事故的互链', function () {
     $ticket = b10AdminTicket($customer->id);
 
     $incident = Incident::create([
-        'incident_no'    => 'I'.uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'customer_id'    => $customer->id,
         'ticket_id'      => $ticket->id,
         'severity'       => 'moderate',

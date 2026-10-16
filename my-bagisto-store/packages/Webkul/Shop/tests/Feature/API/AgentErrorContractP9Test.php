@@ -32,7 +32,7 @@ function p9Headers(): array
 function p9Task(string $did, string $status): DeployTask
 {
     return DeployTask::create([
-        'task_no'    => 'P9'.now()->format('ymdHis').random_int(100, 999),
+        'task_no'    => testUniqueNo('P9'),
         'did'        => $did,
         'channel'    => 'agent',
         'skill_id'   => 930000 + random_int(1, 9999),

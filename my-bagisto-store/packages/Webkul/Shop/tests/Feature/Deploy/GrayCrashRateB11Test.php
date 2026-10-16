@@ -47,7 +47,7 @@ function b11Binding(): DeviceBinding
 function b11Task(DeviceBinding $binding, int $versionId, string $status, ?string $errorCode = null): DeployTask
 {
     return DeployTask::create([
-        'task_no'          => 'B11'.now()->format('ymdHis').random_int(100000, 999999),
+        'task_no'          => testUniqueNo('B11'),
         'did'              => $binding->did,
         'channel'          => 'agent',
         'skill_id'         => 920000 + random_int(1, 9999),

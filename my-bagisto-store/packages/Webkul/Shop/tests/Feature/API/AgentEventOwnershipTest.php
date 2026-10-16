@@ -27,7 +27,7 @@ function agentKey(): string
 function agentTask(string $did, string $status = 'dispatching'): DeployTask
 {
     return DeployTask::create([
-        'task_no'    => 'DT'.now()->format('ymdHis').random_int(1000, 9999),
+        'task_no'    => testUniqueNo('DT'),
         'did'        => $did,
         'channel'    => 'agent',
         'skill_id'   => 900000 + random_int(1, 9999),

@@ -14,7 +14,7 @@ use function Pest\Laravel\post;
 
 it('A9 · 处置留痕把说明摘要并进 payload', function () {
     $incident = Incident::create([
-        'incident_no'    => 'I'.now()->format('ymdHis').'-'.uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'severity'       => Incident::SEVERITY_MODERATE,
         'occurred_at'    => now()->subDay(),
         'description'    => 'x',
@@ -43,7 +43,7 @@ it('A9 · 处置留痕把说明摘要并进 payload', function () {
 
 it('A9 · 无说明时 payload.note 为 null(不伪造一条摘要)', function () {
     $incident = Incident::create([
-        'incident_no'    => 'I'.now()->format('ymdHis').'-'.uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'severity'       => Incident::SEVERITY_MODERATE,
         'occurred_at'    => now()->subDay(),
         'description'    => 'x',

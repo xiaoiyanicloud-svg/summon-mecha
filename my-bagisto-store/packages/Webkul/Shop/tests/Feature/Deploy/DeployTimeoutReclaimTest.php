@@ -31,7 +31,7 @@ function p6Binding(): DeviceBinding
 function p6Task(DeviceBinding $binding, string $status, ?string $createdAgo = null, ?string $deliveredAgo = null): DeployTask
 {
     $task = DeployTask::create([
-        'task_no'          => 'DT'.now()->format('ymdHis').random_int(1000, 9999),
+        'task_no'          => testUniqueNo('DT'),
         'did'              => $binding->did,
         'channel'          => 'agent',
         'skill_id'         => 920000 + random_int(1, 9999),

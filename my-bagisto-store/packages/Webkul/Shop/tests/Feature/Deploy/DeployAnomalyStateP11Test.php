@@ -56,7 +56,7 @@ function p11SkillId(): int
 function p11Task(DeviceBinding $binding, ?int $versionId, string $status = 'dispatching'): DeployTask
 {
     return DeployTask::create([
-        'task_no'          => 'P11'.now()->format('ymdHis').random_int(100, 999),
+        'task_no'          => testUniqueNo('P11'),
         'did'              => $binding->did,
         'channel'          => 'agent',
         'skill_id'         => p11SkillId(),

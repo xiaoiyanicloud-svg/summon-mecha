@@ -54,7 +54,7 @@ function p5ProductId(): int
 function p5InstallTask(DeviceBinding $binding, int $versionId, string $status = 'dispatching'): DeployTask
 {
     return DeployTask::create([
-        'task_no'          => 'DT'.now()->format('ymdHis').random_int(1000, 9999),
+        'task_no'          => testUniqueNo('DT'),
         'did'              => $binding->did,
         'channel'          => 'agent',
         'skill_id'         => p5ProductId(),

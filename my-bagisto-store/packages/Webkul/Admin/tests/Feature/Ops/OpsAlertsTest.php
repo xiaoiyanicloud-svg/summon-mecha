@@ -21,7 +21,7 @@ use function Pest\Laravel\post;
 function oaTicket(array $overrides = []): SupportTicket
 {
     return SupportTicket::create(array_merge([
-        'ticket_no'  => 'T'.now()->format('ymdHis').uniqid(),
+        'ticket_no'  => testUniqueNo('T'),
         'channel'    => 'app',
         'category'   => 'install_failed',
         'priority'   => 'normal',
@@ -42,7 +42,7 @@ function oaIncident(array $overrides = []): Incident
     unset($overrides['created_at'], $overrides['updated_at']);
 
     $incident = Incident::create(array_merge([
-        'incident_no'    => 'I'.now()->format('ymdHis').uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'severity'       => Incident::SEVERITY_MODERATE,
         'description'    => 'x',
         'responsibility' => Incident::RESPONSIBILITY_UNKNOWN,

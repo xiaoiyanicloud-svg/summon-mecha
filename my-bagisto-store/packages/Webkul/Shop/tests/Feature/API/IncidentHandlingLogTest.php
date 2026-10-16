@@ -30,7 +30,7 @@ function a5Customer(): Customer
 function a5Incident(Customer $customer): Incident
 {
     return Incident::create([
-        'incident_no'    => 'I'.now()->format('ymdHis').'-'.uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'customer_id'    => $customer->id,
         'severity'       => Incident::SEVERITY_SEVERE,
         'occurred_at'    => now(),

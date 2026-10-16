@@ -16,7 +16,7 @@ use function Pest\Laravel\post;
 function stTicket(array $overrides = []): SupportTicket
 {
     return SupportTicket::create(array_merge([
-        'ticket_no'  => 'T'.now()->format('ymdHis').uniqid(),
+        'ticket_no'  => testUniqueNo('T'),
         'channel'    => 'app',
         'category'   => 'install_failed',
         'priority'   => 'normal',

@@ -35,7 +35,7 @@ function b10Customer(): Customer
 function b10Ticket(int $customerId): int
 {
     return (int) DB::table('support_ticket')->insertGetId([
-        'ticket_no'   => 'T'.uniqid(),
+        'ticket_no'   => testUniqueNo('T'),
         'customer_id' => $customerId,
         'channel'     => 'app',
         'category'    => 'other',
@@ -86,7 +86,7 @@ it('B-10 · 工单详情回显来源事故(编号/严重度/状态)', function (
 
     // 直接造一起"由工单定性而来"的事故
     Incident::create([
-        'incident_no'  => 'I'.uniqid(),
+        'incident_no'  => testUniqueNo('I'),
         'customer_id'  => $customer->id,
         'ticket_id'    => $ticketId,
         'severity'     => 'severe',

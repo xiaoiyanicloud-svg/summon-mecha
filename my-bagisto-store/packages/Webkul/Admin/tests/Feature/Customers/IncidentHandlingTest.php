@@ -17,7 +17,7 @@ use function Pest\Laravel\post;
 function ihIncident(array $overrides = []): Incident
 {
     return Incident::create(array_merge([
-        'incident_no'    => 'I'.now()->format('ymdHis').'-'.uniqid(),
+        'incident_no'    => testUniqueNo('I'),
         'severity'       => Incident::SEVERITY_MODERATE,
         'occurred_at'    => now()->subDay(),
         'description'    => '机器人在展厅突然加速，撞坏了展台',

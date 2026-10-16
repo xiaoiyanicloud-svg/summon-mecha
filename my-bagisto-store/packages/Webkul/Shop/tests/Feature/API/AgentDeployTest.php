@@ -106,7 +106,7 @@ it('install_record:首次安装落 installed,同 skill 换版本落 updated', fu
 
     // 首次安装
     $t1 = DeployTask::create([
-        'task_no' => 'DTEST'.uniqid(), 'did' => $did, 'channel' => 'agent',
+        'task_no' => testUniqueNo('DTEST'), 'did' => $did, 'channel' => 'agent',
         'skill_id' => $productId, 'skill_version_id' => $v1->id,
         'operation' => DeployTask::OP_INSTALL, 'status' => 'dispatching', 'created_by' => 'test',
     ]);
@@ -117,7 +117,7 @@ it('install_record:首次安装落 installed,同 skill 换版本落 updated', fu
 
     // 升级到同 skill 的新版本 → updated(这是灰度回滚的靶子)
     $t2 = DeployTask::create([
-        'task_no' => 'DTEST'.uniqid(), 'did' => $did, 'channel' => 'agent',
+        'task_no' => testUniqueNo('DTEST'), 'did' => $did, 'channel' => 'agent',
         'skill_id' => $productId, 'skill_version_id' => $v2->id,
         'operation' => DeployTask::OP_INSTALL, 'status' => 'dispatching', 'created_by' => 'test',
     ]);
@@ -130,7 +130,7 @@ it('install_record:首次安装落 installed,同 skill 换版本落 updated', fu
 
     // 回滚该版本 → rolled_back
     $t3 = DeployTask::create([
-        'task_no' => 'DTEST'.uniqid(), 'did' => $did, 'channel' => 'agent',
+        'task_no' => testUniqueNo('DTEST'), 'did' => $did, 'channel' => 'agent',
         'skill_id' => $productId, 'skill_version_id' => $v2->id,
         'operation' => DeployTask::OP_ROLLBACK, 'status' => 'dispatching', 'created_by' => 'test',
     ]);
