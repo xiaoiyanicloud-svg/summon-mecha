@@ -86,6 +86,18 @@ class AuditService
             $declared['pricing_mode'] = $pricingMode;
         }
 
+        // 权限声明落库（D-8 改判版：**只做可见化**，让用户在下单前看得见"这技能会用到什么"）。
+        //   ⚠ 明确**不做**任何"声明 vs 实际调用"的比对/强制，理由（不要再有人回来补这个幻想）：
+        //     ① device_model 表没有任何能力/权限字段 —— 没有可比对的真实数据源，
+        //        做下去只能是"自造一套能力词表去校验另一套自造词表"；
+        //     ② `kind=motion` 的纯动作技能没有代码可分析，"实际调用"无从谈起；
+        //     ③ 端侧受控执行不存在（E7），没有运行时能观测到"实际用了什么"。
+        //   写入规则与邻列一致：**非空数组才写**；无值不写 —— 空数组不覆盖已有声明。
+        $permissions = $manifest['permissions'] ?? null;
+        if (is_array($permissions) && $permissions !== []) {
+            $declared['permissions'] = array_values($permissions);
+        }
+
         if ($declared !== []) {
             SkillVersion::where('id', $version)->update($declared);
         }

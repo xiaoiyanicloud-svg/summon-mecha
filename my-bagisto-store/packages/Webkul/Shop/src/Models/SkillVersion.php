@@ -56,6 +56,8 @@ class SkillVersion extends Model
         'channel',
         'delivery_channels',
         'risk_level',
+        // 开发者声明的权限（D-8 改判版）—— **只做可见化**，不做任何强制/比对
+        'permissions',
         'status',
         'license_mode',
         'pricing_mode',
@@ -75,6 +77,7 @@ class SkillVersion extends Model
      */
     protected $casts = [
         'delivery_channels' => 'array',
+        'permissions'       => 'array',
         'imported_meta'     => 'array',
         'max_activations'   => 'integer',
         'valid_days'        => 'integer',

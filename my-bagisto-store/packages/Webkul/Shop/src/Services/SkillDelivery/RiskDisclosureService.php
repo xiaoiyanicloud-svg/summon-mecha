@@ -4,6 +4,7 @@ namespace Webkul\Shop\Services\SkillDelivery;
 
 use Webkul\Shop\Models\RiskAcknowledgment;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\SkillPackage\SkillManifest;
 
 /**
  * 风险告知（B-5 · 计划 §4.14「用户分级告知留痕」/ D6 三层责任模型）。
@@ -83,6 +84,19 @@ class RiskDisclosureService
         $level = $this->normalizeLevel($version->risk_level);
         $copy = self::COPY[$level];
 
+        // D-8 改判版 · 权限声明可见化：把开发者声明的权限**并入既有的 `summary` 文案**。
+        //   为什么并进 summary 而不是新增字段：前端弹窗（`pages/home/jineng.vue`）页内块与
+        //   modal **已经在渲染 `summary`**（.risk-summary / .risk-modal-summary），并进去
+        //   既有的前端**不用改就能显示**；新增字段反而要同步改前端。
+        //   ⚠ 为什么不用 `items`：items 是高风险**逐条勾选**项（其 `key` 会被前端当 checked
+        //     回传落库），权限是**陈述**不是"要勾的承诺"，塞进去会污染勾选语义。
+        //   文案用人话标签（取自 SkillManifest::PERMISSION_LABELS，唯一中文来源），
+        //   未声明权限时**不追加**（不凭空造一句"未声明权限"占位）。
+        $permissionNote = $this->permissionNote($version->permissions);
+        if ($permissionNote !== '') {
+            $copy['summary'] = rtrim($copy['summary']).$permissionNote;
+        }
+
         return [
             'product_id'        => $productId,
             'skill_version_id'  => $version->id,
@@ -92,8 +106,41 @@ class RiskDisclosureService
             'items'             => $copy['items'],
             'require_checklist' => $copy['require_checklist'],
             // 文案指纹：证明"当时告知的是这一份"。前端会回传，服务端据此落库。
+            // ⚠ 指纹取的是**含权限声明之后**的 summary —— 告知的内容变过，指纹就该跟着变。
             'disclosure_hash'   => $this->hashFor($copy),
         ];
+    }
+
+    /**
+     * 把开发者声明的权限渲染成一句人话，追加进风险告知文案。
+     *
+     * 例：`['motion_control','camera']` → `该技能运行时会涉及：运动控制、摄像头。`
+     *
+     * ⚠ 用**人话标签**而不是原始枚举（用户该看到"摄像头"，不是 `camera`）；
+     *   未收录的码（理论上过不了白名单）回落成原始码，宁可露出也不静默吞掉。
+     *   无声明（null / 空数组 / 全是空串）→ 返回空串，调用方据此**不追加**。
+     */
+    protected function permissionNote(mixed $permissions): string
+    {
+        if (! is_array($permissions) || $permissions === []) {
+            return '';
+        }
+
+        $labels = [];
+        foreach ($permissions as $p) {
+            if (! is_string($p) || $p === '') {
+                continue;
+            }
+            $labels[] = SkillManifest::PERMISSION_LABELS[$p] ?? $p;
+        }
+
+        $labels = array_values(array_unique($labels));
+
+        if ($labels === []) {
+            return '';
+        }
+
+        return '该技能运行时会涉及：'.implode('、', $labels).'。';
     }
 
     /**

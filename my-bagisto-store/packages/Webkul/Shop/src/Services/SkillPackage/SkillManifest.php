@@ -51,6 +51,24 @@ class SkillManifest
         'storage',
     ];
 
+    /**
+     * 权限码 → 人话标签（D-8 改判版 · 可见化的**唯一**中文来源）。
+     *
+     * 用途：技能详情接口与风险告知都要把 `permissions` 渲染成用户看得懂的话
+     * （"会控制机器人运动"而不是 `motion_control`）。前端与告知**都从这里取语义**，
+     * ⚠ 别在别处再抄一份中文映射 —— 抄一份就会有两份各自漂移。
+     *
+     * 未收录的码（理论上过不了白名单校验）由调用方回落成原始码，不在此处兜底。
+     */
+    public const PERMISSION_LABELS = [
+        'motion_control' => '运动控制',
+        'audio_play'     => '播放语音',
+        'camera'         => '摄像头',
+        'expression'     => '表情/灯光',
+        'network'        => '联网',
+        'storage'        => '本地存储',
+    ];
+
     public function __construct(
         public string $schema,
         public string $kind,

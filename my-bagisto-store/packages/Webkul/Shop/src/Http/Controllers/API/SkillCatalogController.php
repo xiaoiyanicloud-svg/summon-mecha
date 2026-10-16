@@ -9,6 +9,7 @@ use Webkul\Shop\Models\SkillCategory;
 use Webkul\Shop\Models\SkillTag;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\KillSwitchService;
+use Webkul\Shop\Services\SkillPackage\SkillManifest;
 
 /**
  * 技能类目/标签/筛选 —— 公开读取(v3.4 步骤 6/7)。
@@ -125,7 +126,7 @@ class SkillCatalogController extends APIController
             ->orderByDesc('released_at')
             ->orderByDesc('id')
             ->limit(20)
-            ->get(['id', 'version', 'channel', 'status', 'risk_level', 'delivery_channels', 'released_at', 'changelog']);
+            ->get(['id', 'version', 'channel', 'status', 'risk_level', 'delivery_channels', 'permissions', 'released_at', 'changelog']);
 
         return response()->json([
             'data' => $rows->map(fn ($v) => [
@@ -137,6 +138,16 @@ class SkillCatalogController extends APIController
                 'status'            => $v->status,
                 'risk_level'        => $v->risk_level,
                 'delivery_channels' => json_decode((string) $v->delivery_channels, true) ?: [],
+                // D-8 改判版 · 权限声明可见化：买之前就能看清"这技能会用到什么"。
+                //   `permissions` = 开发者声明的原始枚举(与 manifest 一致)；
+                //   `permission_labels` = 同一批权限的人话标签,取自 SkillManifest::PERMISSION_LABELS
+                //   （**唯一**中文来源,前端与风险告知都从这里取语义,不另抄一份）。
+                //   未声明权限 → 两个键都是空数组,不编造一行"未声明权限"占位。
+                'permissions'       => $permissions = json_decode((string) $v->permissions, true) ?: [],
+                'permission_labels' => array_map(
+                    fn ($p) => SkillManifest::PERMISSION_LABELS[$p] ?? $p,
+                    $permissions
+                ),
                 'released_at'       => $v->released_at,
                 'changelog'         => $v->changelog,
             ])->values(),
