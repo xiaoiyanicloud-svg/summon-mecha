@@ -526,3 +526,20 @@ L2 通过 → **两条发布路径都过闸门** → 上架 → 客户端可见 
 | 3 | S-6 密钥持久化与命令化 | 🔄 调研中 |
 | 4 | S-7 剩余（`docs/*.md` 过时措辞；冻结快照只新开一节） | ⏸ |
 | 5 | S-4 常量收口（卫生项） | ⏸ |
+### 11.5 S-6 拍板（2026-10-16 · 密钥持久化与命令化）
+
+调研事实（`C:\Users\Administrator\.claude\plans\git-git-elegant-lollipop.md`，负责人已复核关键行）：全仓**只有两套**密钥材料 —— 平台签名密钥对（`Services/Deploy/SigningService.php`，`ensureKeypair()` 懒生成）与设备 CA（`DeviceCredentialService.php`，`ensureCa()` 懒生成）；**都落在 `storage/app/keys/`、`0644`、硬编码常量路径、不进 git、库与别处无可恢复副本**。丢失后果**不是平台 500，而是端侧静默拒装**：签名私钥丢 → 下次签名**重生成一整对**（连公钥覆盖）→ 已部署 Agent 内置旧公钥 → `ERR_SIG_INVALID 验签失败,拒绝安装`，**全部设备下发停摆**；CA 私有丢 → **重签整张 CA** → 老设备 `cert_pem` 链不上 → 验签路径全 401（只有走 bearer secret 的设备还活）。
+
+**拍板（7 条 + 1 条新增）**
+
+| # | 事项 | 决定 |
+|---|---|---|
+| 1 | 本卡是否做密钥轮换 | **不做**。轮换依赖端侧多公钥/真机 Agent（E7），单独立卡；S-6 只做"防丢 + 说清后果" |
+| 2 | 命令落点 | `app/Console/Commands/`（自动发现、零注册，跨两个服务） |
+| 3 | 命令命名 | **`agent:keys:generate` / `agent:keys:export` / `agent:keys:import`**（刻意避开 Laravel 自带的 `key:generate`，一字之差会有人打错） |
+| 4 | 配置键 | `AGENT_KEYS_DISK` / `AGENT_KEYS_DIR`，配置落 `config/deploy_gateways.php`（**不在配置外直接读 `env()`**，本仓有 `config:cache` 的教训） |
+| 5 | 权限策略 | **best-effort** chmod（Windows 开发不 brick），但 chmod 失败要**如实打印提示**、不许静默；生产 0600/0640 写进手册 |
+| 6 | 持久卷要求 | 写进 `docs/skill-runbook.md` 的**上线清单**（部署动作，不做代码前置） |
+| 7 | 手册落点 | 现有 `docs/skill-runbook.md`，不新开文档；类注释里"生产应换成 KMS"改成准确措辞（KMS 未接入，本卡做的是"持久卷 + 备份/恢复 + 后果说明"） |
+| **8** | **（新增，负责人加）缺公钥/证书时"从私钥重建"，不许重签整对** | `ensureKeypair()`：private 在、public 缺 → **从私钥派生公钥落盘**（而不是返回空串或重签）；`ensureCa()`：CA private 在、证书缺 → **用同一把私钥重签证书**（公钥不变 → 老设备仍链得上）。**只有私钥本身也不存在时**才生成新的。这一条把两类"静默事故"变成自愈。<br>⚠ 前提必须实测：若某处 pin 了 CA 证书指纹而非公钥，重签证书会破坏它 —— 实现前用 tinker/测试确认，确认不了就**不改，只报**。 |
+| 9 | 危险动作 fail-closed | `agent:keys:import` 遇到目标文件已存在 → **默认拒绝**（FAILURE + 指引），必须显式 `--replace` 且自动先备份到 `keys/backup-<时间戳>/`；全仓无 `--force` 惯例，不新造 `--force` |
