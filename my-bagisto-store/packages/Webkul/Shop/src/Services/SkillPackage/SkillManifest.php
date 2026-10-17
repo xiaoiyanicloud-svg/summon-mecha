@@ -2,6 +2,8 @@
 
 namespace Webkul\Shop\Services\SkillPackage;
 
+use Webkul\Shop\Models\SkillVersion;
+
 /**
  * 中立技能清单(manifest.yaml)的值对象 —— v3.4 步骤 6。
  *
@@ -80,7 +82,7 @@ class SkillManifest
         public array $name,                 // {zh_CN, en}
         public string $version,
         public string $description = '',
-        public string $pricingMode = 'buyout',
+        public string $pricingMode = SkillVersion::PRICING_BUYOUT,
         public array $deliveryChannels = [],
         public array $permissions = [],
         public string $resourceType = 'skill',
@@ -102,7 +104,7 @@ class SkillManifest
             name: is_array($a['name'] ?? null) ? $a['name'] : [],
             version: (string) ($a['version'] ?? ''),
             description: (string) ($a['description'] ?? ''),
-            pricingMode: (string) ($a['pricing_mode'] ?? 'buyout'),
+            pricingMode: (string) ($a['pricing_mode'] ?? SkillVersion::PRICING_BUYOUT),
             deliveryChannels: is_array($a['delivery_channels'] ?? null) ? $a['delivery_channels'] : [],
             permissions: is_array($a['permissions'] ?? null) ? $a['permissions'] : [],
             resourceType: (string) ($a['resource_type'] ?? 'skill'),

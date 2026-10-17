@@ -66,7 +66,7 @@ class SkillController extends APIController
                     // 下发链路需要具体版本 id(entitlement 的 skill_version_id 可为 NULL=跟随最新)
                     'skill_version_id'  => $version?->id,
                     // 该版本是否声明了 agent 通道 —— 决定「一键下发」按钮是否出现
-                    'agent_deliverable' => in_array('agent', (array) ($version?->delivery_channels ?? []), true),
+                    'agent_deliverable' => in_array(SkillAsset::DELIVERY_AGENT, (array) ($version?->delivery_channels ?? []), true),
                     'delivery_channel'  => $e->delivery_channel,
                     'license_key'       => $e->license_key,
                     'device_id'         => $e->device_id,

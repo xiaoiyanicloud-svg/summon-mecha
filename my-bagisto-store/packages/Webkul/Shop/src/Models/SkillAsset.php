@@ -58,6 +58,42 @@ class SkillAsset extends Model
     ];
 
     /**
+     * 交付通道（`skill_versions.delivery_channels` / `install_records.channel` /
+     * `deploy_tasks.channel`）—— **不是**发布通道。
+     *
+     * manual        = 下载 + 人工安装（当前唯一真能跑通的通道）
+     * agent         = MQTT / Agent 在线下发（平台侧就绪，设备端 E7 未接真机）
+     * vendor:{code} = 厂商云 API（计划中，尚未接入）
+     *
+     * ⚠ 与发布通道（stable / beta，见 {@see SkillVersion::CHANNELS}）**禁止**混用。
+     * ⚠ 与 `skill_entitlements.delivery_channel` 的注册表 key（config('skill_delivery.channels')，
+     *   当前为 `app`）也不是同一套值：后者是"用哪个交付实现"，这里是"版本声明支持哪种交付方式"。
+     */
+    public const DELIVERY_MANUAL = 'manual';
+
+    public const DELIVERY_AGENT = 'agent';
+
+    public const DELIVERY_VENDOR_PREFIX = 'vendor:';
+
+    /** P0 真实可用的交付通道（厂商云未就绪，不在此列）。 */
+    public const DELIVERY_CHANNELS = [
+        self::DELIVERY_AGENT,
+        self::DELIVERY_MANUAL,
+    ];
+
+    /**
+     * 校验一个交付通道取值是否合法（agent / manual / vendor:{code}）。
+     */
+    public static function isValidDeliveryChannel(string $channel): bool
+    {
+        if (in_array($channel, self::DELIVERY_CHANNELS, true)) {
+            return true;
+        }
+
+        return (bool) preg_match('/^'.self::DELIVERY_VENDOR_PREFIX.'[a-z0-9_]+$/', $channel);
+    }
+
+    /**
      * **需要落盘**的载体 —— 这些交付物在盘上必须有文件，否则"有交付物"只是空头支票。
      *
      * ⚠ 与 {@see self::CARRIER_TYPES} 的区别：v3.4 新增 `motion_data` / `app_package` /

@@ -42,6 +42,66 @@ class SkillVersion extends Model
     public const STATUS_ARCHIVED = 'archived';
 
     /**
+     * 发布通道（`skill_versions.channel`）—— **不是**交付通道。
+     *
+     * stable = 正式版；beta = 测试版。
+     * ⚠ 交付通道（agent / manual / vendor:{code}）是另一根轴，见
+     *   {@see SkillAsset::DELIVERY_CHANNELS}，两者**禁止**混用（见术语纪律）。
+     */
+    public const CHANNEL_STABLE = 'stable';
+
+    public const CHANNEL_BETA = 'beta';
+
+    public const CHANNELS = [
+        self::CHANNEL_STABLE,
+        self::CHANNEL_BETA,
+    ];
+
+    /**
+     * 发布通道 → 中文标签（接口展示用的唯一 PHP 来源）。
+     */
+    public const CHANNEL_LABELS = [
+        self::CHANNEL_STABLE => '正式版',
+        self::CHANNEL_BETA   => '测试版',
+    ];
+
+    /**
+     * 授权范围（`skill_versions.license_mode`）—— 与 `pricing_mode` **正交**。
+     *
+     * ⚠ D3 红线：买断制由 `pricing_mode='buyout'` 表达，**禁止**写
+     *   `license_mode='perpetual'`。
+     */
+    public const LICENSE_PER_DEVICE = 'per_device';
+
+    public const LICENSE_PER_ORDER = 'per_order';
+
+    public const LICENSE_PER_ACCOUNT = 'per_account';
+
+    public const LICENSE_UNLIMITED = 'unlimited';
+
+    public const LICENSE_MODES = [
+        self::LICENSE_PER_DEVICE,
+        self::LICENSE_PER_ORDER,
+        self::LICENSE_PER_ACCOUNT,
+        self::LICENSE_UNLIMITED,
+    ];
+
+    /**
+     * 定价模式（`skill_versions.pricing_mode`）。
+     *
+     * buyout = 买断（D3 当前唯一在用的卖法）；free = 免费。
+     * ⚠ 与 `license_mode` 正交：前者管"怎么卖"，后者管"授权范围"。
+     */
+    public const PRICING_BUYOUT = 'buyout';
+
+    public const PRICING_FREE = 'free';
+
+    public const PRICING_MODES = [
+        self::PRICING_BUYOUT,
+        self::PRICING_FREE,
+    ];
+
+    /**
      * The table associated with the model.
      */
     protected $table = 'skill_versions';

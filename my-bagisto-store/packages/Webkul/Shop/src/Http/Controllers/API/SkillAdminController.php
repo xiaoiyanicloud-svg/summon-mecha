@@ -52,8 +52,8 @@ class SkillAdminController extends APIController
     {
         $payload = $request->validate([
             'version'         => ['required', 'string', 'max:32'],
-            'channel'         => ['nullable', 'string', 'in:stable,beta'],
-            'license_mode'    => ['nullable', 'string', 'in:per_device,per_order,per_account,unlimited'],
+            'channel'         => ['nullable', 'string', 'in:'.implode(',', SkillVersion::CHANNELS)],
+            'license_mode'    => ['nullable', 'string', 'in:'.implode(',', SkillVersion::LICENSE_MODES)],
             'max_activations' => ['nullable', 'integer', 'min:1'],
             'valid_days'      => ['nullable', 'integer', 'min:1'],
             'min_robot_version' => ['nullable', 'string', 'max:32'],
@@ -72,9 +72,9 @@ class SkillAdminController extends APIController
             ],
             [
                 'seller_id'         => $this->resolveSellerId($payload['seller_code'] ?? null),
-                'channel'           => $payload['channel'] ?? 'stable',
+                'channel'           => $payload['channel'] ?? SkillVersion::CHANNEL_STABLE,
                 'status'            => SkillVersion::STATUS_DRAFT,
-                'license_mode'      => $payload['license_mode'] ?? 'per_device',
+                'license_mode'      => $payload['license_mode'] ?? SkillVersion::LICENSE_PER_DEVICE,
                 'max_activations'   => $payload['max_activations'] ?? null,
                 'valid_days'        => $payload['valid_days'] ?? null,
                 'min_robot_version' => $payload['min_robot_version'] ?? null,

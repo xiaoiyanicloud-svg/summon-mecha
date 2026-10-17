@@ -354,9 +354,9 @@ class DeveloperSkillService
             ],
             [
                 'seller_id'     => $profile->seller_id,
-                'channel'       => $data['channel'] ?? 'stable',
+                'channel'       => $data['channel'] ?? SkillVersion::CHANNEL_STABLE,
                 'status'        => SkillVersion::STATUS_DRAFT,
-                'license_mode'  => $data['license_mode'] ?? 'per_device',
+                'license_mode'  => $data['license_mode'] ?? SkillVersion::LICENSE_PER_DEVICE,
                 'changelog'     => $data['changelog'] ?? null,
                 'install_guide' => $data['install_guide'] ?? null,
             ]

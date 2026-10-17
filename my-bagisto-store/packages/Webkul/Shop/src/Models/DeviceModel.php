@@ -29,7 +29,7 @@ class DeviceModel extends Model
     /**
      * 可用通道值域 —— 与技能声明的 `delivery_channels` 取交集得到"实际可用通道"。
      */
-    public const COMM_CHANNELS = ['agent', 'manual'];
+    public const COMM_CHANNELS = [SkillAsset::DELIVERY_AGENT, SkillAsset::DELIVERY_MANUAL];
 
     protected $table = 'device_model';
 

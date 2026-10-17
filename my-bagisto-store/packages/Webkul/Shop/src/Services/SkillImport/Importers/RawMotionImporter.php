@@ -2,6 +2,8 @@
 
 namespace Webkul\Shop\Services\SkillImport\Importers;
 
+use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\SkillImport\ImportResult;
 use Webkul\Shop\Services\SkillImport\SkillImporter;
 use Webkul\Shop\Services\SkillPackage\SkillManifest;
@@ -32,8 +34,8 @@ class RawMotionImporter implements SkillImporter
             'name'              => ['zh_CN' => (string) ($input['name'] ?? '导入的动作'), 'en' => (string) ($input['name'] ?? 'Imported Motion')],
             'version'           => (string) ($input['version'] ?? '1.0.0'),
             'description'       => "由 {$format} 动捕数据导入。",
-            'pricing_mode'      => (string) ($input['pricing_mode'] ?? 'buyout'),
-            'delivery_channels' => ['agent', 'manual'],
+            'pricing_mode'      => (string) ($input['pricing_mode'] ?? SkillVersion::PRICING_BUYOUT),
+            'delivery_channels' => [SkillAsset::DELIVERY_AGENT, SkillAsset::DELIVERY_MANUAL],
             'permissions'       => ['motion_control'],
             'resource_type'     => 'motion',
             'motion'            => [

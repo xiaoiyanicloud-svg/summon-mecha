@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Shop\Models\DeviceModel;
+use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillCategory;
 use Webkul\Shop\Models\SkillTag;
 use Webkul\Shop\Models\SkillVersion;
@@ -90,8 +91,8 @@ class SkillCatalogController extends APIController
                     'brand' => $m->brand,
                 ])->values(),
                 'channels' => [
-                    ['value' => 'agent',  'label' => '自动下发'],
-                    ['value' => 'manual', 'label' => '人工安装'],
+                    ['value' => SkillAsset::DELIVERY_AGENT,  'label' => '自动下发'],
+                    ['value' => SkillAsset::DELIVERY_MANUAL, 'label' => '人工安装'],
                 ],
                 'risks' => [
                     ['value' => 'low',    'label' => '低风险'],
@@ -134,7 +135,7 @@ class SkillCatalogController extends APIController
                 'version'           => $v->version,
                 // 发布通道(stable/beta)—— 与交付通道(delivery_channels)不是一回事,见术语纪律
                 'channel'           => $v->channel,
-                'channel_label'     => $v->channel === 'beta' ? '测试版' : '正式版',
+                'channel_label'     => SkillVersion::CHANNEL_LABELS[$v->channel] ?? SkillVersion::CHANNEL_LABELS[SkillVersion::CHANNEL_STABLE],
                 'status'            => $v->status,
                 'risk_level'        => $v->risk_level,
                 'delivery_channels' => json_decode((string) $v->delivery_channels, true) ?: [],
@@ -263,7 +264,7 @@ class SkillCatalogController extends APIController
         if ($model !== '') {
             // 机型可用通道(未知机型降级为仅 manual —— 与 CompatibilityService 一致)
             $declared = DeviceModel::query()->where('model_code', $model)->value('comm_channels');
-            $modelChannels = is_array($declared) && $declared ? $declared : ['manual'];
+            $modelChannels = is_array($declared) && $declared ? $declared : [SkillAsset::DELIVERY_MANUAL];
 
             $sub->where(function ($inner) use ($modelChannels) {
                 foreach (array_values($modelChannels) as $i => $ch) {
@@ -300,9 +301,9 @@ class SkillCatalogController extends APIController
     protected function whereDeclaresChannel($query, string $channel, bool $or = false): void
     {
         $query->where(function ($w) use ($channel) {
-            if ($channel === 'manual') {
+            if ($channel === SkillAsset::DELIVERY_MANUAL) {
                 $w->whereNull('delivery_channels')
-                    ->orWhereJsonContains('delivery_channels', 'manual');
+                    ->orWhereJsonContains('delivery_channels', SkillAsset::DELIVERY_MANUAL);
             } else {
                 $w->whereJsonContains('delivery_channels', $channel);
             }

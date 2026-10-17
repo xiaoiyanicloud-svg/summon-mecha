@@ -97,8 +97,8 @@ class SkillController extends Controller
     {
         $data = $request->validate([
             'version'         => 'required|string|max:32',
-            'channel'         => 'nullable|string|in:stable,beta',
-            'license_mode'    => 'nullable|string|in:per_device,per_order,per_account,unlimited',
+            'channel'         => 'nullable|string|in:'.implode(',', SkillVersion::CHANNELS),
+            'license_mode'    => 'nullable|string|in:'.implode(',', SkillVersion::LICENSE_MODES),
             'max_activations' => 'nullable|integer|min:1',
             'valid_days'      => 'nullable|integer|min:1',
             'changelog'       => 'nullable|string',
@@ -119,9 +119,9 @@ class SkillController extends Controller
         SkillVersion::create([
             'product_id'      => $productId,
             'version'         => $data['version'],
-            'channel'         => $data['channel'] ?? 'stable',
+            'channel'         => $data['channel'] ?? SkillVersion::CHANNEL_STABLE,
             'status'          => SkillVersion::STATUS_DRAFT,
-            'license_mode'    => $data['license_mode'] ?? 'per_device',
+            'license_mode'    => $data['license_mode'] ?? SkillVersion::LICENSE_PER_DEVICE,
             'max_activations' => $data['max_activations'] ?? null,
             'valid_days'      => $data['valid_days'] ?? null,
             'changelog'       => $data['changelog'] ?? null,
@@ -147,7 +147,7 @@ class SkillController extends Controller
         }
 
         $data = $request->validate([
-            'license_mode'    => 'nullable|string|in:per_device,per_order,per_account,unlimited',
+            'license_mode'    => 'nullable|string|in:'.implode(',', SkillVersion::LICENSE_MODES),
             'max_activations' => 'nullable|integer|min:1',
             'valid_days'      => 'nullable|integer|min:1',
             'changelog'       => 'nullable|string',
@@ -501,11 +501,11 @@ class SkillController extends Controller
             $createdVersion = SkillVersion::create([
                 'product_id'        => $productId,
                 'version'           => $versionNo,
-                'channel'           => 'stable',
+                'channel'           => SkillVersion::CHANNEL_STABLE,
                 'status'            => SkillVersion::STATUS_DRAFT,
-                'license_mode'      => 'per_device',
+                'license_mode'      => SkillVersion::LICENSE_PER_DEVICE,
                 // D3:买断制 —— pricing_mode 表达,不用 license_mode
-                'pricing_mode'      => $manifest['pricing_mode'] ?? 'buyout',
+                'pricing_mode'      => $manifest['pricing_mode'] ?? SkillVersion::PRICING_BUYOUT,
                 // 导入器可能**自动收紧**通道(如宇树容器只跑宇树),优先用锁定值
                 'delivery_channels' => ! empty($result['locked_channels'])
                     ? $result['locked_channels']

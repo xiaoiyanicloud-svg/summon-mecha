@@ -2,6 +2,8 @@
 
 namespace Webkul\Shop\Services\SkillPackage;
 
+use Webkul\Shop\Models\SkillAsset;
+
 /**
  * 中立技能清单校验器 —— v3.4 步骤 6,L0 机审的一部分。
  *
@@ -99,11 +101,7 @@ class ManifestValidator
 
     protected function isValidChannel(string $ch): bool
     {
-        if (in_array($ch, ['agent', 'manual'], true)) {
-            return true;
-        }
-
-        return (bool) preg_match('/^vendor:[a-z0-9_]+$/', $ch);
+        return SkillAsset::isValidDeliveryChannel($ch);
     }
 
     /**

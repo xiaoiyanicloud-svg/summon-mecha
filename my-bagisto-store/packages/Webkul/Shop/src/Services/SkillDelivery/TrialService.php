@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\Device;
+use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
@@ -51,7 +52,7 @@ class TrialService
         }
 
         // ① 仅在线通道（D4）—— 版本必须真的声明了 agent 通道
-        if (! in_array('agent', (array) ($version->delivery_channels ?? []), true)) {
+        if (! in_array(SkillAsset::DELIVERY_AGENT, (array) ($version->delivery_channels ?? []), true)) {
             return $this->fail(
                 'TRIAL_CHANNEL_UNSUPPORTED',
                 '该技能不支持试用：试用仅限在线下发通道，人工安装通道无法在到期后回收。',

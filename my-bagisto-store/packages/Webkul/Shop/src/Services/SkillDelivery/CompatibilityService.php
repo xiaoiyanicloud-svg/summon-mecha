@@ -4,6 +4,7 @@ namespace Webkul\Shop\Services\SkillDelivery;
 
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceModel;
+use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
 
 /**
@@ -64,7 +65,7 @@ class CompatibilityService
         // 技能声明的交付通道(v3.4 新列);缺省视为仅人工
         $declared = is_array($version->delivery_channels) && $version->delivery_channels
             ? $version->delivery_channels
-            : ['manual'];
+            : [SkillAsset::DELIVERY_MANUAL];
 
         // 机型可用通道
         $model = null;
@@ -75,9 +76,9 @@ class CompatibilityService
         if (! $model) {
             // 「未知机型」降级:不判不兼容,只允许人工通道
             $notes[] = '未识别机型(设备未关联机型库),仅提供人工安装通道。';
-            $deviceChannels = ['manual'];
+            $deviceChannels = [SkillAsset::DELIVERY_MANUAL];
         } else {
-            $deviceChannels = is_array($model->comm_channels) ? $model->comm_channels : ['manual'];
+            $deviceChannels = is_array($model->comm_channels) ? $model->comm_channels : [SkillAsset::DELIVERY_MANUAL];
 
             if ($model->status === 'display_only') {
                 $notes[] = '该机型暂为仅展示(尚无自动下发通道),仅提供人工安装。';
@@ -111,7 +112,7 @@ class CompatibilityService
         //
         //   ⚠ 离线仍然只是"提示"，不是"拒绝"：该做的是挂起下发（`pending_online`），
         //     而不是让用户装不了 —— 所以这里不改成 fail。
-        if (in_array('agent', $channels, true) && ! $binding?->isOnlineNow()) {
+        if (in_array(SkillAsset::DELIVERY_AGENT, $channels, true) && ! $binding?->isOnlineNow()) {
             $notes[] = '设备当前离线,自动下发将在设备上线后进行。';
         }
 
