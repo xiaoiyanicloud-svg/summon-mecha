@@ -3,6 +3,8 @@
 面向机器人场景服务的交易与交付平台：uni-app 多端前台 + Bagisto/Laravel 模块化后端。
 
 > **开始改代码前请先读**：[CLAUDE.md](CLAUDE.md)（不可谈判的决策与边界）、[docs/ai-project-brief.md](docs/ai-project-brief.md)（项目理解手册）、[NAVIGATION.md](NAVIGATION.md)（代码定位）。
+>
+> **要让 AI 从零部署？** 直接让它读 [AI-DEPLOY.md](AI-DEPLOY.md)：环境矩阵、逐步命令、验收清单、排障与外部依赖都写全了。
 
 ---
 
@@ -42,11 +44,14 @@ php artisan migrate --seed    # 或 php artisan bagisto:install 走交互式安�
 php artisan storage:link
 
 # 本项目业务预置数据（幂等，可重复执行）
+php artisan db:seed --class=SceneSeeder
 php artisan db:seed --class=DeviceModelSeeder
 php artisan db:seed --class=SkillCatalogSeeder
 
 php artisan serve             # http://127.0.0.1:8000 ，后台 /admin
 ```
+
+> 首次 `migrate --seed` 会创建默认管理员 `admin@example.com` / `admin123`，部署后请立即修改。
 
 异步任务（试用回收、通知、下发状态机、灰度评估等依赖它们）：
 
