@@ -227,16 +227,22 @@ return [
         'sort'       => 5,
         'icon'       => '',
     ], [
+        'key'        => 'customers.developer-invites',
+        'name'       => '开发者邀请码',
+        'route'      => 'admin.customers.developer-invites.index',
+        'sort'       => 6,
+        'icon'       => '',
+    ], [
         'key'        => 'customers.tickets',
         'name'       => '客服工单',
         'route'      => 'admin.customers.tickets.index',
-        'sort'       => 6,
+        'sort'       => 7,
         'icon'       => '',
     ], [
         'key'        => 'customers.incidents',
         'name'       => '事故受理',
         'route'      => 'admin.customers.incidents.index',
-        'sort'       => 7,
+        'sort'       => 8,
         'icon'       => '',
     ],
 

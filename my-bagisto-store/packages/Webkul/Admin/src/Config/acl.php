@@ -485,11 +485,23 @@ return [
         'route' => 'admin.customers.developers.show',
         'sort'  => 1,
     ], [
+        // 开发者邀请码（S-11b）:页面入口（菜单/列表）
+        'key'   => 'customers.developer-invites',
+        'name'  => '开发者邀请码',
+        'route' => 'admin.customers.developer-invites.index',
+        'sort'  => 8,
+    ], [
+        // 发码 / 作废是特权写操作,单独权限位（负责人拍板）
+        'key'   => 'customers.developer-invites.manage',
+        'name'  => '发码 / 作废',
+        'route' => 'admin.customers.developer-invites.index',
+        'sort'  => 1,
+    ], [
         // 客服工单受理台
         'key'   => 'customers.tickets',
         'name'  => '客服工单',
         'route' => 'admin.customers.tickets.index',
-        'sort'  => 8,
+        'sort'  => 9,
     ], [
         'key'   => 'customers.tickets.view',
         'name'  => 'admin::app.acl.view',
@@ -500,7 +512,7 @@ return [
         'key'   => 'customers.incidents',
         'name'  => '事故受理',
         'route' => 'admin.customers.incidents.index',
-        'sort'  => 9,
+        'sort'  => 10,
     ], [
         'key'   => 'customers.incidents.view',
         'name'  => 'admin::app.acl.view',

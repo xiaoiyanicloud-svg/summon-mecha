@@ -9,6 +9,7 @@ use Webkul\Admin\Http\Controllers\Customers\Customer\WishlistController;
 use Webkul\Admin\Http\Controllers\Customers\CustomerController;
 use Webkul\Admin\Http\Controllers\Customers\CustomerGroupController;
 use Webkul\Admin\Http\Controllers\Customers\DeveloperController;
+use Webkul\Admin\Http\Controllers\Customers\DeveloperInviteController;
 use Webkul\Admin\Http\Controllers\Customers\GDPRController;
 use Webkul\Admin\Http\Controllers\Customers\IncidentController;
 use Webkul\Admin\Http\Controllers\Customers\ReviewController;
@@ -40,7 +41,8 @@ Route::prefix('customers')->group(function () {
 
         Route::post('mass-update', 'massUpdate')->name('admin.customers.customers.mass_update');
 
-        Route::post('{id}', 'destroy')->name('admin.customers.customers.delete');
+        // S-11b:限定为数字 —— 否则会吞掉同一前缀下的单段 POST 路由（如 developer-invites）。
+        Route::post('{id}', 'destroy')->whereNumber('id')->name('admin.customers.customers.delete');
 
         Route::controller(WishlistController::class)->group(function () {
             Route::get('{id}/wishlist-items', 'items')->name('admin.customers.customers.wishlist.items');
@@ -153,6 +155,19 @@ Route::prefix('customers')->group(function () {
         Route::post('{id}/realname/layer/approve-all', 'approveAllRealnameLayers')->whereNumber('id')->name('admin.customers.developers.realname.layer.approve_all');
 
         Route::post('{id}/status', 'toggleStatus')->whereNumber('id')->name('admin.customers.developers.status');
+    });
+
+    /**
+     * 开发者邀请码运营台（S-11b）。
+     *
+     * ⚠ 邀请码**不是准入闸门** —— 它只提供「落地路由 + 归属 + 来源留痕」；
+     *   准入闸门仍是「实名 + 协议」。所以这里只有发码 / 作废 / 看使用情况，
+     *   **没有**任何"持码免审核"的分支。
+     */
+    Route::controller(DeveloperInviteController::class)->prefix('developer-invites')->group(function () {
+        Route::get('', 'index')->name('admin.customers.developer-invites.index');
+        Route::post('', 'store')->name('admin.customers.developer-invites.store');
+        Route::post('{id}/revoke', 'revoke')->whereNumber('id')->name('admin.customers.developer-invites.revoke');
     });
 
     /**
