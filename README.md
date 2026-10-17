@@ -48,7 +48,7 @@ php artisan db:seed --class=SkillCatalogSeeder
 php artisan serve             # http://127.0.0.1:8000 ，后台 /admin
 ```
 
-异步任务（试用回收、通知、结算等依赖它们）：
+异步任务（试用回收、通知、下发状态机、灰度评估等依赖它们）：
 
 ```bash
 php artisan queue:work
@@ -76,13 +76,13 @@ php artisan agent:keys:generate
 
 - `my-bagisto-store/vendor/`、`node_modules/` —— 依赖，装回来的
 - `my-bagisto-store/.env` —— 含密钥，**从未进入过 git 历史**
-- `my-bagisto-store/storage/` —— 运行日志、缓存、上传文件、签名私钥
+- `my-bagisto-store/storage/` —— 运行日志、缓存、上传文件、签名私钥默认位置（生产应把 `AGENT_KEYS_DISK/DIR` 指向持久卷，见 `docs/skill-runbook.md` §8）
 - `unpackage/` —— HBuilderX 构建产物
 - `coze-studio/`、`my-bagisto-store2 备份/` —— 独立上游仓库与历史备份
 
 ## 分支与协作
 
-- 主分支：`main`（受保护，改动走 Pull Request）
+- 主分支：`main`（当前实际工作流是**直接提交 main**；若团队后续启用 PR 流程，以 GitHub 仓库设置为准）
 - 分支命名：`feat/<主题>`、`fix/<主题>`、`docs/<主题>`
 - 提交信息：沿用 Conventional Commits（`feat:` / `fix:` / `refactor:` / `docs:` / `test:`）
 - 涉及 `CLAUDE.md` 中 D1–D11 已拍板决策的改动，先报批再动手
