@@ -111,10 +111,27 @@ class DeveloperController extends Controller
      * 再由 `recomputeRealnameStatus()` 合并回总状态（唯一规则在模型里，本处不重写）。
      * 每次动作写**一条** `operation_log`（含 layer）—— 两层动作就是两条痕，
      * 事后能分清"哪一层是谁何时审的"。
+     *
+     * ⚠ **存量主体护栏（S-12c 修）**：对**存量形态**（总状态 approved、两层皆 NULL ——
+     *   S-12a「存量不追溯」留下的历史主体）**只单层通过**，`recomputeRealnameStatus()`
+     *   会因"两层不齐 → pending"使其**瞬时降为 pending**，该主体立即**建不了技能、也上不了架** ——
+     *   运营点错一下就撤了别人的资格。故此处**拒绝单层通过**，只说清"请用『两层一起通过』补审"。
+     *   **只禁单层通过，不禁单层驳回**（驳回是有意的资格撤销，保持 S-12c 行为不变）。
+     *   非存量形态（如两层都是 pending 的新主体）单层通过**照旧允许**。
      */
     public function approveRealnameLayer(int $id, string $layer)
     {
         $profile = $this->profileForLayerAction($id, $layer);
+
+        if ($this->isLegacySingleLayerSubject($profile)) {
+            session()->flash(
+                'error',
+                '这是历史已通过的主体（总状态 approved、两层为空）。请用「两层一起通过」补审 —— '
+                    .'单独通过一层会使其降为待审核（pending），该主体将立刻失去"创建技能 / 上架"资格。'
+            );
+
+            return redirect()->route('admin.customers.developers.show', $id);
+        }
 
         $this->applyLayerDecision($profile, $layer, DeveloperProfile::REALNAME_APPROVED);
 
@@ -234,6 +251,23 @@ class DeveloperController extends Controller
     }
 
     // ───────────────────────── S-12c · 逐层审批的内部支撑 ─────────────────────────
+
+    /**
+     * 是否"存量形态"主体 —— 总状态 approved 且**两层皆 NULL**（S-12a「存量不追溯」的历史主体）。
+     *
+     * 判据严格照拍板定义：三列同时满足才算。任一列非 NULL 就不是存量形态
+     * （例如两层都在 pending 的新主体，或已补审过半层的主体）—— 那些单层通过无副作用，
+     * 不该被本护栏误伤。
+     *
+     * ⚠ 这是**动作层护栏**，不改模型规则：`recomputeRealnameStatus()` 的合并规则一字未动
+     *   （两层不齐 → pending 仍成立），本方法只在"谁允许触发它"上加一道闸。
+     */
+    protected function isLegacySingleLayerSubject(DeveloperProfile $profile): bool
+    {
+        return $profile->realname_status === DeveloperProfile::REALNAME_APPROVED
+            && $profile->company_realname_status === null
+            && $profile->operator_realname_status === null;
+    }
 
     /**
      * 合法的实名层 —— **只认模型上的常量**，别处不许写裸字符串 `'company'`/`'operator'`。

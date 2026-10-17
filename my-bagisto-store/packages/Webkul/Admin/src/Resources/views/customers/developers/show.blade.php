@@ -140,6 +140,13 @@
                     'status' => $profile->operator_realname_status,
                 ],
             ];
+
+            // 存量主体（S-12c 护栏）：总状态 approved + 两层皆 NULL 时，**单层通过会使其降为 pending**
+            // （recomputeRealnameStatus 的两层不齐 → pending），等于点错一下就撤了别人的资格。
+            // 故此处把单层「通过」禁用并给同义提示；「两层一起通过」照旧保留。
+            $legacySingleLayerSubject = $profile->realname_status === \Webkul\Shop\Models\DeveloperProfile::REALNAME_APPROVED
+                && $profile->company_realname_status === null
+                && $profile->operator_realname_status === null;
         @endphp
 
         <table class="w-full text-sm">
@@ -213,14 +220,23 @@
                         </div>
 
                         <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                            <form method="POST"
-                                  action="{{ route('admin.customers.developers.realname.layer.approve', [$profile->id, $layerDef['key']]) }}">
-                                @csrf
-                                <button type="submit"
-                                        class="w-full rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">
-                                    通过本层
-                                </button>
-                            </form>
+                            <div class="w-full">
+                                <form method="POST"
+                                      action="{{ route('admin.customers.developers.realname.layer.approve', [$profile->id, $layerDef['key']]) }}">
+                                    @csrf
+                                    <button type="submit"
+                                            @if ($legacySingleLayerSubject) disabled @endif
+                                            {{-- legacy-approve-blocked 是给回归测试的稳定锚点（无 CSS），别删 --}}
+                                            class="w-full rounded px-4 py-2 text-sm text-white {{ $legacySingleLayerSubject ? 'legacy-approve-blocked cursor-not-allowed bg-gray-400' : 'bg-green-600 hover:bg-green-700' }}">
+                                        通过本层
+                                    </button>
+                                </form>
+                                @if ($legacySingleLayerSubject)
+                                    <p class="mt-1 text-xs text-amber-700">
+                                        历史已通过主体：单独通过一层会使其降为待审，请用下方「两层一起通过」补审。
+                                    </p>
+                                @endif
+                            </div>
 
                             <form method="POST"
                                   action="{{ route('admin.customers.developers.realname.layer.reject', [$profile->id, $layerDef['key']]) }}"

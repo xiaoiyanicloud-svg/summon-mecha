@@ -152,11 +152,11 @@ class LifecycleNotifier
      * 按 `recipient_type='customer'` 取全部，无 type 前缀过滤）就能看到这条 ——
      * 开发者不必在群里追问"我到底哪一层没过、为什么没过"。
      *
-     * ⚠ 类型用 `realname.rejected`（**刻意不带 `skill.` 前缀**）。
-     *   后果要如实说清：开发者**门户收件箱**的可见范围是 `Notification::scopeDeveloperInbox`，
-     *   它只收 `skill.%` —— 所以**这一条不会出现在门户收件箱**，只在用户侧消息中心可见。
-     *   本卡**没有**为了让它进门户而改写 D-4 定下的 `skill.%` 口径（那属未报批的读侧变更）；
-     *   这是 S-12c 如实报告的一处未闭合，最小修法见交付报告 R4 段。
+     * ⚠ 类型用 `realname.rejected`（**刻意不带 `skill.` 前缀** —— 它是实名类、不是技能类）。
+     *   **S-12c 修**：门户收件箱的可见范围 `Notification::scopeDeveloperInbox` 已放宽为
+     *   `skill.%` **或** `realname.%`，所以这条**会出现在开发者门户收件箱**里
+     *   （此前只收 `skill.%`，门户看不到 —— 那是 S-12c 主动报告、后经拍板修掉的一处未闭合）。
+     *   用户侧「消息通知」页照旧也能看到（它按 `recipient_type='customer'` 取全部，无前缀过滤）。
      */
     public function developerRealnameRejected(DeveloperProfile $profile, string $layer, string $reason): void
     {
