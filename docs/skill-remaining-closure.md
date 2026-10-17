@@ -498,8 +498,8 @@ select * from cms_pages
 | **§4.15 团队 RBAC** | `sellers`/`developer_profile`/`developer_team_member` 全 **0 行**；`owner` 能力 `*` 恒通过 | `CLAUDE.md`「不为不存在的供给方设计功能」+ 原方案含跨租户锁死缺陷 | 总负责人（**已拍板缓做**） | L |
 | **§4.15 G 应用与密钥（ApiCredential）** | 全仓零消费者 | 判定为**永久不做**（"没有门可开的锁"） | 总负责人（**已裁决**） | — |
 | **§4.17 备案号展示** | 「关于」页**刻意无备案号栏位**（`pages/mine/about.vue`） | 无真实备案号；占位即伪造 | 总负责人（**已拍板缓做**） | S |
-| **§4.15 开发者门户独立 Web（Vue3 SPA + 独立备案域名）** | 现有门户是 **Blade SSR**（`Resources/views/dev/*` 10 个视图 + `Routes/dev.php`），不是 SPA；前缀可配（`config/developer_portal.php:20` `DEV_PORTAL_PREFIX`） | 独立域名备案（**E2**）+ 0 个第三方开发者 | 总负责人（缓做/备案） | M |
-| **§4.15 D Beta 测试轨 / C 申诉入口 / H SDK·CLI** | `Routes/dev.php` 无 beta / appeal 路由；无 SDK/CLI 产物 | 0 个第三方开发者 → 缓做 | 总负责人（缓做） | M–L |
+| **§4.15 开发者门户独立 Web（Vue3 SPA + 独立备案域名）** | 现有门户是 **Blade SSR**（`Resources/views/dev/*` 10 个视图 + `Routes/dev.php`），不是 SPA；前缀可配（`config/developer_portal.php:20` `DEV_PORTAL_PREFIX`） | 独立域名备案（**E2**） | 总负责人（**已改判 2026-10-16**：第三方开发者要真实引入，邀请链路 S-11a–e 已落地；SPA/域名仍未做） | M |
+| **§4.15 D Beta 测试轨 / C 申诉入口 / H SDK·CLI** | `Routes/dev.php` 无 beta / appeal 路由；无 SDK/CLI 产物 | **仍未立项**（注意：不再是"因为开发者为 0"——2026-10-16 已拍板邀请入驻；这三项各自缺需求/前提） | 总负责人（缓做） | M–L |
 | **§4.13 供给策略与冷启动（①自营填货架 ②赛事引流 ③存量搬运）** | 北极星"可下发技能数×覆盖机型数"实测：`skill` 商品 **1** / `skill_versions` **1**；`device_model` 18 行种子在 | 经营决策（自营素材、赛事奖金、他平台技能**许可审查**） | 总负责人 | L |
 
 ## B 类 · 不需要总负责人介入、纯工程可自行补（每条带代码证据 + 量级）

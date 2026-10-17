@@ -117,7 +117,7 @@
 
 | 步 | 开发者动作 | 系统 | 状态 |
 |---|---|---|---|
-| 1 | 从 Web（或小程序 web-view）进开发者门户 | 🆕 独立 Vue3 SPA + 独立备案域名；小程序用**一次性 code 换 token**（不把 token 拼 URL） | 🆕 P1 |
+| 1 | 从 Web（或小程序 web-view）进开发者门户 | ✅ 现状是 **Blade SSR**（`Resources/views/dev/*` + `Routes/dev.php`）；独立域名备案属 E2；小程序用**一次性 code 换 token**（不把 token 拼 URL） | ✅ 已可用 |
 | 2 | 注册/登录 | 🆕 与 C 端同账号（微信扫码/手机号） | 🆕 |
 | 3 | 主体认证（个人/企业） | 🆕 `developer_profile` | 🆕 |
 | 4 | 签《开发者协议》+《技能安全责任承诺》 | 🆕 `developer_agreement` 电子签留档（§4.14 L1） | 🆕 |

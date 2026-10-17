@@ -7,6 +7,13 @@
 > ⚠ **本文是计划，不是现状**。计划里描述"现在是 X"的句子会随时间失效 —— 引用前请对照代码。
 > 已核实失效的一处：§7 阶段 0 的「异步底座」原文（已就地更正）。
 > 现状以 [skill-remaining-closure.md](./skill-remaining-closure.md) 与 [skill-dev-steps.md](./skill-dev-steps.md) 的进度快照为准。
+>
+> ⚠ **2026-10-17 口径校准（S-7）**：本文以下说法已作废，引用前以代码为准：
+> - 「独立 Vue3 SPA 开发者门户」→ 现状是 **Blade SSR**（`Resources/views/dev/*` + `Routes/dev.php`），不是 SPA；独立域名属 E2。
+> - 「`manifest.yaml`」→ `symfony/yaml` 未安装，**实际只有 `manifest.json` 可用**（`ManifestParser` 对 `.yaml` 会回落报错）。
+> - 「传一次 → 平台转各机型 → 多机型可下」→ 编译层已如实降级为**登记**（D-9）：`skill_build` 不在交付链路上、`BuildResult::success()` 零调用点，产物需外部/人工产出。
+> - 「第三方开发者为 0、不为其设计功能」→ **2026-10-16 已拍板真实引入（邀请入驻）**，开发者侧链路（S-11a–e）已落地。
+> - 熔断「一键禁用所有设备」→ 实际：对新下发即时、对已装设备**下次上线**生效、**人工通道安装的当前无法自动卸载**。
 
 > **v3.4 · 细节统一版（把散在专项文档里的设计并入主计划）**
 > 1. **§4.20 技能转换层（技能编译器）**＋`skill_build` 表——补上"开发者传一次、平台转成各机型载体"的关键中间层（依据 [skill-standardization-chain.md](./skill-standardization-chain.md)）。

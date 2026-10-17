@@ -665,3 +665,15 @@ L2 通过 → **两条发布路径都过闸门** → 上架 → 客户端可见 
 验收（负责人自跑）：新增 10 例全绿（含"CA 重签后公钥不变、老设备证书仍可验"与 export→import 往返 hash 一致）；
 Deploy 127 / SkillAudit 102 全绿；真实 `storage/app/keys` 未被改动。
 不做（已论证）：轮换/多公钥（端侧单公钥，依赖 E7）、KMS。
+### 11.17 S-4 / S-7 已入库
+
+| 卡 | 内容 | 状态 |
+|---|---|---|
+| S-4 | `license_mode` / `pricing_mode` / 发布通道收口到 `SkillVersion`；交付通道单独收口到 `SkillAsset`（不与发布通道混）；业务代码裸字面量清零 | ✅ `bab3791` |
+| S-7 | `docs/*.md` 过时口径校准：`manifest.yaml`→实际只有 `manifest.json`；「Vue3 SPA 门户」→现状 Blade SSR；「传一次多机型可下」→D-9 已降级为登记；「开发者为 0 所以不做」→已拍板邀请入驻；熔断「一键禁用所有设备」→按 S-5/S-8 实际口径 | ✅ 见本次提交 |
+
+**S-7 的做法边界**：`skill-test-baseline.md` 是**冻结快照**，**未就地改写**（本轮也没跑全量重取基线，如实记录）；
+历史计划类文档（`skill-supply-plan.md`）采用**顶部口径校准块**而不是逐句改写 —— 计划是历史产物，改正文会抹掉"当时怎么想的"。
+`skill-dev-steps.md` / `skill-p0-board.md` 里的 `manifest.yaml` 就地改为 `manifest.json`（那是操作项，不改会照错方向做）。
+
+**S-13 闪红归因（收尾）**：见下方专节。
