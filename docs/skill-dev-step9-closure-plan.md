@@ -656,3 +656,12 @@ L2 通过 → **两条发布路径都过闸门** → 上架 → 客户端可见 
 | S-3b | 商品级 `relist` + 复用 ReviewGate/包指纹/熔断；不给状态机加 `published→published`；旧 publish 路径返回 `VERSION_ALREADY_PUBLISHED`（两条通道都不再 500） | ✅ 见提交 |
 
 验收（负责人自跑）：新增 8 例全绿（含"授权一条不少"与"两条旧通道不再 500"）；SkillAudit 102 / Deploy 117 全绿。
+### 11.16 S-6 已入库 —— 密钥持久化与命令化
+
+| 卡 | 内容 | 状态 |
+|---|---|---|
+| S-6 | `AGENT_KEYS_DISK/DIR` 可配置；`agent:keys:generate|export|import`；**缺公钥/证书时从同一把私钥重建/重签**（不重签整对/整张 CA）；import 先校验后落盘、默认拒绝覆盖；手册 §8 + 上线清单 3 条 | ✅ 见提交 |
+
+验收（负责人自跑）：新增 10 例全绿（含"CA 重签后公钥不变、老设备证书仍可验"与 export→import 往返 hash 一致）；
+Deploy 127 / SkillAudit 102 全绿；真实 `storage/app/keys` 未被改动。
+不做（已论证）：轮换/多公钥（端侧单公钥，依赖 E7）、KMS。

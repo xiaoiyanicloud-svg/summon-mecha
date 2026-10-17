@@ -302,6 +302,9 @@ schtasks /delete /tn "SkillPlatform-probe" /f
 | 12 | 内容安全词表 | `CONTENT_SAFETY_WORDS_PATH` | 合规方补全的词表；缺失时 `CONTENT_SAFETY_ON_MISSING=fail`（默认，拒绝提审） | ⚪ 用的是仓库附带的**种子表** |
 | 13 | 协议正文定稿 | 后台 CMS `/page/privacy-policy`、`/page/terms-of-use` | 应是律师定稿正文，而不是"尚未定稿"说明 | ❌ **当前是说明页**（等 E6） |
 | 14 | 备案号 | — | 有真实备案号后才展示；**无号不展示**（占位号码即伪造） | ⚪ 未取得（等 E2/E3） |
+| 15 | 密钥目录指向持久卷 | `.env` `AGENT_KEYS_DISK` / `AGENT_KEYS_DIR` | 生产**必须**指向受限持久卷（默认 `local`/`storage/app/keys` 只适合开发） | ⚪ 本机默认 `local` |
+| 16 | 密钥已异地备份 | `php artisan agent:keys:export --to=<安全目录>` | 上线后**第一件事**：导出并加密留存到密码管理器/异地，定期核对 sha256 | ⚪ 待运维执行 |
+| 17 | 没有随意 `import --replace` | `php artisan agent:keys:import --replace` | 替换签名密钥=轮换，会让已部署 Agent **全部验签失败**；只在恢复演练/计划内变更时用 | ⚪ — |
 
 **图例**：✅ 已确认符合 ／ ❌ 明确不符合（**这是行动项**） ／ ⚪ 本机不适用或等外部依赖
 
@@ -329,3 +332,48 @@ schtasks /delete /tn "SkillPlatform-probe" /f
 - "还有什么没做" → [`skill-remaining-closure.md`](./skill-remaining-closure.md)
 - "按什么顺序做" → [`skill-dev-steps.md`](./skill-dev-steps.md)
 - "测试失败哪些是既有的" → [`skill-test-baseline.md`](./skill-test-baseline.md)
+
+---
+
+## 8. 签名密钥与设备 CA（S-6）
+
+> 结论先说：**丢了就是静默事故** —— 平台不一定报错，但**已部署 Agent 会全体拒装**（签名私钥丢）或**证书鉴权路径全 401**（CA 私钥丢）。库里没有任何可恢复副本。
+
+### 8.1 两套密钥是什么、丢在哪
+
+| 材料 | 位置（默认） | 丢了会怎样 |
+|---|---|---|
+| 平台签名密钥对（RSA-2048） | `storage/app/keys/platform_private.pem` / `platform_public.pem` | 下次签名会**重新生成整对** → 已部署 Agent 内置的旧公钥验签失败 → `ERR_SIG_INVALID 验签失败,拒绝安装`，**所有设备下发改装停摆** |
+| 设备 CA（自签根） | `storage/app/keys/device_ca_private.pem` / `device_ca_public.pem` | 下次用 CA 会**重签整张 CA** → 老设备 `cert_pem` 链不上 → 证书签名鉴权路径**全 401**；走 bearer secret 的设备不受影响 |
+
+**能恢复吗？** 签名密钥：不能（库里不存公钥/私钥）。CA：只有在 `device_ca_public.pem` 文件本身还在时，老设备仍可验签，但不能签新证；一旦触发重签，旧 CA 公钥被覆盖即不可恢复。
+
+### 8.2 三条命令
+
+```bash
+# 生成（幂等：已存在默认不覆盖；缺公钥/证书时从同一把私钥重建，不会重签整对/整张 CA）
+php artisan agent:keys:generate
+
+# 导出（上线后第一件事；把导出的目录加密存到密码管理器/异地）
+php artisan agent:keys:export --to=/secure/backup/skill-keys-$(date +%F)
+
+# 导入（默认拒绝覆盖；--replace 会先自动备份到 keys/backup-<时间戳>-<随机>/）
+php artisan agent:keys:import --from=/secure/backup/skill-keys-2026-10-16
+```
+
+- `import` 会**先逐项校验再落盘**（私钥可解析、公私钥匹配、CA 私钥与证书匹配）；任一校验失败 → 一个字节都不写。
+- 配置项：`AGENT_KEYS_DISK` / `AGENT_KEYS_DIR`（在 `config/deploy_gateways.php` 里读；**不要在配置外直接读 `env()`**，`config:cache` 后会失效）。
+
+### 8.3 权限
+
+私钥 `0600`、证书/公钥 `0640`，由命令 **best-effort** 设置：**Windows 下基本无效**（返回成功也不代表真的强制了），权限复核必须在 Linux 生产机上做。
+
+### 8.4 不要做什么
+
+- ❌ **不要**把"缺公钥/证书"当成轮换：本仓会在同一把私钥上重建/重签（公钥不变），老设备仍可用；只有私钥也没了才生成新的。
+- ❌ **不要**随意 `import --replace`：替换签名密钥等于**轮换**，而端侧目前只内置一个公钥 —— 会让已部署 Agent 全部验签失败。多公钥/平滑轮换依赖真机 Agent（E7），单独立项。
+- ❌ **没有 KMS**：本卡做的是「持久卷 + 备份/恢复命令 + 后果说明」，不是密钥托管，也不是轮换机制。
+
+### 8.5 恢复演练
+
+在**空环境**用导出的备份跑一次 `import` → `agent:keys:generate`（幂等应不覆盖）→ 起一个签名/验签探针；不要在生产上做第一次演练。
