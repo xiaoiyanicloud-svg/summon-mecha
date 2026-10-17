@@ -146,6 +146,9 @@ Route::prefix('catalog')->group(function () {
         Route::put('versions/{versionId}', 'updateVersion')->name('admin.catalog.skills.versions.update');
         Route::post('versions/{versionId}/assets', 'storeAsset')->name('admin.catalog.skills.assets.store');
         Route::post('versions/{versionId}/publish', 'publish')->name('admin.catalog.skills.versions.publish');
+        // S-3b · 商品级「重新上架」：下架停的是商品（status=0），版本仍是 published，
+        // 所以复售不能走 publish（状态机没有 published → published）。上架权归运营。
+        Route::post('versions/{versionId}/relist', 'relist')->whereNumber('versionId')->name('admin.catalog.skills.versions.relist');
         Route::delete('versions/{versionId}', 'deleteVersion')->name('admin.catalog.skills.versions.delete');
     });
 

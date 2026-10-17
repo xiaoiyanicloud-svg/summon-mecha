@@ -188,6 +188,9 @@ class SkillAdminController extends APIController
             //   语义全错且把排查引向审核台。default 只留作"契约有缺口"的兜底，给一个不撒谎的通用码。
             $code = match ($result['code']) {
                 SkillPublisher::ERR_VERSION_ARCHIVED      => ApiErrorCode::VERSION_ARCHIVED,
+                // S-3b · 已发布版本再 publish —— 不再 500：明确告诉调用方"版本已在，别重复发布"，
+                // 商品被下架时应走运营侧的商品级「重新上架」。
+                SkillPublisher::ERR_VERSION_ALREADY_PUBLISHED => ApiErrorCode::VERSION_ALREADY_PUBLISHED,
                 SkillPublisher::ERR_VERSION_HAS_NO_ASSET  => ApiErrorCode::VERSION_HAS_NO_ASSET,
                 SkillPublisher::ERR_ASSET_FILE_MISSING    => ApiErrorCode::ASSET_FILE_MISSING,
                 SkillPublisher::ERR_GATE_NOT_PASSED       => ApiErrorCode::GATE_NOT_PASSED,

@@ -95,6 +95,16 @@
                 </div>
 
                 <div class="flex items-center gap-2">
+                    {{-- S-3b · 版本仍是 published 但商品被下架 → 商品级「重新上架」。
+                         此时不能走左侧的 publish（状态机没有 published → published，曾经 500）。 --}}
+                    @if ($version->status === 'published' && ! $productSellable)
+                        <span class="text-xs text-gray-500">复上架仍需过闸门与包指纹校验</span>
+                        <form method="POST" action="{{ route('admin.catalog.skills.versions.relist', $version->id) }}">
+                            @csrf
+                            <button type="submit" class="primary-button">重新上架</button>
+                        </form>
+                    @endif
+
                     @if ($version->status !== 'published')
                         <form method="POST" action="{{ route('admin.catalog.skills.versions.publish', $version->id) }}">
                             @csrf

@@ -263,6 +263,16 @@ final class ApiErrorCode
     public const VERSION_HAS_NO_ASSET = 'VERSION_HAS_NO_ASSET';
 
     /**
+     * 版本已经是 published —— 对已发布版本再调 publish 的明确结果（S-3b）。
+     *
+     * 此前这条路径会在状态机里撞 `published → published`，抛 RuntimeException → **HTTP 500**。
+     * 下架是**商品级**停售（product.status=0），版本仍是 published，复售应走商品级
+     * 「重新上架」(relist)，不是重复 publish。500 既不告诉调用方"版本没丢"，
+     * 也不告诉他该走哪个动作；本码把这条路径变成可分支的结果。
+     */
+    public const VERSION_ALREADY_PUBLISHED = 'VERSION_ALREADY_PUBLISHED';
+
+    /**
      * 声明为需落盘载体（file / motion_data / app_package / vendor_package）的交付物
      * 在存储上取不到 → 不得上架（见 `SkillPublisher::ERR_ASSET_FILE_MISSING`；D-9 起
      * 判据从"只认 file"放宽到全部需落盘载体）。

@@ -83,7 +83,11 @@ class SkillController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('admin::catalog.skills.edit', compact('product', 'versions'));
+        // S-3b · 「重新上架」按钮只在"版本已发布、但商品被下架"时出现。
+        // 判据与 SkillPublisher::relist 同源（product_flat），避免页面与动作各判一套。
+        $productSellable = $this->publisher->isProductSellable($productId);
+
+        return view('admin::catalog.skills.edit', compact('product', 'versions', 'productSellable'));
     }
 
     /**
@@ -271,6 +275,9 @@ class SkillController extends Controller
                 // 该做的是重新上传（或重新提审）这份包，所以留在**商品编辑页**，不跳审核台。
                 SkillPublisher::ERR_PACKAGE_CHANGED_AFTER_REVIEW => '发布被拒（审核通过之后交付物又变了，不是审核未过）：'
                     .$result['message'].'　请在本页重新上传交付物并重新提交审核。',
+                // S-3b · 版本已是 published → 不再往状态机里撞（那是 500 的来源）。
+                // 若商品被下架，正确动作是「重新上架」，留在商品编辑页（按钮就在本页）。
+                SkillPublisher::ERR_VERSION_ALREADY_PUBLISHED => '不能重复发布：'.$result['message'],
                 SkillPublisher::ERR_GATE_NOT_PASSED        => $result['message'].'　请到「审核台」处理。',
                 default                                    => $result['message'],
             };
@@ -294,6 +301,72 @@ class SkillController extends Controller
                 'gate'       => collect($result['gate']['layers'])->map(fn ($s) => $s['result_label'])->all(),
             ]
         );
+
+        session()->flash('success', $result['message']);
+
+        return redirect()->route('admin.catalog.skills.edit', $version->product_id);
+    }
+
+    /**
+     * 重新上架（商品级）—— S-3b。
+     *
+     * 与 publish 的分工：
+     *   · publish 改**版本**状态（draft/in_review → published），并把商品置为可售；
+     *   · relist **只**把已发布版本所属的**商品**重新置为可售，**版本状态保持 published**。
+     *
+     * 复上架不是"跳过审核"：闸门未过 / 包指纹变了 / 平台熔断生效中都会被拒。
+     * 判定全部收敛在 `SkillPublisher::relist()`（与 publish 共用 ReviewGate 与包指纹实现）；
+     * 本方法只做错误分流与留痕，不在这里另判一套。
+     */
+    public function relist(int $versionId)
+    {
+        $version = SkillVersion::with('assets')->find($versionId);
+
+        if (! $version) {
+            session()->flash('error', '版本不存在。');
+
+            return redirect()->route('admin.catalog.skills.index');
+        }
+
+        $result = $this->publisher->relist($version);
+
+        if (! $result['ok']) {
+            // 与 publish 相同的分流原则：闸门问题去审核台；其余留在商品编辑页。
+            // 包指纹变了 / 熔断中 / 未发布 —— 去审核台都做不了什么，留在原地。
+            $gateBlocked = $result['code'] === SkillPublisher::ERR_GATE_NOT_PASSED;
+
+            $flash = match ($result['code']) {
+                SkillPublisher::ERR_PACKAGE_CHANGED_AFTER_REVIEW => '重新上架被拒（审核通过之后交付物又变了，不是审核未过）：'
+                    .$result['message'].'　请在本页重新上传交付物并重新提交审核。',
+                SkillPublisher::ERR_SKILL_BLOCKED                 => '重新上架被拒（平台强制下架期间）：'.$result['message'],
+                SkillPublisher::ERR_GATE_NOT_PASSED               => $result['message'].'　请到「审核台」处理。',
+                SkillPublisher::ERR_VERSION_ARCHIVED,
+                SkillPublisher::ERR_VERSION_NOT_PUBLISHED         => '重新上架被拒：'.$result['message'],
+                default                                           => $result['message'],
+            };
+
+            session()->flash('error', $flash);
+
+            return $gateBlocked
+                ? redirect()->route('admin.catalog.skill-reviews.show', $version->id)
+                : redirect()->route('admin.catalog.skills.edit', $version->product_id);
+        }
+
+        // 幂等提示（ALREADY_SELLABLE）不记"上架动作" —— 没有发生变更的点击不该冒充一次操作留痕。
+        if ($result['code'] === SkillPublisher::OK_RELISTED) {
+            $this->oplog->log(
+                OperationLog::ACTOR_ADMIN,
+                auth()->guard('admin')->user()->id,
+                'skill.version.relist',
+                'skill_version',
+                $version->id,
+                [
+                    'product_id' => $version->product_id,
+                    'version'    => $version->version,
+                    'gate'       => collect($result['gate']['layers'])->map(fn ($s) => $s['result_label'])->all(),
+                ]
+            );
+        }
 
         session()->flash('success', $result['message']);
 

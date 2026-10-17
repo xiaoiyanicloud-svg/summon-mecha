@@ -10,6 +10,7 @@ use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Deploy\KillSwitchService;
 use Webkul\Shop\Services\LifecycleNotifier;
 use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
 
@@ -68,12 +69,42 @@ class SkillPublisher
      */
     public const ERR_PACKAGE_CHANGED_AFTER_REVIEW = 'PACKAGE_CHANGED_AFTER_REVIEW';
 
+    /**
+     * 版本已经是 published —— 旧路径（publish）收到这个请求时的**明确结果**（S-3b）。
+     *
+     * 病：下架是**商品级**停售（`product.status=0` / `visible_individually=0`），
+     * 版本仍是 published。再点「发布」会走到 `SkillVersionState::transition(published → published)`，
+     * 被状态机拒绝后在事务里抛 RuntimeException —— 两条通道都是 500。500 既没告诉运营
+     * "版本其实没丢"，也没告诉他该走哪个动作。
+     *
+     * 修法**不是**给状态机加 `published → published`（那会把"重复发布"伪装成一次合法迁移），
+     * 而是把这条路径变成可读的结果码，并指到正确的商品级动作：{@see self::relist()}。
+     */
+    public const ERR_VERSION_ALREADY_PUBLISHED = 'VERSION_ALREADY_PUBLISHED';
+
+    /** 版本尚未发布（草稿/在审/驳回）—— 没有"重新上架"可谈，应该走 publish。 */
+    public const ERR_VERSION_NOT_PUBLISHED = 'VERSION_NOT_PUBLISHED';
+
+    /** relist 成功：版本状态保持 published，只把商品重新置为可售。 */
+    public const OK_RELISTED = 'RELISTED';
+
+    /** 商品当前已可售 —— relist 的幂等提示（**不是**失败）。 */
+    public const ALREADY_SELLABLE = 'ALREADY_SELLABLE';
+
+    /** 熔断生效中 —— 平台强制下架期间禁止复上架（码值与 API 信封的 SKILL_BLOCKED 一致）。 */
+    public const ERR_SKILL_BLOCKED = 'SKILL_BLOCKED';
+
     public function __construct(
         protected ReviewGate $gate,
         protected SkillVersionState $states,
         protected ProductRepository $products,
         protected LifecycleNotifier $notifier,
         protected PackageFingerprint $fingerprint,
+        /**
+         * 熔断判据的**唯一读取入口**（S-8 收敛在 `KillSwitchService::isBlockedFor`）。
+         * 复上架必须问同一处，不能自己查 `skill_blocklist` —— 否则强度阶梯会漂移。
+         */
+        protected KillSwitchService $killSwitch,
     ) {}
 
     /**
@@ -88,6 +119,20 @@ class SkillPublisher
     {
         if ($version->status === SkillVersion::STATUS_ARCHIVED) {
             return $this->result(false, self::ERR_VERSION_ARCHIVED, '已归档的版本不能发布。', $version);
+        }
+
+        // S-3b · 已发布版本再走 publish —— 这是"商品被下架后想重新上架"的常见误操作。
+        //
+        // ⚠ 不允许继续往下走：状态机没有（也**不该有**）`published → published`，
+        //   继续走会在 DB::transaction 里抛 RuntimeException → 两条 HTTP 通道都 500。
+        //   这里提前返回明确结果，文案直接指向正确的动作（商品级 relist）。
+        if ($version->status === SkillVersion::STATUS_PUBLISHED) {
+            return $this->result(
+                false,
+                self::ERR_VERSION_ALREADY_PUBLISHED,
+                '该版本已发布（下架只停售商品，不会回退版本状态）。若商品已下架，请走「重新上架」。',
+                $version
+            );
         }
 
         $version->loadMissing('assets');
@@ -168,19 +213,17 @@ class SkillPublisher
         // 同一个 `(version, carrier_type, sort_order)` 再传一次就把旧文件覆盖掉了。
         // 于是"提审之后、发布之前"再传一次包，就能让**审核记录看起来仍然有效**，
         // 而实际要交付出去的已经是另一份字节流 —— 此前没有任何记录能发现。
-        $reviewed = $this->reviewedFingerprint($version);
-        $current = $this->fingerprint->forVersion((int) $version->id);
+        $integrity = $this->packageIntegrity($version);
 
-        // ⚠ 判据方向：**只有"审过的那份"有值时才比对**。
-        //   `$current === null`（现在一个文件类交付物都没有）也是"变了" —— 审的时候有包，
-        //   现在没有了，同样是"审的不是发的"，不能因为另一侧为空就放行。
-        if ($reviewed !== null && ($current === null || ! hash_equals($reviewed, $current))) {
+        // ⚠ 判据方向见 {@see self::packageIntegrity()}：只有"审过的那份"有值时才比对。
+        if ($integrity['changed']) {
             return $this->result(
                 false,
                 self::ERR_PACKAGE_CHANGED_AFTER_REVIEW,
                 '该版本在审核通过之后，交付物发生了变化；请重新提交审核。',
                 $version,
-                $gate
+                $gate,
+                $integrity
             );
         }
 
@@ -191,13 +234,6 @@ class SkillPublisher
         //     与一句说明，调用方（接口/后台）能看见"这次发布没能校验包完整性"。
         // 这条口径是**过渡**的：等存量版本走完一轮"重新提审→发布"（每条新审核记录都带指纹）
         // 之后，`$reviewed === null` 会退化成"真的一件文件类交付物都没有"，那时才能收紧成一律拒绝。
-        $integrity = $reviewed === null
-            ? [
-                'verified' => false,
-                'note'     => '本次发布未能校验包完整性：该版本没有可比的包指纹'
-                    .'（历史审核记录未记录指纹，或该版本只有非文件类交付物）。',
-            ]
-            : ['verified' => true, 'note' => null];
 
         DB::transaction(function () use ($version) {
             // 归档同商品其它 published 版本 —— 保留**批量** update，刻意不逐条走 transition()：
@@ -244,6 +280,138 @@ class SkillPublisher
         $this->notifier->skillPublished((int) $version->product_id, (int) $version->id, (string) $version->version);
 
         return $this->result(true, self::OK, "版本 {$version->version} 已发布。", $version->fresh('assets'), $gate, $integrity);
+    }
+
+    /**
+     * 商品级「重新上架」（S-3b）。
+     *
+     * 背景：下架是**商品级停售**（`product.status=0` / `visible_individually=0`），
+     * 而 `skill_versions.status` 仍是 published。此时对版本再调 publish 无意义
+     * （见 {@see self::ERR_VERSION_ALREADY_PUBLISHED}），正确的动作是把**商品**重新置为可售。
+     *
+     * 三条不可谈判的语义：
+     *   · **不碰版本状态机** —— 本方法绝不调 `SkillVersionState::transition()`；
+     *     版本保持 published，下架/复售都只影响商品的可售性。
+     *   · **要不要重新过审由闸门 + 包指纹自动判定** —— 审核记录仍在、包指纹未变 → 复售；
+     *     包已换 → PACKAGE_CHANGED_AFTER_REVIEW，逼回重新提审。没有"跳过校验"的开关。
+     *   · **熔断生效中禁止复上架** —— 平台强制下架期间，运营不能凭一次点击把它抬回来。
+     *
+     * 下架只停新增销售，**不回收已售授权**：本方法不读写 `skill_entitlements`。
+     *
+     * @return array{ok: bool, code: string, message: string, version: SkillVersion, gate: array, package_integrity_verified: bool|null, package_integrity_note: string|null}
+     */
+    public function relist(SkillVersion $version): array
+    {
+        // ① 归档版本没有"重新上架"可说 —— 与 publish 同一个码，处置也一样（先发布可用版本）。
+        if ($version->status === SkillVersion::STATUS_ARCHIVED) {
+            return $this->result(false, self::ERR_VERSION_ARCHIVED, '已归档的版本不能重新上架；请先发布该版本。', $version);
+        }
+
+        // 只有已发布版本才存在"商品被下架后复售"这回事。草稿/在审/驳回应该走「发布」；
+        // 若在这里把商品置为可售，会造出"市场里能买、却没有已发布版本可交付"的坏状态。
+        if ($version->status !== SkillVersion::STATUS_PUBLISHED) {
+            return $this->result(
+                false,
+                self::ERR_VERSION_NOT_PUBLISHED,
+                '该版本尚未发布，不能执行「重新上架」；请先发布该版本。',
+                $version
+            );
+        }
+
+        // ② 幂等：商品已经"市场能搜到"，就没有可做的事 —— 不报错、不改任何状态。
+        if ($this->isProductSellable((int) $version->product_id)) {
+            return $this->result(true, self::ALREADY_SELLABLE, '该商品当前已在售，无需重复上架。', $version);
+        }
+
+        // ③ 平台强制下架（熔断生效中）期间，运营不得把商品重新挂回市场。
+        //   判据走 KillSwitchService 的**唯一读入口**（'sale' 门 = 任何生效熔断都拦）。
+        if ($this->killSwitch->isBlockedFor((int) $version->product_id, 'sale')) {
+            return $this->result(
+                false,
+                self::ERR_SKILL_BLOCKED,
+                '该技能处于平台强制下架（熔断生效）期间，不能重新上架；请等待平台解除熔断。',
+                $version
+            );
+        }
+
+        // ④ 发布闸门 —— 与 publish 是**同一份实现**（ReviewGate::evaluate）。
+        //    审核记录仍在且仍通过才放行；否则去审核台把审核做掉。
+        $gate = $this->gate->evaluate((int) $version->product_id, (int) $version->id);
+
+        if (! $gate['ok']) {
+            return $this->result(
+                false,
+                self::ERR_GATE_NOT_PASSED,
+                '未通过发布闸门：'.$gate['message'],
+                $version,
+                $gate
+            );
+        }
+
+        // ⑤ 包指纹 —— 与 publish 是**同一份实现**（packageIntegrity）。
+        //    位置在闸门之后：先确认"审过了"，再确认"审的就是现在这份"。
+        //    若包已换，不能复售，必须重新提审（审核台此刻显示的是"已通过"，但那对应的是旧包）。
+        $integrity = $this->packageIntegrity($version);
+
+        if ($integrity['changed']) {
+            return $this->result(
+                false,
+                self::ERR_PACKAGE_CHANGED_AFTER_REVIEW,
+                '该版本在审核通过之后，交付物发生了变化；请重新提交审核后再重新上架。',
+                $version,
+                $gate,
+                $integrity
+            );
+        }
+
+        // ⑥ 只动商品，**不动版本状态**。makeProductSellable 与 publish 共用同一实现
+        //    （ProductRepository::update + 事件三步刷新 product_flat）。
+        //    事务包住单品更新：任一步失败都不留"看起来已上架"的半状态。
+        DB::transaction(function () use ($version) {
+            $this->makeProductSellable($version);
+        });
+
+        return $this->result(
+            true,
+            self::OK_RELISTED,
+            "版本 {$version->version} 已重新上架。",
+            $version->fresh('assets'),
+            $gate,
+            $integrity
+        );
+    }
+
+    /**
+     * D-7 · ⑨ 包完整性比对 —— publish 与 relist 共用的**同一份判定**。
+     *
+     * "审的那个包"取最近一条通过记录上的指纹（{@see self::reviewedFingerprint()}）；
+     * "要发的这个包"由 {@see PackageFingerprint::forVersion()} 现算。
+     *
+     * ⚠ 判据方向：**只有"审过的那份"有值时才比对**。
+     *   `$current === null`（现在一个文件类交付物都没有）也是"变了" —— 审的时候有包，
+     *   现在没有了，同样是"审的不是发的"，不能因为另一侧为空就放行。
+     *   `$reviewed === null` 是过渡口径（历史审核记录没记指纹 / 只有非文件类交付物）：
+     *   缺失不等于变化，不拒绝，但 verified=false + note 如实说明"本次没能校验"。
+     *
+     * @return array{changed: bool, verified: bool, note: string|null, reviewed: string|null, current: string|null}
+     */
+    protected function packageIntegrity(SkillVersion $version): array
+    {
+        $reviewed = $this->reviewedFingerprint($version);
+        $current = $this->fingerprint->forVersion((int) $version->id);
+
+        $changed = $reviewed !== null && ($current === null || ! hash_equals($reviewed, $current));
+
+        return [
+            'changed'  => $changed,
+            'verified' => $reviewed !== null && ! $changed,
+            'note'     => $reviewed === null
+                ? '本次发布未能校验包完整性：该版本没有可比的包指纹'
+                    .'（历史审核记录未记录指纹，或该版本只有非文件类交付物）。'
+                : null,
+            'reviewed' => $reviewed,
+            'current'  => $current,
+        ];
     }
 
     /**
@@ -359,6 +527,34 @@ class SkillPublisher
     }
 
     /**
+     * 商品当前是否**可售**（市场能搜到）—— relist 的幂等判据。
+     *
+     * 判据与市场搜索同源：`product_flat` 里同一 channel/locale 行
+     * `status=1 && visible_individually=1`（见 `SkillCatalogController::search`）。
+     * 用 flat 而不是 EAV：flat 才是搜索真正读的表 —— 拿 EAV 判断可能出现
+     * "库里说可售、市场里搜不到"的自相矛盾（flat 索引还没刷出来）。
+     *
+     * 与 `makeProductSellable()` 写入的是**同一组** channel/locale（见 defaultLocaleCode）。
+     */
+    public function isProductSellable(int $productId): bool
+    {
+        $row = DB::table('product_flat')
+            ->where('product_id', $productId)
+            ->where('channel', core()->getDefaultChannelCode())
+            ->where('locale', $this->defaultLocaleCode())
+            ->first(['status', 'visible_individually']);
+
+        return $row && (int) $row->status === 1 && (int) $row->visible_individually === 1;
+    }
+
+    /** 商品更新/可售判据统一使用的 locale（默认渠道的默认语言）。 */
+    protected function defaultLocaleCode(): string
+    {
+        return (string) (optional(core()->getDefaultChannel()->default_locale)->code
+            ?: core()->getDefaultChannelCode());
+    }
+
+    /**
      * 把该版本所属的商品置为**可售**（status=1 + visible_individually=1）。
      *
      * 走 Bagisto 既有的商品更新通道（`ProductRepository::update()`）+ 事件三步，
@@ -394,8 +590,7 @@ class SkillPublisher
             'status'               => 1,
             'visible_individually' => 1,
             'channel'              => core()->getDefaultChannelCode(),
-            'locale'               => (string) (optional(core()->getDefaultChannel()->default_locale)->code
-                ?: core()->getDefaultChannelCode()),
+            'locale'               => $this->defaultLocaleCode(),
             'categories'           => $categories,
         ], $productId);
 
