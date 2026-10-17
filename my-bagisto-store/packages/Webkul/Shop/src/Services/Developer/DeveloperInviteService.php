@@ -106,7 +106,7 @@ class DeveloperInviteService
         $invite = DeveloperInvite::query()->where('code', $code)->first();
 
         if (! $invite) {
-            return '邀请码不存在，请核对后重新输入。';
+            return '邀请码不存在，请向邀请人重新索取邀请链接。';
         }
 
         if ($invite->status !== DeveloperInvite::STATUS_ACTIVE) {
