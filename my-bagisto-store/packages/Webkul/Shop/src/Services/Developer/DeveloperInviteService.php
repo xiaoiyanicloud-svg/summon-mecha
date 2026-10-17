@@ -132,9 +132,13 @@ class DeveloperInviteService
      * （另一个的 WHERE 不命中 → affected 0）。
      *
      * ⚠ 领取成功后会往 `developer_invite_usage` 落一行流水；该表
-     *   `unique(invite_id, customer_id)` 是**同一人重复领**的数据库级兜底 ——
-     *   若同一 customer 在**多用途码**上重复领（已领过），此处会抛唯一约束异常，
-     *   由**调用方的事务**回滚（含上面那次次数 +1），从而不留半截数据。
+     *   `unique(invite_id, customer_id)` 是**同一人重复领**的数据库级兜底。
+     *
+     * S-11d：多用途码上**同一 customer 第二次领取**不再靠"撞唯一索引抛异常"——
+     * 条件 UPDATE 里加了 `whereNotExists`（该 invite 下该 customer 尚无 usage 行），
+     * 第 2 次会因 WHERE 不命中返回 false（**不抛异常**），调用方据此区分
+     * "你已领过"（{@see alreadyClaimedBy()}）与"被别人领走"。
+     * 仍是**单条条件 UPDATE**，没有"先查再更新"的两步竞态。
      */
     public function claim(
         DeveloperInvite $invite,
@@ -149,6 +153,12 @@ class DeveloperInviteService
             ->whereColumn('times_used', '<', 'max_uses')
             ->where(function ($q) {
                 $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->whereNotExists(function ($q) use ($customerId) {
+                $q->select(DB::raw(1))
+                    ->from('developer_invite_usage')
+                    ->whereColumn('developer_invite_usage.invite_id', 'developer_invite.id')
+                    ->where('developer_invite_usage.customer_id', $customerId);
             })
             ->update([
                 'times_used' => DB::raw('times_used + 1'),
@@ -171,6 +181,17 @@ class DeveloperInviteService
         ]);
 
         return true;
+    }
+
+    /**
+     * 该 customer 是否已经领过这张码（只读；用于区分"你已领过"与"被别人领走"）。
+     */
+    public function alreadyClaimedBy(DeveloperInvite $invite, int $customerId): bool
+    {
+        return DB::table('developer_invite_usage')
+            ->where('invite_id', $invite->id)
+            ->where('customer_id', $customerId)
+            ->exists();
     }
 
     /**
