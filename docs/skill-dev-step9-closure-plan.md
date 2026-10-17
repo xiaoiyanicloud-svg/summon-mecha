@@ -695,3 +695,10 @@ Deploy 127 / SkillAudit 102 全绿；真实 `storage/app/keys` 未被改动。
 | `skill-test-baseline.md` 重新取基线 | ⏳ 未做 | 冻结快照，需全量 ~11 分钟；本轮只跑过滤器回归，未重取 |
 | 部署顺序 | ⚠ 硬约束 | S-12a **不可单独上线**；须与 S-12b（提交入口）+ 运营可见两层资料一起上 |
 | 真机 Agent（E7）/ 厂商载体规范 | ⏸ 外部前提 | 编译层"真做"、permissions 端侧强制、密钥轮换/多公钥都依赖它 |
+### 11.20 S-15 已入库（S-4 发现的不一致收口）
+
+| 卡 | 内容 | 状态 |
+|---|---|---|
+| S-15 | 注册表补 `agent` 通道（实际下发由 deploy_task 承担；无任务时 `deliver()` 明确 fail，回收任务不算交付）；TrialService 改用常量 | ✅ 见提交 |
+
+验收（负责人自跑）：新增 6 例全绿；TrialFlowB3 11 / Deploy 127 / SkillAudit 102 全绿。
