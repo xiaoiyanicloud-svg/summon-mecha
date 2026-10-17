@@ -113,7 +113,7 @@ class TrialService
                     // active = 授权生效中（不是 pending_bind —— 试用必须绑到具体设备才能下发）
                     'status'           => SkillEntitlement::STATUS_ACTIVE,
                     'license_key'      => SkillEntitlement::newLicenseKey(),
-                    'delivery_channel' => 'agent',
+                    'delivery_channel' => SkillAsset::DELIVERY_AGENT,
                     'granted_at'       => $now,
                     'expires_at'       => $now->copy()->addMinutes(SkillEntitlement::TRIAL_MINUTES),
                     'meta'             => [

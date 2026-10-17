@@ -72,6 +72,13 @@ return [
             'class' => Webkul\Shop\Services\SkillDelivery\AppChannel::class,
         ],
 
+        // Agent 下发 —— **授权侧**实现:真正的下发由 deploy_task 承担,本通道只做
+        //   "能不能走 / 有没有真的下发任务"的判断与结果回报,不创建任务、不改授权状态。
+        // 试用授权(TrialService)写的就是这个 key,必须有注册,否则会被调用点记成交付失败。
+        'agent' => [
+            'class' => Webkul\Shop\Services\SkillDelivery\AgentChannel::class,
+        ],
+
         // P1:设备带 license_key 主动来拉。是"拉"模型,不需要 broker、
         //     不要求设备有公网 IP,所以比推送容易落地。待设备端固件就绪后启用。
         // 'device_pull' => [
