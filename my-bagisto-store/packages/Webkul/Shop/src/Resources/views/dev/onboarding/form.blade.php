@@ -5,6 +5,19 @@
 @section('content')
     <h1>开发者入驻</h1>
 
+    {{--
+        S-11e · 邀请横幅：只在 session 里确实有码时出现（**无码时不许出现空横幅**）。
+        码**不明文回显** —— 这里只说明它记录来源，不展示内容。
+        口径：邀请码不是准入闸门，实名与协议仍必须完成。
+    --}}
+    @if (session('dev_invite_code'))
+        <div class="notice" data-invite-banner="1" style="max-width:560px">
+            <strong>你正在通过邀请链接入驻。</strong>
+            邀请码只用于<strong>记录来源</strong>，<strong>不是准入条件</strong>；
+            你<strong>仍需完成实名与协议</strong>。
+        </div>
+    @endif
+
     <div class="card" style="max-width:560px">
         <p class="muted">
             提交后即完成入驻。<strong>实名审核（公司认证 + 操作人认证两层）由平台人工完成</strong>；

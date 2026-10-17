@@ -39,6 +39,51 @@
             </div>
         @endif
 
+        {{--
+            S-11e · 入驻进度卡：五步 + 三态，**零 JS**。
+            顺序即指引 —— 第一个未完成的那步标「进行中」并给直达链接。
+            口径硬约束：实名一律写「平台人工审核（人工确认，非身份核验）」，
+            严禁出现"实名认证通过 / 已核验身份"（真 OCR / 工商核验未接入）。
+        --}}
+        <style>
+            .onboarding-steps { list-style: none; margin: 0; padding: 0; }
+            .onboarding-step {
+                display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                padding: 10px 0; border-bottom: 1px solid #eef0f3;
+            }
+            .onboarding-step:last-child { border-bottom: 0; }
+            .onboarding-step .step-label { min-width: 88px; }
+            .onboarding-step .step-detail { flex: 1; }
+            .onboarding-step[data-state="current"] .step-label { color: #1d4ed8; }
+            .onboarding-step .badge.current { background: #dbeafe; color: #1d4ed8; }
+        </style>
+
+        <div class="card">
+            <h2>入驻进度</h2>
+            <p class="muted" style="margin-top:0">
+                下面是入驻的五个步骤，<strong>顺序即指引</strong>：第一个未完成的就是当前要做的事。
+                实名与协议均由<strong>平台人工审核（人工确认，非身份核验）</strong>。
+            </p>
+
+            <ul class="onboarding-steps">
+                @foreach ($onboardingSteps as $step)
+                    @php
+                        $stepState = $step['done'] ? 'done' : ($step['current'] ? 'current' : 'pending');
+                    @endphp
+                    <li class="onboarding-step" data-step="{{ $step['key'] }}" data-state="{{ $stepState }}">
+                        <span class="badge {{ $step['done'] ? 'ok' : ($step['current'] ? 'current' : '') }}">
+                            {{ $step['done'] ? '完成' : ($step['current'] ? '进行中' : '未开始') }}
+                        </span>
+                        <strong class="step-label">{{ $step['label'] }}</strong>
+                        <span class="muted step-detail">{{ $step['detail'] }}</span>
+                        @if ($step['current'] && $step['url'])
+                            <a class="btn small" href="{{ $step['url'] }}">去完成</a>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+
         <div class="card">
             <h2>开发者信息</h2>
             <table>
