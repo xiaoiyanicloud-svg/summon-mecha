@@ -21,6 +21,25 @@ return [
     ],
 
     /**
+     * 平台密钥材料(签名密钥对 + 设备 CA)的存放位置 —— 任务卡 S-6。
+     *
+     * 两套密钥都靠「文件存在性」懒生成,此前硬编码在 `local` 盘的 `keys/` 下:
+     *   · 签名密钥对:platform_private.pem / platform_public.pem
+     *   · 设备 CA:   device_ca_private.pem / device_ca_public.pem(后者存的是证书)
+     *
+     * ⚠ 生产必须把 `AGENT_KEYS_DIR` 指到**受限的持久卷**(私有挂载,不随部署漂移),
+     *   否则重新部署/换机即等于丢密钥 —— 库里没有任何可恢复的副本。
+     * ⚠ 文件名不配置:它们是签名/证书协议的一部分,多一个可配置项就多一处
+     *   "两个 env 打架"的失败面。要换位置只换「盘 + 目录」。
+     * ⚠ 默认值刻意与旧硬编码逐字一致(disk=local,dir=keys)→ 现网行为零变化。
+     * ⚠ env() 只允许出现在 config 文件里(config:cache 之后命令里读 env() 恒为 null)。
+     */
+    'keys' => [
+        'disk' => env('AGENT_KEYS_DISK', 'local'),
+        'dir'  => env('AGENT_KEYS_DIR', 'keys'),
+    ],
+
+    /**
      * 技能包限时下载 URL 的有效期(分钟)—— 任务卡 S-1。
      *
      * 为什么必须是**可配置**而不是写死:它是一对互相拉扯的约束的平衡点 ——

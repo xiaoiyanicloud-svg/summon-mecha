@@ -2,7 +2,6 @@
 
 namespace Webkul\Shop\Services\Deploy;
 
-use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Models\DeviceBinding;
 
 /**
@@ -33,15 +32,51 @@ use Webkul\Shop\Models\DeviceBinding;
  */
 class DeviceCredentialService
 {
+    use ResolvesDeployKeys;
+
     /** binding.meta 下的凭据键（与 agent_enroll 并列，互不干扰）。 */
     public const META_KEY = 'agent_credential';
 
-    protected const CA_PRIVATE = 'keys/device_ca_private.pem';
+    /**
+     * 文件名（叶子）。目录由 config('deploy_gateways.keys.dir') 决定。
+     * `CA_PUBLIC_FILE` 里存的是 **CA 证书 PEM**（不是裸公钥）—— 这个名字沿用旧称。
+     */
+    protected const CA_PRIVATE_FILE = 'device_ca_private.pem';
 
-    protected const CA_PUBLIC = 'keys/device_ca_public.pem';
+    protected const CA_PUBLIC_FILE = 'device_ca_public.pem';
 
     /** 请求签名的 ts 窗口（秒）—— 对齐 §4.22 F1「指令校验 ±5min」口径。 */
     public const TS_WINDOW_SECONDS = 300;
+
+    /**
+     * CA 两套文件的名字，供运维命令拼路径（盘/目录仍从 config 读）。
+     *
+     * @return array{private:string,public:string}
+     */
+    public function caFiles(): array
+    {
+        return [
+            'private' => self::CA_PRIVATE_FILE,
+            'public'  => self::CA_PUBLIC_FILE,
+        ];
+    }
+
+    /** CA 私钥与证书是否都在位。 */
+    public function hasCa(): bool
+    {
+        return $this->keyExists(self::CA_PRIVATE_FILE) && $this->keyExists(self::CA_PUBLIC_FILE);
+    }
+
+    /**
+     * 是否残留任意一个 CA 文件。
+     *
+     * 命令用它区分「完整 → 跳过」「只剩私钥 → 同一把私钥重签证书」「只剩证书 → CA 私钥已丢，
+     * 绝不能静默重签整张 CA（老设备会全部 401）」。
+     */
+    public function hasAnyCaMaterial(): bool
+    {
+        return $this->keyExists(self::CA_PRIVATE_FILE) || $this->keyExists(self::CA_PUBLIC_FILE);
+    }
 
     /**
      * 为一条 binding 签发 per-device 凭据，落库(只存哈希/指纹)并返回**一次性明文**。
@@ -264,7 +299,7 @@ class DeviceCredentialService
     {
         $this->ensureCa();
 
-        return openssl_pkey_get_private(Storage::disk('local')->get(self::CA_PRIVATE));
+        return openssl_pkey_get_private($this->keyGet(self::CA_PRIVATE_FILE));
     }
 
     protected function caCert()
@@ -274,11 +309,11 @@ class DeviceCredentialService
         return openssl_x509_read($this->caCertPem());
     }
 
-    protected function caCertPem(): string
+    public function caCertPem(): string
     {
         $this->ensureCa();
 
-        return (string) Storage::disk('local')->get(self::CA_PUBLIC);
+        return $this->keyGet(self::CA_PUBLIC_FILE);
     }
 
     protected function caPublicKey()
@@ -287,22 +322,58 @@ class DeviceCredentialService
     }
 
     /**
-     * 生成/确保平台设备 CA（自签根证书）。开发期在 storage/app/keys 下；
-     * 生产应换 KMS/HSM（与 SigningService 同一处置）。
+     * 生成/确保平台设备 CA（自签根证书）。开发期默认在 storage/app/keys 下；
+     * 生产应把 `deploy_gateways.keys` 指到受限持久卷。**KMS/HSM 未实现**（与 SigningService 同一口径）。
+     *
+     * @param  bool  $force  true = 强制重签整张 CA（`agent:keys:generate --replace` 用；
+     *                      旧 CA 证书会被覆盖，老设备的 cert 将链不上 → 验签路径全 401）
      */
-    protected function ensureCa(): void
+    public function ensureCa(bool $force = false): void
     {
-        if (Storage::disk('local')->exists(self::CA_PRIVATE)) {
+        $privateExists = $this->keyExists(self::CA_PRIVATE_FILE);
+        $certExists = $this->keyExists(self::CA_PUBLIC_FILE);
+
+        if (! $force && $privateExists && $certExists) {
             return;
         }
 
         $opts = $this->keyOpts();
 
+        // CA 私钥还在、只缺证书 → **用同一把私钥重签证书**。
+        // 公钥不变，已登记设备的 cert_pem（旧 CA 签发的）仍能链到平台 CA；
+        // 重签整张 CA 会让所有老设备 `chainsToPlatformCa()` 为 false（401），绝不能做。
+        if (! $force && $privateExists) {
+            $caPrivatePem = $this->keyGet(self::CA_PRIVATE_FILE);
+            $caKey = openssl_pkey_get_private($caPrivatePem);
+
+            if ($caKey === false) {
+                throw new \RuntimeException('CA 私钥无法解析，无法重签证书：'.$this->keyPath(self::CA_PRIVATE_FILE));
+            }
+
+            $this->writeCaCert($caKey, $opts);
+
+            return;
+        }
+
+        // CA 私钥也不在（或强制重建）→ 重签整张 CA。
         $caKey = openssl_pkey_new($opts);
         if ($caKey === false) {
             throw new \RuntimeException('CA 密钥生成失败：'.(openssl_error_string() ?: '未知(openssl.cnf 缺失?)'));
         }
 
+        openssl_pkey_export($caKey, $caPrivatePem, null, $opts);
+
+        // 先私钥后证书：若证书写失败，下一次调用会走上面的「用同一把私钥重签」分支恢复；
+        // 反过来会留下「有证书无私钥」——那意味着这张 CA 已经不可续签且会被误判为在位。
+        $this->keyPut(self::CA_PRIVATE_FILE, $caPrivatePem, true);
+        $this->writeCaCert($caKey, $opts);
+    }
+
+    /**
+     * 用给定 CA 私钥自签一张 CA 证书并落盘（公钥由私钥决定，调用方保证不变）。
+     */
+    protected function writeCaCert($caKey, array $opts): void
+    {
         $dn = [
             'countryName'    => 'CN',
             'organizationName' => 'Summon Mecha',
@@ -320,11 +391,9 @@ class DeviceCredentialService
             throw new \RuntimeException('CA 自签失败：'.(openssl_error_string() ?: '未知'));
         }
 
-        openssl_pkey_export($caKey, $caPrivatePem, null, $opts);
         openssl_x509_export($caCert, $caCertPem);
 
-        Storage::disk('local')->put(self::CA_PRIVATE, $caPrivatePem);
-        Storage::disk('local')->put(self::CA_PUBLIC, $caCertPem);
+        $this->keyPut(self::CA_PUBLIC_FILE, $caCertPem, false);
     }
 
     protected function subject(string $did): array
