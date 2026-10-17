@@ -114,3 +114,25 @@ Admin +2（运营总览的下载量两条）。**失败数一条没变。**
 > 它此前一红一绿地出现在别人的复跑记录里，**会被当成"本批次引入的回归"**。
 > 随机失败比稳定失败更坏，原因见本文开篇。
 
+
+---
+
+## 2026-10-17 复跑（新节 · 不覆盖上面 2026-10-15 快照）
+
+> commit：\$head\　方法：**逐文件分进程**跑（\php vendor/bin/pest <单个测试文件>\）。
+> ⚠ 单进程跑全量会撞 **60 秒** \Maximum execution time\（\Connection.php:407\），所以必须逐文件 —— 本轮实测撞过一次。
+
+| 套件 | 文件数 | 通过 | 失败 |
+|---|---|---|---|
+| \Shop/tests\ | 115 | **1083** | **27** |
+| \Admin/tests\ | 70 | **501** | **81** |
+| **合计** | 185 | **1584** | **108** |
+
+**失败数与 2026-10-15 完全一致（27 / 81），失败集仍是同一批原生 Bagisto 用例**，不是新增红：
+
+- Shop（27 条 / 5 类）：\Checkout/CheckoutTest\ **19** · \Checkout/CartTest\ 2 · \API/CategoryProductTest\ 2 · \Customers/AccountTest\ 2 · \HomePageTest\ 2。
+  （旧表把 \CheckoutTest\ 记成 14，但当时合计写 27 —— 本轮逐条数出来是 19，合计 27 与旧表总数一致；以本轮为准。）
+- Admin（81 条）：仍分布在 \Catalog/*\、\Cms\、\Customers/*\、\Dashboard\、\Marketing/*\、\Reporting/*\、\Sales/Orders\、\Settings/*\，典型失败动作仍是 delete / mass-delete / update（开发库存量数据导致的计数差异）与中文 JSON 文案差异。
+
+**通过数较 2026-10-15 大幅增加**（Shop 562→1083、Admin 434→501）：这期间新增了 S/D 系列卡片的测试（D-7/D-8/D-9、S-1~S-15、S-12 实名、S-11 邀请等）。
+**判断新红的方法**：只把"不在上面失败集里的类/用例"当新失败；总数变化本身不代表回归。
