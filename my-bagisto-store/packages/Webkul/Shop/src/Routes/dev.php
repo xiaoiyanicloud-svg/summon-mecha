@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webkul\Shop\Http\Controllers\Dev\InviteController;
 use Webkul\Shop\Http\Controllers\Dev\NotificationController;
 use Webkul\Shop\Http\Controllers\Dev\OnboardingController;
 use Webkul\Shop\Http\Controllers\Dev\PortalController;
@@ -34,6 +35,19 @@ $devPrefix = trim((string) config('developer_portal.prefix'), '/') ?: 'dev';
 Route::controller(PortalController::class)->prefix($devPrefix)->group(function () {
     Route::get('login', 'showLogin')->name('shop.dev.login');
     Route::post('login', 'login')->name('shop.dev.login.attempt');
+});
+
+/**
+ * 被邀请者落地页（S-11c）—— `/dev/join?code=XXXX`。
+ *
+ * ⚠ 刻意**不挂** `developer.session`：被邀请人大概率还没登录，落地页要先把码
+ *   带进会话、再给他「登录 / 注册」两条路。挂了鉴权会把人先弹去登录页，码就丢了。
+ *
+ * ⚠ 限流复用既有 `login` 档位（负责人拍板：不新造 limiter）。该档位按
+ *   `email|ip` 计，本路由没有 email 入参，实际等价于按 IP 限流（20/分）。
+ */
+Route::controller(InviteController::class)->prefix($devPrefix)->middleware('throttle:login')->group(function () {
+    Route::get('join', 'join')->name('shop.dev.join');
 });
 
 /**
