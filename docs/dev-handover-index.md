@@ -30,12 +30,13 @@ Step12 复验命令（Pest 联合回归 + 前端 `node --test`）见 `docs/skill
 - `Ecosystem-Events-Content-Plan.md`：完整产品技术方案。
 - `Ecosystem-Engineering-Backlog.md`：工程任务及验收矩阵，已拆成 59 个工程工作包、80 类验收场景（可信发布、活动运营、完整赛事、工程保障四条线）。
 - `Ecosystem-Current-Audit.md`：现状审计与证据；另有 `Ecosystem-Frontend-Audit.md`、`Ecosystem-Backend-Audit.md` 只读审计和 `Ecosystem-Official-References.md` 官方实践研究。
+- `Ecosystem-Events-Content-Benchmark.md`：官方平台调研与验收建议的研究底稿（非规范，冲突时以 Plan / Backlog / Official-References 为准）。
 
 状态：审计与实施方案完成，业务功能尚未改动；首期建议"免费报名 + 平台编辑发布"，80 类验收属于后续开发门槛。
 
 ## 5 接手前必读的现状提醒
 
-- 截至 2026-10-18，以上各步代码改动**保留在本地工作区，未提交 Git、未发布生产**；代码基线 `c4d2eade149a647694a9b047778fcbb012c61a5a` 加工作区改动。接手后先 `git status` 核对，勿随意 reset/clean。
+- 截至 2026-10-18，Step10–Step12 与生态方案改动**已提交并推送到 `origin/main`**（自基线 `c4d2eade` 起共 8 个提交）；生产尚未发布。接手后先 `git pull` 与 `git status` 核对，勿随意 reset/clean。
 - Step12 修改前文件备份在仓库 `.claude/backup/skill-step12-20261018/`；回滚脚本 `rollback-skill-step12.ps1` 当前在仓库外（Codex 会话交付目录 `C:\Users\Administrator\Documents\Codex\2026-10-18\ni\outputs\`），默认只输出计划，加 `-Apply` 才执行回滚。
 - 已知遗留：原生商品 `CategoryProductTest` 价格升/降序两项断言失败属既有问题，未修复，不能宣称全仓测试全绿；历史下载测试的瞬时 404 未定位。
 - 未做事项：真实支付、小程序验证、规模与故障压测、Elasticsearch 等价过滤、真实厂商技能包与真机适配验证。
@@ -46,4 +47,4 @@ Step12 复验命令（Pest 联合回归 + 前端 `node --test`）见 `docs/skill
 
 - Step12 验收证据（截图、日志、结果 json）：`C:\Users\Administrator\Documents\Codex\2026-10-18\ni\outputs\技能供给闭环验收\`。
 - Step10 验收证据与本地启停脚本：`C:\Users\Administrator\Documents\Codex\2026-10-17\ni-h\outputs\`。
-- 上述目录中的计划文档正文均已同步进本仓库 `docs/`，哈希一致。
+- 上述目录中的计划与验收文档正文均已同步进本仓库 `docs/`；过程草稿与正式版重复，不单独入库，临时日志、截图与数据库状态文件不入库。
