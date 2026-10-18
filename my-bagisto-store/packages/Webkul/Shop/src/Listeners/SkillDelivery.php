@@ -10,7 +10,9 @@ use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\KillSwitchService;
+use Webkul\Shop\Services\Ops\AdminAlertService;
 use Webkul\Shop\Services\Ops\OperationLogger;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryCompensator;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
 /**
@@ -36,6 +38,7 @@ class SkillDelivery
     public function __construct(
         protected SkillDeliveryManager $manager,
         protected OperationLogger $oplog,
+        protected SkillDeliveryCompensator $compensator,
     ) {}
 
     /**
@@ -90,12 +93,19 @@ class SkillDelivery
             return;
         }
 
-        foreach ($order->items as $item) {
+        // A parent order transaction can retain more than one product lock.
+        // Consistent product order prevents opposite multi-item lock ordering.
+        foreach ($order->items->sortBy('product_id') as $item) {
             if (! in_array((int) $item->product_id, $skillProductIds, true)) {
                 continue;
             }
 
-            $this->grantForItem($order, $item);
+            try {
+                $this->grantForItem($order, $item);
+            } catch (\Throwable $e) {
+                report($e);
+                $this->alertFailure((int) $order->id, (int) $item->id, 'ENTITLEMENT_CREATION_FAILED');
+            }
         }
     }
 
@@ -103,6 +113,28 @@ class SkillDelivery
      * 为一个技能条目建立授权并交付。幂等:重复调用不会产生第二行。
      */
     protected function grantForItem($order, $item): void
+    {
+        DB::transaction(function () use ($order, $item) {
+            $lockedOrder = OrderProxy::modelClass()::whereKey($order->id)->lockForUpdate()->first();
+            if (! $lockedOrder || in_array($lockedOrder->status, ['canceled', 'closed', 'fraud'], true)) {
+                return;
+            }
+            $lockedItem = $lockedOrder->items()->whereKey($item->id)->lockForUpdate()->first();
+            if (! $lockedItem) {
+                return;
+            }
+            // Shares a real product-row mutex with kill-switch engage/lift.
+            $product = DB::table('products')->where('id', $lockedItem->product_id)->lockForUpdate()->first();
+            if (! $product) {
+                $this->alertFailure((int) $order->id, (int) $item->id, 'PRODUCT_MISSING');
+
+                return;
+            }
+            $this->grantForItemLocked($lockedOrder, $lockedItem);
+        });
+    }
+
+    protected function grantForItemLocked($order, $item): void
     {
         // 技能交易强制登录(已与业务确认)。真的拿到游客单就跳过并留痕,
         // 不要硬塞一个 customer_id=0 的脏授权。
@@ -179,38 +211,45 @@ class SkillDelivery
             ]
         );
 
-        // 已存在说明这次是重试/重复触发 —— 仍然调一次 deliver()(它幂等),
-        // 但不要重复生成 license_key。
         $created = $entitlement->wasRecentlyCreated;
-        $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
+        $entitlement = SkillEntitlement::whereKey($entitlement->id)->lockForUpdate()->firstOrFail();
+        $meta = (array) $entitlement->meta;
 
-        try {
-            $result = $this->manager
-                ->channel($entitlement->delivery_channel)
-                ->deliver($entitlement, ['device_id' => $deviceId]);
-
-            // 交付结果留痕,方便排查"为什么这单没交付"
-            $meta['delivery'] = $result->toArray();
-            $meta['delivery_failed'] = null;
-        } catch (\Throwable $e) {
-            // D3 · 交付失败不能只留在日志里。授权行已经落库(order_item_id 唯一键),
-            // 但状态停在未交付。把失败痕迹写进 meta,让"按订单补发"(redeliver)有据可查;
-            // 再把异常抛回 afterOrderCreated 的 report() 触发告警。
-            // 吞异常仍是刻意的(见类注释第 1 条:不能让建单失败),这里是"吞掉但留痕"。
-            $meta['delivery_failed'] = [
-                'at'      => now()->toDateTimeString(),
-                'class'   => $e::class,
-                'message' => $e->getMessage(),
-            ];
-
-            $entitlement->meta = $meta;
-            $entitlement->save();
-
-            throw $e;
+        // Payment/event replay is not another initial attempt. Existing device,
+        // version, license and retry budget remain authoritative.
+        if ($entitlement->granted_at || $entitlement->status === SkillEntitlement::STATUS_ACTIVE
+            || ($meta['delivery']['ok'] ?? null) === true
+            || $this->compensator->hasFailureState($entitlement)) {
+            return;
         }
 
-        $entitlement->meta = $meta;
-        $entitlement->save();
+        try {
+            $result = $this->manager->channel($entitlement->delivery_channel)
+                ->deliver($entitlement, ['device_id' => $entitlement->device_id]);
+            $entitlement = SkillEntitlement::whereKey($entitlement->id)->lockForUpdate()->firstOrFail();
+            $meta = (array) $entitlement->meta;
+            $meta['delivery'] = $result->toArray();
+            if ($result->ok) {
+                $meta['delivery_failed'] = null;
+            } else {
+                // Business rejection is observable, but never a technical retry.
+                $meta['delivery_failed'] ??= [
+                    'at'        => now()->toDateTimeString(),
+                    'code'      => $result->code,
+                    'message'   => $result->message,
+                    'retryable' => false,
+                ];
+                $this->alertFailure((int) $order->id, (int) $item->id, $result->code);
+            }
+            $entitlement->meta = $meta;
+            $entitlement->save();
+        } catch (\Throwable $e) {
+            $this->compensator->recordFailure((int) $entitlement->id, $e);
+            report($e);
+            $this->alertFailure((int) $order->id, (int) $item->id, 'DELIVERY_EXCEPTION');
+
+            return;
+        }
 
         // M8 · 授权发放留痕。log()(非 logOrFail):本方法跑在建单事务内,
         // 审计是旁路,绝不能因审计写不进去而拖垮建单(见类注释第 1 条)。
@@ -227,27 +266,35 @@ class SkillDelivery
                 'customer_id'      => $order->customer_id,
                 'delivery_channel' => $entitlement->delivery_channel,
                 'created'          => $created,
+                'delivery_ok'      => $result->ok,
+                'delivery_code'    => $result->code,
             ]
         );
     }
 
     /**
-     * D3 · 按订单补发 —— 给"订单已成功但交付失败"的单子一个可执行入口。
-     *
-     * 依赖 grantForItem 的幂等性:已交付的条目不会重复,失败的条目会被补上。
-     * 返回该订单当前拥有的授权数,便于调用方核对。
+     * @deprecated Inventory-only compatibility method. Recovery must use the
+     * guarded skills:redeliver command, never replay initial order delivery.
      */
     public function redeliver(int $orderId): int
     {
-        $order = OrderProxy::modelClass()::find($orderId);
-
-        if (! $order) {
-            return 0;
-        }
-
-        $this->grantForOrder($order);
-
         return SkillEntitlement::where('order_id', $orderId)->count();
+    }
+
+    protected function alertFailure(int $orderId, int $itemId, string $reason): void
+    {
+        try {
+            app(AdminAlertService::class)->alert(
+                'skill_delivery_attention',
+                '技能交付需核查',
+                "订单 {$orderId}，条目 {$itemId}，原因 {$reason}。请先运行 skills:redeliver {$orderId} 检查。",
+                "skill-delivery:{$orderId}:{$itemId}:{$reason}",
+                ['order_id' => $orderId, 'order_item_id' => $itemId, 'reason_code' => $reason],
+                AdminAlertService::LEVEL_WARN,
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -270,6 +317,8 @@ class SkillDelivery
             \Illuminate\Support\Facades\Log::warning(
                 'SkillDelivery: 技能分类 slug=\'skill\' 不存在,授权发放已停止(配置漂移)。'
             );
+
+            $this->alertFailure(0, 0, 'SKILL_CATEGORY_MISSING');
 
             return [];
         }

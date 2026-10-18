@@ -2,7 +2,9 @@
 
 namespace Webkul\Shop\Services\Deploy;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Webkul\Product\Models\ProductProxy;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\OperationLog;
@@ -64,7 +66,7 @@ class KillSwitchService
      * 触发熔断。
      *
      * @param  string|null  $createdBy  调用方自报的身份(internal[:operator]);null → 记 internal
-     * @param  string|null  $ip         来源 IP(HTTP 调用方传 request()->ip())
+     * @param  string|null  $ip  来源 IP(HTTP 调用方传 request()->ip())
      * @return array{blocklist_id: int, affected: int, forced_tasks: int, forced_online: int, forced_offline: int, unable_auto_uninstall: int, sold_entitlements: int, installed_entitlements: int, downloaded_entitlements: int}
      */
     public function engage(
@@ -77,59 +79,78 @@ class KillSwitchService
     ): array {
         $actor = $createdBy ?: self::ACTOR_INTERNAL;
 
-        // S-8 · 影响面留痕:除"设备"的账,还要有"人"的账 —— 这些是运营判断
-        //   "要不要给用户补偿"的**唯一依据**(D10:停分发 ≠ 权益消失)。
-        //   全部**从库里真算**,不写占位值:
-        //     · 已售授权数   = 该商品(products.id)下的全部 skill_entitlements 行数;
-        //     · 其中已安装   = activations > 0(D1 激活台账:confirm-install 会 +1);
-        //     · 其中已下载   = meta.download_count > 0(下载端点写的真实计数)。
-        $entitlements = SkillEntitlement::query()
-            ->where('product_id', $skillId)
-            ->get(['id', 'activations', 'meta']);
+        // Share the real product row with authorization/recovery. Commit the
+        // block intent before any gateway/cache side effects below. Do not wrap
+        // the entire engage() or DeployTaskService::create() in this transaction.
+        $prepared = DB::transaction(function () use ($skillId, $reason, $severity, $action, $actor, $ip) {
+            ProductProxy::modelClass()::query()->whereKey($skillId)->lockForUpdate()->firstOrFail();
 
-        $soldEntitlements = $entitlements->count();
-        $installedEntitlements = $entitlements->filter(fn ($e) => (int) ($e->activations ?? 0) > 0)->count();
-        $downloadedEntitlements = $entitlements->filter(function ($e) {
-            $meta = is_array($e->meta) ? $e->meta : [];
+            // S-8 · 影响面留痕:除"设备"的账,还要有"人"的账 —— 这些是运营判断
+            //   "要不要给用户补偿"的**唯一依据**(D10:停分发 ≠ 权益消失)。
+            //   全部**从库里真算**,不写占位值:
+            //     · 已售授权数   = 该商品(products.id)下的全部 skill_entitlements 行数;
+            //     · 其中已安装   = activations > 0(D1 激活台账:confirm-install 会 +1);
+            //     · 其中已下载   = meta.download_count > 0(下载端点写的真实计数)。
+            $entitlements = SkillEntitlement::query()
+                ->where('product_id', $skillId)
+                ->sharedLock()
+                ->get(['id', 'activations', 'meta']);
 
-            return (int) ($meta['download_count'] ?? 0) > 0;
-        })->count();
+            $soldEntitlements = $entitlements->count();
+            $installedEntitlements = $entitlements->filter(fn ($e) => (int) ($e->activations ?? 0) > 0)->count();
+            $downloadedEntitlements = $entitlements->filter(function ($e) {
+                $meta = is_array($e->meta) ? $e->meta : [];
 
-        // 已有生效熔断则不重复(也不留痕 —— 重复点一次不是一次新的安全动作)
-        $existing = SkillBlocklist::activeFor($skillId);
-        if ($existing) {
-            return [
-                'blocklist_id'          => $existing->id,
-                'affected'              => $existing->affected_devices,
-                'forced_tasks'          => 0,
-                'forced_online'         => 0,
-                'forced_offline'        => 0,
-                'unable_auto_uninstall' => 0,
-                'sold_entitlements'     => $soldEntitlements,
-                'installed_entitlements' => $installedEntitlements,
-                'downloaded_entitlements' => $downloadedEntitlements,
-            ];
+                return (int) ($meta['download_count'] ?? 0) > 0;
+            })->count();
+
+            // 已有生效熔断则不重复(也不留痕 —— 重复点一次不是一次新的安全动作)
+            $existing = SkillBlocklist::query()->where('skill_id', $skillId)
+                ->where('status', SkillBlocklist::STATUS_ACTIVE)->orderByDesc('id')->lockForUpdate()->first();
+            if ($existing) {
+                return ['already_blocked' => [
+                    'blocklist_id'            => $existing->id,
+                    'affected'                => $existing->affected_devices,
+                    'forced_tasks'            => 0,
+                    'forced_online'           => 0,
+                    'forced_offline'          => 0,
+                    'unable_auto_uninstall'   => 0,
+                    'sold_entitlements'       => $soldEntitlements,
+                    'installed_entitlements'  => $installedEntitlements,
+                    'downloaded_entitlements' => $downloadedEntitlements,
+                ]];
+            }
+
+            // 找出已装该技能的设备
+            $installs = InstallRecord::query()
+                ->whereIn('skill_version_id', function ($sub) use ($skillId) {
+                    // 该技能下所有版本的 install 记录(简化:用 skill_version 关联,这里按 skill_version_id 里含 skill 的近似处理)
+                    $sub->select('id')->from('skill_versions')->where('product_id', $skillId);
+                })
+                ->where('status', 'installed')
+                ->get();
+
+            $block = SkillBlocklist::create([
+                'skill_id'         => $skillId,
+                'reason'           => $reason,
+                'severity'         => $severity,
+                'action'           => $action,
+                'status'           => SkillBlocklist::STATUS_ACTIVE,
+                'affected_devices' => $installs->count(),
+                'created_by'       => $actor,
+                'ip'               => $ip,
+            ]);
+
+            return compact('block', 'installs', 'soldEntitlements', 'installedEntitlements', 'downloadedEntitlements');
+        });
+        if (isset($prepared['already_blocked'])) {
+            return $prepared['already_blocked'];
         }
-
-        // 找出已装该技能的设备
-        $installs = InstallRecord::query()
-            ->whereIn('skill_version_id', function ($sub) use ($skillId) {
-                // 该技能下所有版本的 install 记录(简化:用 skill_version 关联,这里按 skill_version_id 里含 skill 的近似处理)
-                $sub->select('id')->from('skill_versions')->where('product_id', $skillId);
-            })
-            ->where('status', 'installed')
-            ->get();
-
-        $block = SkillBlocklist::create([
-            'skill_id'         => $skillId,
-            'reason'           => $reason,
-            'severity'         => $severity,
-            'action'           => $action,
-            'status'           => SkillBlocklist::STATUS_ACTIVE,
-            'affected_devices' => $installs->count(),
-            'created_by'       => $actor,
-            'ip'               => $ip,
-        ]);
+        $block = $prepared['block'];
+        $installs = $prepared['installs'];
+        $soldEntitlements = $prepared['soldEntitlements'];
+        $installedEntitlements = $prepared['installedEntitlements'];
+        $downloadedEntitlements = $prepared['downloadedEntitlements'];
 
         // 需强制处置的动作 → 建卸载/回滚任务。
         //
@@ -198,8 +219,8 @@ class KillSwitchService
                 'forced_offline'        => $forcedOffline,
                 'unable_auto_uninstall' => $unable,
                 // S-8 · 影响面(人的账):补偿决策依据,从库真算。
-                'sold_entitlements'     => $soldEntitlements,
-                'installed_entitlements' => $installedEntitlements,
+                'sold_entitlements'       => $soldEntitlements,
+                'installed_entitlements'  => $installedEntitlements,
                 'downloaded_entitlements' => $downloadedEntitlements,
             ],
             $ip
@@ -208,29 +229,29 @@ class KillSwitchService
         // 熔断是 D9 的安全动作,除了落库留痕也要在**日志里**可见 ——
         // `Services/Deploy` 此前一行日志都没有,运维翻日志时看不到任何下发侧安全事件。
         Log::warning('技能熔断已生效', [
-            'skill_id'              => $skillId,
-            'action'                => $action,
-            'severity'              => $severity,
-            'actor'                 => $actor,
-            'affected_devices'      => $block->affected_devices,
-            'forced_tasks'          => $forced,
-            'forced_online'         => $forcedOnline,
-            'forced_offline'        => $forcedOffline,
-            'unable_auto_uninstall' => $unable,
-            'sold_entitlements'     => $soldEntitlements,
-            'installed_entitlements' => $installedEntitlements,
+            'skill_id'                => $skillId,
+            'action'                  => $action,
+            'severity'                => $severity,
+            'actor'                   => $actor,
+            'affected_devices'        => $block->affected_devices,
+            'forced_tasks'            => $forced,
+            'forced_online'           => $forcedOnline,
+            'forced_offline'          => $forcedOffline,
+            'unable_auto_uninstall'   => $unable,
+            'sold_entitlements'       => $soldEntitlements,
+            'installed_entitlements'  => $installedEntitlements,
             'downloaded_entitlements' => $downloadedEntitlements,
         ]);
 
         return [
-            'blocklist_id'          => $block->id,
-            'affected'              => $block->affected_devices,
-            'forced_tasks'          => $forced,
-            'forced_online'         => $forcedOnline,
-            'forced_offline'        => $forcedOffline,
-            'unable_auto_uninstall' => $unable,
-            'sold_entitlements'     => $soldEntitlements,
-            'installed_entitlements' => $installedEntitlements,
+            'blocklist_id'            => $block->id,
+            'affected'                => $block->affected_devices,
+            'forced_tasks'            => $forced,
+            'forced_online'           => $forcedOnline,
+            'forced_offline'          => $forcedOffline,
+            'unable_auto_uninstall'   => $unable,
+            'sold_entitlements'       => $soldEntitlements,
+            'installed_entitlements'  => $installedEntitlements,
             'downloaded_entitlements' => $downloadedEntitlements,
         ];
     }
@@ -258,14 +279,21 @@ class KillSwitchService
      */
     public function lift(int $skillId, ?string $createdBy = null, ?string $ip = null): bool
     {
-        $block = SkillBlocklist::activeFor($skillId);
+        $block = DB::transaction(function () use ($skillId) {
+            ProductProxy::modelClass()::query()->whereKey($skillId)->lockForUpdate()->firstOrFail();
+            $block = SkillBlocklist::query()->where('skill_id', $skillId)
+                ->where('status', SkillBlocklist::STATUS_ACTIVE)->orderByDesc('id')->lockForUpdate()->first();
+            if ($block) {
+                $block->status = SkillBlocklist::STATUS_LIFTED;
+                $block->lifted_at = now();
+                $block->save();
+            }
+
+            return $block;
+        });
         if (! $block) {
             return false;
         }
-
-        $block->status = SkillBlocklist::STATUS_LIFTED;
-        $block->lifted_at = now();
-        $block->save();
 
         Log::info('技能熔断已解除', [
             'skill_id'     => $skillId,
@@ -313,9 +341,18 @@ class KillSwitchService
      *                       'sale'     销售(下单 / 发授权):任何生效熔断都拦(与 new 同档,门名分开只为让调用点自解释)
      *                       'download' 既有授权的包下载:仅 block_all 及以上才拦(block_new 不停)
      */
-    public function isBlockedFor(int $skillId, string $for = 'new'): bool
+    /**
+     * With current=true the caller must hold the real product row mutex used by
+     * engage()/lift() (and order/item before product when applicable). A normal
+     * read can observe an old REPEATABLE READ snapshot even after waiting for
+     * that mutex. Preserve the single blocksAction policy for both read modes.
+     */
+    public function isBlockedFor(int $skillId, string $for = 'new', bool $current = false): bool
     {
-        $block = SkillBlocklist::activeFor($skillId);
+        $block = $current
+            ? SkillBlocklist::query()->where('skill_id', $skillId)
+                ->where('status', SkillBlocklist::STATUS_ACTIVE)->orderByDesc('id')->lockForUpdate()->first()
+            : SkillBlocklist::activeFor($skillId);
 
         return $this->blocksAction($block?->action, $for);
     }

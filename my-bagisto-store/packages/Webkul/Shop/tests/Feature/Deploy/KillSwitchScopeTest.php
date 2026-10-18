@@ -33,7 +33,19 @@ use function Pest\Laravel\postJson;
 
 function ksScopeProductId(): int
 {
-    return 920000 + random_int(1, 9999);
+    $familyId = DB::table('attribute_families')->orderBy('id')->value('id');
+
+    if (! $familyId) {
+        throw new LogicException('The test database requires a seeded attribute family.');
+    }
+
+    return DB::table('products')->insertGetId([
+        'sku'                 => 'KS-SCOPE-'.bin2hex(random_bytes(8)),
+        'type'                => 'simple',
+        'attribute_family_id' => (int) $familyId,
+        'created_at'          => now(),
+        'updated_at'          => now(),
+    ]);
 }
 
 function ksScopeVersion(int $productId): SkillVersion

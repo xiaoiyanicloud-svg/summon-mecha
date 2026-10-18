@@ -2,9 +2,10 @@
 
 namespace Webkul\Shop\Http\Controllers\API;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Webkul\Sales\Models\Order;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
@@ -79,8 +80,6 @@ class OrderController extends APIController
 
     /**
      * Full order detail of the authenticated customer.
-     *
-     * @param  int  $id
      */
     public function show(int $id): JsonResource
     {
@@ -109,24 +108,24 @@ class OrderController extends APIController
     protected function formatOrder(Order $order, bool $withDetails = false): array
     {
         $data = [
-            'id'                       => $order->id,
-            'increment_id'             => $order->increment_id,
-            'status'                   => $order->status,
-            'status_label'             => $order->status_label,
-            'order_type'               => $order->order_type,
-            'created_at'               => $order->created_at->format('Y-m-d H:i:s'),
-            'items_count'              => $order->items_count,
-            'items_qty'                => $order->items_qty,
-            'grand_total'              => $order->grand_total,
-            'grand_total_formatted'    => core()->formatPrice($order->grand_total),
-            'sub_total'                => $order->sub_total,
-            'sub_total_formatted'      => core()->formatPrice($order->sub_total),
-            'tax_total'                => $order->tax_total,
-            'tax_total_formatted'      => core()->formatPrice($order->tax_total),
-            'shipping_amount'          => $order->shipping_amount,
+            'id'                        => $order->id,
+            'increment_id'              => $order->increment_id,
+            'status'                    => $order->status,
+            'status_label'              => $order->status_label,
+            'order_type'                => $order->order_type,
+            'created_at'                => $order->created_at->format('Y-m-d H:i:s'),
+            'items_count'               => $order->items_count,
+            'items_qty'                 => $order->items_qty,
+            'grand_total'               => $order->grand_total,
+            'grand_total_formatted'     => core()->formatPrice($order->grand_total),
+            'sub_total'                 => $order->sub_total,
+            'sub_total_formatted'       => core()->formatPrice($order->sub_total),
+            'tax_total'                 => $order->tax_total,
+            'tax_total_formatted'       => core()->formatPrice($order->tax_total),
+            'shipping_amount'           => $order->shipping_amount,
             'shipping_amount_formatted' => core()->formatPrice($order->shipping_amount),
-            'customer_name'            => $order->customer_first_name.' '.$order->customer_last_name,
-            'customer_email'           => $order->customer_email,
+            'customer_name'             => $order->customer_first_name.' '.$order->customer_last_name,
+            'customer_email'            => $order->customer_email,
         ];
 
         // 技能单:把授权信息接进订单详情。
@@ -176,9 +175,9 @@ class OrderController extends APIController
             : null;
 
         if ($withDetails) {
-            $data['billing_address']  = $order->billing_address ? $order->billing_address->toArray() : null;
+            $data['billing_address'] = $order->billing_address ? $order->billing_address->toArray() : null;
             $data['shipping_address'] = $order->shipping_address ? $order->shipping_address->toArray() : null;
-            $data['payment']          = $order->payment ? $order->payment->toArray() : null;
+            $data['payment'] = $order->payment ? $order->payment->toArray() : null;
         }
 
         return $data;
@@ -197,37 +196,51 @@ class OrderController extends APIController
     {
         $customer = auth()->guard('customer')->user();
 
-        $query = Order::query()->where('id', $id);
+        $guestKey = $customer ? null : $this->guestKey($request);
 
-        if ($customer) {
-            $query->where('customer_id', $customer->id);
-        } else {
-            $guestKey = $this->guestKey($request);
-
-            if (! $guestKey) {
-                return $this->fail(ApiErrorCode::GUEST_KEY_REQUIRED, '订单不存在。', 200);
-            }
-
-            $query->whereNull('customer_id')->where('guest_key', $guestKey);
+        if (! $customer && ! $guestKey) {
+            return $this->fail(ApiErrorCode::GUEST_KEY_REQUIRED, '订单不存在。', 200);
         }
 
-        $order = $query->first();
+        // 与支付回调共享订单行锁。必须在拿到最新订单后重检归属与状态，
+        // 否则等待付款事务完成的取消请求可能用旧 pending 状态覆盖 processing。
+        $outcome = DB::transaction(function () use ($id, $customer, $guestKey) {
+            $query = Order::query()->whereKey($id);
+
+            if ($customer) {
+                $query->where('customer_id', $customer->id);
+            } else {
+                $query->whereNull('customer_id')->where('guest_key', $guestKey);
+            }
+
+            $order = $query->lockForUpdate()->first();
+
+            if (! $order) {
+                return ['order' => null, 'canceled' => false];
+            }
+
+            if ($order->status !== 'pending') {
+                return ['order' => $order, 'canceled' => false];
+            }
+
+            $order->status = 'canceled';
+            $order->save();
+
+            // 撤销与取消在同一事务、同一订单锁内，避免付款并发重发授权。
+            \Illuminate\Support\Facades\Event::dispatch('sales.order.cancel.after', $order);
+
+            return ['order' => $order, 'canceled' => true];
+        });
+
+        $order = $outcome['order'];
 
         if (! $order) {
             return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单不存在。', 200);
         }
 
-        if ($order->status !== 'pending') {
+        if (! $outcome['canceled']) {
             return $this->fail(ApiErrorCode::ORDER_NOT_CANCELABLE, '仅待处理订单可自助取消，请联系客服。', 200);
         }
-
-        $order->status = 'canceled';
-        $order->save();
-
-        // M4:取消必须**对称撤销**技能授权,否则用户取消订单后仍可下载/使用技能包(双花)。
-        // 走与 OrderRepository::cancel() 相同的统一事件 —— 撤销逻辑只此一处(listener 已挂),
-        // 不在这里各写各的。
-        \Illuminate\Support\Facades\Event::dispatch('sales.order.cancel.after', $order);
 
         // X4 · 订单取消留痕。取消会**对称撤销技能授权**(M4),是一次会影响交付的资金/授权动作,
         //   此前 Shop 侧一处不留痕。用 log() 非 logOrFail:取消是用户的正当自助动作,

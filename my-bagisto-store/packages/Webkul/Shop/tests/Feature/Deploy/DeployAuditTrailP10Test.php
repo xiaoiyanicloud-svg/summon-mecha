@@ -24,7 +24,6 @@ use function Pest\Laravel\postJson;
  * ⚠ 诚实边界:`internal.key` 是共享密钥,服务端**无法验证** X-Internal-Operator 的自称。
  *   故一律存成 `internal[:<自称>]` —— 前缀写明"这是内部通道自报的",不冒充已认证管理员。
  */
-
 function p10InternalHeaders(?string $operator = null): array
 {
     $h = ['X-Internal-Key' => 'p10-internal-key'];
@@ -38,7 +37,19 @@ function p10InternalHeaders(?string $operator = null): array
 
 function p10SkillId(): int
 {
-    return 940000 + random_int(1, 9999);
+    $familyId = DB::table('attribute_families')->orderBy('id')->value('id');
+
+    if (! $familyId) {
+        throw new LogicException('The test database requires a seeded attribute family.');
+    }
+
+    return DB::table('products')->insertGetId([
+        'sku'                 => 'P10-SKILL-'.bin2hex(random_bytes(8)),
+        'type'                => 'simple',
+        'attribute_family_id' => (int) $familyId,
+        'created_at'          => now(),
+        'updated_at'          => now(),
+    ]);
 }
 
 function p10PublishedVersion(int $productId): SkillVersion

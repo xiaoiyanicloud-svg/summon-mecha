@@ -9,6 +9,7 @@ use Webkul\Shop\Listeners\SkillDelivery;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\PaymentTransaction;
 use Webkul\Shop\Services\Billing\InvoiceService;
+use Webkul\Shop\Services\Ops\AdminAlertService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\Payment\MockGateway;
 use Webkul\Shop\Services\Payment\PaymentManager;
@@ -34,6 +35,7 @@ class PaymentCallbackController extends APIController
     public function __construct(
         protected PaymentManager $payments,
         protected OperationLogger $oplog,
+        protected AdminAlertService $alerts,
     ) {}
 
     public function handle(Request $request)
@@ -115,7 +117,7 @@ class PaymentCallbackController extends APIController
         //
         // ⚠ 为什么锁订单行而不是只靠流水唯一键:out_trade_no 唯一键只保证"流水只有一行",
         //   它挡不住第二次回调继续往下翻状态/再交付 —— 需要锁住被改的那行本身。
-        $outcome = DB::transaction(function () use ($order) {
+        $outcome = DB::transaction(function () use ($order, $transaction, $request) {
             $locked = OrderProxy::modelClass()::query()
                 ->whereKey($order->id)
                 ->lockForUpdate()
@@ -128,6 +130,13 @@ class PaymentCallbackController extends APIController
             // 幂等:已支付则不改不交付
             if (in_array($locked->status, ['processing', 'completed'], true)) {
                 return ['order' => $locked, 'processed' => false, 'invoice' => null];
+            }
+
+            // 只允许待付款状态推进。迟到支付保留流水供核查，不能复活已取消或风控订单。
+            if (! in_array($locked->status, ['pending', 'pending_payment'], true)) {
+                $this->recordPaymentReview($locked, $transaction, $request);
+
+                return ['order' => $locked, 'processed' => false, 'invoice' => null, 'review_required' => true];
             }
 
             $locked->status = 'processing';
@@ -154,6 +163,17 @@ class PaymentCallbackController extends APIController
 
         if (! $order) {
             return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单未找到。', 404);
+        }
+
+        if ($outcome['review_required'] ?? false) {
+            // 回调已接收；资金后续处置交人工，不能把它回复成授权已发放。
+            return $this->fail(ApiErrorCode::CONFLICT, '支付流水已登记，订单状态不允许继续处理，请人工核查。', 200, [
+                'order_id'        => $order->id,
+                'order_status'    => $order->status,
+                'payment_status'  => PaymentTransaction::STATUS_PAID,
+                'delivery_status' => 'not_attempted',
+                'review_required' => true,
+            ]);
         }
 
         if (! $outcome['processed']) {
@@ -184,9 +204,51 @@ class PaymentCallbackController extends APIController
         );
 
         return response()->json([
-            'message'  => '支付成功,授权已发放。',
+            'message'  => '支付成功，订单已受理。技能交付状态请查看我的技能。',
             'order_id' => $order->id,
         ]);
+    }
+
+    /**
+     * 在订单锁内留痕及去重告警；重复回调不能刷屏，也不能触发自动退款。
+     */
+    protected function recordPaymentReview($order, PaymentTransaction $transaction, Request $request): void
+    {
+        $payload = [
+            'payment_transaction_id' => $transaction->id,
+            'order_status'           => $order->status,
+            'amount'                 => $transaction->amount,
+            'gateway'                => $transaction->gateway,
+            'reason_code'            => 'order_state_blocks_payment',
+        ];
+
+        // 所有同一订单的回调均持有订单行锁，串行完成查重和写入。
+        if (! OperationLog::query()
+            ->where('action', 'payment.callback.review_required')
+            ->where('target_type', 'order')
+            ->where('target_id', $order->id)
+            ->where('payload->payment_transaction_id', $transaction->id)
+            ->exists()) {
+            $this->oplog->log(
+                OperationLog::ACTOR_SYSTEM,
+                null,
+                'payment.callback.review_required',
+                'order',
+                $order->id,
+                $payload,
+                $request->ip(),
+            );
+        }
+
+        // 告警也在同一把订单锁内去重，只含核查所需标识，不附原始支付报文。
+        $this->alerts->alert(
+            'payment.review_required',
+            '支付成功但订单状态禁止推进',
+            "订单 {$order->id} 状态为 {$order->status}，支付流水 {$transaction->id} 已登记。请核查资金并人工处理；未重新交付、未自动退款。",
+            'payment-order-state:'.$transaction->id,
+            array_merge($payload, ['order_id' => $order->id]),
+            AdminAlertService::LEVEL_URGENT,
+        );
     }
 
     /**

@@ -6,6 +6,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response;
+use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
@@ -15,7 +17,10 @@ use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\KillSwitchService;
 use Webkul\Shop\Services\Ops\OperationLogger;
+use Webkul\Shop\Services\SkillDelivery\DeliveryResult;
 use Webkul\Shop\Services\SkillDelivery\DeviceBindingService;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryCompensator;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
 /**
  * 用户侧的技能接口 —— 「我的技能」与技能包的鉴权下载。
@@ -73,16 +78,20 @@ class SkillController extends APIController
                     'device_sn'         => $e->device?->sn,
                     'device_paired'     => (bool) ($binding && $binding->source === DeviceBinding::SOURCE_AGENT),
                     // ⚠ 读时判断（最近心跳在 90 秒窗口内），不是读 online_status 粘滞列 —— 见 DeviceBinding 类注释
-                    'device_online'     => (bool) $binding?->isOnlineNow(),
+                    'device_online'         => (bool) $binding?->isOnlineNow(),
                     'device_last_online_at' => optional($binding?->last_online_at)->toDateTimeString(),
                     // 真相源如实透出：有 binding = 已确权；只有 devices 行 = 仅自报登记
                     'device_truth_source' => $binding ? 'binding' : 'registration_only',
                     'device_did'          => $binding?->did,
-                    'granted_at'        => optional($e->granted_at)->toDateTimeString(),
-                    'expires_at'        => optional($e->expires_at)->toDateTimeString(),
+                    'granted_at'          => optional($e->granted_at)->toDateTimeString(),
+                    'expires_at'          => optional($e->expires_at)->toDateTimeString(),
+                    // The purchase entitlement, rather than today's version, owns this limit.
+                    'activations'           => $e->activations,
+                    'max_activations'       => $e->max_activations,
+                    'remaining_activations' => $e->remainingActivations(),
                     // B-3 · 试用：是试用就不该被当成买断展示（前端据此显示倒计时/「试用」角标）。
                     // `trial_remaining_seconds` 由服务端按当前时间算，避免端侧时钟偏差把倒计时算歪。
-                    'trial'             => $e->isTrial(),
+                    'trial'                   => $e->isTrial(),
                     'trial_remaining_seconds' => ($e->isTrial() && $e->expires_at && ! $e->expires_at->isPast())
                         ? (int) now()->diffInSeconds($e->expires_at)
                         : 0,
@@ -135,80 +144,72 @@ class SkillController extends APIController
      */
     public function download(int $entitlementId, int $assetId)
     {
-        $entitlement = $this->findOwnedEntitlement($entitlementId);
+        $customer = auth()->guard('customer')->user();
 
-        if (! $entitlement) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
-        }
-
-        if (! $entitlement->isUsable()) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
-        }
-
-        // 付费墙:交付物(技能包)以"订单已支付"为前提。授权在建单时就落库,
-        // 若只认 isUsable() 则"建单未付"也能下包 —— 见 SkillEntitlement::isOrderPaid()。
-        if (! $entitlement->isOrderPaid()) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_UNPAID, '订单尚未支付,暂不能下载。', 409);
-        }
-
-        // S-8 · block_all 及以上:明知这个包有问题,就**停止分发** —— 已授权用户也下不到。
-        //   仅 block_all / force_uninstall / force_rollback 才拦;block_new 只停新增,
-        //   不停已有授权的下载(阶梯语义见 KillSwitchService::blocksAction)。
-        //   ⚠ 停止分发 ≠ 用户权益消失(D10):本卡不做退款(需产品裁决 + 支付资质),
-        //     文案引导用户联系客服处理售后;影响面已由 engage() 留痕供运营决定补偿。
-        if (app(KillSwitchService::class)->isBlockedFor((int) $entitlement->product_id, 'download')) {
-            return $this->fail(
-                ApiErrorCode::SKILL_BLOCKED,
-                '该技能已被平台暂停分发,暂不能下载。如有需要请联系客服处理售后。',
-                409
-            );
-        }
-
-        $asset = $this->assetsOf($entitlement)
-            ->firstWhere('id', $assetId);
-
-        if (! $asset || ! $asset->isFile()) {
-            return $this->fail(ApiErrorCode::SKILL_ASSET_NOT_FOUND, '该交付物不可下载。', 404);
-        }
-
-        if (! $asset->fileExists()) {
-            return $this->fail(ApiErrorCode::SKILL_ASSET_FILE_MISSING, '文件不存在,请联系客服。', 404);
-        }
-
-        // P0 只记录"下载过一次",不在这里扣 activations —— 激活次数是 P1 设备侧的语义
-        // D8:计数改原子 —— 原先是 read-modify-write,并发下载会丢更新(计数偏小)。
-        // 用行锁包住"读 meta → +1 → 写回",使同一授权的并发下载串行化。
-        \Illuminate\Support\Facades\DB::transaction(function () use ($entitlement, $asset) {
-            $locked = SkillEntitlement::whereKey($entitlement->id)->lockForUpdate()->first();
-
-            if (! $locked) {
-                return;
+        // The download decision and its count share one current entitlement.
+        // A revocation, refund or kill switch committed while this request waits
+        // for the purchase locks must be visible before any file is returned.
+        return $this->withLockedOwnedEntitlement($entitlementId, $customer->id, function ($entitlement) use ($assetId) {
+            if (! $entitlement) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
             }
 
-            $meta = is_array($locked->meta) ? $locked->meta : [];
+            if (! $entitlement->isUsable()) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
+            }
+
+            // Preserve the existing paid-download policy, including trials:
+            // no purchase order still means no downloadable package.
+            if (! $entitlement->isOrderPaid()) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_UNPAID, '订单尚未支付,暂不能下载。', 409);
+            }
+
+            // block_new retains existing downloads; block_all and stronger stop them.
+            // Use a current read even when called inside an existing RR transaction.
+            if (app(KillSwitchService::class)->isBlockedFor((int) $entitlement->product_id, 'download', current: true)) {
+                return $this->fail(
+                    ApiErrorCode::SKILL_BLOCKED,
+                    '该技能已被平台暂停分发,暂不能下载。如有需要请联系客服处理售后。',
+                    409
+                );
+            }
+
+            $asset = $this->assetsOf($entitlement)->firstWhere('id', $assetId);
+
+            if (! $asset || ! $asset->isFile()) {
+                return $this->fail(ApiErrorCode::SKILL_ASSET_NOT_FOUND, '该交付物不可下载。', 404);
+            }
+
+            if (! $asset->fileExists()) {
+                return $this->fail(ApiErrorCode::SKILL_ASSET_FILE_MISSING, '文件不存在,请联系客服。', 404);
+            }
+
+            // Merge only download statistics into the latest row. Downloads do
+            // not consume activations or alter the compensation budget/lease.
+            $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
             $meta['last_download_at'] = now()->toDateTimeString();
             $meta['last_download_asset'] = $asset->id;
             $meta['download_count'] = ($meta['download_count'] ?? 0) + 1;
-            $locked->meta = $meta;
-            $locked->save();
+            $entitlement->meta = $meta;
+            $entitlement->save();
+
+            $this->oplog->log(
+                OperationLog::ACTOR_CUSTOMER,
+                $entitlement->customer_id,
+                'skill.download',
+                'skill_entitlement',
+                $entitlement->id,
+                ['asset_id' => $asset->id, 'file_name' => $asset->file_name],
+                request()->ip(),
+            );
+
+            // Construct the streaming response; this helper finishes its
+            // transaction before the caller starts transmitting the file.
+            return Storage::disk(SkillAsset::disk())->download(
+                $asset->file_path,
+                $asset->file_name ?: basename($asset->file_path)
+            );
         });
-
-        // X4 · 下载留痕:技能包是私有交付物,"谁在何时下了哪个包"是事后追溯的硬需求。
-        //   放在计数事务之后、返回文件之前。
-        $this->oplog->log(
-            OperationLog::ACTOR_CUSTOMER,
-            $entitlement->customer_id,
-            'skill.download',
-            'skill_entitlement',
-            $entitlement->id,
-            ['asset_id' => $asset->id, 'file_name' => $asset->file_name],
-            request()->ip(),
-        );
-
-        return Storage::disk(SkillAsset::disk())->download(
-            $asset->file_path,
-            $asset->file_name ?: basename($asset->file_path)
-        );
     }
 
     /**
@@ -220,117 +221,96 @@ class SkillController extends APIController
      */
     public function bindDevice(Request $request, int $entitlementId): JsonResponse
     {
-        $entitlement = $this->findOwnedEntitlement($entitlementId);
-
-        if (! $entitlement) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
-        }
-
-        if (! $entitlement->isUsable()) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
-        }
-
-        $payload = $request->validate([
-            'device_id' => ['required', 'integer'],
-        ]);
-
         $customer = auth()->guard('customer')->user();
 
-        $device = Device::query()
-            ->where('customer_id', $customer->id)
-            ->where('id', $payload['device_id'])
-            ->where('bind_status', Device::STATUS_BOUND)
-            ->first();
+        return $this->withLockedOwnedEntitlement($entitlementId, $customer->id, function ($entitlement) use ($customer, $request) {
+            if (! $entitlement) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
+            }
+            if (! $entitlement->isUsable()) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
+            }
 
-        if (! $device) {
-            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在或不属于你。', 404);
-        }
+            $payload = $request->validate(['device_id' => ['required', 'integer']]);
 
-        // v3.4 步骤 2「设备唯一真相源=binding」：归属以 binding 为准。
-        // heal=true —— 在 binding 机制之前登记的历史设备，在这里补建（自愈），
-        // 否则它们的授权指派到设备后，下发链路（只认 binding）根本找不到这台设备。
-        $resolved = app(DeviceBindingService::class)->resolveForCustomer($device, $customer->id, heal: true);
+            $device = Device::query()->where('customer_id', $customer->id)
+                ->whereKey($payload['device_id'])->where('bind_status', Device::STATUS_BOUND)
+                ->lockForUpdate()->first();
+            if (! $device) {
+                return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在或不属于你。', 404);
+            }
+            $resolved = app(DeviceBindingService::class)->resolveForCustomer($device, $customer->id, heal: true);
+            if (! $resolved['ok']) {
+                return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, $resolved['reason'] ?: '设备不存在或不属于你。', 404);
+            }
+            $binding = $resolved['binding']
+                ? DeviceBinding::query()->whereKey($resolved['binding']->id)->lockForUpdate()->first()
+                : null;
+            if ($binding && (($binding->owner_customer_id !== null && (int) $binding->owner_customer_id !== (int) $customer->id)
+                || $binding->bind_status !== DeviceBinding::BIND_STATUS_BOUND)) {
+                return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在或不属于你。', 404);
+            }
 
-        if (! $resolved['ok']) {
-            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, $resolved['reason'] ?: '设备不存在或不属于你。', 404);
-        }
+            // Merge into the latest locked row; never replace concurrent download
+            // statistics or the compensation ledger with a pre-lock snapshot.
+            $entitlement->device_id = $device->id;
+            $meta = (array) $entitlement->meta;
+            if ($binding) {
+                $meta['bound_did'] = $binding->did;
+            }
+            $entitlement->meta = $meta;
+            $entitlement->save();
+            $this->oplog->log(OperationLog::ACTOR_CUSTOMER, $customer->id,
+                'skill.bind_device', 'skill_entitlement', $entitlement->id,
+                ['device_id' => $device->id, 'device_sn' => $device->sn, 'device_did' => $binding?->did], $request->ip());
 
-        $binding = $resolved['binding'];
-
-        $entitlement->device_id = $device->id;
-
-        // 记下真相源的 did：下发只认它，出问题时能据此对照
-        $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
-        if ($binding) {
-            $meta['bound_did'] = $binding->did;
-        }
-        $entitlement->meta = $meta;
-        $entitlement->save();
-
-        // X4 · 技能→设备绑定留痕。绑定决定了技能下发到哪台物理机器,是事故追溯的起点。
-        //   放在 save 之后、下发之前 —— 即便随后下发失败,这次绑定也确实发生了,必须留痕。
-        $this->oplog->log(
-            OperationLog::ACTOR_CUSTOMER,
-            $customer->id,
-            'skill.bind_device',
-            'skill_entitlement',
-            $entitlement->id,
-            [
-                'device_id' => $device->id,
-                'device_sn' => $device->sn,
-                'device_did' => $binding?->did,
-            ],
-            $request->ip(),
-        );
-
-        // 重跑交付,让状态从 pending_bind 走到 granted
-        //
-        // ⚠ D7 防御式 try/catch(与 Listeners\SkillDelivery 一致):
-        //   `channel()` 在通道未注册(配置写错 / config/skill_delivery.php 被改)时抛
-        //   InvalidArgumentException,`deliver()` 还会因磁盘缺件 / 厂商接口报错而抛。
-        //   此时上面的绑定**已经落库**,放任异常冒泡只会得到一个 500 ——
-        //   前端把它当请求失败,用户以为"没绑上",于是反复重绑;
-        //   真正的原因(通道没注册)谁也看不到。
-        try {
-            $delivery = app(\Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager::class)
-                ->channel($entitlement->delivery_channel)
-                ->deliver($entitlement, ['device_id' => $device->id])
-                ->toArray();
-
-            $deliveryFailed = false;
-        } catch (\Throwable $e) {
-            report($e);
-
+            $compensator = app(SkillDeliveryCompensator::class);
+            $pendingRecovery = $compensator->hasFailureState($entitlement);
             $delivery = null;
-            $deliveryFailed = true;
-        }
+            $deliveryFailed = $pendingRecovery;
+            if ($pendingRecovery) {
+                // Binding is allowed; another initial delivery is not a way to
+                // escape an existing failure cycle or replenish its budget.
+                $delivery = DeliveryResult::fail('技能交付待平台处理。', [], 'DELIVERY_PENDING_RECOVERY')->toArray();
+            } else {
+                try {
+                    $result = app(SkillDeliveryManager::class)->channel($entitlement->delivery_channel)
+                        ->deliver($entitlement, ['device_id' => $device->id]);
+                    $delivery = $result->toArray();
+                    $deliveryFailed = ! $result->ok;
+                    $entitlement->refresh();
+                    $meta = (array) $entitlement->meta;
+                    $meta['delivery'] = $delivery;
+                    if ($result->ok) {
+                        $meta['delivery_failed'] = null;
+                    }
+                    $entitlement->meta = $meta;
+                    $entitlement->save();
+                } catch (\Throwable $error) {
+                    report($error);
+                    // The outer transaction already holds order -> item ->
+                    // product -> entitlement, matching recordFailure's lock order.
+                    $compensator->recordFailure((int) $entitlement->id, $error);
+                    $deliveryFailed = true;
+                }
+            }
 
-        $data = [
-            'id'               => $entitlement->id,
-            'device_id'        => $device->id,
-            'device_sn'        => $device->sn,
-            // 真相源信息：did 是下发链路的唯一凭据；device_confirmed 表示是否已确权
-            'device_did'       => $binding?->did,
-            'device_confirmed' => (bool) $binding,
-            'status'           => $entitlement->fresh()->status,
-            'delivery'         => $delivery,
-        ];
+            $data = [
+                'id'               => $entitlement->id,
+                'device_id'        => $device->id,
+                'device_sn'        => $device->sn,
+                'device_did'       => $binding?->did,
+                'device_confirmed' => (bool) $binding,
+                'status'           => $entitlement->fresh()->status,
+                'delivery'         => $delivery,
+            ];
+            if ($deliveryFailed) {
+                return $this->fail(ApiErrorCode::SKILL_DELIVERY_FAILED,
+                    '已绑定到设备 '.$device->sn.',但技能交付待平台处理。', 200, ['data' => $data]);
+            }
 
-        if ($deliveryFailed) {
-            // 绑定确实成了(库已改),所以措辞必须说"已绑定,但…"——
-            // 报成整体失败会让用户重复绑定,报成成功又会让用户以为技能装好了。
-            return $this->fail(
-                ApiErrorCode::SKILL_DELIVERY_FAILED,
-                '已绑定到设备 '.$device->sn.',但技能下发未成功,可稍后在技能页重试。',
-                200,
-                ['data' => $data],
-            );
-        }
-
-        return response()->json([
-            'message' => '已绑定到设备 '.$device->sn.'。',
-            'data'    => $data,
-        ]);
+            return response()->json(['message' => '已绑定到设备 '.$device->sn.'。', 'data' => $data]);
+        });
     }
 
     /**
@@ -344,157 +324,100 @@ class SkillController extends APIController
      */
     public function confirmInstall(int $entitlementId): JsonResponse
     {
-        $entitlement = $this->findOwnedEntitlement($entitlementId);
-
-        if (! $entitlement) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
-        }
-
-        $device = $entitlement->device;
-
-        if (! $device) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_BINDING_REQUIRED, '请先给这个技能绑定一台设备。', 422);
-        }
-
-        if (! $entitlement->isUsable()) {
-            return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
-        }
-
-        // D1 幂等:已 active 直接返回既有状态,不再重复计数。
-        // 此前同一方法无"已 active 就返回"的分支,连点两次 = activations +2。
-        if ($entitlement->status === SkillEntitlement::STATUS_ACTIVE) {
-            $meta = (array) $entitlement->meta;
-
-            return response()->json([
-                'message' => '该技能已激活(幂等)。',
-                'data'    => [
-                    'id'               => $entitlement->id,
-                    'status'           => $entitlement->status,
-                    'activations'      => $entitlement->activations,
-                    'device_did'       => $meta['installed_did'] ?? null,
-                    'device_confirmed' => (bool) ($meta['installed_device_confirmed'] ?? false),
-                    'idempotent'       => true,
-                ],
-            ]);
-        }
-
-        // D1 max_activations 硬闸:激活次数是许可与计费的核心账目,不能形同虚设。
-        if ($entitlement->max_activations !== null && $entitlement->activations >= $entitlement->max_activations) {
-            return $this->fail(ApiErrorCode::MAX_ACTIVATIONS_REACHED, '激活次数已达上限。', 409);
-        }
-
-        // v3.4 步骤 2：设备归属以 binding 为准（heal=true —— 历史设备在此自愈）
         $customer = auth()->guard('customer')->user();
 
-        $resolved = app(DeviceBindingService::class)->resolveForCustomer($device, $customer->id, heal: true);
+        return $this->withLockedOwnedEntitlement($entitlementId, $customer->id, function ($entitlement) use ($customer) {
+            if (! $entitlement) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在。', 404);
+            }
+            if (! $entitlement->isUsable()) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效。', 403);
+            }
+            $device = $entitlement->device_id
+                ? Device::query()->whereKey($entitlement->device_id)->where('customer_id', $customer->id)
+                    ->where('bind_status', Device::STATUS_BOUND)->lockForUpdate()->first()
+                : null;
+            if (! $device) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_BINDING_REQUIRED, '请先给这个技能绑定一台设备。', 422);
+            }
 
-        if (! $resolved['ok']) {
-            return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, $resolved['reason'] ?: '设备不存在或不属于你。', 404);
-        }
+            // The row lock makes the idempotency and activation limit checks
+            // atomic with status, metadata and the installation fact below.
+            if ($entitlement->status === SkillEntitlement::STATUS_ACTIVE) {
+                $meta = (array) $entitlement->meta;
 
-        $binding = $resolved['binding'];
-
-        // D1 原子条件自增:仅当"仍非 active 且未超上限"时才 +1 并置 active。
-        // 并发两个请求只有一个命中(affected=1);另一个 affected=0 → 走幂等/超限分支。
-        // 此前是 read-modify-write,并发会丢失更新;且 max_activations 未参与判定。
-        $affected = SkillEntitlement::query()
-            ->where('id', $entitlement->id)
-            ->where('status', '!=', SkillEntitlement::STATUS_ACTIVE)
-            ->where(function ($q) {
-                $q->whereNull('max_activations')
-                    ->orWhereColumn('activations', '<', 'max_activations');
-            })
-            ->update([
-                'status'      => SkillEntitlement::STATUS_ACTIVE,
-                'activations' => DB::raw('activations + 1'),
-            ]);
-
-        if ($affected === 0) {
-            $fresh = $entitlement->fresh();
-
-            // 并发中另一半已把它置为 active → 幂等返回
-            if ($fresh && $fresh->status === SkillEntitlement::STATUS_ACTIVE) {
                 return response()->json([
                     'message' => '该技能已激活(幂等)。',
                     'data'    => [
-                        'id'          => $fresh->id,
-                        'status'      => $fresh->status,
-                        'activations' => $fresh->activations,
-                        'idempotent'  => true,
+                        'id'               => $entitlement->id,
+                        'status'           => $entitlement->status,
+                        'activations'      => $entitlement->activations,
+                        'device_did'       => $meta['installed_did'] ?? null,
+                        'device_confirmed' => (bool) ($meta['installed_device_confirmed'] ?? false),
+                        'idempotent'       => true,
                     ],
                 ]);
             }
+            if (app(SkillDeliveryCompensator::class)->hasFailureState($entitlement)) {
+                return $this->fail(ApiErrorCode::SKILL_DELIVERY_FAILED, '该技能交付待平台处理，暂不能确认安装。', 409);
+            }
+            if ($entitlement->max_activations !== null && $entitlement->activations >= $entitlement->max_activations) {
+                return $this->fail(ApiErrorCode::MAX_ACTIVATIONS_REACHED, '激活次数已达上限。', 409);
+            }
 
-            return $this->fail(ApiErrorCode::MAX_ACTIVATIONS_REACHED, '激活次数已达上限。', 409);
-        }
+            $resolved = app(DeviceBindingService::class)->resolveForCustomer($device, $customer->id, heal: true);
+            if (! $resolved['ok']) {
+                return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, $resolved['reason'] ?: '设备不存在或不属于你。', 404);
+            }
+            $binding = $resolved['binding']
+                ? DeviceBinding::query()->whereKey($resolved['binding']->id)->lockForUpdate()->first()
+                : null;
+            if ($binding && (($binding->owner_customer_id !== null && (int) $binding->owner_customer_id !== (int) $customer->id)
+                || $binding->bind_status !== DeviceBinding::BIND_STATUS_BOUND)) {
+                return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在或不属于你。', 404);
+            }
 
-        // 安装事实落在 meta(非计数,与上面的原子自增分开写)
-        $entitlement->refresh();
-        $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
-        $meta['installed_at'] = now()->toDateTimeString();
-        $meta['installed_by'] = 'user_reported';
+            $meta = (array) $entitlement->meta;
+            $meta['installed_at'] = now()->toDateTimeString();
+            $meta['installed_by'] = 'user_reported';
+            if ($binding) {
+                $meta['installed_did'] = $binding->did;
+            }
+            $meta['installed_device_confirmed'] = (bool) $binding;
+            $entitlement->status = SkillEntitlement::STATUS_ACTIVE;
+            $entitlement->activations += 1;
+            $entitlement->meta = $meta;
+            $entitlement->save();
 
-        // 如实记录"装到哪台设备"：did 是下发/运维链路认的那把钥匙
-        if ($binding) {
-            $meta['installed_did'] = $binding->did;
-        }
-        $meta['installed_device_confirmed'] = (bool) $binding;
-
-        $entitlement->meta = $meta;
-        $entitlement->save();
-
-        // D4 · 自报安装同步落 install_record。
-        // 此前 confirm-install 只改 meta/status,安装事实分裂成两套:走人工通道的用户
-        // 在灰度回滚(GrayReleaseService)、事故影响面(IncidentService)、设备已装列表
-        // (GET devices/{id}/installs)里**查无此设备** —— 它们都只读 install_record。
-        // 唯一键是 did+skill_version_id,故需有已确权设备(binding.did)与锁定版本才写。
-        if ($binding && $entitlement->skill_version_id) {
-            InstallRecord::updateOrCreate(
-                [
+            // If this write fails, the same transaction rolls back activation
+            // and metadata. A later idempotent response cannot hide a half-write.
+            if ($binding && $entitlement->skill_version_id) {
+                InstallRecord::updateOrCreate([
                     'did'              => $binding->did,
                     'skill_version_id' => $entitlement->skill_version_id,
-                ],
-                [
+                ], [
                     'entitlement_id'  => $entitlement->id,
                     'status'          => 'installed',
                     'current_version' => $entitlement->version?->version,
                     'installed_at'    => now(),
-                    // S-5 · 自报安装路径**没有下发任务**,通道只能取自该授权本身 ——
-                    // `skill_entitlement.delivery_channel`(人工交付为 `app`)。
-                    // 这条路径产的正是"人工通道安装",熔断据此把它归入"无法自动卸载",
-                    // 而不是照建一条拉不动的 agent 卸载任务。
                     'channel'         => $entitlement->delivery_channel,
-                ]
-            );
-        }
+                ]);
+            }
+            $this->oplog->log(OperationLog::ACTOR_CUSTOMER, $entitlement->customer_id,
+                'skill.confirm_install', 'skill_entitlement', $entitlement->id,
+                ['activations' => $entitlement->activations, 'device_id' => $device->id, 'device_did' => $binding?->did], request()->ip());
 
-        // X4 · 自报安装留痕:这是"技能真的装到机器上了"的唯一人工确认点,
-        //   事故追溯时会问"这包到底是什么时候、被谁确认装上的"。
-        $this->oplog->log(
-            OperationLog::ACTOR_CUSTOMER,
-            $entitlement->customer_id,
-            'skill.confirm_install',
-            'skill_entitlement',
-            $entitlement->id,
-            [
-                'activations' => $entitlement->activations,
-                'device_id'   => $device->id,
-                'device_did'  => $binding?->did,
-            ],
-            request()->ip(),
-        );
-
-        return response()->json([
-            'message' => '已标记为安装完成。',
-            'data'    => [
-                'id'          => $entitlement->id,
-                'status'      => $entitlement->status,
-                'activations' => $entitlement->activations,
-                'device_did'  => $binding?->did,
-                // 未确权的设备照样能自报安装（兜底通道），但状态如实标注
-                'device_confirmed' => (bool) $binding,
-            ],
-        ]);
+            return response()->json([
+                'message' => '已标记为安装完成。',
+                'data'    => [
+                    'id'               => $entitlement->id,
+                    'status'           => $entitlement->status,
+                    'activations'      => $entitlement->activations,
+                    'device_did'       => $binding?->did,
+                    'device_confirmed' => (bool) $binding,
+                ],
+            ]);
+        });
     }
 
     /**
@@ -552,14 +475,46 @@ class SkillController extends APIController
         return response()->json([
             'message' => $result['message'],
             'data'    => [
-                'entitlement_id' => $entitlement->id,
-                'trial'          => true,
-                'expires_at'     => optional($entitlement->expires_at)->toDateTimeString(),
+                'entitlement_id'   => $entitlement->id,
+                'trial'            => true,
+                'expires_at'       => optional($entitlement->expires_at)->toDateTimeString(),
                 'delivery_channel' => $entitlement->delivery_channel,
-                'task_no'        => $task?->task_no,
-                'task_status'    => $task?->status,
+                'task_no'          => $task?->task_no,
+                'task_status'      => $task?->status,
             ],
         ], 201);
+    }
+
+    /** Lock in the same order as recovery: order -> item -> product -> entitlement. */
+    protected function withLockedOwnedEntitlement(int $id, int $customerId, callable $callback): Response
+    {
+        // This is only a lock hint, never an authorization decision. Ownership
+        // and immutable purchase links are checked again after taking the locks.
+        $identity = SkillEntitlement::query()->whereKey($id)->where('customer_id', $customerId)
+            ->first(['id', 'order_id', 'order_item_id', 'product_id']);
+        if (! $identity) {
+            return $callback(null);
+        }
+
+        return DB::transaction(function () use ($identity, $id, $customerId, $callback) {
+            $order = $identity->order_id
+                ? OrderProxy::modelClass()::query()->whereKey($identity->order_id)->lockForUpdate()->first()
+                : null;
+            if ($identity->order_item_id) {
+                DB::table('order_items')->where('id', $identity->order_item_id)->lockForUpdate()->first();
+            }
+            // Existing products share the kill-switch mutex before any entitlement lock.
+            // Missing historical products retain the existing ownership policy.
+            DB::table('products')->where('id', $identity->product_id)->lockForUpdate()->first();
+            $entitlement = SkillEntitlement::query()->whereKey($id)->where('customer_id', $customerId)
+                ->where('order_id', $identity->order_id)->where('order_item_id', $identity->order_item_id)
+                ->where('product_id', $identity->product_id)->lockForUpdate()->first();
+            // isOrderPaid must use the current locked row, not a lazy relation
+            // read from an older repeatable-read snapshot in a parent transaction.
+            $entitlement?->setRelation('order', $order);
+
+            return $callback($entitlement);
+        });
     }
 
     /**

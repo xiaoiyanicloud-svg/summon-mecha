@@ -45,6 +45,18 @@
 							<text class="row-label">开通时间</text>
 							<text class="row-value">{{ s.granted_at || '—' }}</text>
 						</view>
+						<view class="row">
+							<text class="row-label">已用激活次数</text>
+							<text class="row-value">{{ activationCountText(s.activations) }}</text>
+						</view>
+						<view class="row">
+							<text class="row-label">激活次数上限</text>
+							<text class="row-value">{{ s.max_activations === null ? '不限次数' : activationCountText(s.max_activations) }}</text>
+						</view>
+						<view class="row">
+							<text class="row-label">剩余激活次数</text>
+							<text class="row-value">{{ s.remaining_activations === null ? '不限次数' : activationCountText(s.remaining_activations) }}</text>
+						</view>
 						<view class="row" v-if="s.expires_at">
 							<text class="row-label">有效期至</text>
 							<text class="row-value">{{ s.expires_at }}</text>
@@ -103,8 +115,9 @@
 					</view>
 
 					<!-- 兜底通道终点:装完之后由用户自报。平台无法验证安装结果 -->
-					<view class="actions" v-if="s.device_id && s.status !== 'active'">
-						<view class="ghost-btn primary" @click="confirmInstall(s)">我已安装完成</view>
+					<view class="actions" v-if="s.device_id && s.usable && s.status !== 'active'">
+						<text class="bind-tip" v-if="activationLimitReached(s)">激活次数已达上限，无法再次确认安装。</text>
+						<view class="ghost-btn primary" v-else @click="confirmInstall(s)">我已安装完成</view>
 					</view>
 
 					<!-- v3.4:申请售后/退款(虚拟商品政策:试用不退 / 未下发可退 / 已激活需人工审) -->
@@ -214,6 +227,13 @@ export default {
 		this.stopTick()
 	},
 	methods: {
+		// Missing fields remain unknown; only an explicit null means unlimited.
+		activationCountText(value) {
+			return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value + ' 次' : '—'
+		},
+		activationLimitReached(skill) {
+			return typeof skill.max_activations === 'number' && skill.max_activations >= 0 && skill.remaining_activations === 0
+		},
 		startTick() {
 			this.stopTick()
 			this.tickTimer = setInterval(() => {
@@ -393,6 +413,10 @@ export default {
 		},
 		// 用户自报安装完成。平台无法验证安装结果,这是兜底通道的终点
 		confirmInstall(skill) {
+			if (skill.status !== 'active' && this.activationLimitReached(skill)) {
+				uni.showToast({ title: '激活次数已达上限', icon: 'none' })
+				return
+			}
 			uni.showModal({
 				title: '确认已安装',
 				content: `确认已按指引把「${skill.name}」装到设备上并可以正常使用？`,

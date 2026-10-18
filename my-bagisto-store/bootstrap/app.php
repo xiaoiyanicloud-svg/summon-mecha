@@ -51,6 +51,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies('*');
     })
     ->withSchedule(function (Schedule $schedule) {
+        // Inspection/ledger scanning is separately opt-in. Execution additionally
+        // requires the hard safety gate in skill_delivery.retry.safety_verified.
+        $schedule->command('skills:scan-delivery-retries')
+            ->everyMinute()->withoutOverlapping()
+            ->when(fn () => (bool) config('skill_delivery.retry.scan_enabled', false));
+        $schedule->command('skills:audit-delivery --notify')
+            ->everyTenMinutes()->withoutOverlapping()
+            ->when(fn () => (bool) config('skill_delivery.retry.scan_enabled', false));
         /**
          * 平台自身的定时任务（v3.4 第 10 步）。
          *

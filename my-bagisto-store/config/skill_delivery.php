@@ -66,6 +66,19 @@ return [
     | 通道实现
     |--------------------------------------------------------------------------
     */
+    // Step 10: application entitlement recovery only; no device installation.
+    'retry' => [
+        'scan_enabled'      => (bool) env('SKILL_DELIVERY_RETRY_SCAN', false),
+        'execution_enabled' => (bool) env('SKILL_DELIVERY_RETRY_EXECUTE', false),
+        // Step10 protocol passed the final regression and real MySQL writer,
+        // after-commit and crash tests. Execution still requires deployment opt-in.
+        'safety_verified'  => true,
+        'max_attempts'     => 3,
+        'backoff_seconds'  => [60, 300, 900],
+        'lease_seconds'    => 120,
+        'dispatch_seconds' => 300,
+        'scan_limit'       => 100,
+    ],
     'channels' => [
         // P0:应用内交付 —— 零外部依赖,不推送任何东西到设备
         'app' => [

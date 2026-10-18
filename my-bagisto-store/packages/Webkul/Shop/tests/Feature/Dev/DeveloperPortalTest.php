@@ -23,12 +23,12 @@ use function Pest\Laravel\post;
 function devCustomer(): Customer
 {
     return Customer::create([
-        'first_name' => 'Dev',
-        'last_name'  => 'User',
-        'email'      => 'dev'.uniqid().'@example.com',
-        'password'   => bcrypt('secret123'),
-        'channel_id' => core()->getDefaultChannel()->id,
-        'status'     => 1,
+        'first_name'  => 'Dev',
+        'last_name'   => 'User',
+        'email'       => 'dev'.uniqid().'@example.com',
+        'password'    => bcrypt('secret123'),
+        'channel_id'  => core()->getDefaultChannel()->id,
+        'status'      => 1,
         'is_verified' => 1,
     ]);
 }
@@ -118,12 +118,20 @@ it('签署协议：漏签被拒；签全留痕（含正文指纹与 IP）', func
     post(route('shop.dev.agreements.sign'), [
         'accept_dev_agreement'     => 1,
         'accept_safety_commitment' => 1,
-    ])->assertRedirect(route('shop.dev.skills.index'));
+    ])->assertRedirect(route('shop.dev.skills.index'))
+        ->assertSessionHas('success', '协议已签署。请在总览查看实名进度，满足条件后即可创建技能。');
 
     $profile->refresh();
 
     expect($profile->hasSignedAllAgreements())->toBeTrue()
-        ->and($profile->agreement_signed_at)->not->toBeNull();
+        ->and($profile->agreement_signed_at)->not->toBeNull()
+        ->and($profile->realname_status)->toBe(DeveloperProfile::REALNAME_PENDING);
+
+    // Signing only records consent; the actual creation endpoint must still
+    // reject this unreviewed subject without leaving a product behind.
+    post(route('shop.dev.skills.store'), ['name' => '尚未实名的技能', 'price' => 1])
+        ->assertSessionHasErrors('realname');
+    expect(DB::table('products')->where('seller_id', $profile->seller_id)->count())->toBe(0);
 
     $payload = $profile->agreements()->where('doc_type', 'dev_agreement')->first()->sign_payload;
 

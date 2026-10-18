@@ -5,6 +5,7 @@ namespace Webkul\Shop\Services\SkillDelivery;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Webkul\Sales\Models\OrderItemProxy;
+use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Models\AfterSale;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\RefundRequest;
@@ -117,12 +118,9 @@ class AfterSaleService
     {
         // ── 阶段①:事务内准备(守卫 + 冻结 + 落「退款中」),提交后才动钱 ──
         $prepared = DB::transaction(function () use ($afterSaleId, $reviewerId) {
-            // 状态守卫移进事务 + 行锁:此前守卫在事务外,两个并发 approve 都能读到
-            // 旧状态并通过(退款是资金级重复,必须挡住)。
-            $afterSale = AfterSale::query()
-                ->whereKey($afterSaleId)
-                ->lockForUpdate()
-                ->first();
+            // Shared recovery lock order: order -> item -> entitlement ->
+            // after_sale. Never hold after_sale while waiting on entitlement.
+            [$afterSale, $entitlement] = $this->lockAfterSale($afterSaleId);
 
             if (! $afterSale) {
                 return ['ok' => false, 'message' => '售后单不存在。'];
@@ -131,10 +129,6 @@ class AfterSaleService
             if (in_array($afterSale->status, [AfterSale::STATUS_APPROVED, AfterSale::STATUS_REFUNDED], true)) {
                 return ['ok' => false, 'message' => '该售后单已处理。'];
             }
-
-            $entitlement = $afterSale->entitlement_id
-                ? SkillEntitlement::find($afterSale->entitlement_id)
-                : null;
 
             // 1) 退款金额取自该订单条目的实付(M5)。
             //    此前恒传 0、RefundRequest 也恒落 0 —— 退款账目全是 0,事后无法对账。
@@ -250,18 +244,18 @@ class AfterSaleService
     public function settleRefund(int $refundId, bool $ok, ?string $message = null): array
     {
         return DB::transaction(function () use ($refundId, $ok, $message) {
-            $refund = RefundRequest::query()
-                ->whereKey($refundId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $refund) {
+            $identity = RefundRequest::find($refundId);
+            if (! $identity) {
                 return ['ok' => false, 'message' => '退款单不存在。'];
             }
-
-            $afterSale = $refund->after_sale_id
-                ? AfterSale::query()->whereKey($refund->after_sale_id)->lockForUpdate()->first()
-                : null;
+            [$afterSale] = $identity->after_sale_id
+                ? $this->lockAfterSale((int) $identity->after_sale_id) : [null];
+            // Same order as approve's refund accumulation: after_sale first,
+            // refund_request last. Actual gateway invocation remains outside.
+            $refund = RefundRequest::query()->whereKey($refundId)->lockForUpdate()->first();
+            if (! $refund || $refund->after_sale_id !== $identity->after_sale_id) {
+                return ['ok' => false, 'message' => '退款单关联发生变化，请重新核查。'];
+            }
 
             $amount = (float) $refund->amount;
 
@@ -362,7 +356,7 @@ class AfterSaleService
             return 0.0;
         }
 
-        $item = OrderItemProxy::modelClass()::find($orderItemId);
+        $item = OrderItemProxy::modelClass()::query()->whereKey($orderItemId)->lockForUpdate()->first();
 
         if (! $item) {
             return 0.0;
@@ -390,7 +384,35 @@ class AfterSaleService
             ->join('after_sale', 'after_sale.id', '=', 'refund_request.after_sale_id')
             ->where('after_sale.order_item_id', $orderItemId)
             ->whereIn('refund_request.status', RefundRequest::COUNTED_STATUSES)
-            ->sum('refund_request.amount');
+            ->lockForUpdate()->get(['refund_request.amount'])->sum('amount');
+    }
+
+    /** Inside an existing transaction; preliminary identity reads are NOT guards. */
+    protected function lockAfterSale(int $id): array
+    {
+        $identity = AfterSale::find($id);
+        if (! $identity) {
+            return [null, null];
+        }
+        $entitlementIdentity = $identity->entitlement_id ? SkillEntitlement::find($identity->entitlement_id) : null;
+        $orderId = $identity->order_id ?: $entitlementIdentity?->order_id;
+        $itemId = $identity->order_item_id ?: $entitlementIdentity?->order_item_id;
+        if ($orderId) {
+            OrderProxy::modelClass()::query()->whereKey($orderId)->lockForUpdate()->first();
+        }
+        if ($itemId) {
+            OrderItemProxy::modelClass()::query()->whereKey($itemId)->lockForUpdate()->first();
+        }
+        $entitlement = $identity->entitlement_id
+            ? SkillEntitlement::query()->whereKey($identity->entitlement_id)->lockForUpdate()->first() : null;
+        $afterSale = AfterSale::query()->whereKey($id)->lockForUpdate()->first();
+        if ($afterSale && ((int) $afterSale->order_id !== (int) $identity->order_id
+            || (int) $afterSale->order_item_id !== (int) $identity->order_item_id
+            || (int) $afterSale->entitlement_id !== (int) $identity->entitlement_id)) {
+            throw new \RuntimeException('After-sale purchase identity changed while acquiring locks.');
+        }
+
+        return [$afterSale, $entitlement];
     }
 
     /**

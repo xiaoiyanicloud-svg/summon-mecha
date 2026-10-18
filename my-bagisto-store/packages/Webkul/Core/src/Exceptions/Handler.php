@@ -7,7 +7,6 @@ use Illuminate\Foundation\Exceptions\Handler as BaseHandler;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
@@ -19,6 +18,10 @@ class Handler extends BaseHandler
      */
     public function register(): void
     {
+        // An explicit middleware response already owns its status, headers and
+        // body on every surface. Preserve it before any generic renderer runs.
+        $this->renderable(fn (HttpResponseException $exception) => $exception->getResponse());
+
         // X2 · 统一 JSON 错误信封。放在**最前**:本方法在 provider boot 阶段执行,
         // 而 `bootstrap/app.php` 的 withExceptions 回调是之后追加的 —— 数组靠后 = 优先级更低。
         // 实测:APP_DEBUG=false 时,下面的 Bagisto 原生回调会遮蔽 withExceptions 的任何注册,
@@ -135,12 +138,17 @@ class Handler extends BaseHandler
      */
     protected function handleHttpException(): void
     {
-        $this->renderable(function (HttpException $exception, Request $request) {
+        $this->renderable(function (HttpExceptionInterface $exception, Request $request) {
             $namespace = $request->is(config('app.admin_url').'/*') ? 'admin' : 'shop';
 
-            $errorCode = in_array($exception->getStatusCode(), [401, 403, 404, 503])
-                ? $exception->getStatusCode()
-                : 500;
+            $errorCode = $exception->getStatusCode();
+
+            // Bagisto has custom pages for these four statuses. Other HTTP
+            // errors keep Laravel's standard rendering and protocol headers
+            // (for example 419, Retry-After on 429, and Allow on 405).
+            if (! in_array($errorCode, [401, 403, 404, 503], true)) {
+                return $this->renderExceptionResponse($request, $exception);
+            }
 
             if ($request->wantsJson()) {
                 return response()->json([

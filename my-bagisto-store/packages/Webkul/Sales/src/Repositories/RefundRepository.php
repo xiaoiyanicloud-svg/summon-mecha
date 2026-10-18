@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Webkul\Core\Eloquent\Repository;
 use Webkul\Sales\Exceptions\InvalidRefundQuantityException;
+use Webkul\Sales\Models\OrderItemProxy;
+use Webkul\Sales\Models\OrderProxy;
 
 class RefundRepository extends Repository
 {
@@ -41,9 +43,10 @@ class RefundRepository extends Repository
         DB::beginTransaction();
 
         try {
+            // Serialize native refund writes with payment/cancellation and app
+            // recovery before events or item reads establish an old snapshot.
+            $order = OrderProxy::modelClass()::query()->whereKey($data['order_id'])->lockForUpdate()->firstOrFail();
             Event::dispatch('sales.refund.save.before', $data);
-
-            $order = $this->orderRepository->find($data['order_id']);
 
             $totalQty = array_sum($data['refund']['items'] ?? []) ?? 0;
 
@@ -67,7 +70,9 @@ class RefundRepository extends Repository
                     continue;
                 }
 
-                $orderItem = $this->orderItemRepository->find($itemId);
+                $orderItem = OrderItemProxy::modelClass()::query()->whereKey($itemId)
+                    ->where('order_id', $order->id)->lockForUpdate()->firstOrFail();
+                $orderItem->setRelation('order', $order);
 
                 if ($qty > $orderItem->qty_to_refund) {
                     $qty = $orderItem->qty_to_refund;
@@ -101,7 +106,8 @@ class RefundRepository extends Repository
                 ]);
 
                 if ($orderItem->getTypeInstance()->isComposite()) {
-                    foreach ($orderItem->children as $childOrderItem) {
+                    foreach ($orderItem->children()->where('order_id', $order->id)->lockForUpdate()->get() as $childOrderItem) {
+                        $childOrderItem->setRelation('order', $order);
                         $finalQty = $childOrderItem->qty_ordered
                             ? ($childOrderItem->qty_ordered / $orderItem->qty_ordered) * $qty
                             : $orderItem->qty_ordered;

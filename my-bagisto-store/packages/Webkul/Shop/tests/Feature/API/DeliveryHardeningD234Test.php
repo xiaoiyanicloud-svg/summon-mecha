@@ -8,7 +8,6 @@ use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
 use function Pest\Laravel\actingAs;
-use function Pest\Laravel\getJson;
 use function Pest\Laravel\postJson;
 
 /**
@@ -18,7 +17,6 @@ use function Pest\Laravel\postJson;
  * D3 · 监听器吞异常且无补偿;两条发放入口事务边界不一致。
  * D4 · 自报安装不落 install_record(安装事实分裂成两套)。
  */
-
 function hardenCustomer2(): Customer
 {
     return Customer::create([
@@ -219,7 +217,7 @@ function hskillOrder(Customer $customer): int
     ]);
 }
 
-it('D3 · redeliver() 按订单补发且幂等(已交付不重复)', function () {
+it('D3 · legacy redeliver 只检查现有授权且不绕过付款补偿守卫', function () {
     $customer = hardenCustomer2();
     $orderId = hskillOrder($customer);
     hskillOrderItem($orderId, hskillProductId());
@@ -229,7 +227,12 @@ it('D3 · redeliver() 按订单补发且幂等(已交付不重复)', function ()
     $first = $listener->redeliver($orderId);
     $second = $listener->redeliver($orderId);
 
-    expect($first)->toBe(1)
-        ->and($second)->toBe(1)
-        ->and(SkillEntitlement::query()->where('order_id', $orderId)->count())->toBe(1);
+    expect($first)->toBe(0)
+        ->and($second)->toBe(0)
+        ->and(SkillEntitlement::query()->where('order_id', $orderId)->count())->toBe(0);
+
+    // Initial order creation remains supported; replaying the legacy method is read-only.
+    $listener->afterOrderCreated(\Webkul\Sales\Models\OrderProxy::modelClass()::find($orderId));
+    expect($listener->redeliver($orderId))->toBe(1);
+    expect(SkillEntitlement::where('order_id', $orderId)->count())->toBe(1);
 });

@@ -31,7 +31,7 @@
 					<view class="card-icon">🎫</view>
 					<view class="card-info">
 						<text class="card-title">优惠券</text>
-						<text class="card-count">{{ couponCount }}张</text>
+						<text class="card-count">暂未开放</text>
 					</view>
 					<text class="card-arrow">›</text>
 				</view>
@@ -141,30 +141,10 @@
 				<view class="nav-placeholder"></view>
 			</view>
 			<scroll-view class="sub-content" scroll-y="true" show-scrollbar="false">
-				<view class="coupon-tabs">
-					<text class="tab-item" :class="{ active: couponTab === 'all' }" @tap="couponTab='all'">全部</text>
-					<text class="tab-item" :class="{ active: couponTab === 'available' }" @tap="couponTab='available'">可用</text>
-					<text class="tab-item" :class="{ active: couponTab === 'used' }" @tap="couponTab='used'">已使用</text>
-					<text class="tab-item" :class="{ active: couponTab === 'expired' }" @tap="couponTab='expired'">已过期</text>
-				</view>
-				<view class="coupon-list">
-					<view class="coupon-card" v-for="(item, index) in filteredCoupons" :key="index">
-						<view class="coupon-left">
-							<text class="coupon-amount">¥{{ item.amount }}</text>
-							<text class="coupon-condition">{{ item.condition }}</text>
-						</view>
-						<view class="coupon-right">
-							<text class="coupon-name">{{ item.name }}</text>
-							<text class="coupon-expire">有效期至：{{ item.expire }}</text>
-							<view class="coupon-status" :class="item.status">
-								{{ item.status === 'available' ? '立即使用' : item.status === 'used' ? '已使用' : '已过期' }}
-							</view>
-						</view>
-					</view>
-					<view class="empty-state" v-if="filteredCoupons.length === 0">
-						<text class="empty-icon">🎫</text>
-						<text class="empty-text">暂无优惠券</text>
-					</view>
+				<view class="empty-state">
+					<text class="empty-icon">🎫</text>
+					<view class="empty-text">优惠券列表暂未开放</view>
+					<view class="empty-hint">如持有优惠码，可在技能订单结算时填写。</view>
 				</view>
 				<view style="height: 40rpx;"></view>
 			</scroll-view>
@@ -686,18 +666,7 @@
 				authMode: 'login', // 'login' | 'register'
 				loginForm: { email: '', password: '' },
 				registerForm: { name: '', email: '', password: '', confirmPassword: '' },
-				couponCount: 4,
 				// invoiceCount 改为 computed(取自真实 invoiceList.length)——不再写死 "3笔"
-
-				// ===== 优惠券数据 =====
-				couponTab: 'all',
-				couponList: [
-					{ id: 1, name: '满1000减100', amount: '100', condition: '满1000可用', expire: '2026-12-31', status: 'available' },
-					{ id: 2, name: '满500减50', amount: '50', condition: '满500可用', expire: '2026-11-30', status: 'available' },
-					{ id: 3, name: '满300减30', amount: '30', condition: '满300可用', expire: '2026-10-15', status: 'used' },
-					{ id: 4, name: '满200减20', amount: '20', condition: '满200可用', expire: '2026-09-01', status: 'expired' },
-					{ id: 5, name: '新人专享券', amount: '10', condition: '无门槛', expire: '2026-08-20', status: 'available' },
-				],
 
 				// ===== 开票中心数据(B-15:全部来自后端 /api/invoices,不再写死假发票) =====
 				invoiceList: [],
@@ -801,10 +770,6 @@
 				const o = (this.paidOrders || []).find(x => x.id === id);
 				return o ? `${o.increment_id || o.id}  ¥${o.grand_total}` : '';
 			},
-			filteredCoupons() {
-				if (this.couponTab === 'all') return this.couponList;
-				return this.couponList.filter(item => item.status === this.couponTab);
-			},
 			isFormValid() {
 				const f = this.partnerForm;
 				const requiredFields = [f.companyName, f.level, f.contactName, f.phone, f.region, f.intro, f.inviteCode];
@@ -873,7 +838,6 @@
 							uni.showToast({ title: '登录失败：服务未返回凭证，请稍后重试', icon: 'none' });
 							return;
 						}
-						this.couponCount = 5;
 						// 登录/注册后拉真实开票记录(B-15)——invoiceCount 现在是 computed
 						this.loadInvoices();
 						this.showLoginModal = false;
@@ -935,7 +899,6 @@
 							uni.showToast({ title: '注册失败：服务未返回凭证，请直接登录或稍后重试', icon: 'none' });
 							return;
 						}
-						this.couponCount = 5;
 						// 登录/注册后拉真实开票记录(B-15)——invoiceCount 现在是 computed
 						this.loadInvoices();
 						this.showLoginModal = false;
@@ -1420,7 +1383,6 @@
 				// 清除后端登录态（token & 用户信息）
 				uni.removeStorageSync(TOKEN_KEY);
 				uni.removeStorageSync(CUSTOMER_KEY);
-				this.couponCount = 0;
 				this.invoiceList = [];
 				uni.showToast({ title: '已退出', icon: 'success' });
 				this.currentPage = 'main';

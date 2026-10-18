@@ -6,13 +6,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Webkul\Product\Models\ProductProxy;
+use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
-use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\Deploy\DeviceCredentialService;
+use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillDelivery\DeviceBindingService;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryCompensator;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
 /**
  * 我的设备 —— 用户登记/管理自己实际拥有的机器。
@@ -144,7 +147,7 @@ class DeviceController extends APIController
         return response()->json([
             // 有技能没下来就直说 —— 否则用户看到"已登记"、却发现技能页还是"待安装",无从判断
             'message' => $claim['failed'] > 0
-                ? "设备已登记,但有 {$claim['failed']} 个技能未能自动下发,可稍后在技能页重试。"
+                ? "设备已登记,但有 {$claim['failed']} 个技能交付待平台处理。"
                 : '设备已登记。',
             'data'    => $this->format($device->fresh(['product', 'entitlements.product'])),
             'claim'   => $claim,
@@ -404,46 +407,94 @@ class DeviceController extends APIController
      * 把该用户尚未指派设备的技能授权,认领到刚登记的这台设备上。
      *
      * 只在该用户名下且 device_id 为空的授权上生效 —— 多台设备时不会互相抢。
-     * 认领后重跑一次交付,让状态从 pending_bind 走到 granted。
+     * 认领后仅对没有未解决失败的授权交付,已有失败周期交给平台补偿。
      *
      * @return array{claimed:int, failed:int} 下发成功 / 失败的条数
      */
     protected function claimPendingEntitlements(int $customerId, Device $device): array
     {
-        $pending = SkillEntitlement::query()
-            ->where('customer_id', $customerId)
-            ->whereNull('device_id')
-            ->where('status', SkillEntitlement::STATUS_PENDING_BIND)
-            ->get();
-
-        if ($pending->isEmpty()) {
-            return ['claimed' => 0, 'failed' => 0];
-        }
-
-        $manager = app(\Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager::class);
-
+        $pending = SkillEntitlement::query()->where('customer_id', $customerId)
+            ->whereNull('device_id')->where('status', SkillEntitlement::STATUS_PENDING_BIND)
+            ->orderBy('product_id')->orderBy('id')->get(['id', 'order_id', 'order_item_id', 'product_id']);
+        $manager = app(SkillDeliveryManager::class);
+        $compensator = app(SkillDeliveryCompensator::class);
         $claimed = 0;
         $failed = 0;
 
-        foreach ($pending as $entitlement) {
-            $entitlement->device_id = $device->id;
-            $entitlement->save();
-
-            // ⚠ D7 防御式 try/catch,与 Listeners\SkillDelivery 同一姿态 —— 而且这里
-            //   **必须逐条兜住**,不能让一条失败拖垮整批:
-            //     · `channel()` 在通道未注册(配置写错)时抛 InvalidArgumentException;
-            //     · `deliver()` 还会因磁盘缺件 / 厂商接口报错而抛。
-            //   此时授权**已经落库**指向本设备。若放任异常冒泡,`store()` 会返回 500,
-            //   而设备其实已经建好了 —— 用户以为登记失败,于是重复登记,账号里堆出一串同 SN 设备。
-            //   所以:失败写日志 + 计数,继续处理下一条,最后如实回报。
+        foreach ($pending as $identity) {
             try {
-                $manager->channel($entitlement->delivery_channel)
-                    ->deliver($entitlement, ['device_id' => $device->id]);
+                $outcome = DB::transaction(function () use ($identity, $customerId, $device, $manager, $compensator) {
+                    if ($identity->order_id) {
+                        OrderProxy::modelClass()::query()->whereKey($identity->order_id)->lockForUpdate()->first();
+                    }
+                    if ($identity->order_item_id) {
+                        DB::table('order_items')->where('id', $identity->order_item_id)->lockForUpdate()->first();
+                    }
+                    // Match recovery and kill-switch order before nested recordFailure.
+                    DB::table('products')->where('id', $identity->product_id)->lockForUpdate()->first();
+                    $entitlement = SkillEntitlement::query()->whereKey($identity->id)->where('customer_id', $customerId)
+                        ->where('order_id', $identity->order_id)->where('order_item_id', $identity->order_item_id)
+                        ->where('product_id', $identity->product_id)->lockForUpdate()->first();
+                    // A competing registration may already have claimed it.
+                    if (! $entitlement || $entitlement->device_id !== null
+                        || $entitlement->status !== SkillEntitlement::STATUS_PENDING_BIND || ! $entitlement->isUsable()) {
+                        return ['claimed' => 0, 'failed' => 0];
+                    }
+                    $currentDevice = Device::query()->whereKey($device->id)->where('customer_id', $customerId)
+                        ->where('bind_status', Device::STATUS_BOUND)->lockForUpdate()->first();
+                    if (! $currentDevice) {
+                        return ['claimed' => 0, 'failed' => 1];
+                    }
+                    $resolved = app(DeviceBindingService::class)->resolveForCustomer($currentDevice, $customerId, heal: true);
+                    if (! $resolved['ok']) {
+                        return ['claimed' => 0, 'failed' => 1];
+                    }
+                    $binding = $resolved['binding']
+                        ? DeviceBinding::query()->whereKey($resolved['binding']->id)->lockForUpdate()->first()
+                        : null;
+                    if ($binding && (($binding->owner_customer_id !== null && (int) $binding->owner_customer_id !== $customerId)
+                        || $binding->bind_status !== DeviceBinding::BIND_STATUS_BOUND)) {
+                        return ['claimed' => 0, 'failed' => 1];
+                    }
 
-                $claimed++;
-            } catch (\Throwable $e) {
-                report($e);
+                    $entitlement->device_id = $currentDevice->id;
+                    $meta = (array) $entitlement->meta;
+                    if ($binding) {
+                        $meta['bound_did'] = $binding->did;
+                    }
+                    $entitlement->meta = $meta;
+                    $entitlement->save();
+                    if ($compensator->hasFailureState($entitlement)) {
+                        // Record the binding, but leave failure evidence and the
+                        // existing retry cycle untouched for platform recovery.
+                        return ['claimed' => 0, 'failed' => 1];
+                    }
 
+                    try {
+                        $result = $manager->channel($entitlement->delivery_channel)
+                            ->deliver($entitlement, ['device_id' => $currentDevice->id]);
+                        $entitlement->refresh();
+                        $meta = (array) $entitlement->meta;
+                        $meta['delivery'] = $result->toArray();
+                        if ($result->ok) {
+                            $meta['delivery_failed'] = null;
+                        }
+                        $entitlement->meta = $meta;
+                        $entitlement->save();
+
+                        return ['claimed' => (int) $result->ok, 'failed' => (int) ! $result->ok];
+                    } catch (\Throwable $error) {
+                        report($error);
+                        $compensator->recordFailure((int) $entitlement->id, $error);
+
+                        return ['claimed' => 0, 'failed' => 1];
+                    }
+                });
+                $claimed += $outcome['claimed'];
+                $failed += $outcome['failed'];
+            } catch (\Throwable $error) {
+                // A failure before the row is claimed also stays item-local.
+                report($error);
                 $failed++;
             }
         }
@@ -456,7 +507,7 @@ class DeviceController extends APIController
      *
      * 统一大写后再校验 —— 一机一码是标识符,大小写不同不该被当成两台机器(同一码只准占一次)。
      *
-     * @return array{ok: bool, code: ?string}  ok=false 表示形状非法;code=null 表示本次未提供
+     * @return array{ok: bool, code: ?string} ok=false 表示形状非法;code=null 表示本次未提供
      */
     private function validateNationalCode(?string $raw): array
     {
@@ -503,9 +554,9 @@ class DeviceController extends APIController
             // ⚠ 在线是**读时判断**(最近一次心跳在 90 秒窗口内),不是读 online_status 列 ——
             //   那一列只有写入 true，从没写过 false，断线后会永远显示"在线"。
             //   详见 DeviceBinding 的类注释。
-            'agent_online'  => (bool) $binding?->isOnlineNow(),
+            'agent_online'   => (bool) $binding?->isOnlineNow(),
             'last_online_at' => optional($binding?->last_online_at)->toDateTimeString(),
-            'product'       => $device->product ? [
+            'product'        => $device->product ? [
                 'id'   => $device->product->id,
                 'name' => $device->product->name,
             ] : null,

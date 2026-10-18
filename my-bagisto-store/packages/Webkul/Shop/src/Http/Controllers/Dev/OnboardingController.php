@@ -40,9 +40,9 @@ class OnboardingController extends Controller
         $allowed = implode(',', (array) config('developer_portal.dev_types', ['personal']));
 
         $payload = $request->validate([
-            'dev_type'     => ['required', 'string', 'in:'.$allowed],
-            'seller_name'  => ['nullable', 'string', 'max:191'],
-            'contact_name' => ['nullable', 'string', 'max:191'],
+            'dev_type'      => ['required', 'string', 'in:'.$allowed],
+            'seller_name'   => ['nullable', 'string', 'max:191'],
+            'contact_name'  => ['nullable', 'string', 'max:191'],
             'contact_phone' => ['nullable', 'string', 'max:32'],
         ]);
 
@@ -110,6 +110,6 @@ class OnboardingController extends Controller
 
         return redirect()
             ->route('shop.dev.skills.index')
-            ->with('success', '协议已签署，现在可以创建技能了。');
+            ->with('success', '协议已签署。请在总览查看实名进度，满足条件后即可创建技能。');
     }
 }

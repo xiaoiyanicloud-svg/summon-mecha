@@ -16,23 +16,23 @@ final class DeliveryResult
         public readonly bool $ok,
         public readonly string $message = '',
         public readonly array $data = [],
-    ) {
-    }
+        public readonly string $code = 'DELIVERED',
+    ) {}
 
     /**
      * 交付成功。
      */
-    public static function ok(string $message = '', array $data = []): self
+    public static function ok(string $message = '', array $data = [], string $code = 'DELIVERED'): self
     {
-        return new self(true, $message, $data);
+        return new self(true, $message, $data, $code);
     }
 
     /**
      * 交付失败 —— 不是异常,是需要业务处理的正常状态(如尚未绑定设备)。
      */
-    public static function fail(string $message, array $data = []): self
+    public static function fail(string $message, array $data = [], string $code = 'DELIVERY_REJECTED'): self
     {
-        return new self(false, $message, $data);
+        return new self(false, $message, $data, $code);
     }
 
     /**
@@ -42,6 +42,7 @@ final class DeliveryResult
     {
         return [
             'ok'      => $this->ok,
+            'code'    => $this->code,
             'message' => $this->message,
             'data'    => $this->data,
         ];

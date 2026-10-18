@@ -56,7 +56,7 @@ class AppChannel implements DeliveryChannel
     public function deliver(SkillEntitlement $entitlement, array $context = []): DeliveryResult
     {
         if (! $this->canDeliver($entitlement)) {
-            return DeliveryResult::fail('授权已撤销或已过期,无法交付');
+            return DeliveryResult::fail('授权已撤销或已过期,无法交付', [], 'ENTITLEMENT_UNUSABLE');
         }
 
         // 已经交付过 —— 只补可能缺失的字段,不改状态(避免把 granted 回退成 pending_bind)
@@ -68,7 +68,8 @@ class AppChannel implements DeliveryChannel
             $entitlement->license_key = SkillEntitlement::newLicenseKey();
         }
 
-        if ($context['device_id'] ?? null) {
+        // Existing ownership is authoritative; a replay must not restore an old order device.
+        if (! $entitlement->device_id && ! $alreadyDelivered && ($context['device_id'] ?? null)) {
             $entitlement->device_id = $context['device_id'];
         }
 
@@ -95,7 +96,8 @@ class AppChannel implements DeliveryChannel
                 'license_key' => $entitlement->license_key,
                 'status'      => $entitlement->status,
                 'device_id'   => $entitlement->device_id,
-            ]
+            ],
+            $entitlement->device_id ? 'DELIVERED' : 'WAITING_FOR_BINDING'
         );
     }
 
