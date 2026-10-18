@@ -1,0 +1,185 @@
+{
+  "date": "2026-10-18",
+  "purpose": "Implementation planning and read-only audit",
+  "business_implementation_completed_by_this_plan": false,
+  "planned_work_packages": 59,
+  "planned_test_families": 80,
+  "counts_by_stage": {
+    "G0": 7,
+    "G1": 11,
+    "G2": 15,
+    "G3": 12,
+    "G4": 9,
+    "Q": 5
+  },
+  "local_links_checked": 57,
+  "missing_local_links": [],
+  "database_writes_in_this_audit": false,
+  "future_acceptance_matrix_executed": false,
+  "files": [
+    {
+      "file": "Ecosystem-Events-Content-Plan.md",
+      "sha256": "1e835b388940b14fe27143bd1c7e73b6b65eaa02560b222916e3fc043287b131"
+    },
+    {
+      "file": "Ecosystem-Engineering-Backlog.md",
+      "sha256": "6e8251120e93db5f364def25cc78e132b580466ecc36f1899c4e5b50a87a31fc"
+    },
+    {
+      "file": "Ecosystem-Current-Audit.md",
+      "sha256": "1fe873927e0a2bdc9b32bb06a15372b6f8993d578a959547012ead8fa27488c7"
+    },
+    {
+      "file": "Ecosystem-Frontend-Audit.md",
+      "sha256": "7477cd114ed5585119f75d31c28c1eb787615025e27fdfeb847bd9bea066cef2"
+    },
+    {
+      "file": "Ecosystem-Backend-Audit.md",
+      "sha256": "4d54e74cc99f89185ee12279c0ec40b73a2b9893309ef11d874eea31a573552b"
+    },
+    {
+      "file": "events-content-readonly-evidence.json",
+      "sha256": "7f60097a8c1148b297859a3fdaef78ddeb7c1c21e284aa1f1931cc3749764715"
+    },
+    {
+      "file": "events-content-readonly-audit.php",
+      "sha256": "58e40bf1051c1a6e1ebe8cc370f7bb37a49154a5409fe2e315d9a819337ba323"
+    },
+    {
+      "file": "Ecosystem-Official-References.md",
+      "sha256": "3d8b242b5108bb46cd9059749c9349805f18eb3ddaa18edbe98ded8893e27684"
+    },
+    {
+      "file": "events-content-http-evidence.json",
+      "sha256": "960e2e9712e9437592ec73cc8674bcc1b57ec6c3d73e4964ba524db0fcd79abe"
+    },
+    {
+      "file": "events-current-placeholder.jpg",
+      "sha256": "adef7dd6ff86acb750c9eacf9030771c3dc3c3c77552411e2c2fdfaaf5c08c12"
+    },
+    {
+      "file": "content-current-placeholder.jpg",
+      "sha256": "a431d79ac4bed3f5bf6ec3ba6cf4df93602fede3f455750a5d2004270efba806"
+    }
+  ],
+  "repository_documents": "D:\\CodexDeploy\\summon-mecha\\docs\\ecosystem",
+  "copy_hashes_match": true,
+  "source_files_unchanged_during_document_copy": [
+    {
+      "file": "components\\EcoCenter.vue",
+      "sha256_before_copy": "570EF3CA5FA29A36FFB4E887C90A64C39F733742D6401C476719A125FF8EB74C",
+      "sha256_after_copy": "570EF3CA5FA29A36FFB4E887C90A64C39F733742D6401C476719A125FF8EB74C"
+    },
+    {
+      "file": "components\\shouye\\dongtai.vue",
+      "sha256_before_copy": "BB5E1426E0F046CD89439F31B82770DEAF2DE81C38F1FB5367C8CF5665986835",
+      "sha256_after_copy": "BB5E1426E0F046CD89439F31B82770DEAF2DE81C38F1FB5367C8CF5665986835"
+    },
+    {
+      "file": "pages\\home\\index.vue",
+      "sha256_before_copy": "FC995D484A73B8204F92CF13E87E57409B1E1DF765D593804A7C046313994FC7",
+      "sha256_after_copy": "FC995D484A73B8204F92CF13E87E57409B1E1DF765D593804A7C046313994FC7"
+    },
+    {
+      "file": "utils\\api.js",
+      "sha256_before_copy": "962A68FA3AB8D075E035645D461F531360960363C1C16685E7D9FC6716E8616B",
+      "sha256_after_copy": "962A68FA3AB8D075E035645D461F531360960363C1C16685E7D9FC6716E8616B"
+    },
+    {
+      "file": "utils\\request.js",
+      "sha256_before_copy": "13E6A2F4A4239E2F2DCEFE8F0AA59F24DEB1BA2282C06D725A0E2F1B384BF8AE",
+      "sha256_after_copy": "13E6A2F4A4239E2F2DCEFE8F0AA59F24DEB1BA2282C06D725A0E2F1B384BF8AE"
+    },
+    {
+      "file": "pages.json",
+      "sha256_before_copy": "CD9E4430DAF6A7E3005504B86D984D902A31DB981EF46DE86186E6C25791B8F2",
+      "sha256_after_copy": "CD9E4430DAF6A7E3005504B86D984D902A31DB981EF46DE86186E6C25791B8F2"
+    },
+    {
+      "file": "my-bagisto-store\\bootstrap\\app.php",
+      "sha256_before_copy": "CEEA3C63E6B292BE3020EA384BAA7DFE2961A9AEC9642FB85B52D7FAE245AE35",
+      "sha256_after_copy": "CEEA3C63E6B292BE3020EA384BAA7DFE2961A9AEC9642FB85B52D7FAE245AE35"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Shop\\src\\Http\\Controllers\\API\\EventController.php",
+      "sha256_before_copy": "7AA4A8745BE3F1B6BE2CBD7E613753924C08DEDBB62864D55006E66BCB1C8891",
+      "sha256_after_copy": "7AA4A8745BE3F1B6BE2CBD7E613753924C08DEDBB62864D55006E66BCB1C8891"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Shop\\src\\Http\\Middleware\\ResolveApiCustomer.php",
+      "sha256_before_copy": "F30AA5D37862ED0F33CA6E667F84201C9CD056B188AD065656B408F5C3BBAEB5",
+      "sha256_after_copy": "F30AA5D37862ED0F33CA6E667F84201C9CD056B188AD065656B408F5C3BBAEB5"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Shop\\src\\Models\\Event.php",
+      "sha256_before_copy": "4FBD9BA31ACC98D5F57F67B98DE6EA71B04CC0359AC1F84BEBA00CAC5D00B928",
+      "sha256_after_copy": "4FBD9BA31ACC98D5F57F67B98DE6EA71B04CC0359AC1F84BEBA00CAC5D00B928"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Shop\\src\\Models\\EventRegistration.php",
+      "sha256_before_copy": "52F490C81BD460E890A6DC943E9A6E0A6A4A8D19863490E14421993BCC0798A9",
+      "sha256_after_copy": "52F490C81BD460E890A6DC943E9A6E0A6A4A8D19863490E14421993BCC0798A9"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Shop\\src\\Routes\\api.php",
+      "sha256_before_copy": "961E2F95373E259980B18D774B68A34F749BB4EF983BF500CA4FC2CBB38FB54B",
+      "sha256_after_copy": "961E2F95373E259980B18D774B68A34F749BB4EF983BF500CA4FC2CBB38FB54B"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Shop\\src\\Providers\\ShopServiceProvider.php",
+      "sha256_before_copy": "9F8533B239A22DE207F1C949D8859665B0C31290EE76796B9067687FCF96BA61",
+      "sha256_after_copy": "9F8533B239A22DE207F1C949D8859665B0C31290EE76796B9067687FCF96BA61"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Shop\\src\\Database\\Migrations\\2026_09_07_100001_create_events_tables.php",
+      "sha256_before_copy": "54E86DC88C5B5CDEF37A122902C60A876BB07C6D6D3A3D45DD20C37F8A7A31EF",
+      "sha256_after_copy": "54E86DC88C5B5CDEF37A122902C60A876BB07C6D6D3A3D45DD20C37F8A7A31EF"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Admin\\src\\Http\\Controllers\\Catalog\\EventController.php",
+      "sha256_before_copy": "6DA5B8E6428CA222B36157FE8D6A54D6132C910D6A6C3C09B19B371B5F137EDF",
+      "sha256_after_copy": "6DA5B8E6428CA222B36157FE8D6A54D6132C910D6A6C3C09B19B371B5F137EDF"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Admin\\src\\DataGrids\\Catalog\\EventDataGrid.php",
+      "sha256_before_copy": "54A2FBB49CBF2AE69B9BBF0B4BA68FB2E2DC5717379A144E49F4F91E32425D78",
+      "sha256_after_copy": "54A2FBB49CBF2AE69B9BBF0B4BA68FB2E2DC5717379A144E49F4F91E32425D78"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Admin\\src\\DataGrids\\Catalog\\EventRegistrationDataGrid.php",
+      "sha256_before_copy": "AE8ED6CB012A83D0605FF8C911A55F937F8D6F107348B1196505F1B3BD9AE134",
+      "sha256_after_copy": "AE8ED6CB012A83D0605FF8C911A55F937F8D6F107348B1196505F1B3BD9AE134"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Admin\\src\\Resources\\views\\catalog\\events\\edit.blade.php",
+      "sha256_before_copy": "C97D67521992474C70A47C21775B7D05BEBB0358A5F920BFF308C3328BDD1E4B",
+      "sha256_after_copy": "C97D67521992474C70A47C21775B7D05BEBB0358A5F920BFF308C3328BDD1E4B"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Admin\\src\\Config\\acl.php",
+      "sha256_before_copy": "0ED70F5400D8B45508C28E254A008C292B64FADAE0930F5DE6897B055286B925",
+      "sha256_after_copy": "0ED70F5400D8B45508C28E254A008C292B64FADAE0930F5DE6897B055286B925"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Admin\\src\\Routes\\catalog-routes.php",
+      "sha256_before_copy": "9CD9A529AA69A041AEB8A721583F5FCDE5DBA8547CE7E7F77F4192D431719FFB",
+      "sha256_after_copy": "9CD9A529AA69A041AEB8A721583F5FCDE5DBA8547CE7E7F77F4192D431719FFB"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\User\\src\\Http\\Middleware\\Bouncer.php",
+      "sha256_before_copy": "1C0312EE3207F5F8616B48B79CAB6CD7ED179F4399C5B0850749B9741CDFEF92",
+      "sha256_after_copy": "1C0312EE3207F5F8616B48B79CAB6CD7ED179F4399C5B0850749B9741CDFEF92"
+    },
+    {
+      "file": "my-bagisto-store\\packages\\Webkul\\Core\\src\\Acl.php",
+      "sha256_before_copy": "5E258FDFB629633173AB07275C8B4A7A0062B4090BE70CF0A8CFA058A0EF3FC3",
+      "sha256_after_copy": "5E258FDFB629633173AB07275C8B4A7A0062B4090BE70CF0A8CFA058A0EF3FC3"
+    }
+  ],
+  "planning_review": {
+    "implementation_or_test_pass_claim": false,
+    "evidence_scope": "Accepted as planning; source verification, account verification and usage rights remain distinct",
+    "product_frontend": "Accepted as implementation planning after journey and phase dependency revisions",
+    "backend_architecture": "Accepted as implementation planning after concurrency and DAG revisions"
+  }
+}

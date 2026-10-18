@@ -1,0 +1,605 @@
+{
+    "database": "summon_mecha_local",
+    "read_only": true,
+    "app_timezone": "Asia/Shanghai",
+    "tables": {
+        "cms_pages": {
+            "count": 10,
+            "columns": [
+                {
+                    "COLUMN_NAME": "id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "layout",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "created_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "updated_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "PRIMARY",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "id"
+                }
+            ]
+        },
+        "cms_page_channels": {
+            "count": 10,
+            "columns": [
+                {
+                    "COLUMN_NAME": "cms_page_id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "channel_id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "cms_page_channels_channel_id_foreign",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "channel_id"
+                },
+                {
+                    "INDEX_NAME": "cms_page_channels_cms_page_id_channel_id_unique",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "cms_page_id"
+                },
+                {
+                    "INDEX_NAME": "cms_page_channels_cms_page_id_channel_id_unique",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 2,
+                    "COLUMN_NAME": "channel_id"
+                }
+            ]
+        },
+        "cms_page_translations": {
+            "count": 10,
+            "columns": [
+                {
+                    "COLUMN_NAME": "id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "page_title",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "url_key",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "html_content",
+                    "COLUMN_TYPE": "longtext",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "meta_title",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "meta_description",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "meta_keywords",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "locale",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "cms_page_id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "MUL"
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "cms_page_translations_cms_page_id_url_key_locale_unique",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "cms_page_id"
+                },
+                {
+                    "INDEX_NAME": "cms_page_translations_cms_page_id_url_key_locale_unique",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 2,
+                    "COLUMN_NAME": "url_key"
+                },
+                {
+                    "INDEX_NAME": "cms_page_translations_cms_page_id_url_key_locale_unique",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 3,
+                    "COLUMN_NAME": "locale"
+                },
+                {
+                    "INDEX_NAME": "PRIMARY",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "id"
+                }
+            ]
+        },
+        "content_security_record": {
+            "count": 0,
+            "columns": [
+                {
+                    "COLUMN_NAME": "id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "target_type",
+                    "COLUMN_TYPE": "varchar(32)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "MUL"
+                },
+                {
+                    "COLUMN_NAME": "target_id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "provider",
+                    "COLUMN_TYPE": "varchar(32)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "scan_type",
+                    "COLUMN_TYPE": "varchar(16)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "result",
+                    "COLUMN_TYPE": "varchar(16)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": "MUL"
+                },
+                {
+                    "COLUMN_NAME": "labels",
+                    "COLUMN_TYPE": "json",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "raw",
+                    "COLUMN_TYPE": "json",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "disposition",
+                    "COLUMN_TYPE": "varchar(16)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "disposition_note",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "disposition_by",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "disposition_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "scanned_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "created_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "updated_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "idx_cs_result_disposition",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "result"
+                },
+                {
+                    "INDEX_NAME": "idx_cs_result_disposition",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 2,
+                    "COLUMN_NAME": "disposition"
+                },
+                {
+                    "INDEX_NAME": "idx_cs_target",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "target_type"
+                },
+                {
+                    "INDEX_NAME": "idx_cs_target",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 2,
+                    "COLUMN_NAME": "target_id"
+                },
+                {
+                    "INDEX_NAME": "PRIMARY",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "id"
+                }
+            ]
+        },
+        "events": {
+            "count": 0,
+            "columns": [
+                {
+                    "COLUMN_NAME": "id",
+                    "COLUMN_TYPE": "bigint(20) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "name",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "type",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "status",
+                    "COLUMN_TYPE": "varchar(20)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "date",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "city",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "location",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "organizer",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "hot",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "teams",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "prize",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "schedule",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "history",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "detail",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "icon",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "bg_color",
+                    "COLUMN_TYPE": "varchar(20)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "sort",
+                    "COLUMN_TYPE": "int(11)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "created_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "updated_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "PRIMARY",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "id"
+                }
+            ]
+        },
+        "event_registrations": {
+            "count": 0,
+            "columns": [
+                {
+                    "COLUMN_NAME": "id",
+                    "COLUMN_TYPE": "bigint(20) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "event_id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "MUL"
+                },
+                {
+                    "COLUMN_NAME": "customer_id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": "MUL"
+                },
+                {
+                    "COLUMN_NAME": "name",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "phone",
+                    "COLUMN_TYPE": "varchar(20)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "city",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "note",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "created_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "updated_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "event_registrations_customer_id_index",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "customer_id"
+                },
+                {
+                    "INDEX_NAME": "event_registrations_event_id_index",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "event_id"
+                },
+                {
+                    "INDEX_NAME": "PRIMARY",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "id"
+                }
+            ]
+        },
+        "marketing_events": {
+            "count": 1,
+            "columns": [
+                {
+                    "COLUMN_NAME": "id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "name",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "description",
+                    "COLUMN_TYPE": "text",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "date",
+                    "COLUMN_TYPE": "date",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "created_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "updated_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "PRIMARY",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "id"
+                }
+            ]
+        },
+        "notifications": {
+            "count": 0,
+            "columns": [
+                {
+                    "COLUMN_NAME": "id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "PRI"
+                },
+                {
+                    "COLUMN_NAME": "type",
+                    "COLUMN_TYPE": "varchar(191)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "read",
+                    "COLUMN_TYPE": "tinyint(1)",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "order_id",
+                    "COLUMN_TYPE": "int(10) unsigned",
+                    "IS_NULLABLE": "NO",
+                    "COLUMN_KEY": "MUL"
+                },
+                {
+                    "COLUMN_NAME": "created_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                },
+                {
+                    "COLUMN_NAME": "updated_at",
+                    "COLUMN_TYPE": "timestamp",
+                    "IS_NULLABLE": "YES",
+                    "COLUMN_KEY": ""
+                }
+            ],
+            "indexes": [
+                {
+                    "INDEX_NAME": "notifications_order_id_foreign",
+                    "NON_UNIQUE": 1,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "order_id"
+                },
+                {
+                    "INDEX_NAME": "PRIMARY",
+                    "NON_UNIQUE": 0,
+                    "SEQ_IN_INDEX": 1,
+                    "COLUMN_NAME": "id"
+                }
+            ]
+        }
+    },
+    "api": [],
+    "event_status_counts": []
+}
