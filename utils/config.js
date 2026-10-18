@@ -6,7 +6,7 @@
  *  - 真机 / 小程序：需改为局域网 IP 或已部署的服务器域名（如 http://192.168.1.100:8000）
  *  - 微信小程序注意：需在后台配置 request 合法域名
  */
-export const BASE_URL = 'http://127.0.0.1:8000'
+export const BASE_URL = 'http://127.0.0.1:8008'
 
 /**
  * 朗读（TTS）专用的后端地址。留空则回退到 BASE_URL。
