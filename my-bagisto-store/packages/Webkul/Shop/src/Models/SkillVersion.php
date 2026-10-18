@@ -118,6 +118,8 @@ class SkillVersion extends Model
         'risk_level',
         // 开发者声明的权限（D-8 改判版）—— **只做可见化**，不做任何强制/比对
         'permissions',
+        // A3：清单声明的适配条件（机型/固件/SDK），与 evidence 表分开：声明 ≠ 验证
+        'compatibility',
         'status',
         'license_mode',
         'pricing_mode',
@@ -138,6 +140,7 @@ class SkillVersion extends Model
     protected $casts = [
         'delivery_channels' => 'array',
         'permissions'       => 'array',
+        'compatibility'     => 'array',
         'imported_meta'     => 'array',
         'max_activations'   => 'integer',
         'valid_days'        => 'integer',
@@ -158,6 +161,16 @@ class SkillVersion extends Model
     public function assets(): HasMany
     {
         return $this->hasMany(SkillAsset::class, 'skill_version_id')->orderBy('sort_order');
+    }
+
+    /**
+     * 该版本的适配证据（真机/仿真/静态/人工），按观测时间倒序。
+     */
+    public function compatibilityEvidence(): HasMany
+    {
+        return $this->hasMany(SkillCompatibilityEvidence::class, 'skill_version_id')
+            ->orderByDesc('observed_at')
+            ->orderByDesc('id');
     }
 
     /**

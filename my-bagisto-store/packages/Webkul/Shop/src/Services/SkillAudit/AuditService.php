@@ -98,8 +98,24 @@ class AuditService
             $declared['permissions'] = array_values($permissions);
         }
 
+        // A3 · 适配声明落库：清单里的 `compatibility` 此前校验完即丢，买家/设备侧只能看到
+        //   交付通道，看不到"这个版本声明支持哪些机型/固件/SDK/Agent"。
+        //   ⚠ 这是**声明**，不是证据；实际验证结果在 skill_compatibility_evidence。
+        //   写入规则与 permissions 一致：非空数组才写，不拿空值抹掉已有声明。
+        $compatibility = $manifest['compatibility'] ?? null;
+        if (is_array($compatibility) && $compatibility !== []) {
+            $declared['compatibility'] = $compatibility;
+        }
+
         if ($declared !== []) {
-            SkillVersion::where('id', $version)->update($declared);
+            // 用模型写入：`compatibility` 等 json 列需要走 cast 序列化，
+            // 查询构造器 update 会绕开 cast 把数组直接塞进 PDO。
+            $target = SkillVersion::find($version);
+
+            if ($target) {
+                $target->fill($declared);
+                $target->save();
+            }
         }
 
         // 2) 内容安全 —— 走 ContentSafety 层（v3.4 步骤 6）。

@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Services\Deploy\AgentGatewayManager;
 use Webkul\Shop\Services\Deploy\AgentSelfUpdateService;
@@ -28,6 +29,16 @@ use Webkul\Shop\Services\Deploy\IllegalTaskTransitionException;
  */
 class AgentController extends APIController
 {
+    /** 能力快照收哪些字段 —— 白名单，避免把任意请求体写进 `binding.meta`。 */
+    protected const CAPABILITY_FIELDS = [
+        'model_code',
+        'firmware_version',
+        'development_version',
+        'sdk_version',
+        'agent_version',
+        'vendor_code',
+    ];
+
     public function __construct(
         protected DeployTaskService $deploy,
         protected AgentGatewayManager $gateways,
@@ -39,10 +50,20 @@ class AgentController extends APIController
     public function register(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'sn'         => ['required', 'string', 'max:64'],
-            'model_code' => ['nullable', 'string', 'max:64'],
-            'vendor_code' => ['nullable', 'string', 'max:32'],
-            'agent_version' => ['nullable', 'string', 'max:32'],
+            'sn'                   => ['required', 'string', 'max:64'],
+            'model_code'           => ['nullable', 'string', 'max:64'],
+            'vendor_code'          => ['nullable', 'string', 'max:32'],
+            'agent_version'        => ['nullable', 'string', 'max:32'],
+            'firmware_version'     => ['nullable', 'string', 'max:64'],
+            'development_version'  => ['nullable', 'string', 'max:64'],
+            'sdk_version'          => ['nullable', 'string', 'max:64'],
+            'capability_snapshot'   => ['nullable', 'array'],
+            'capability_snapshot.model_code'          => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.firmware_version'    => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.development_version' => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.sdk_version'         => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.agent_version'       => ['nullable', 'string', 'max:32'],
+            'capability_snapshot.vendor_code'         => ['nullable', 'string', 'max:32'],
         ]);
 
         $sn = $payload['sn'];
@@ -80,13 +101,12 @@ class AgentController extends APIController
         // 标记"这台机器已跑起 Agent" —— 用户侧据此显示"已配对"
         $meta = is_array($binding->meta) ? $binding->meta : [];
         $meta['agent_enrolled_at'] = now()->toDateTimeString();
-
-        if (! empty($payload['agent_version'])) {
-            $meta['agent_version'] = $payload['agent_version'];
-            $meta['agent_version_seen_at'] = now()->toDateTimeString();
-        }
-
         $binding->meta = $meta;
+
+        // 能力快照：机型/固件/开发版本/SDK/Agent 版本/厂商 —— 适配证据链的输入。
+        // 机型匹配不到时**只记快照，不拒绝注册**（机型库不可能覆盖市面全部设备）。
+        $this->rememberCapabilitySnapshot($binding, $payload);
+        $this->rememberAgentVersion($binding, $this->reportedAgentVersion($payload));
 
         $binding->save();
 
@@ -186,8 +206,20 @@ class AgentController extends APIController
     public function heartbeat(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'did'           => ['required', 'string', 'max:64'],
-            'agent_version' => ['nullable', 'string', 'max:32'],
+            'did'                  => ['required', 'string', 'max:64'],
+            'agent_version'        => ['nullable', 'string', 'max:32'],
+            'model_code'           => ['nullable', 'string', 'max:64'],
+            'vendor_code'          => ['nullable', 'string', 'max:32'],
+            'firmware_version'     => ['nullable', 'string', 'max:64'],
+            'development_version'  => ['nullable', 'string', 'max:64'],
+            'sdk_version'          => ['nullable', 'string', 'max:64'],
+            'capability_snapshot'   => ['nullable', 'array'],
+            'capability_snapshot.model_code'          => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.firmware_version'    => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.development_version' => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.sdk_version'         => ['nullable', 'string', 'max:64'],
+            'capability_snapshot.agent_version'       => ['nullable', 'string', 'max:32'],
+            'capability_snapshot.vendor_code'         => ['nullable', 'string', 'max:32'],
         ]);
 
         if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
@@ -203,7 +235,11 @@ class AgentController extends APIController
         $binding->markSeen('agent');
 
         // 顺带上报 Agent 自身版本(§4.22 F1 自更新 / B-13)—— 平台据此判断该不该推新。
-        $this->rememberAgentVersion($binding, $payload['agent_version'] ?? null);
+        $this->rememberAgentVersion($binding, $this->reportedAgentVersion($payload));
+
+        // 心跳同样刷新能力快照：固件/开发版本/SDK 会在设备维护时变化，
+        // 只在注册时记一次会让适配判断一直停在首联那一刻。
+        $this->rememberCapabilitySnapshot($binding, $payload);
 
         $binding->save();
 
@@ -393,5 +429,87 @@ class AgentController extends APIController
         $meta['agent_version'] = $version;
         $meta['agent_version_seen_at'] = now()->toDateTimeString();
         $binding->meta = $meta;
+    }
+
+    /**
+     * Agent 版本的两种上报形态：顶层 `agent_version`，或 `capability_snapshot.agent_version`。
+     * 顶层优先；两者都空则视为未上报。
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function reportedAgentVersion(array $payload): ?string
+    {
+        $top = $payload['agent_version'] ?? null;
+
+        if (is_string($top) && trim($top) !== '') {
+            return $top;
+        }
+
+        $nested = is_array($payload['capability_snapshot'] ?? null)
+            ? ($payload['capability_snapshot']['agent_version'] ?? null)
+            : null;
+
+        return is_string($nested) && trim($nested) !== '' ? $nested : null;
+    }
+
+    /**
+     * 记录 Agent 自报的能力快照，并把能匹配上的机型同步到 `binding.model_id`。
+     *
+     * 取值优先级：顶层字段 > `capability_snapshot` 数组（兼容两种上报形态）。
+     * 只收白名单字段；空串按"未上报"处理。
+     *
+     * ⚠ 按**增量合并**处理，不是整表替换：心跳经常只带部分字段（例如只带
+     *   `agent_version`），整表替换会把上一次已上报的固件/SDK 抹掉，
+     *   之后既无法判定也无法向用户解释。缺省字段 = 本次未上报，保留上一次已知值。
+     *   完全没有能力字段的上报（纯在线心跳）连 `reported_at` 都不刷新。
+     *
+     * ⚠ 匹配不到机型**不拒绝注册/心跳**：机型库是平台已知范围的子集，
+     *   把"平台不认识"当成"设备有问题"会挡掉真实设备。未知机型在适配判定里
+     *   走 `unverified`，由证据补齐，而不是在这里失败。
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function rememberCapabilitySnapshot(DeviceBinding $binding, array $payload): void
+    {
+        $nested = is_array($payload['capability_snapshot'] ?? null) ? $payload['capability_snapshot'] : [];
+
+        $reported = [];
+
+        foreach (self::CAPABILITY_FIELDS as $field) {
+            $value = $payload[$field] ?? null;
+
+            if (! is_string($value) || trim($value) === '') {
+                $value = $nested[$field] ?? null;
+            }
+
+            if (is_string($value) && trim($value) !== '') {
+                $reported[$field] = trim($value);
+            }
+        }
+
+        if ($reported === []) {
+            return;
+        }
+
+        $meta = is_array($binding->meta) ? $binding->meta : [];
+        $previous = is_array($meta['capability_snapshot'] ?? null) ? $meta['capability_snapshot'] : [];
+
+        $snapshot = array_merge($previous, $reported);
+        $snapshot['reported_at'] = now()->toDateTimeString();
+
+        $meta['capability_snapshot'] = $snapshot;
+        $binding->meta = $meta;
+
+        if (isset($reported['vendor_code'])) {
+            $binding->vendor_code = $reported['vendor_code'];
+        }
+
+        if (array_key_exists('model_code', $reported)) {
+            $model = DeviceModel::query()->where('model_code', $reported['model_code'])->first();
+
+            // 平台不认识的新机型也要把旧 model_id 清掉：否则换机后仍沿用旧机型的
+            // 通道与证据，兼容性结论会张冠李戴（认不出 ≠ 保持原样）。
+            $binding->model_id = $model?->id;
+        }
     }
 }

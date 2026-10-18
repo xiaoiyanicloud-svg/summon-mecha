@@ -14,6 +14,7 @@ use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
 use Webkul\Shop\Services\Deploy\DowngradeRejectedException;
 use Webkul\Shop\Services\Deploy\SkillBlockedException;
+use Webkul\Shop\Services\SkillDelivery\SkillAssetAmbiguousException;
 
 /**
  * 下发任务 —— 用户侧(v3.4 步骤 8)。
@@ -97,6 +98,14 @@ class DeployController extends APIController
                 'data' => [
                     'installed_version' => $e->installedVersion,
                     'target_version'    => $e->targetVersion,
+                ],
+            ]);
+        } catch (SkillAssetAmbiguousException $e) {
+            // 多产物且没有唯一可交付项 —— 不猜、不取排序第一个，让调用方显式指定。
+            return $this->fail(ApiErrorCode::SKILL_ASSET_AMBIGUOUS, $e->getMessage(), 409, [
+                'data' => [
+                    'version_id' => $e->versionId,
+                    'asset_ids'  => $e->assetIds,
                 ],
             ]);
         }

@@ -140,6 +140,8 @@ class DeployTask extends Model
         'delivered_at',
         'package_url',
         'package_hash',
+        // C2：任务钉住当时决定发出的那一个文件资产（历史行 NULL → 回退默认文件）
+        'package_asset_id',
         'signature',
         'error_code',
         'error_msg',
@@ -148,11 +150,12 @@ class DeployTask extends Model
     ];
 
     protected $casts = [
-        'operation'       => 'integer',
-        'retry_count'     => 'integer',
-        'next_retry_at'   => 'datetime',
-        'delivered_at'    => 'datetime',
-        'completed_at'    => 'datetime',
+        'operation'        => 'integer',
+        'package_asset_id' => 'integer',
+        'retry_count'      => 'integer',
+        'next_retry_at'    => 'datetime',
+        'delivered_at'     => 'datetime',
+        'completed_at'     => 'datetime',
     ];
 
     /**

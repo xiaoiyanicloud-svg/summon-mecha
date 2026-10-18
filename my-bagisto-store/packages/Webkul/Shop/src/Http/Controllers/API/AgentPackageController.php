@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Services\SkillDelivery\SkillAssetAmbiguousException;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryAssetResolver;
 
 /**
  * 技能包限时下载端点（任务卡 S-1）—— 面向 Agent 的**唯一**取包通道。
@@ -33,21 +35,38 @@ use Webkul\Shop\Models\SkillAsset;
  */
 class AgentPackageController extends APIController
 {
+    public function __construct(protected SkillDeliveryAssetResolver $assets) {}
+
     /**
      * 下载某版本的一个文件类交付物。
      *
-     * 多交付物的版本：本端点一次只交付**一个**文件（默认排序第一个文件类交付物），
-     * 可用 `?carrier_type=` / `?sort_order=` 指定。**不自己发明打包格式** ——
+     * 多交付物的版本：本端点一次只交付**一个**文件。解析顺序为
+     * `?asset_id=` → `?carrier_type=` / `?sort_order=` → 已成功构建的机型产物 →
+     * 唯一文件类交付物 → 声明 SHA 唯一命中；仍无法唯一确定时返回 409
+     * （SKILL_ASSET_AMBIGUOUS），不静默挑一个。**不自己发明打包格式** ——
      * 把多个交付物合成一个包属编译层，不在下发这一层。
      */
     public function download(Request $request, int $versionId)
     {
-        $asset = $this->resolveAsset($request, $versionId);
+        try {
+            $asset = $this->resolveAsset($request, $versionId);
+        } catch (SkillAssetAmbiguousException $e) {
+            return $this->fail(ApiErrorCode::SKILL_ASSET_AMBIGUOUS, $e->getMessage(), 409, [
+                'data' => [
+                    'version_id' => $versionId,
+                    'asset_ids'  => $e->assetIds,
+                ],
+            ]);
+        }
 
         if (! $asset) {
             // 版本不存在、或该版本没有可下载的文件类交付物 —— 都归到这里（不对客户端区分
             // "版本不存在"与"版本没有包"：它没有需要据此分支的处置）。
-            return $this->fail(ApiErrorCode::SKILL_ASSET_NOT_FOUND, '该版本没有可下载的文件类交付物。', 404);
+            $message = $request->query('asset_id') !== null
+                ? '指定的交付物不存在、不属于该版本，或不是文件类交付物。'
+                : '该版本没有可下载的文件类交付物。';
+
+            return $this->fail(ApiErrorCode::SKILL_ASSET_NOT_FOUND, $message, 404);
         }
 
         if (! $asset->fileExists()) {
@@ -94,31 +113,22 @@ class AgentPackageController extends APIController
     /**
      * 定位要交付的那个交付物 —— 命名与选择规则见类注释。
      *
-     * 默认走 {@see SkillAsset::defaultFileForVersion()}：与包指纹**同一个排序**，
-     * 保证"指纹说的是什么、发出去的就是什么"。
+     * 选择顺序由 {@see SkillDeliveryAssetResolver} 统一定义（显式 asset_id →
+     * carrier_type/sort_order → 机型产物 → 唯一文件）。多文件且无法唯一确定时抛
+     * {@see SkillAssetAmbiguousException}，由调用方转 409 —— 绝不默认取排序第一个。
      */
     protected function resolveAsset(Request $request, int $versionId): ?SkillAsset
     {
-        $carrierType = $request->query('carrier_type');
+        $assetId = $request->query('asset_id');
         $sortOrder = $request->query('sort_order');
 
-        // 指定了交付物位置（任一维度）→ 精确取，且**必须**是文件类（只有文件落盘、有字节）。
-        if ($carrierType !== null || $sortOrder !== null) {
-            $query = SkillAsset::query()->where('skill_version_id', $versionId);
-
-            // 只给了 sort_order 时按文件类收敛 —— 否则可能命中一条没有字节的云配置。
-            $query->where('carrier_type', $carrierType !== null ? (string) $carrierType : SkillAsset::CARRIER_FILE);
-
-            if ($sortOrder !== null) {
-                $query->where('sort_order', (int) $sortOrder);
-            }
-
-            $asset = $query->first();
-
-            return $asset && $asset->isFile() ? $asset : null;
-        }
-
-        return SkillAsset::defaultFileForVersion($versionId);
+        return $this->assets->resolveForVersion(
+            $versionId,
+            null,
+            $assetId !== null ? (int) $assetId : null,
+            $request->query('carrier_type') !== null ? (string) $request->query('carrier_type') : null,
+            $sortOrder !== null ? (int) $sortOrder : null,
+        );
     }
 
     /**

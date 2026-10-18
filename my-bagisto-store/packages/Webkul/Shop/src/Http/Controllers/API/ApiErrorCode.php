@@ -96,6 +96,22 @@ final class ApiErrorCode
     public const SKILL_ASSET_NOT_FOUND = 'SKILL_ASSET_NOT_FOUND';
     /** 交付物记录在库,但磁盘上的文件不见了 —— 需要人工介入,不是用户能纠正的错误。 */
     public const SKILL_ASSET_FILE_MISSING = 'SKILL_ASSET_FILE_MISSING';
+    /**
+     * 该版本存在多个文件类交付物，调用方没有指定要哪一个。
+     *
+     * 与 SKILL_ASSET_NOT_FOUND 分开：那个是"没有包"，这个是"有多个、无法唯一确定"。
+     * 平台**不得**擅自取排序第一个（那等于把发哪份字节交给排序实现决定），
+     * 必须让调用方显式给 asset_id / carrier_type+sort_order，或先在上游收敛产物。
+     */
+    public const SKILL_ASSET_AMBIGUOUS = 'SKILL_ASSET_AMBIGUOUS';
+    /**
+     * 适配证据写入被拒：证据必须钉住**真实存在且属于该版本**的产物。
+     *
+     * 典型场景：显式 `asset_hash` 与库内 `skill_assets.file_hash` 不一致，
+     * 或哈希在该版本里没有唯一命中。绝不以调用方口径覆盖库内事实 ——
+     * 否则事后可以把"验证过"挂到另一份字节上。
+     */
+    public const SKILL_COMPATIBILITY_EVIDENCE_INVALID = 'SKILL_COMPATIBILITY_EVIDENCE_INVALID';
     /** 激活次数用尽(D1)。 */
     public const MAX_ACTIVATIONS_REACHED = 'MAX_ACTIVATIONS_REACHED';
     /** 技能已被熔断,禁止新下发(D9)。 */

@@ -426,6 +426,11 @@ Route::group(['prefix' => 'api'], function () {
         Route::post('versions/{versionId}/submit', 'submit')->name('shop.api.skill-supply.submit');
         Route::post('versions/{versionId}/review', 'review')->name('shop.api.skill-supply.review');
         Route::get('versions/{versionId}/builds', 'builds')->name('shop.api.skill-supply.builds');
+        // A3 适配证据链：声明（清单 compatibility）之外，真正"被验证过"的事实单独记账。
+        Route::post('versions/{versionId}/compatibility-evidence', 'storeCompatibilityEvidence')
+            ->name('shop.api.skill-supply.compatibility-evidence.store');
+        Route::get('versions/{versionId}/compatibility-evidence', 'compatibilityEvidence')
+            ->name('shop.api.skill-supply.compatibility-evidence.index');
         // v3.4 步骤 8:熔断
         Route::post('skills/{skillId}/block', 'block')->name('shop.api.skill-supply.block');
         Route::post('skills/{skillId}/lift', 'lift')->name('shop.api.skill-supply.lift');

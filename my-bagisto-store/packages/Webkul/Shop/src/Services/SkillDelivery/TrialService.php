@@ -11,6 +11,7 @@ use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
 use Webkul\Shop\Services\Deploy\SkillBlockedException;
+use Webkul\Shop\Services\SkillDelivery\SkillAssetAmbiguousException;
 
 /**
  * 试用（D4 / 计划 §4.7）—— 「发一条带 expires_at 的授权 + 到期回收」。
@@ -144,6 +145,9 @@ class TrialService
             });
         } catch (SkillBlockedException $e) {
             return $this->fail('SKILL_BLOCKED', $e->getMessage(), 409);
+        } catch (SkillAssetAmbiguousException $e) {
+            // 与购买下发同一口径：多产物无法唯一确定时不发"猜出来的包"。
+            return $this->fail('SKILL_ASSET_AMBIGUOUS', $e->getMessage(), 409);
         }
     }
 

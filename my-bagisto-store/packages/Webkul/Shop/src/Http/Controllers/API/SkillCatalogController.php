@@ -8,6 +8,7 @@ use Webkul\Shop\Services\SkillDelivery\SkillMarketService;
 use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillCategory;
+use Webkul\Shop\Models\SkillCompatibilityEvidence;
 use Webkul\Shop\Models\SkillTag;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\KillSwitchService;
@@ -133,15 +134,33 @@ class SkillCatalogController extends APIController
             ->orderByDesc('released_at')
             ->orderByDesc('id')
             ->limit(20)
-            ->get(['id', 'version', 'channel', 'status', 'risk_level', 'delivery_channels', 'permissions', 'released_at', 'changelog']);
+            ->get(['id', 'version', 'channel', 'status', 'risk_level', 'compatibility', 'delivery_channels', 'permissions', 'released_at', 'changelog']);
 
         // A rollback may leave an older published version behind many newer archived releases.
         // The bounded history must still contain the actual version buyers can acquire.
         $currentId = app(SkillMarketService::class)->currentVersions()->select('id')->where('product_id', $productId)->value('id');
         if ($currentId && ! $rows->contains('id', $currentId)) {
             $current = \DB::table('skill_versions')->where('id', $currentId)
-                ->first(['id', 'version', 'channel', 'status', 'risk_level', 'delivery_channels', 'permissions', 'released_at', 'changelog']);
+                ->first(['id', 'version', 'channel', 'status', 'risk_level', 'compatibility', 'delivery_channels', 'permissions', 'released_at', 'changelog']);
             if ($current) $rows->push($current);
+        }
+
+        // A3 · 声明与证据并列展示：`compatibility` 是**声明**（开发者说支持什么），
+        //   `compatibility_evidence_*` 是**证据**（真机/仿真/静态/人工验证到哪一步）。
+        //   两者都不是"已适配"的结论；逐台设备的判定由 CompatibilityService 给出。
+        $versionIds = $rows->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $evidenceCounts = [];
+        $evidenceLatest = [];
+
+        if ($versionIds !== []) {
+            $evidence = SkillCompatibilityEvidence::query()
+                ->whereIn('skill_version_id', $versionIds)
+                ->orderByDesc('observed_at')
+                ->orderByDesc('id')
+                ->get();
+
+            $evidenceCounts = $evidence->groupBy('skill_version_id')->map->count()->all();
+            $evidenceLatest = $evidence->unique('skill_version_id')->keyBy('skill_version_id')->all();
         }
 
         return response()->json([
@@ -154,6 +173,13 @@ class SkillCatalogController extends APIController
                 'channel_label'     => SkillVersion::CHANNEL_LABELS[$v->channel] ?? SkillVersion::CHANNEL_LABELS[SkillVersion::CHANNEL_STABLE],
                 'status'            => $v->status,
                 'risk_level'        => $v->risk_level,
+                // 声明：原样回开发者提交的 compatibility（机型/固件/SDK/Agent 条件）。
+                // 未声明 → null，不是空对象；前端据此区分"没写"与"写了空"。
+                'compatibility'     => json_decode((string) $v->compatibility, true) ?: null,
+                'compatibility_evidence_count'  => (int) ($evidenceCounts[$v->id] ?? 0),
+                'compatibility_evidence_latest' => isset($evidenceLatest[$v->id])
+                    ? $this->evidenceSummary($evidenceLatest[$v->id])
+                    : null,
                 'delivery_channels' => json_decode((string) $v->delivery_channels, true) ?: [],
                 // D-8 改判版 · 权限声明可见化：买之前就能看清"这技能会用到什么"。
                 //   `permissions` = 开发者声明的原始枚举(与 manifest 一致)；
@@ -169,6 +195,31 @@ class SkillCatalogController extends APIController
                 'changelog'         => $v->changelog,
             ])->values(),
         ]);
+    }
+
+    /**
+     * 版本详情里的"最新一条证据"摘要 —— 只做提示，不合成适配结论。
+     *
+     * @return array<string, mixed>
+     */
+    protected function evidenceSummary(SkillCompatibilityEvidence $e): array
+    {
+        return [
+            'id'                  => (int) $e->id,
+            'model_code'          => $e->model_code,
+            'firmware_version'    => $e->firmware_version,
+            'development_version' => $e->development_version,
+            'sdk_version'         => $e->sdk_version,
+            'source'              => $e->source,
+            'source_label'        => $e->sourceLabel(),
+            'evidence_type'       => $e->evidence_type,
+            'evidence_type_label' => $e->evidenceTypeLabel(),
+            'result'              => $e->result,
+            'result_label'        => $e->resultLabel(),
+            'asset_id'            => $e->asset_id !== null ? (int) $e->asset_id : null,
+            'asset_hash'          => $e->asset_hash,
+            'observed_at'         => $e->observed_at?->toIso8601String(),
+        ];
     }
 
     /**

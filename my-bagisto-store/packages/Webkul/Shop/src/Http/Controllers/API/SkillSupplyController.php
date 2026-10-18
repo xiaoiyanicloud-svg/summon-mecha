@@ -5,6 +5,8 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Webkul\Shop\Models\SkillBuild;
+use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillCompatibilityEvidence;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\SkillAudit\AuditService;
 use Webkul\Shop\Services\SkillAudit\SkillVersionState;
@@ -269,6 +271,222 @@ class SkillSupplyController extends APIController
                 'error'             => $b->error,
             ])->values(),
         ]);
+    }
+
+    /**
+     * 适配证据 · 写入(A3 第 3 环)。
+     *
+     * 一条记录 = "某版本在某机型/固件/SDK/Agent 组合上被验证过"。三轴分开记,互不替代:
+     *   source        谁报的(device / simulation / static / manual)
+     *   evidence_type 验到哪一步(install / runtime / lab_test / manual_review)
+     *   result        结论(match / mismatch / inconclusive)
+     *
+     * ⚠ 写入的是**事实记录**,不是"认证":`source=device` 只代表上报来源,平台无法核验
+     *   上报者真的是那台机器;`static/simulation/manual` 更不得被读成"真机已验证"
+     *   (读侧的降级由 {@see \Webkul\Shop\Services\SkillDelivery\CompatibilityService} 负责)。
+     *
+     * ⚠ 证据必须钉住当时的产物:`asset_id` 与 `asset_hash` **至少给一个**
+     *   (都缺 = 不知道验证的是哪份字节,不接受)。给了 `asset_id` 就必须属于该版本、
+     *   且必须是**文件类**载体（`carrier_type=file`）并带非空 sha256；
+     *   `asset_hash` 一律以库内 `skill_assets.file_hash` 为准。调用方显式给的哈希只用于
+     *   **核对**,不一致直接拒绝 —— 否则事后可以把证据改挂到另一份字节上,"验证过"就成了空话。
+     */
+    public function storeCompatibilityEvidence(Request $request, int $versionId): JsonResponse
+    {
+        $version = SkillVersion::find($versionId);
+
+        if (! $version) {
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
+        }
+
+        $payload = $request->validate([
+            'model_code'          => ['required', 'string', 'max:64'],
+            'source'              => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::SOURCES)],
+            'evidence_type'       => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::EVIDENCE_TYPES)],
+            'result'              => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::RESULTS)],
+            'asset_id'            => ['nullable', 'integer'],
+            'asset_hash'          => ['nullable', 'string', 'max:64'],
+            'device_did'          => ['nullable', 'string', 'max:64'],
+            'development_version' => ['nullable', 'string', 'max:64'],
+            'firmware_version'    => ['nullable', 'string', 'max:64'],
+            'sdk_version'         => ['nullable', 'string', 'max:64'],
+            'agent_version'       => ['nullable', 'string', 'max:32'],
+            'carrier_type'        => ['nullable', 'string', 'max:32'],
+            'summary'             => ['nullable', 'string', 'max:1000'],
+            'verified_by'         => ['nullable', 'string', 'max:64'],
+            'observed_at'         => ['nullable', 'date'],
+        ]);
+
+        if (empty($payload['asset_id']) && empty($payload['asset_hash'])) {
+            return $this->fail(
+                ApiErrorCode::SKILL_COMPATIBILITY_EVIDENCE_INVALID,
+                '证据必须钉住产物：请提供 asset_id 或 asset_hash（至少一个）。',
+                422,
+            );
+        }
+
+        $asset = null;
+
+        if (! empty($payload['asset_id'])) {
+            $asset = SkillAsset::query()
+                ->where('skill_version_id', $versionId)
+                ->whereKey((int) $payload['asset_id'])
+                ->first();
+
+            if (! $asset) {
+                return $this->fail(
+                    ApiErrorCode::SKILL_ASSET_NOT_FOUND,
+                    '指定交付物不存在或不属于该版本,不能作为该版本的适配证据。',
+                    422,
+                );
+            }
+        } elseif (! empty($payload['asset_hash'])) {
+            // 只给哈希:按"该版本内唯一命中"定位。命中 0 条 = 声称验证过的字节在这版里不存在;
+            // 命中多条 = 调用方必须用 asset_id 说清是哪一份,不能由平台替他猜。
+            $matched = SkillAsset::fileAssetsForVersion($versionId)
+                ->filter(fn (SkillAsset $a) => is_string($a->file_hash) && $a->file_hash !== ''
+                    && hash_equals((string) $payload['asset_hash'], $a->file_hash))
+                ->values();
+
+            if ($matched->count() !== 1) {
+                return $this->fail(
+                    ApiErrorCode::SKILL_COMPATIBILITY_EVIDENCE_INVALID,
+                    $matched->isEmpty()
+                        ? 'asset_hash 在该版本交付物中不存在。'
+                        : 'asset_hash 在该版本命中多个交付物,请改用 asset_id 指明。',
+                    422,
+                );
+            }
+
+            $asset = $matched->first();
+        }
+
+        // 只有"按字节定义"的文件类交付物才能作为安装/运行验证的对象。
+        // cloud_config / remote_service 等没有字节的载体，不能拿来声称某个包已验证。
+        if ($asset && ! $asset->isFile()) {
+            return $this->fail(
+                ApiErrorCode::SKILL_COMPATIBILITY_EVIDENCE_INVALID,
+                '只有文件类交付物（carrier_type=file）可以作为适配证据。',
+                422,
+            );
+        }
+
+        if ($asset && (! is_string($asset->file_hash) || $asset->file_hash === '')) {
+            return $this->fail(
+                ApiErrorCode::SKILL_COMPATIBILITY_EVIDENCE_INVALID,
+                '该交付物缺少 sha256，无法证明验证的是哪份字节，不能作为适配证据。',
+                422,
+            );
+        }
+
+        // 载体类型只能来自产物本身；调用方给了不一致的值就直接拒绝，不静默改写。
+        if ($asset
+            && ! empty($payload['carrier_type'])
+            && (string) $payload['carrier_type'] !== (string) $asset->carrier_type) {
+            return $this->fail(
+                ApiErrorCode::SKILL_COMPATIBILITY_EVIDENCE_INVALID,
+                'carrier_type 与 asset_id 指向的交付物不一致；请省略该字段或填写 '.$asset->carrier_type.'。',
+                422,
+            );
+        }
+
+        // 显式哈希与库内不一致 → 拒绝。绝不"以调用方为准"覆盖库内事实。
+        if ($asset && ! empty($payload['asset_hash'])) {
+            $stored = is_string($asset->file_hash) ? $asset->file_hash : '';
+
+            if ($stored === '' || ! hash_equals($stored, (string) $payload['asset_hash'])) {
+                return $this->fail(
+                    ApiErrorCode::SKILL_COMPATIBILITY_EVIDENCE_INVALID,
+                    'asset_hash 与该交付物在库内记录的哈希不一致。',
+                    422,
+                );
+            }
+        }
+
+        $evidence = SkillCompatibilityEvidence::create([
+            'skill_version_id'    => $versionId,
+            'product_id'          => $version->product_id,
+            'device_did'          => $payload['device_did'] ?? null,
+            'model_code'          => $payload['model_code'],
+            'development_version' => $payload['development_version'] ?? null,
+            'firmware_version'    => $payload['firmware_version'] ?? null,
+            'sdk_version'         => $payload['sdk_version'] ?? null,
+            'agent_version'       => $payload['agent_version'] ?? null,
+            'carrier_type'        => $asset->carrier_type,
+            'asset_id'            => $asset?->id,
+            'asset_hash'          => $asset?->file_hash,
+            'source'              => $payload['source'],
+            'evidence_type'       => $payload['evidence_type'],
+            'result'              => $payload['result'],
+            'summary'             => $payload['summary'] ?? null,
+            'verified_by'         => $payload['verified_by'] ?? null,
+            'observed_at'         => $payload['observed_at'] ?? now(),
+        ]);
+
+        return response()->json([
+            'message' => '已记录适配证据。',
+            'data'    => $this->serializeEvidence($evidence),
+        ], 201);
+    }
+
+    /**
+     * 适配证据 · 查询(按观测时间倒序)。
+     *
+     * 同时回**声明**(manifest 的 compatibility)与**证据**:两者是不同性质的东西,
+     * 调用方与前端不得把它们合并成一个"已适配"结论。
+     */
+    public function compatibilityEvidence(int $versionId): JsonResponse
+    {
+        $version = SkillVersion::find($versionId);
+
+        if (! $version) {
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
+        }
+
+        $rows = $version->compatibilityEvidence()->get();
+
+        return response()->json([
+            'data' => [
+                'version_id'     => (int) $version->id,
+                'product_id'     => (int) $version->product_id,
+                'compatibility'  => $version->compatibility,
+                'evidence_count' => $rows->count(),
+                'evidence'       => $rows->map(fn (SkillCompatibilityEvidence $e) => $this->serializeEvidence($e))->values(),
+            ],
+        ]);
+    }
+
+    /**
+     * 单条证据的对外形状 —— 三轴各自带人话标签,不替调用方合成结论。
+     *
+     * @return array<string, mixed>
+     */
+    protected function serializeEvidence(SkillCompatibilityEvidence $e): array
+    {
+        return [
+            'id'                  => (int) $e->id,
+            'skill_version_id'    => (int) $e->skill_version_id,
+            'product_id'          => $e->product_id !== null ? (int) $e->product_id : null,
+            'device_did'          => $e->device_did,
+            'model_code'          => $e->model_code,
+            'development_version' => $e->development_version,
+            'firmware_version'    => $e->firmware_version,
+            'sdk_version'         => $e->sdk_version,
+            'agent_version'       => $e->agent_version,
+            'carrier_type'        => $e->carrier_type,
+            'asset_id'            => $e->asset_id !== null ? (int) $e->asset_id : null,
+            'asset_hash'          => $e->asset_hash,
+            'source'              => $e->source,
+            'source_label'        => $e->sourceLabel(),
+            'evidence_type'       => $e->evidence_type,
+            'evidence_type_label' => $e->evidenceTypeLabel(),
+            'result'              => $e->result,
+            'result_label'        => $e->resultLabel(),
+            'summary'             => $e->summary,
+            'verified_by'         => $e->verified_by,
+            'observed_at'         => $e->observed_at?->toIso8601String(),
+            'created_at'          => $e->created_at?->toIso8601String(),
+        ];
     }
 
     /**

@@ -72,6 +72,14 @@ class ManifestValidator
             $errors[] = "resource_type 非法 [{$manifest->resourceType}]。";
         }
 
+        // 适配声明（A3）—— 必须校验**原始数组**，不能只看 SkillManifest::fromArray()。
+        //   后者把非法值静默降级为 []，只看它会把"写错了"当成"没声明"，
+        //   于是错误声明可以过审、详情页再把它悄悄丢掉 —— 声明与审核事实分叉。
+        //   缺省（完全没写）是合法的：那表示"未声明适配"，不是格式错误。
+        if (array_key_exists('compatibility', $data)) {
+            $this->validateCompatibility($data['compatibility'], $errors);
+        }
+
         // safety 必填(计划 §4.14 L1:高危动作必须声明)
         if (empty($manifest->safety)) {
             $errors[] = 'safety 必填(risk_level/requires_open_area/estop_required/max_duration_s)。';
@@ -102,6 +110,69 @@ class ManifestValidator
     protected function isValidChannel(string $ch): bool
     {
         return SkillAsset::isValidDeliveryChannel($ch);
+    }
+
+    /**
+     * 清单 `compatibility` 段的契约校验。
+     *
+     * 形状：{ models: [ { vendor, model, min_firmware?, min_app?, dof? } ] }
+     * 只有 vendor/model 是必填；其余为可选下限/能力提示。
+     *
+     * ⚠ 这里只校验"声明写得对不对"，不判断真机能否安装 —— 后者属于证据链
+     *   （skill_compatibility_evidence），不得由一份自报声明直接升级为"已验证"。
+     *
+     * @param  mixed  $compatibility
+     * @param  array<int, string>  $errors
+     */
+    protected function validateCompatibility($compatibility, array &$errors): void
+    {
+        if (! is_array($compatibility)) {
+            $errors[] = 'compatibility 必须是对象（含 models 数组）。';
+
+            return;
+        }
+
+        if ($compatibility === []) {
+            $errors[] = 'compatibility 不能为空对象；未声明适配条件请整段省略。';
+
+            return;
+        }
+
+        $models = $compatibility['models'] ?? null;
+
+        if (! is_array($models) || $models === []) {
+            $errors[] = 'compatibility.models 必须是非空数组。';
+
+            return;
+        }
+
+        foreach ($models as $index => $entry) {
+            $position = 'compatibility.models['.$index.']';
+
+            if (! is_array($entry)) {
+                $errors[] = "{$position} 必须是对象。";
+
+                continue;
+            }
+
+            foreach (['vendor', 'model'] as $required) {
+                $value = $entry[$required] ?? null;
+
+                if (! is_string($value) || trim($value) === '') {
+                    $errors[] = "{$position}.{$required} 必填且必须是非空字符串。";
+                }
+            }
+
+            foreach (['min_firmware', 'min_app'] as $optional) {
+                if (isset($entry[$optional]) && ! is_string($entry[$optional])) {
+                    $errors[] = "{$position}.{$optional} 必须是字符串。";
+                }
+            }
+
+            if (isset($entry['dof']) && (! is_int($entry['dof']) || $entry['dof'] < 0)) {
+                $errors[] = "{$position}.dof 必须是非负整数。";
+            }
+        }
     }
 
     /**

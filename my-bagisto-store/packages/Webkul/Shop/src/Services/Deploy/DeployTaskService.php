@@ -14,6 +14,7 @@ use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\LifecycleNotifier;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryAssetResolver;
 use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
 
 /**
@@ -96,6 +97,10 @@ class DeployTaskService
          * 另算一套 = 把"审的就是发的"交给两份实现去兑现，它们迟早漂移。
          */
         protected PackageFingerprint $fingerprint,
+        /**
+         * 一次下发到底交付哪一份字节 —— 多交付物版本的唯一解析点（C2）。
+         */
+        protected SkillDeliveryAssetResolver $assets,
     ) {}
 
     /**
@@ -172,7 +177,13 @@ class DeployTaskService
 
                     // 包地址/哈希在**这唯一漏斗**里推导 —— 三个调用点(用户下发 / 试用 / 回收)
                     // 谁都不用改,也不会各写一套(见 resolvePackage)。
-                    [$resolvedUrl, $resolvedHash] = $this->resolvePackage($skillVersionId, $operation, $packageUrl, $packageHash);
+                    [$resolvedUrl, $resolvedHash, $resolvedAssetId] = $this->resolvePackage(
+                        $did,
+                        $skillVersionId,
+                        $operation,
+                        $packageUrl,
+                        $packageHash,
+                    );
 
                     $task = DeployTask::create([
                         'task_no'          => $this->newTaskNo(),
@@ -185,6 +196,8 @@ class DeployTaskService
                         'status'           => 'pending',
                         'package_url'      => $resolvedUrl,
                         'package_hash'     => $resolvedHash,
+                        // C2：把"当时决定发的那一个文件"钉住，重签 URL / 端侧复算都以它为准。
+                        'package_asset_id' => $resolvedAssetId,
                         'created_by'       => $createdBy,
                     ]);
 
@@ -226,23 +239,29 @@ class DeployTaskService
      *
      * @param  string|null  $overrideUrl   显式覆盖（测试 / 平台特例）
      * @param  string|null  $overrideHash  显式覆盖（测试 / 平台特例）
-     * @return array{0: ?string, 1: ?string}  [package_url, package_hash]
+     * @return array{0: ?string, 1: ?string, 2: ?int}  [package_url, package_hash, package_asset_id]
      */
-    protected function resolvePackage(?int $versionId, int $operation, ?string $overrideUrl, ?string $overrideHash): array
+    protected function resolvePackage(
+        string $did,
+        ?int $versionId,
+        int $operation,
+        ?string $overrideUrl,
+        ?string $overrideHash,
+    ): array
     {
         // 显式覆盖优先：给测试与平台特例留的口子（默认路径一律自动推导）。
         if ($overrideUrl !== null || $overrideHash !== null) {
-            return [$overrideUrl, $overrideHash];
+            return [$overrideUrl, $overrideHash, null];
         }
 
         // 非安装类操作（卸 / 回收 / 启停）不需要包 —— 不挂地址（见 DeployTask::PACKAGE_OPERATIONS）。
         if (! DeployTask::needsPackage($operation)) {
-            return [null, null];
+            return [null, null, null];
         }
 
         // 没有版本就无法定位"发哪个包"。
         if (! $versionId) {
-            return [null, null];
+            return [null, null, null];
         }
 
         // 指纹 = 该版本文件类交付物集合的唯一判据（复用 D-7 那**一处**实现，不另算一套）。
@@ -252,8 +271,17 @@ class DeployTaskService
         //   **绝不**发一个"可下载"的假地址：那会让设备去拉一个不存在的包，
         //   或更糟 —— 平台自己都说不清在发什么。调用方据此把任务如实标成"无包"。
         if ($hash === null) {
-            return [null, null];
+            return [null, null, null];
         }
+
+        // C2：按设备机型挑"成功 build 的机型产物"；没有机型产物时只接受**唯一**文件。
+        //   多份文件且无法唯一确定 → SkillAssetAmbiguousException（API 边界转 409）。
+        //   绝不在这里 `defaultFileForVersion()` 悄悄取排序第一个：那等于让排序实现
+        //   决定这次下发的是哪份字节，端侧复算迟早对不上。
+        $asset = $this->assets->resolveForVersion(
+            (int) $versionId,
+            $this->modelCodeForDid($did),
+        );
 
         // ⚠ 还必须能拿到"被下载的那个文件"的字节 sha256 —— 端侧靠它复算，且它会被签进指令。
         //   历史行可能 `file_hash` 为空（上传核早已一律写入，但存量 NULL 是可能的）：此时
@@ -261,13 +289,13 @@ class DeployTaskService
         //   这与下载端点"记录为空即拒绝输出"是同一取舍，只是把它提前到了下发之前。
         //   于是形成一条硬不变式：`package_url` 非空 ⟺ `package_sha256` 非空
         //   （有包任务必须两者都有，见签名的取舍）。
-        $sha256 = SkillAsset::defaultFileForVersion($versionId)?->file_hash;
+        $sha256 = $asset?->file_hash;
 
         if (! is_string($sha256) || $sha256 === '') {
-            return [null, null];
+            return [null, null, null];
         }
 
-        return [$this->packageUrlFor($versionId), $hash];
+        return [$this->packageUrlFor((int) $versionId, (int) $asset->id), $hash, (int) $asset->id];
     }
 
     /**
@@ -278,14 +306,21 @@ class DeployTaskService
      * 这只是**第一重**闸 —— 端点同时还要求 agent 身份（`agent.key`），
      * 故 URL 即便泄露，没有设备凭据也拿不到包。
      */
-    protected function packageUrlFor(int $versionId): string
+    protected function packageUrlFor(int $versionId, ?int $assetId = null): string
     {
         $ttl = (int) config('deploy_gateways.package_url_ttl_minutes', 10);
+
+        $parameters = ['versionId' => $versionId];
+
+        // 钉住资产：下载端点据此只发这一份，而不是按当时的排序临时挑。
+        if ($assetId !== null) {
+            $parameters['asset_id'] = $assetId;
+        }
 
         return URL::temporarySignedRoute(
             'shop.api.agent.package.download',
             now()->addMinutes($ttl),
-            ['versionId' => $versionId],
+            $parameters,
         );
     }
 
@@ -301,7 +336,41 @@ class DeployTaskService
             return null;
         }
 
-        return SkillAsset::defaultFileForVersion((int) $task->skill_version_id)?->file_hash;
+        $versionId = (int) $task->skill_version_id;
+        $asset = $task->package_asset_id
+            ? SkillAsset::query()
+                ->where('skill_version_id', $versionId)
+                ->whereKey((int) $task->package_asset_id)
+                ->first()
+            : SkillAsset::defaultFileForVersion($versionId);
+
+        return $asset && $asset->isFile() ? $asset->file_hash : null;
+    }
+
+    /**
+     * 设备绑定上的机型 code —— 机型产物选择的输入。
+     *
+     * 先取 binding.model_id 指向的机型库，再回退到 Agent 上报的能力快照；
+     * 两者都未知时返回 null（解析器再走"唯一文件"这条保守路径）。
+     */
+    protected function modelCodeForDid(string $did): ?string
+    {
+        $binding = DeviceBinding::query()->with('model')->where('did', $did)->first();
+
+        if (! $binding) {
+            return null;
+        }
+
+        $modelCode = $binding->model?->model_code;
+
+        if (is_string($modelCode) && $modelCode !== '') {
+            return $modelCode;
+        }
+
+        $snapshot = is_array($binding->meta) ? ($binding->meta['capability_snapshot'] ?? null) : null;
+        $reported = is_array($snapshot) ? ($snapshot['model_code'] ?? null) : null;
+
+        return is_string($reported) && $reported !== '' ? $reported : null;
     }
 
     /**
@@ -476,8 +545,14 @@ class DeployTaskService
         //
         //   URL 本身**不入签名串**（见 SigningService::canonical）：地址可以变，
         //   但字节必须匹配签住的 package_sha256 —— 签住哈希就锁死了内容。
-        $packageUrl = ($task->package_hash !== null && $task->skill_version_id)
-            ? $this->packageUrlFor((int) $task->skill_version_id)
+        // 硬不变式：package_url 非空 ⟺ package_sha256 非空。
+        //   任务钉住的资产若已被删除/哈希被清空，package_sha256 会取到 null；
+        //   此时仍发 URL 等于让设备去拉一份"无法复算"的字节 —— 宁可不发地址。
+        $packageUrl = ($packageSha256 !== null && $task->package_hash !== null && $task->skill_version_id)
+            ? $this->packageUrlFor(
+                (int) $task->skill_version_id,
+                $task->package_asset_id ? (int) $task->package_asset_id : null,
+            )
             : null;
 
         return [
