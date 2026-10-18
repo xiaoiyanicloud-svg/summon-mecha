@@ -251,3 +251,37 @@ php artisan ops:alert-queue-backlog --dry-run
 > `curl /up` 返回 200、`/admin` 可登录、前端能打开并连上后端、`queue:work` 与 `schedule:work` 常驻、默认管理员密码已修改。
 
 完成以上全部，即可认为部署完成。
+
+## 附录：Step10–12 增量部署要点（2026-10-18）
+
+这两天的改动（Step10 本地改进、Step11 搜索资格修复、Step12 技能供给与购买闭环）在既有部署流程之上**没有新增数据库迁移**，`php artisan migrate` 不会有新表；下面是相对旧版新增或需要注意的点。各步的验收结论见 `docs/skill-dev-step10.md`、`docs/skill-dev-step11.md`、`docs/skill-dev-step12.md`，总览见 `docs/dev-handover-index.md`。
+
+### A. 新增环境变量（已补进 `.env.example`）
+
+- `SKILL_DELIVERY_CHANNEL=app`：默认交付通道。保持 `app`（应用内交付，零外部依赖）即可；只有设备侧 Agent 就绪且配了 `AGENT_KEY` 才考虑 `agent`。
+- `SKILL_DELIVERY_RETRY_SCAN` / `SKILL_DELIVERY_RETRY_EXECUTE`：技能交付有限补偿的两个开关，**默认关闭**。生产先保持关闭；确认要启用时，两项都置 `true`，且 `queue:work` + `schedule:work` 必须常驻，否则调度里的补偿任务不会跑。建议先只开 SCAN 观察一段时间。
+- 既有但仍关键：`SKILL_UPLOAD_KEY`（不配则 skill-admin 路由组整体 503）、`AGENT_KEY`（不配则 `/api/agent/*` 整组 503）。
+
+### B. 调度任务（依赖 `schedule:work` / cron 常驻）
+
+`bootstrap/app.php` 里 `skills:scan-delivery-retries`、`skills:audit-delivery --notify` 受 `SKILL_DELIVERY_RETRY_SCAN` 控制，其余 `ops:*`、试用回收等沿用既有调度。3.8 节的 `queue:work` + `schedule:work` 常驻要求不变，但补偿相关命令只有开了开关才会实际执行。手动排查可用：
+
+```bash
+php artisan skills:audit-delivery --limit=100        # 只读巡检
+php artisan skills:redeliver <orderId>               # 只检查；加 --execute 且过安全门槛才执行
+php artisan schedule:list                            # 确认调度已注册
+```
+
+### C. 前端后端地址（端口）
+
+仓库里 `utils/config.js` 的 `BASE_URL` 现为 `http://127.0.0.1:8008`（本地测试端口）。**部署到服务器时务必改成后端真实地址**（第 4 节），别把 127.0.0.1 带上线——否则前端在对方浏览器里指向的是对方自己的机器，表现为"页面一直转圈"。
+
+### D. 代码基线与回滚
+
+- 三步改动均以基线 `c4d2eade` 为起点，现已分 5 个 commit 提交在 `main`（Step10 / Step11 / Step12 / 生态文档 / config 杂项）。
+- Step12 修改前的原始文件备份在 `.claude/backup/skill-step12-20261018/`（未入库，本地保留）；回滚脚本在 Codex 交付目录，默认只输出计划、加 `-Apply` 才回退。
+- 已知遗留：原生 `CategoryProductTest` 价格升/降序 2 项断言失败为**既有问题**，非本批引入，未修复。部署不受影响，但不要以"全仓测试全绿"作为验收口径。
+
+### E. 未做事项（部署前需知晓）
+
+本批未做真实支付联调、小程序端验证、规模/故障压测、Elasticsearch 等价过滤、真实厂商技能包与真机适配验证。上线前这些仍需按实际环境补齐。
