@@ -166,12 +166,14 @@ export const skillCatalogApi = {
   // B-16 · 技能发布历史(版本/发布通道/交付通道/变更日志)—— 公开只读
   versions: (productId) => http.get(`/api/skill-catalog/versions/${productId}`, { loading: false }),
   // B-9 · 技能搜索:名称 q + 四个筛选维度(机型/通道/动作类型/风险等级),空值不发送
-  search: (q, filters = {}) => {
+  search: (q, filters = {}, pagination = {}) => {
     const data = {}
     if (q) data.q = q
     ;['model', 'channel', 'motion', 'risk'].forEach((k) => {
       if (filters[k]) data[k] = filters[k]
     })
+    if (pagination.page) data.page = pagination.page
+    if (pagination.limit) data.limit = pagination.limit
     return http.get('/api/skill-catalog/search', { data, loading: false })
   },
 }

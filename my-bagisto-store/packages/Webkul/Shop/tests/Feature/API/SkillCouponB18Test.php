@@ -81,6 +81,12 @@ function b18Product(float $price, int $groupId): int
 
     DB::table('product_categories')->insert(['product_id' => $id, 'category_id' => $categoryId]);
 
+    DB::table('product_flat')->insert(['product_id' => $id, 'sku' => 'B18-'.$id, 'type' => 'simple',
+        'name' => 'B18 Published Skill', 'price' => $price, 'status' => 1, 'visible_individually' => 1,
+        'locale' => app()->getLocale(), 'channel' => core()->getCurrentChannel()->code]);
+    \Webkul\Shop\Models\SkillVersion::create(['product_id' => $id, 'version' => '1.0.0', 'status' => 'published',
+        'channel' => 'stable', 'delivery_channels' => ['manual'], 'released_at' => now()]);
+
     DB::table('product_price_indices')->insert([
         'product_id'        => $id,
         'customer_group_id' => $groupId,
@@ -295,6 +301,9 @@ it('B-18 · 无效券码 → 422,且不建单', function () {
 
 it('B-18 · 非技能单带券 → 422(券只对技能单开放,不静默吞掉)', function () {
     $productId = b18Product(200.0, b18GroupId());
+    // Exercise a real non-skill order; skill type impersonation is rejected earlier.
+    DB::table('product_categories')->where('product_id', $productId)->delete();
+    DB::table('skill_versions')->where('product_id', $productId)->delete();
 
     postJson('/api/tob-order', [
         'type' => 'buy', 'product_id' => $productId, 'qty' => 1,

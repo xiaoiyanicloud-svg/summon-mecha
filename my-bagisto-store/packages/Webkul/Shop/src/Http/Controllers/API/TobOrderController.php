@@ -4,11 +4,13 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Webkul\Shop\Services\SkillDelivery\SkillMarketService;
+
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Sales\Repositories\OrderRepository;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Services\Billing\SkillCouponService;
-use Webkul\Shop\Services\Deploy\KillSwitchService;
 
 /**
  * TOB 统一下单接口(新增,不改动现有 onepage/后台逻辑)。
@@ -37,6 +39,11 @@ class TobOrderController extends APIController
      * 创建 TOB 订单。
      */
     public function store(Request $request): JsonResponse
+    {
+        return DB::transaction(fn () => $this->storeWithinTransaction($request));
+    }
+
+    protected function storeWithinTransaction(Request $request): JsonResponse
     {
         \Illuminate\Support\Facades\Log::debug('TOB_INPUT', $request->all());
 
@@ -136,20 +143,8 @@ class TobOrderController extends APIController
                 $lines[0]['product_id'] = $anchor->id;
             }
 
-            // S-8 · 熔断即停售:**下单口**是最早能拦住"用户买技能"的地方(技能单走 tob-order、
-            //   不经购物车,这里是唯一的购买入口)。与市场展示同一口径(sale 门 = 任何生效熔断都拦),
-            //   宁可这单建不成,也不收一笔平台根本不会下发的钱 —— "能买不能装"是坏状态。
-            //   ⚠ 这里只是**入口闸**;下单源可能不止一条(后台手工建单/将来其它源),故
-            //   `Listeners\SkillDelivery` 在创建授权处另有 fail-closed 兜底(见该文件)。
-            if ($type === 'skill') {
-                $killSwitch = app(KillSwitchService::class);
-
-                foreach ($lines as $line) {
-                    if (! empty($line['product_id'])
-                        && $killSwitch->isBlockedFor((int) $line['product_id'], 'sale')) {
-                        return $this->fail(ApiErrorCode::SKILL_BLOCKED, '该技能已被平台下架,暂不可购买。', 409);
-                    }
-                }
+            if ($problem = app(SkillMarketService::class)->purchaseProblem(array_column($lines, 'product_id'), $customer?->id, $type)) {
+                return $this->fail($problem['code'], $problem['message'], $problem['status']);
             }
 
             $email = $customer?->email ?? $request->input('email', 'guest@example.com');

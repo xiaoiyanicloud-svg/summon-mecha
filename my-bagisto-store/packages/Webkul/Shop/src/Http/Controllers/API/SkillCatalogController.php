@@ -4,6 +4,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Webkul\Shop\Services\SkillDelivery\SkillMarketService;
 use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillCategory;
@@ -81,6 +82,7 @@ class SkillCatalogController extends APIController
         $models = DeviceModel::query()
             ->orderBy('sort_order')
             ->orderBy('id')
+            ->where('status', DeviceModel::STATUS_ACTIVE)
             ->get(['model_code', 'model_name', 'brand']);
 
         return response()->json([
@@ -121,6 +123,10 @@ class SkillCatalogController extends APIController
             return $this->fail(ApiErrorCode::SKILL_BLOCKED, '该技能已被平台下架,暂不可查看。', 409);
         }
 
+        if ($problem = app(SkillMarketService::class)->availability($productId, true)) {
+            return $this->fail($problem['code'], $problem['message'], $problem['status']);
+        }
+
         $rows = \DB::table('skill_versions')
             ->where('product_id', $productId)
             ->whereIn('status', [SkillVersion::STATUS_PUBLISHED, SkillVersion::STATUS_ARCHIVED])
@@ -129,7 +135,17 @@ class SkillCatalogController extends APIController
             ->limit(20)
             ->get(['id', 'version', 'channel', 'status', 'risk_level', 'delivery_channels', 'permissions', 'released_at', 'changelog']);
 
+        // A rollback may leave an older published version behind many newer archived releases.
+        // The bounded history must still contain the actual version buyers can acquire.
+        $currentId = app(SkillMarketService::class)->currentVersions()->select('id')->where('product_id', $productId)->value('id');
+        if ($currentId && ! $rows->contains('id', $currentId)) {
+            $current = \DB::table('skill_versions')->where('id', $currentId)
+                ->first(['id', 'version', 'channel', 'status', 'risk_level', 'delivery_channels', 'permissions', 'released_at', 'changelog']);
+            if ($current) $rows->push($current);
+        }
+
         return response()->json([
+            'current_version_id' => $currentId ? (int) $currentId : null,
             'data' => $rows->map(fn ($v) => [
                 'id'                => (int) $v->id,
                 'version'           => $v->version,
@@ -160,8 +176,7 @@ class SkillCatalogController extends APIController
      *
      * 只搜 `skill` 分类下的商品。参数:
      *   - `q`       名称模糊匹配(name LIKE)
-     *   - `model`   机型 code(device_model.model_code)—— 技能已发布版本声明的交付通道
-     *               与该机型可用通道**有交集**即命中(与 CompatibilityService 同一判据)
+     *   - `model`   机型 code(device_model.model_code)—— 按交付通道初筛，不能当作真机适配证明
      *   - `channel` 交付通道(agent / manual)—— 技能声明的通道含它
      *   - `motion`  动作形态(skill_tag.type=motion_type 的 name)
      *   - `risk`    风险等级(low/medium/high)
@@ -171,52 +186,47 @@ class SkillCatalogController extends APIController
      */
     public function search(Request $request): JsonResponse
     {
+        $request->validate([
+            'q'       => ['nullable', 'string', 'max:120'],
+            'model'   => ['nullable', 'string', 'max:64'],
+            'channel' => ['nullable', 'string', 'max:64'],
+            'motion'  => ['nullable', 'string', 'max:64'],
+            'risk'    => ['nullable', 'string', 'in:low,medium,high'],
+            'page'    => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'limit'   => ['nullable', 'integer', 'min:1', 'max:40'],
+        ]);
+
         $q       = trim((string) $request->input('q', ''));
         $model   = trim((string) $request->input('model', ''));
         $channel = trim((string) $request->input('channel', ''));
         $motion  = trim((string) $request->input('motion', ''));
         $risk    = trim((string) $request->input('risk', ''));
 
-        // skill 分类 id(取分类翻译里 slug=skill 的 category_id)
-        $categoryId = \DB::table('category_translations')->where('slug', 'skill')->value('category_id');
-
-        $query = \DB::table('product_flat')
-            ->where('status', 1)
-            ->where('visible_individually', 1)
-            // ⚠ 只取当前语言行:多语言行里 name 只在对应语言有值,不过滤会取到 null 行
-            ->where('locale', app()->getLocale())
-            ->whereNotNull('name');
-
-        // S-8 · 熔断即下架:被熔断的技能**不得出现在市场列表**。
-        //   规则(sale 门 = 任何生效熔断都算停售)收敛在 KillSwitchService,这里只把它的
-        //   结果 whereNotIn 到查询层 —— 可见性判断归查询,不在这里逐行过滤。
-        $blockedIds = app(KillSwitchService::class)->saleBlockedSkillIds();
-        if (! empty($blockedIds)) {
-            $query->whereNotIn('product_id', $blockedIds);
-        }
-
-        if ($categoryId) {
-            $query->whereIn('product_id', function ($sub) use ($categoryId) {
-                $sub->select('product_id')->from('product_categories')->where('category_id', $categoryId);
-            });
-        }
+        $query = app(SkillMarketService::class)->visibleRows();
 
         if ($q !== '') {
             $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
             $query->where('name', 'like', '%'.$escaped.'%');
         }
 
-        // 机型 / 通道 / 风险等级 —— 都约束在**已发布版本**上
-        if ($risk !== '' || $channel !== '' || $model !== '') {
-            $query->whereIn('product_id', $this->versionConstrainedProductIds($risk, $channel, $model));
-        }
+        // 无筛选时也只展示存在可交付发布版本的技能；筛选只读当前已发布版本。
+        // 与 versions()/CompatibilityService 相同：released_at DESC，id DESC。
+        $query->whereIn('product_id', $this->versionConstrainedProductIds($risk, $channel, $model));
 
         // 动作形态 —— 标签(type=motion_type)命中其一即可
         if ($motion !== '') {
             $query->whereIn('product_id', $this->motionTagProductIds($motion));
         }
 
-        $rows = $query->orderByDesc('product_id')->limit(40)->get(['product_id', 'name', 'price', 'special_price', 'url_key']);
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 40);
+        // DISTINCT before limiting: one product may have several channel/locale rows.
+        $rows = $query->select(['product_id', 'name', 'price', 'special_price', 'url_key', 'short_description'])
+            ->distinct()->orderByDesc('product_id')->offset(($page - 1) * $limit)->limit($limit + 1)->get();
+        $hasMore = $rows->count() > $limit;
+        $rows = $rows->take($limit);
+        $images = \Webkul\Product\Models\ProductImage::query()->whereIn('product_id', $rows->pluck('product_id'))
+            ->orderBy('position')->orderBy('id')->get()->groupBy('product_id');
 
         // 去重(同商品多语言行)
         $seen = [];
@@ -231,12 +241,17 @@ class SkillCatalogController extends APIController
                 'name'          => $r->name,
                 'price'         => (float) $r->price,
                 'special_price' => $r->special_price !== null ? (float) $r->special_price : null,
+                'image'         => $images->get($r->product_id)?->first()?->url,
+                'summary'       => mb_substr(strip_tags((string) $r->short_description), 0, 160),
+                'market_eligible' => true,
             ];
         }
 
         return response()->json([
             'data'    => $data,
             'query'   => $q,
+            'pagination' => ['page' => $page, 'per_page' => $limit, 'has_more' => $hasMore],
+            'compatibility_basis' => 'delivery_channel_only',
             'filters' => array_filter([
                 'model'   => $model !== '' ? $model : null,
                 'channel' => $channel !== '' ? $channel : null,
@@ -247,11 +262,12 @@ class SkillCatalogController extends APIController
     }
 
     /**
-     * 命中的商品 id 子查询:已发布版本同时满足 风险等级 / 通道 / 机型。
+     * 命中的商品 id 子查询：当前已发布版本同时满足各筛选。
+     * 新草稿不遮蔽旧发布；旧发布不能让已经不满足条件的新版继续命中。
      */
     protected function versionConstrainedProductIds(string $risk, string $channel, string $model)
     {
-        $sub = \DB::table('skill_versions')->select('product_id')->where('status', 'published');
+        $sub = app(SkillMarketService::class)->currentVersions();
 
         if ($risk !== '') {
             $sub->where('risk_level', $risk);
@@ -293,7 +309,7 @@ class SkillCatalogController extends APIController
     /**
      * 给查询加一条「该版本声明含通道 $channel」的条件。
      *
-     * ⚠ `delivery_channels` 为 NULL 的旧版本视为 `['manual']` —— 与
+     * ⚠ `delivery_channels` 为 NULL 或 [] 的旧版本视为 `['manual']` —— 与
      *   `CompatibilityService` 的缺省口径一致,否则"能筛到"和"能装上"会互相打架。
      *
      * @param  \Illuminate\Database\Query\Builder  $query
@@ -303,6 +319,7 @@ class SkillCatalogController extends APIController
         $query->where(function ($w) use ($channel) {
             if ($channel === SkillAsset::DELIVERY_MANUAL) {
                 $w->whereNull('delivery_channels')
+                    ->orWhereJsonLength('delivery_channels', 0)
                     ->orWhereJsonContains('delivery_channels', SkillAsset::DELIVERY_MANUAL);
             } else {
                 $w->whereJsonContains('delivery_channels', $channel);

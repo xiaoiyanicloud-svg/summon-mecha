@@ -79,6 +79,10 @@ final class ApiErrorCode
     // ── 技能与授权 ───────────────────────────────────────────────────────
 
     public const SKILL_NOT_FOUND = 'SKILL_NOT_FOUND';
+
+    public const SKILL_UNAVAILABLE = 'SKILL_UNAVAILABLE';
+
+    public const SKILL_ORDER_TYPE_MISMATCH = 'SKILL_ORDER_TYPE_MISMATCH';
     /** 传了不在**当前客户**授权范围内的 skill_id(工单/报案)。与 DEVICE_NOT_OWNED 同义。 */
     public const SKILL_NOT_OWNED = 'SKILL_NOT_OWNED';
     public const VERSION_NOT_FOUND = 'VERSION_NOT_FOUND';

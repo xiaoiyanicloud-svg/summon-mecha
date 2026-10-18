@@ -2,6 +2,10 @@
 
 namespace Webkul\Shop\Http\Controllers\API;
 
+use Illuminate\Support\Facades\DB;
+use Webkul\Shop\Services\SkillDelivery\SkillMarketService;
+
+
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Response;
 use Webkul\CartRule\Repositories\CartRuleCouponRepository;
@@ -52,6 +56,13 @@ class CartController extends APIController
             'is_buy_now' => 'integer|in:0,1',
             'quantity'   => 'integer|min:1',
         ]);
+
+        $problem = DB::transaction(fn () => app(SkillMarketService::class)->purchaseProblem(
+            [(int) request()->input('product_id')], auth()->guard('customer')->id()
+        ));
+        if ($problem) {
+            return $this->fail($problem['code'], $problem['message'], $problem['status']);
+        }
 
         $product = $this->productRepository->with('parent')->findOrFail(request()->input('product_id'));
 

@@ -105,7 +105,7 @@
 			</view>
 
 			<!-- ===== 🔥 生态中心（独立组件） ===== -->
-			<EcoCenter />
+			<EcoCenter ref="ecoCenter" />
 
 			<!-- 底部安全区 -->
 			<view class="bottom-safe"></view>
@@ -341,6 +341,7 @@ import { tobOrderApi } from '@/utils/api';
 		},
 		onShow() {
 			this.refreshScenes();
+			this.$nextTick(() => { if (this.$refs.ecoCenter) this.$refs.ecoCenter.refreshSkills() });
 		},
 		onPageScroll(e) {
 			this.scrollY = (e && e.scrollTop) || 0;

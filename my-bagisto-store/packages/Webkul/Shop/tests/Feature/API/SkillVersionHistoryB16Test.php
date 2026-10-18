@@ -13,7 +13,7 @@ use function Pest\Laravel\getJson;
  * 这里只测**公开只读**的 `GET /api/skill-catalog/versions/{productId}`:
  *   - 只回已发布 / 已归档(草稿从不发布,不对外);
  *   - 新版在前;带发布通道标签(stable→正式版 / beta→测试版)与交付通道;
- *   - 没有发布过就返回空数组(不编)。
+ *   - 没有可购买发布版本时明确返回不可用(与市场和详情统一)。
  *
  * ⚠ 发布通道(`channel` = stable/beta)与交付通道(`delivery_channels` = agent/manual/vendor:*)
  *   是两条不同的轴 —— 术语纪律里明写不可混淆,这里一并锁住。
@@ -21,16 +21,8 @@ use function Pest\Laravel\getJson;
 
 function b16SeedProduct(): int
 {
-    $familyId = DB::table('attribute_families')->value('id');
-    $sku = 'b16-'.uniqid();
-
-    return (int) DB::table('products')->insertGetId([
-        'sku'                 => $sku,
-        'type'                => 'simple',
-        'attribute_family_id' => $familyId,
-        'created_at'          => now(),
-        'updated_at'          => now(),
-    ]);
+    $category = \Webkul\Category\Models\Category::whereHas('translations', fn ($q) => $q->where('slug', 'skill'))->firstOrFail();
+    return (new \Webkul\Faker\Helpers\Product)->getSimpleProductFactory()->hasAttached($category)->create()->id;
 }
 
 function b16SeedVersion(int $productId, string $version, string $status, array $extra = []): int
@@ -76,11 +68,9 @@ it('B-16 · 发布通道标签:stable→正式版 / beta→测试版;交付通�
         ->and($row['risk_level'])->toBe('medium');
 });
 
-it('B-16 · 未发布过任何版本 → 空数组(不编造历史)', function () {
+it('B-16 · 未发布过任何版本 → 明确不可用(不编造历史)', function () {
     $productId = b16SeedProduct();
     b16SeedVersion($productId, '0.1.0', 'draft');
 
-    $res = getJson(route('shop.api.skill-catalog.versions', $productId))->assertOk();
-
-    expect($res->json('data'))->toBe([]);
+    getJson(route('shop.api.skill-catalog.versions', $productId))->assertStatus(409)->assertJsonPath('code', 'SKILL_UNAVAILABLE');
 });

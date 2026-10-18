@@ -16,92 +16,7 @@
     <view class="eco-content">
       <!-- ========== 技能市场 ========== -->
       <view v-show="currentTab === 'skill'" class="tab-panel">
-        <!-- v3.4:服务端搜索(接 /api/skill-catalog/search) -->
-        <view class="skill-search">
-          <text class="ss-icon">🔍</text>
-          <input class="ss-input" v-model="skillQuery" placeholder="搜索技能（名称/关键词）" confirm-type="search" @confirm="doSkillSearch" />
-          <text v-if="skillQuery" class="ss-clear" @click="clearSkillSearch">✕</text>
-        </view>
-        <!-- B-9:筛选维度(机型/通道/动作类型/风险等级)—— 服务端筛选 -->
-        <view class="skill-filter">
-          <view class="sf-toggle" @click="showFilters = !showFilters">
-            <text class="sf-toggle-text">筛选</text>
-            <text v-if="activeFilterCount" class="sf-toggle-badge">{{ activeFilterCount }}</text>
-            <text class="sf-toggle-arrow">{{ showFilters ? '▲' : '▼' }}</text>
-            <text v-if="activeFilterCount" class="sf-reset" @click.stop="resetFilters">重置</text>
-          </view>
-          <view v-show="showFilters" class="sf-panel">
-            <view class="sf-group" v-if="filterOptions.models.length">
-              <text class="sf-label">机型</text>
-              <view class="sf-chips">
-                <text class="sf-chip" :class="{ on: !filters.model }" @click="pickFilter('model', '')">全部</text>
-                <text
-                  v-for="m in filterOptions.models"
-                  :key="m.code"
-                  class="sf-chip"
-                  :class="{ on: filters.model === m.code }"
-                  @click="pickFilter('model', m.code)"
-                >{{ m.name }}</text>
-              </view>
-            </view>
-            <view class="sf-group">
-              <text class="sf-label">通道</text>
-              <view class="sf-chips">
-                <text class="sf-chip" :class="{ on: !filters.channel }" @click="pickFilter('channel', '')">全部</text>
-                <text
-                  v-for="c in filterOptions.channels"
-                  :key="c.value"
-                  class="sf-chip"
-                  :class="{ on: filters.channel === c.value }"
-                  @click="pickFilter('channel', c.value)"
-                >{{ c.label }}</text>
-              </view>
-            </view>
-            <view class="sf-group" v-if="filterOptions.motions.length">
-              <text class="sf-label">动作</text>
-              <view class="sf-chips">
-                <text class="sf-chip" :class="{ on: !filters.motion }" @click="pickFilter('motion', '')">全部</text>
-                <text
-                  v-for="t in filterOptions.motions"
-                  :key="t.id"
-                  class="sf-chip"
-                  :class="{ on: filters.motion === t.name }"
-                  @click="pickFilter('motion', t.name)"
-                >{{ t.name }}</text>
-              </view>
-            </view>
-            <view class="sf-group">
-              <text class="sf-label">风险</text>
-              <view class="sf-chips">
-                <text class="sf-chip" :class="{ on: !filters.risk }" @click="pickFilter('risk', '')">全部</text>
-                <text
-                  v-for="r in filterOptions.risks"
-                  :key="r.value"
-                  class="sf-chip"
-                  :class="{ on: filters.risk === r.value }"
-                  @click="pickFilter('risk', r.value)"
-                >{{ r.label }}</text>
-              </view>
-            </view>
-          </view>
-        </view>
-        <view class="grid-3col">
-          <view class="eco-card skill-card" v-for="item in displayedSkills" :key="item.uid" @click.stop="onSkill(item)">
-            <view class="eco-img" :style="{ backgroundColor: item.bg }">
-              <image v-if="item.image" class="eco-img-img" :src="item.image" mode="aspectFill"></image>
-              <text v-else class="eco-icon">{{ item.icon }}</text>
-            </view>
-            <text class="eco-name">{{ item.name }}</text>
-            <!-- 价格为空或 0 时不显示, 避免真机无价商品出现"¥0" -->
-            <text class="eco-price" v-if="item.price && String(item.price) !== '0'">¥{{ item.price }}</text>
-          </view>
-        </view>
-        <view v-if="skillSearchActive && !skillSearching && displayedSkills.length === 0" class="skill-empty">
-          <text>没有符合条件的技能</text>
-        </view>
-        <view class="more-entry" @click="goMoreSkills">
-          <text class="more-text">更多技能 →</text>
-        </view>
+        <SkillMarket ref="skillMarket" compact :active="currentTab === 'skill'" @select="onSkill" @show-all="goMoreSkills" />
       </view>
 
       <!-- ========== 配件皮肤 ========== -->
@@ -246,30 +161,31 @@
 
 <script>
 import Dongtai from '@/components/shouye/dongtai.vue'
-import { productApi, categoryApi, eventApi, skillCatalogApi } from '@/utils/api'
+import { productApi, categoryApi, eventApi } from '@/utils/api'
+import SkillMarket from '@/components/SkillMarket.vue'
+import { skillDetailUrl } from '@/utils/skill-market'
 import { BASE_URL } from '@/utils/config'
-import SKILL_LIST, { ECO_SKILL_IDS } from '@/components/jiqi/skill-data'
 
 // tab 数据刷新节流: 5 分钟内重复切 tab 不重拉(与机器页 loadCatalog 的 TTL 策略一致)
 const CATALOG_TTL = 5 * 60 * 1000;
 
 export default {
   name: 'EcoCenter',
-  components: { Dongtai },
+  components: { Dongtai, SkillMarket },
   data() {
     return {
       currentTab: 'skill',
       accessoryCategory: 'all',
       selectedEvent: null,
-      skillCatalog: [],
+
       // v3.4:技能搜索(服务端)—— skillResults 为 null 表示"未搜索,显示全部"
-      skillQuery: '',
-      skillResults: null,
-      skillSearching: false,
+
+
+
       // B-9:筛选维度(机型/通道/动作类型/风险等级) —— 服务端筛选
-      showFilters: false,
-      filters: { model: '', channel: '', motion: '', risk: '' },
-      filterOptions: { models: [], channels: [], risks: [], motions: [] },
+
+
+
       accessoryCatalog: [],
       // 赛事:后台 events 表数据(拉取失败保留 mock 兜底);报名弹窗
       showEventReg: false,
@@ -463,37 +379,14 @@ export default {
   computed: {
     // 技能市场: 后台真实商品在前; mock 兜底展示 ECO_SKILL_IDS 子集(保持历史卡片顺序)。
     // mock 按名称去重 —— 后台已建同名商品时不再重复展示(后台全量建品后 mock 自然退场, 与机器页策略对齐)
-    skillCards() {
-      const real = this.skillCatalog.map(p => ({ ...p, uid: 'r' + p.id }));
-      const realNames = new Set(real.map(p => String(p.name || '').trim()));
-      const mock = ECO_SKILL_IDS
-        .map(id => SKILL_LIST.find(m => m.id === id))
-        .filter(m => m && !realNames.has(m.name))
-        .map(m => ({ ...m, uid: 'm' + m.id }));
-      return real.concat(mock);
-    },
+
     // v3.4:搜索中显示搜索结果,否则显示全部(skillResults 为 null = 未搜索)
-    displayedSkills() {
-      if (this.skillResults === null) return this.skillCards
-      return this.skillResults.map(p => ({ ...p, uid: 's' + p.id, icon: p.icon || '🤖', bg: p.bg || '#F0F4FA' }))
-    },
+
     // B-9:非空筛选维度(送给服务端)
-    activeFilters() {
-      const f = this.filters
-      const out = {}
-      if (f.model) out.model = f.model
-      if (f.channel) out.channel = f.channel
-      if (f.motion) out.motion = f.motion
-      if (f.risk) out.risk = f.risk
-      return out
-    },
-    activeFilterCount() {
-      return Object.keys(this.activeFilters).length
-    },
+
+
     // 有搜索词或任一筛选维度 → 走服务端搜索(否则显示全部)
-    skillSearchActive() {
-      return (this.skillQuery || '').trim() !== '' || this.activeFilterCount > 0
-    },
+
     // 配件皮肤: 后台真实商品 + 静态 mock 共存(mock 仍受分类 chips 筛选, 同样按名称去重)
     accessoryCards() {
       const real = this.accessoryCatalog.map(p => ({ ...p, uid: 'r' + p.id }));
@@ -510,10 +403,8 @@ export default {
     }
   },
   mounted() {
-    this.loadSkill();
     this.loadAccessory();
     this.loadEvents();
-    this.loadFilters();
   },
   methods: {
     switchTab(tab) {
@@ -521,7 +412,6 @@ export default {
         this.currentTab = tab;
         if (tab !== 'event') this.selectedEvent = null;
       }
-      if (tab === 'skill') { this.loadSkill(); this.loadFilters(); }
       if (tab === 'accessory') this.loadAccessory();
     },
     // 富文本图片地址修复(与机器人页一致): 后台描述里的 localhost/相对路径统一重写为 BASE_URL, 图片可加载
@@ -567,26 +457,7 @@ export default {
         type: 'all',
       };
     },
-    async loadSkill() {
-      // TTL 内跳过(切 tab 高频触发); 后台建品后最多 5 分钟生效
-      if (Date.now() - (this._skillLoadedAt || 0) < CATALOG_TTL) return;
-      try {
-        const catsRes = await categoryApi.getCategories({ limit: 200 });
-        const cats = (catsRes && Array.isArray(catsRes.data)) ? catsRes.data : [];
-        const sc = cats.find(c => c.slug === 'skill' || c.name === '技能');
-        if (!sc) {
-          console.warn('[EcoCenter] 后台未找到「技能」分类(slug=skill), 技能市场仅显示兜底 mock');
-          return;
-        }
-        const res = await productApi.getProducts({ limit: 200, page: 1, category_id: sc.id });
-        const items = (res && Array.isArray(res.data)) ? res.data : [];
-        this.skillCatalog = items.map(p => this.mapProduct(p));
-        this._skillLoadedAt = Date.now();
-      } catch (e) {
-        // 后台拉取失败时保留 mock 兜底, 不置空
-        console.warn('[EcoCenter] 技能商品拉取失败, 使用 mock 兜底', e);
-      }
-    },
+
     async loadAccessory() {
       if (Date.now() - (this._accessoryLoadedAt || 0) < CATALOG_TTL) return;
       try {
@@ -606,64 +477,19 @@ export default {
         console.warn('[EcoCenter] 配件商品拉取失败, 使用 mock 兜底', e);
       }
     },
+    refreshSkills() { return this.$refs.skillMarket && this.$refs.skillMarket.refresh() },
     onSkill(item) {
-      // 跳机器页技能 tab, 打开该商品的详情浮层(复用机器页完整详情/下单逻辑)
-      const data = { ...item, fromHome: true };
-      uni.setStorageSync('skillDetail', data);
-      uni.setStorageSync('robotTab', 'skill');
-      uni.switchTab({ url: '/pages/robot/index' });
+      const url = skillDetailUrl(item)
+      if (url) uni.navigateTo({ url })
     },
     // v3.4:服务端技能搜索(接 /api/skill-catalog/search) + B-9 四筛选维度
-    async doSkillSearch() {
-      const q = (this.skillQuery || '').trim()
-      const f = this.activeFilters
-      // 无搜索词也无筛选 → 回到"显示全部"(不请求)
-      if (!q && Object.keys(f).length === 0) { this.skillResults = null; return }
-      this.skillSearching = true
-      try {
-        const res = await skillCatalogApi.search(q, f)
-        this.skillResults = (res && Array.isArray(res.data)) ? res.data : []
-      } catch (e) {
-        uni.showToast({ title: (e && e.message) || '搜索失败', icon: 'none' })
-      } finally {
-        this.skillSearching = false
-      }
-    },
-    clearSkillSearch() {
-      this.skillQuery = ''
-      this.doSkillSearch()
-    },
+
+
     // B-9:筛选候选项(机型/通道/风险走 filters;动作形态走既有 tags 接口)
-    async loadFilters() {
-      if (this._filtersLoaded) return
-      this._filtersLoaded = true
-      try {
-        const [f, motions] = await Promise.all([
-          skillCatalogApi.filters(),
-          skillCatalogApi.tags('motion_type'),
-        ])
-        const d = (f && f.data) || {}
-        this.filterOptions = {
-          models: Array.isArray(d.models) ? d.models : [],
-          channels: Array.isArray(d.channels) ? d.channels : [],
-          risks: Array.isArray(d.risks) ? d.risks : [],
-          motions: (motions && Array.isArray(motions.data)) ? motions.data : [],
-        }
-      } catch (e) {
-        // 候选项拉不到 → 筛选面板留空(不编假选项),搜索本身仍可用
-        console.warn('[EcoCenter] 筛选候选项加载失败', e)
-        this._filtersLoaded = false
-      }
-    },
+
     // B-9:点选一个筛选维度(再点一次取消)→ 立即重新搜索
-    pickFilter(key, value) {
-      this.filters = { ...this.filters, [key]: this.filters[key] === value ? '' : value }
-      this.doSkillSearch()
-    },
-    resetFilters() {
-      this.filters = { model: '', channel: '', motion: '', risk: '' }
-      this.doSkillSearch()
-    },
+
+
     goMoreSkills() {
       uni.setStorageSync('robotTab', 'skill');
       uni.switchTab({ url: '/pages/robot/index' });

@@ -294,9 +294,11 @@ class ProductRepository extends Repository
              *   会静默让被熔断的技能重新露出（Elastic 侧不认这个参数，等于过滤凭空消失）。
              */
             if (! empty($params['exclude_ids'])) {
-                $ids = is_array($params['exclude_ids'])
+                $ids = $params['exclude_ids'] instanceof \Illuminate\Database\Query\Builder
                     ? $params['exclude_ids']
-                    : explode(',', (string) $params['exclude_ids']);
+                    : (is_array($params['exclude_ids'])
+                    ? $params['exclude_ids']
+                    : explode(',', (string) $params['exclude_ids']));
 
                 $qb->whereNotIn('products.id', $ids);
             }

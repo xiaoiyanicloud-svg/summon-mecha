@@ -191,6 +191,13 @@ function s8FactoryProductInCategory(string $slug): int
         ->hasAttached($category)
         ->create();
 
+    if ($slug === 'skill') {
+        \Webkul\Shop\Models\SkillVersion::create([
+            'product_id' => $product->id, 'version' => '1.0.0', 'status' => 'published',
+            'channel' => 'stable', 'delivery_channels' => ['manual'], 'released_at' => now(),
+        ]);
+    }
+
     return (int) $product->id;
 }
 

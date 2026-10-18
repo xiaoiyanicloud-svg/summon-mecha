@@ -273,7 +273,7 @@
       </view>
 
       <!-- 技能组件 -->
-      <Jineng v-show="currentTab === 'skill'" :items="skillCatalog" @item-click="onSkill" />
+      <Jineng ref="skillMarket" v-show="currentTab === 'skill'" :active="currentTab === 'skill'" @item-click="onSkill" />
 
       <!-- 配件组件 -->
       <Peijian v-show="currentTab === 'accessory'" :items="accessoryCatalog" @item-click="onAccessory" />
@@ -613,6 +613,7 @@
 
 <script>
 import Jineng from '@/components/jiqi/jineng.vue'
+import { skillDetailUrl } from '@/utils/skill-market'
 import Peijian from '@/components/jiqi/peijian.vue'
 import StateView from '@/components/StateView.vue'
 import { cartApi, productApi, categoryApi, catalogApi, tobOrderApi } from '@/utils/api'
@@ -1147,17 +1148,9 @@ export default {
       this.loadRelatedProducts()
     },
 
-    onSkill(item, fromHome = false) {
-      this.selectedProduct = {
-        ...item,
-        scene: item.scene || '技能服务',
-        bg: item.bg || '#E8F0FE',
-      }
-      this.actionType = 'skill'
-      this.detailTab = 'desc'
-      this.showDetail = true
-      this.fromHome = fromHome
-      this.loadRelatedProducts()
+    onSkill(item) {
+      const url = skillDetailUrl(item)
+      if (url) uni.navigateTo({ url })
     },
 
     closeDetail() {
@@ -1199,11 +1192,8 @@ export default {
         return
       }
       if (type === 'skill') {
-        // 技能开通：进入确认订单（复用商品购买逻辑）
         this.showDetail = false
-        this.selectedProduct = null
-        this.fromHome = false
-        this.goCheckout(product, 'skill')
+        this.onSkill(product)
         return
       }
     },
@@ -1543,6 +1533,7 @@ export default {
   },
 
   onShow() {
+    this.$nextTick(() => { if (this.currentTab === 'skill' && this.$refs.skillMarket) this.$refs.skillMarket.refresh() })
     const tab = uni.getStorageSync('robotTab')
     if (tab && ['rent', 'scene', 'buy', 'skill', 'accessory'].includes(tab)) {
       this.currentTab = tab

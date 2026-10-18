@@ -16,24 +16,26 @@
 			<view class="le-btn" @click="loadSkillData(skillId)">重新加载</view>
 		</view>
 
-		<template v-if="!loadError">
+		<view v-if="detailLoading && !loadError" class="load-error">技能详情加载中…</view>
+		<template v-if="!loadError && !detailLoading">
 		<!-- 2. 轮播图 -->
-		<swiper class="swiper" indicator-dots autoplay interval="3000" circular>
+		<swiper v-if="skillInfo.images.length" class="swiper" indicator-dots autoplay interval="3000" circular>
 			<swiper-item v-for="(img, idx) in skillInfo.images" :key="idx">
-				<image class="swiper-image" :src="img" mode="aspectFill"></image>
+				<image class="swiper-image" :src="img" mode="aspectFill" @error="skillInfo.images.splice(idx, 1)"></image>
 			</swiper-item>
 		</swiper>
+		<view v-else class="skill-cover-placeholder"><text>🤖</text><text>暂无展示图</text></view>
 		<view class="swiper-badge" v-if="skillInfo.served">🔥 已服务 {{ skillInfo.served }} 家庭</view>
 
 		<!-- 3. 基础信息 -->
 		<view class="info-card">
 			<view class="info-row">
 				<text class="skill-name">{{ skillInfo.name }}</text>
-				<text class="skill-rating">⭐ {{ skillInfo.rating }}</text>
+				<text v-if="skillInfo.rating" class="skill-rating">⭐ {{ skillInfo.rating }}</text>
 			</view>
 			<view class="price-row">
 				<text class="price-current">￥{{ skillInfo.price }}</text>
-				<text class="price-original">￥{{ skillInfo.originalPrice }}</text>
+				<text v-if="skillInfo.originalPrice > skillInfo.price" class="price-original">￥{{ skillInfo.originalPrice }}</text>
 			</view>
 			<text class="skill-desc">{{ skillInfo.desc }}</text>
 		</view>
@@ -57,7 +59,9 @@
 						<text class="comment-text">{{ item.content }}</text>
 					</view>
 				</view>
-				<view v-if="skillInfo.comments.length === 0" class="empty-tip">暂无评价</view>
+				<view v-if="reviewLoading" class="empty-tip">评价加载中…</view>
+				<view v-else-if="reviewError" class="empty-tip" @click="loadReviews(productId)">评价加载失败，点此重试</view>
+				<view v-else-if="skillInfo.comments.length === 0" class="empty-tip">暂无评价</view>
 
 				<!-- v3.4:写评价(复用 Bagisto ProductReview;title/comment/rating 必填) -->
 				<view class="write-review" v-if="productId">
@@ -83,6 +87,7 @@
 					@click="pickedDeviceId = d.id"
 				>{{ d.sn }}</text>
 			</view>
+			<text v-else-if="deviceLoginRequired" class="compat-tip" @click="loginForDevices">登录后可选择已绑定设备，点此前往登录</text>
 			<text v-else-if="deviceLoadError" class="compat-tip" style="color:#cf1322" @click="loadDevices">设备列表没加载出来，点此重试</text>
 			<text v-else class="compat-tip">还没有登记设备，先去「我的设备」登记</text>
 
@@ -97,7 +102,9 @@
 		</view>
 
 		<!-- 5.6 风险告知(B-5 · 计划 §4.14):按 risk_level 分档展示 -->
-		<view class="risk-box" v-if="risk">
+		<view v-if="riskLoading" class="risk-box">安全告知加载中…</view>
+		<view v-else-if="riskError" class="risk-box" @click="loadRisk(productId)">安全告知加载失败，点此重试</view>
+		<view class="risk-box" v-else-if="risk">
 			<view class="risk-head">
 				<text class="risk-label" :class="'lv-' + (risk.risk_level || 'unknown')">{{ risk.label }}</text>
 				<text class="risk-title">安全告知</text>
@@ -175,6 +182,7 @@
 
 <script>
 	import { productApi, skillApi, deviceApi, reviewApi, riskApi, skillCatalogApi } from '@/utils/api'
+	import { productSkillPrice } from '@/utils/skill-market'
 	import { submitSkillReport } from '@/utils/report'
 	import { TOKEN_KEY } from '@/utils/config'
 	import NavBar from '@/components/NavBar.vue'
@@ -187,16 +195,23 @@
 				productId: null,
 				// B-16:加载失败如实报错(不再用 mock 兜底冒充真实技能)
 				loadError: '',
+				detailLoading: true,
+				detailSequence: 0,
 				// B-16:发布历史(版本/发布通道/交付通道/变更日志)
 				versions: [],
 				// 兼容性校验(v3.4):选设备 → 后端判定(含"未知"降级提示)
 				devices: [],
 				deviceLoadError: '',
+				deviceLoginRequired: false,
 				pickedDeviceId: '',
 				compat: null,
 				compatLoading: false,
 				// 风险告知(B-5):分档文案 + high 风险逐条勾选留痕
 				risk: null,
+				riskLoading: false,
+				riskError: '',
+				riskSequence: 0,
+				buyChecking: false,
 				showRiskModal: false,
 				riskChecked: {},
 				riskSubmitting: false,
@@ -204,6 +219,9 @@
 				reviewRating: 5,
 				reviewText: '',
 				reviewSubmitting: false,
+				reviewLoading: false,
+				reviewError: '',
+				reviewSequence: 0,
 				skillInfo: {
 					name: '加载中...',
 					rating: '',
@@ -218,11 +236,13 @@
 			}
 		},
 		onLoad(options) {
-			this.skillId = options.skillId || '20'
+			this.skillId = options.productId || options.skillId || ''
 			this.productId = options.productId || null
 			this.loadSkillData(this.skillId)
 			this.loadDevices()
 		},
+		onUnload() { this.detailSequence++; this.reviewSequence++; this.riskSequence++ },
+		onShow() { if (this.deviceLoginRequired && uni.getStorageSync(TOKEN_KEY)) this.loadDevices() },
 		computed: {
 			// 试用按钮(B-3):必须已选设备、兼容、且命中 agent 在线通道。
 			// 判定口径与后端一致(后端还会再校验一遍,前端只是不展示注定被拒的按钮)。
@@ -232,7 +252,7 @@
 			},
 			// B-16:当前版本 = 最新一条已发布版本(与后端 RiskDisclosureService 同口径)
 			currentVersion() {
-				return this.versions.find(v => v.status === 'published') || this.versions[0] || null
+				return this.versions.find(v => v.status === 'published') || null
 			}
 		},
 		methods: {
@@ -242,18 +262,25 @@
 			//   现在与「我的设备」列表同一做法:置错误态 + 可重试,不拿假数据遮住故障。
 			async loadSkillData(id) {
 				const pid = this.productId || id
-				this.loadError = ''
-				if (!pid) { this.loadError = '缺少技能标识'; return }
+				const sequence = ++this.detailSequence
+				this.loadError = ''; this.detailLoading = true; this.versions = []; this.risk = null
+				if (!/^[1-9]\d*$/.test(String(pid || ''))) { this.loadError = '缺少有效的技能标识'; this.detailLoading = false; return }
 				try {
-					const res = await productApi.getProductDetail(pid)
+					const [res, versionRes] = await Promise.all([productApi.getProductDetail(pid), skillCatalogApi.versions(pid)])
+					if (sequence !== this.detailSequence) return
+					const versions = versionRes && versionRes.data
+					if (!Array.isArray(versions) || !versions.some(v => v.status === 'published')) throw new Error('该技能没有可购买的发布版本')
+					this.versions = versions
 					const p = (res && (res.data || res)) || null
 					if (!p || !p.name) throw new Error('该技能不存在或已下架')
+					const price = productSkillPrice(p)
+					if (price === null) throw new Error('技能价格暂不可用，请稍后重试')
 					this.productId = pid
 					this.skillInfo = {
 						name: p.name,
-						rating: (p.rating || '') + '',
-						price: p.price || 0,
-						originalPrice: p.special_price || 0,
+						rating: Number(p.ratings?.total) > 0 ? String(p.ratings.average) : '',
+						price,
+						originalPrice: 0,
 						desc: p.short_description || '',
 						served: '',
 						images: this.normalizeImages(p.images || []),
@@ -262,25 +289,16 @@
 					}
 					this.loadReviews(pid)
 					this.loadRisk(pid)
-					this.loadVersions(pid)
 				} catch (e) {
 					console.warn('[jineng] 技能详情加载失败', e)
-					this.loadError = (e && e.message) || '加载失败'
-				}
+					if (sequence === this.detailSequence) this.loadError = (e && e.message) || '加载失败'
+				} finally { if (sequence === this.detailSequence) this.detailLoading = false }
 			},
 			normalizeImages(images) {
 				return (images || []).map(i => (typeof i === 'string' ? i : (i && i.url) || '')).filter(Boolean)
 			},
 			// B-16:发布历史 + 通道标识。拿不到就不展示 —— 版本信息**不能编**。
-			async loadVersions(pid) {
-				try {
-					const res = await skillCatalogApi.versions(pid)
-					this.versions = (res && Array.isArray(res.data)) ? res.data : []
-				} catch (e) {
-					console.warn('[jineng] 版本历史加载失败', e)
-					this.versions = []
-				}
-			},
+
 			// 交付通道 → 人话(与 D2 三通道一致)
 			channelLabel(c) {
 				if (c === 'agent') return '自动下发'
@@ -290,8 +308,11 @@
 			},
 			// 评价:复用 Bagisto ProductReview 接口
 			async loadReviews(pid) {
+				const sequence = ++this.reviewSequence
+				this.reviewLoading = true; this.reviewError = ''
 				try {
 					const res = await reviewApi.list(pid)
+					if (sequence !== this.reviewSequence || String(pid) !== String(this.productId)) return
 					const rows = (res && res.data) || []
 					this.skillInfo = {
 						...this.skillInfo,
@@ -304,10 +325,13 @@
 				} catch (e) {
 					// 评价拉不到只影响「用户评价」一栏,不阻断详情 —— 留 warn 不静默
 					console.warn('[jineng] 评价加载失败', e)
-				}
+					if (sequence === this.reviewSequence) this.reviewError = (e && e.message) || '评价加载失败'
+				} finally { if (sequence === this.reviewSequence) this.reviewLoading = false }
 			},
 			async loadDevices() {
 				this.deviceLoadError = ''
+				this.deviceLoginRequired = !uni.getStorageSync(TOKEN_KEY)
+				if (this.deviceLoginRequired) { this.devices = []; return }
 				try {
 					const res = await deviceApi.list()
 					this.devices = (res && Array.isArray(res.data)) ? res.data : []
@@ -316,9 +340,11 @@
 					//   现在置错误标记,由模板的错误提示承载(可点重试)。
 					console.warn('[jineng] 设备列表加载失败', e)
 					this.deviceLoadError = (e && e.message) || '加载失败'
+					this.deviceLoginRequired = !uni.getStorageSync(TOKEN_KEY)
 					this.devices = []
 				}
 			},
+			loginForDevices() { uni.switchTab({ url: '/pages/mine/index' }) },
 			// 提交评价:title/comment/rating 必填(用评论文本作 title 以满足契约)
 			async submitReview() {
 				if (!this.productId) return
@@ -353,14 +379,18 @@
 			// 风险告知(B-5):按 manifest.safety.risk_level 拉分档文案。拿不到就不展示 ——
 			// 风险信息**不能编**(编一个"低风险"比不展示更坏)。
 			async loadRisk(productId) {
+				const sequence = ++this.riskSequence
+				this.riskLoading = true; this.riskError = ''
 				try {
 					const res = await riskApi.profile(productId)
+					if (sequence !== this.riskSequence || String(productId) !== String(this.productId)) return
 					this.risk = (res && res.data) || null
+					if (!this.risk) throw new Error('安全告知暂不可用')
 					this.riskChecked = {}
 				} catch (e) {
 					console.warn('[jineng] 风险告知加载失败', e)
-					this.risk = null
-				}
+					if (sequence === this.riskSequence) { this.risk = null; this.riskError = (e && e.message) || '安全告知加载失败' }
+				} finally { if (sequence === this.riskSequence) this.riskLoading = false }
 			},
 			// 试用(B-3 · D4):发放 20 分钟在线授权并直接下发;到期由平台定时回收。
 			async startTrial() {
@@ -407,11 +437,15 @@
 			handlePrice() {
 				uni.showModal({
 					title: '价格',
-					content: `「${this.skillInfo.name}」价格：￥${this.skillInfo.price}（一次买断），原价 ￥${this.skillInfo.originalPrice}\n点击「立即开通」即可购买并确认订单。`,
+					content: `「${this.skillInfo.name}」价格：￥${this.skillInfo.price}（一次买断）\n点击「立即开通」即可购买并确认订单。`,
 					showCancel: false
 				})
 			},
-			handleBuy() {
+			async handleBuy() {
+				if (this.detailLoading || this.loadError || !this.currentVersion || this.buyChecking) return
+				this.buyChecking = true
+				try { await this.loadRisk(this.productId) } finally { this.buyChecking = false }
+				if (!this.risk) { uni.showToast({ title: '使用与风险说明暂不可用，请稍后重试', icon: 'none' }); return }
 				// 高风险技能(B-5):先弹分级告知,逐条勾选并留痕后才放行。
 				// 勾选留痕是"告知"的凭据 —— 不能只弹个"确定"就当告知过了。
 				if (this.risk && this.risk.require_checklist) {
@@ -454,15 +488,16 @@
 				}
 			},
 			goCheckout() {
+				if (this.detailLoading || this.loadError || !this.currentVersion) return
 				// 开通 → 进入确认订单（复用商品购买下单逻辑）
 				const skill = this.skillInfo
 				const url =
-					`/pages/order/checkout?productId=${this.skillId}` +
+					`/pages/order/checkout?productId=${this.productId}` +
 					`&name=${encodeURIComponent(skill.name)}` +
 					`&price=${encodeURIComponent(String(skill.price || 0))}` +
 					`&icon=${encodeURIComponent('🧠')}` +
 					`&bg=${encodeURIComponent('#E8F0FE')}` +
-					`&scene=${encodeURIComponent('技能服务')}&type=buy&qty=1`
+					`&scene=${encodeURIComponent('技能服务')}&type=skill&qty=1`
 				uni.navigateTo({ url })
 			}
 		}
@@ -470,6 +505,8 @@
 </script>
 
 <style lang="scss" scoped>
+	.skill-cover-placeholder { height: 240rpx; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14rpx; background: #eef3ff; color: #64748b; font-size: 24rpx; }
+	.skill-cover-placeholder text:first-child { font-size: 64rpx; }
 	.page-container {
 		display: flex;
 		flex-direction: column;
