@@ -262,6 +262,23 @@ final class ApiErrorCode
      */
     public const EVENT_ORGANIZER_UNVERIFIED = 'EVENT_ORGANIZER_UNVERIFIED';
 
+    /**
+     * G1-04：活动时间非法 —— 时区不是合法 IANA 名称、结束早于开始、
+     * 起止只给了一半，或平台活动缺少必填时间。
+     *
+     * 客户端处置是“修正时间或改为待定”，不是重试；与来源/主体缺失分开登记，
+     * 否则前端会把时间错误引导到补主办方资料上。
+     */
+    public const EVENT_TIME_INVALID = 'EVENT_TIME_INVALID';
+
+    /**
+     * G1-04：当前状态不允许该修订/指针动作 —— 非 draft revision 改内容、
+     * published 指针在本批提前写入、或试图删除审计证据。
+     *
+     * 客户端处置是刷新状态后按合法动作重做（例如新建 revision_no + 1），不重放原请求。
+     */
+    public const EVENT_TRANSITION_INVALID = 'EVENT_TRANSITION_INVALID';
+
     // ── AI 召唤 ──────────────────────────────────────────────────────────
 
     public const SUMMON_QUERY_REQUIRED = 'SUMMON_QUERY_REQUIRED';

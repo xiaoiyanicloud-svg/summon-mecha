@@ -1,5 +1,7 @@
 # G1-03 主办方与活动来源 · 迁移与验证证据
 
+> 后续变更：G1-04 已新增 `event_revisions` / `event_rule_versions` 与 events 双 revision 指针 FK。本文中“无 revision / 无指针 FK / event_revisions 不存在”等表述仅指 G1-03 完成时状态。
+
 - **日期**：2026-10-19
 - **验证角色**：独立验证工程师（Codex 负责最终验收）
 - **验证范围**：ADR-0001 G1-D01 / G1-D05 / §4.2 / §4.4；`ecosystem_organizers`、`events.source_type/platform_role/organizer_id`、`OrganizerService` / `EventSourceService` / `EventSourceValidator` 行为

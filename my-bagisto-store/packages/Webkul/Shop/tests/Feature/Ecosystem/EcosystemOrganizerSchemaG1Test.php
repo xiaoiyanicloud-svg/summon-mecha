@@ -14,7 +14,7 @@ use Webkul\Shop\Models\Event;
  *   · `name(64)` 前缀索引（SUB_PART=64），不是普通全列索引；
  *   · `events` 三列、两个索引、一个 RESTRICT 外键；
  *   · 旧 `events.organizer` 自由文本**不会**自动填成来源（三方不推定）；
- *   · `event_registrations` 保持不变；G1-04/05 的表一个都不能提前出现；
+ *   · `event_registrations` 保持不变；G1-04 的 revision 表已建，G1-05/06 的表仍不得提前出现；
  *   · 迁移后四个公开/报名开关仍为 false。
  *
  * 所有用例继承 ShopTestCase → DatabaseTransactions，不做 migrate:fresh / seed。
@@ -281,10 +281,14 @@ it('G1-03 · event_registrations 结构与 G0 收口时完全一致', function (
     expect($actual)->toBe($expected);
 });
 
-it('G1-03 · 不提前创建 event_revisions / 内容域表', function () {
-    expect(Schema::hasTable('event_revisions'))->toBeFalse()
+it('G1-04 · event_revisions / event_rule_versions 已建，内容域与媒体表仍未提前创建', function () {
+    // G1-04 只新增 revision 与规则版本两张表；内容域（G1-05）与媒体域（G1-06）
+    // 必须继续缺席 —— 提前建空表会让后续迁移误以为前置已完成。
+    expect(Schema::hasTable('event_revisions'))->toBeTrue()
+        ->and(Schema::hasTable('event_rule_versions'))->toBeTrue()
         ->and(Schema::hasTable('content_posts'))->toBeFalse()
-        ->and(Schema::hasTable('content_revisions'))->toBeFalse();
+        ->and(Schema::hasTable('content_revisions'))->toBeFalse()
+        ->and(Schema::hasTable('ecosystem_media'))->toBeFalse();
 });
 
 it('G1-03 · 迁移后四个公开/报名开关仍为 false', function () {

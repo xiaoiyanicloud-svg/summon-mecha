@@ -67,6 +67,7 @@ class EventWriteService
 
     public function __construct(
         private readonly EventSourceValidator $sourceValidator,
+        private readonly RevisionPointerValidator $pointerValidator,
     ) {}
 
     /**
@@ -109,6 +110,12 @@ class EventWriteService
             // 防止通过本入口绕过 EventSourceService 直接写入半个来源。
             if ($locked->isDirty(['source_type', 'platform_role', 'organizer_id'])) {
                 $this->sourceValidator->assertDraftAssignment($locked);
+            }
+
+            // G1-04：revision 指针不是普通可写字段。
+            // published 指针本批一律拒绝；working 指针必须是同活动 draft revision。
+            if ($locked->isDirty(['published_revision_id', 'working_revision_id'])) {
+                $this->pointerValidator->assertAssignable($locked);
             }
 
             // 真实变更才递增；重复提交同一份表单是 no-op。

@@ -86,4 +86,37 @@ class Event extends Model
     {
         return $this->belongsTo(EcosystemOrganizer::class, 'organizer_id');
     }
+
+    /**
+     * 全部修订版本（G1-04）。历史 revision 永不删除，按 revision_no 升序读取。
+     */
+    public function revisions()
+    {
+        return $this->hasMany(EventRevision::class, 'event_id');
+    }
+
+    /**
+     * 规则版本（G1-04）。报名若绑定规则（G2），必须绑定具体 version_no 与指纹。
+     */
+    public function ruleVersions()
+    {
+        return $this->hasMany(EventRuleVersion::class, 'event_id');
+    }
+
+    /**
+     * 公开版本指针。G1-04 只建外键，写入/切换由 G1-08 发布状态机负责。
+     */
+    public function publishedRevision()
+    {
+        return $this->belongsTo(EventRevision::class, 'published_revision_id');
+    }
+
+    /**
+     * 工作版本指针。必须是同一活动且 review_state=draft 的 revision
+     * （由 RevisionPointerValidator 在写入时校验）。
+     */
+    public function workingRevision()
+    {
+        return $this->belongsTo(EventRevision::class, 'working_revision_id');
+    }
 }

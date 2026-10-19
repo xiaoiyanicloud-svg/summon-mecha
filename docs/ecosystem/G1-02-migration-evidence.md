@@ -1,6 +1,6 @@
 # G1-02 迁移与验证证据
 
-> 后续变更：G1-03 已按 ADR 在 `events` 增加 `fk_events_organizer_id`。本文中“events FK 数=0”仅指 G1-02 完成时状态，不代表当前最终 schema。
+> 后续变更：G1-03 已按 ADR 在 `events` 增加 `fk_events_organizer_id`；G1-04 又新增 `event_revisions` / `event_rule_versions` 与 events 双 revision 指针 FK。本文中的“无 revision/FK”仅指 G1-02 完成时状态，不代表当前最终 schema。
 
 - **日期**：2026-10-19
 - **验证角色**：独立验证工程师（Codex 负责最终验收）

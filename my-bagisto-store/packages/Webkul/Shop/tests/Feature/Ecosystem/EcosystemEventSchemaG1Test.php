@@ -14,7 +14,7 @@ use function Pest\Laravel\getJson;
  *   · 新列的类型 / NULL / 默认值逐字段比对；
  *   · 索引按名字与列序比对（迁移列名写错时 Schema 会静默建在别的列上）；
  *   · 旧列、旧表 `event_registrations` 一个都不能变；
- *   · 新增指针列**没有** FK（G1-04 建 event_revisions 后才补）；
+ *   · revision 指针列在 G1-04 已补齐外键（指向 event_revisions，RESTRICT/RESTRICT）；
  *   · 迁移后公开读取三开关仍为 false，且接口行为不变。
  *
  * 所有用例继承 ShopTestCase → DatabaseTransactions，不做 migrate:fresh / truncate / seed。
@@ -85,6 +85,26 @@ function g1ForeignKeysOn(string $table): array
         ->all();
 }
 
+function g1ForeignKey(string $table, string $constraint): ?object
+{
+    return DB::selectOne(
+        'SELECT kcu.COLUMN_NAME AS column_name,
+                kcu.REFERENCED_TABLE_NAME AS referenced_table_name,
+                kcu.REFERENCED_COLUMN_NAME AS referenced_column_name,
+                rc.DELETE_RULE AS delete_rule,
+                rc.UPDATE_RULE AS update_rule
+           FROM information_schema.REFERENTIAL_CONSTRAINTS rc
+           JOIN information_schema.KEY_COLUMN_USAGE kcu
+             ON kcu.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
+            AND kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+            AND kcu.TABLE_NAME = rc.TABLE_NAME
+          WHERE rc.CONSTRAINT_SCHEMA = DATABASE()
+            AND rc.TABLE_NAME = ?
+            AND rc.CONSTRAINT_NAME = ?',
+        [$table, $constraint]
+    );
+}
+
 it('G1-02 · events 新列的类型 / NULL / 默认值符合 ADR 字段字典', function () {
     $expectations = [
         // column => [type, nullable, default]
@@ -128,13 +148,26 @@ it('G1-02 · events 五个新索引按名字和列序存在', function () {
     }
 });
 
-it('G1-02 · revision 指针列仍没有外键（G1-04 才建 event_revisions）', function () {
-    // 只约束两个 revision 指针列。G1-03 已为 organizer_id 建了 FK，
-    // 断言“events 零外键”会把后续合法外键（G1-03/G1-04）一起误伤。
-    $foreignKeys = g1ForeignKeysOn('events');
+it('G1-04 · revision 指针列外键指向 event_revisions 且为 RESTRICT / RESTRICT', function () {
+    // G1-02 只建列；G1-04 建好 event_revisions 后必须补上外键。
+    // 断言两个 FK 的真实元数据（而不只是“存在外键”），防止指向错表或用了 CASCADE。
+    foreach ([
+        'published_revision_id' => 'fk_events_published_revision_id',
+        'working_revision_id'   => 'fk_events_working_revision_id',
+    ] as $column => $constraint) {
+        $foreignKey = g1ForeignKey('events', $constraint);
 
-    expect($foreignKeys)->not->toContain('published_revision_id')
-        ->and($foreignKeys)->not->toContain('working_revision_id');
+        expect($foreignKey)->not->toBeNull()
+            ->and($foreignKey->column_name)->toBe($column)
+            ->and($foreignKey->referenced_table_name)->toBe('event_revisions')
+            ->and($foreignKey->referenced_column_name)->toBe('id')
+            ->and(strtoupper((string) $foreignKey->delete_rule))->toBe('RESTRICT')
+            ->and(strtoupper((string) $foreignKey->update_rule))->toBe('RESTRICT');
+    }
+
+    expect(g1ForeignKeysOn('events'))
+        ->toContain('published_revision_id')
+        ->toContain('working_revision_id');
 });
 
 it('G1-02 · events 旧列一个都不少，旧默认值不被改写', function () {

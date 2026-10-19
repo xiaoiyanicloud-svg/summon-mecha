@@ -59,17 +59,7 @@ class EventSourceValidator
             throw $this->sourceRequired('活动来源三字段（source_type / platform_role / organizer_id）必须同时填写或同时留空。');
         }
 
-        $this->assertSourceType($sourceType);
-        $this->assertPlatformRole($platformRole);
-
-        // 组合约束（ADR G1-D01）。MySQL 5.7 不用 CHECK，全部在应用层强制。
-        if ($sourceType === 'external' && $platformRole !== 'directory_only') {
-            throw $this->sourceRequired('source_type=external 时 platform_role 只能是 directory_only。');
-        }
-
-        if ($sourceType === 'platform' && $platformRole === 'directory_only') {
-            throw $this->sourceRequired('source_type=platform 时 platform_role 不得为 directory_only。');
-        }
+        $this->assertSourceRoleCombination($sourceType, $platformRole);
 
         $organizer = EcosystemOrganizer::query()->find($organizerId);
 
@@ -94,6 +84,35 @@ class EventSourceValidator
                 $organizerId,
                 (string) $organizer->status,
             ));
+        }
+    }
+
+    /**
+     * 只校验 source_type / platform_role 的枚举与组合（ADR G1-D01）。
+     *
+     * 单独暴露给 revision / 规则等服务：它们在写入快照前就必须确认
+     * “外部来源只能是目录角色、平台来源不得是目录角色”，不能因为
+     * 活动当前来源已校验过就跳过快照侧的组合校验。
+     *
+     * NULL 容忍：完整性（三字段同时为空或同时齐全）由 `assertDraftValues` 负责，
+     * 这里传 NULL 只跳过组合判断，但非 NULL 的未知枚举仍会被拒绝。
+     */
+    public function assertSourceRoleCombination(?string $sourceType, ?string $platformRole): void
+    {
+        $this->assertSourceType($sourceType);
+        $this->assertPlatformRole($platformRole);
+
+        if ($sourceType === null || $platformRole === null) {
+            return;
+        }
+
+        // 组合约束（ADR G1-D01）。MySQL 5.7 不用 CHECK，全部在应用层强制。
+        if ($sourceType === 'external' && $platformRole !== 'directory_only') {
+            throw $this->sourceRequired('source_type=external 时 platform_role 只能是 directory_only。');
+        }
+
+        if ($sourceType === 'platform' && $platformRole === 'directory_only') {
+            throw $this->sourceRequired('source_type=platform 时 platform_role 不得为 directory_only。');
         }
     }
 
