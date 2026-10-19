@@ -1,6 +1,6 @@
 # G1-03 主办方与活动来源 · 迁移与验证证据
 
-> 后续变更：G1-04 已新增 `event_revisions` / `event_rule_versions` 与 events 双 revision 指针 FK。本文中“无 revision / 无指针 FK / event_revisions 不存在”等表述仅指 G1-03 完成时状态。
+> 后续变更：G1-04 已新增 `event_revisions` / `event_rule_versions` 与 events 双 revision 指针 FK；G1-05 又新增 `content_posts` / `content_revisions` / `content_sources`。本文中“无 revision / 无内容域 / 无指针 FK”等表述仅指 G1-03 完成时状态。
 
 - **日期**：2026-10-19
 - **验证角色**：独立验证工程师（Codex 负责最终验收）

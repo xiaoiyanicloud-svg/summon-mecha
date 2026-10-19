@@ -1,5 +1,7 @@
 # G1-04 活动修订与规则版本 · 迁移与验证证据
 
+> 后续变更：G1-05 已新增 `content_posts` / `content_revisions` / `content_sources`。本文中“内容域未建”仅指 G1-04 完成时状态。
+
 - **日期**：2026-10-19
 - **验证方式**：Codex 人工独立验收（Claude 验证会话因余额中断后接手）
 - **验证范围**：ADR-0001 §4.2 / §4.3 / §4.5、G1-D03 / G1-D04、`event_revisions`、`event_rule_versions`、`events` 双 revision 指针、内容指纹、草稿服务与不可变守卫

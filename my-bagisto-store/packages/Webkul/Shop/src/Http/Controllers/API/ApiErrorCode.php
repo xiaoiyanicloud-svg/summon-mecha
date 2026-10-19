@@ -279,6 +279,37 @@ final class ApiErrorCode
      */
     public const EVENT_TRANSITION_INVALID = 'EVENT_TRANSITION_INVALID';
 
+    /**
+     * G1-05：slug 已被现有文章占用，或文章已撤稿但 slug 永久保留。
+     *
+     * 客户端处置是换一个 slug，**不得**覆盖、静默加后缀或复用撤稿 slug。
+     */
+    public const CONTENT_SLUG_TAKEN = 'CONTENT_SLUG_TAKEN';
+
+    /**
+     * G1-05：内容来源不完整或权利依据不匹配 —— 缺来源名、原文 URL、
+     * 核验时间或权利依据，或 `source_type` 与 `rights_basis` 组合非法。
+     *
+     * 客户端处置是补齐来源后重新提交，不是重试原请求。
+     */
+    public const CONTENT_SOURCE_REQUIRED = 'CONTENT_SOURCE_REQUIRED';
+
+    /**
+     * G1-05：内容乐观并发失败 —— 调用方 `expected_row_version` 与库内不一致。
+     *
+     * 与 `EVENT_REVISION_CONFLICT` 同属 409 的“重取后人工合并”，但域不同，
+     * 前端与后台据此定位到文章而不是活动。
+     */
+    public const CONTENT_REVISION_CONFLICT = 'CONTENT_REVISION_CONFLICT';
+
+    /**
+     * G1-05：内容状态不允许该动作 —— 非 draft 文章/修订被编辑、
+     * 首次发布后改 slug、G1-05 提前写 published 指针，或删除审计证据。
+     *
+     * 客户端处置是刷新状态后按合法动作重做（例如新建 revision_no + 1），不重放。
+     */
+    public const CONTENT_TRANSITION_INVALID = 'CONTENT_TRANSITION_INVALID';
+
     // ── AI 召唤 ──────────────────────────────────────────────────────────
 
     public const SUMMON_QUERY_REQUIRED = 'SUMMON_QUERY_REQUIRED';
