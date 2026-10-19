@@ -126,8 +126,8 @@ Route::group(['prefix' => 'api'], function () {
     // 赛事(Event):生态中心「赛事活动」tab + 真实报名(平台级闭环)
     Route::controller(EventController::class)->prefix('events')->group(function () {
         Route::get('', 'index')->name('shop.api.events.index');
-        Route::get('{id}', 'show')->name('shop.api.events.show');
-        Route::post('{id}/register', 'register')->name('shop.api.events.register')->middleware(['api.customer']);
+        Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.events.show');
+        Route::post('{id}/register', 'register')->whereNumber('id')->name('shop.api.events.register')->middleware(['api.customer']);
     });
 
     // 场景(Scene):机器页「场景」Tab 卡片列表 + TOB 场景详情(后台维护图 + 描述)

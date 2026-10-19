@@ -49,94 +49,105 @@
 
       <!-- ========== 赛事活动 ========== -->
       <view v-show="currentTab === 'event'" class="tab-panel">
-        <view v-if="!selectedEvent" class="event-list">
-          <view class="event-card" v-for="item in eventList" :key="item.id" @click="showEventDetail(item)">
-            <view class="event-icon-area" :style="{ backgroundColor: item.bg }">
-              <text class="event-icon">{{ item.icon }}</text>
-            </view>
-            <view class="event-info">
-              <text class="event-name">{{ item.name }}</text>
-              <text class="event-meta">{{ item.dateShort }} · {{ item.city }}</text>
-            </view>
-            <view class="event-actions">
-              <view class="action-btn primary">查看</view>
+        <state-view
+          v-if="!selectedEventId"
+          :loading="eventLoading"
+          :error="eventError"
+          :empty="!eventList.length"
+          empty-icon="🏟️"
+          empty-text="暂无赛事"
+          empty-hint="赛事发布后会在这里展示。"
+          compact
+          @retry="loadEvents"
+        >
+          <view class="event-list">
+            <view class="event-card" v-for="item in eventList" :key="item.id" @click="showEventDetail(item.id)">
+              <view class="event-icon-area" :style="{ backgroundColor: item.bg }">
+                <text class="event-icon">{{ item.icon }}</text>
+              </view>
+              <view class="event-info">
+                <text class="event-name">{{ item.name }}</text>
+                <text class="event-meta">{{ item.dateShort }} · {{ item.city }}</text>
+              </view>
+              <view class="event-actions">
+                <view class="action-btn primary">查看</view>
+              </view>
             </view>
           </view>
-        </view>
+        </state-view>
 
         <view v-else class="event-detail-view">
-          <view class="detail-back-btn" @click="closeDetail">
+          <view class="detail-back-btn" @click="closeEventDetail">
             <text class="detail-back-icon">‹</text>
             <text class="detail-back-text">返回列表</text>
           </view>
 
-          <view class="detail-hero" :style="{ backgroundColor: selectedEvent.bg }">
-            <text class="detail-hero-icon">{{ selectedEvent.icon }}</text>
-            <view class="detail-status-tag" :class="getStatusClass(selectedEvent.status)">
-              {{ getStatusText(selectedEvent.status) }}
-            </view>
-          </view>
-
-          <view class="detail-info-area">
-            <text class="detail-name">{{ selectedEvent.name }}</text>
-
-            <view class="detail-info-grid">
-              <view class="detail-info-item">
-                <text class="detail-info-label">📅 时间</text>
-                <text class="detail-info-value">{{ selectedEvent.date }}</text>
-              </view>
-              <view class="detail-info-item">
-                <text class="detail-info-label">📍 地点</text>
-                <text class="detail-info-value">{{ selectedEvent.location }}</text>
-              </view>
-              <view class="detail-info-item">
-                <text class="detail-info-label">🏢 主办方</text>
-                <text class="detail-info-value">{{ selectedEvent.organizer }}</text>
-              </view>
-              <view class="detail-info-item">
-                <text class="detail-info-label">📋 类型</text>
-                <text class="detail-info-value">{{ selectedEvent.type }}</text>
-              </view>
-              <view class="detail-info-item">
-                <text class="detail-info-label">🔥 热度</text>
-                <text class="detail-info-value">{{ selectedEvent.hot }}/100</text>
-              </view>
-              <view class="detail-info-item">
-                <text class="detail-info-label">👥 参赛队伍</text>
-                <text class="detail-info-value">{{ selectedEvent.teams }} 支</text>
+          <state-view
+            :loading="eventDetailLoading"
+            :error="eventDetailError"
+            :empty="!selectedEvent"
+            empty-icon="🏟️"
+            empty-text="赛事不存在或已下线"
+            compact
+            @retry="loadEventDetail"
+          >
+            <view class="detail-hero" :style="{ backgroundColor: selectedEvent.bg }">
+              <text class="detail-hero-icon">{{ selectedEvent.icon }}</text>
+              <view class="detail-status-tag" :class="getStatusClass(selectedEvent.status)">
+                {{ getStatusText(selectedEvent.status) }}
               </view>
             </view>
 
-            <view class="detail-section">
-              <text class="detail-section-title">📋 赛事简介</text>
-              <text class="detail-section-content">{{ selectedEvent.detail }}</text>
-            </view>
+            <view class="detail-info-area">
+              <text class="detail-name">{{ selectedEvent.name }}</text>
 
-            <view class="detail-section" v-if="selectedEvent.prize">
-              <text class="detail-section-title">🏆 奖项设置</text>
-              <text class="detail-section-content">{{ selectedEvent.prize }}</text>
-            </view>
-
-            <view class="detail-section" v-if="selectedEvent.schedule">
-              <text class="detail-section-title">⏰ 赛程安排</text>
-              <text class="detail-section-content">{{ selectedEvent.schedule }}</text>
-            </view>
-
-            <view class="detail-section" v-if="selectedEvent.history">
-              <text class="detail-section-title">📜 往届回顾</text>
-              <text class="detail-section-content">{{ selectedEvent.history }}</text>
-            </view>
-
-            <view class="detail-actions">
-              <view class="detail-btn primary" @click="registerEvent(selectedEvent)">📝 立即报名</view>
-              <view class="detail-btn outline" @click="toggleFavEvent(selectedEvent)">
-                {{ selectedEvent.fav ? '❤️ 已收藏' : '🤍 收藏' }}
+              <view class="detail-info-grid">
+                <view class="detail-info-item">
+                  <text class="detail-info-label">📅 时间</text>
+                  <text class="detail-info-value">{{ selectedEvent.date }}</text>
+                </view>
+                <view class="detail-info-item">
+                  <text class="detail-info-label">📍 地点</text>
+                  <text class="detail-info-value">{{ selectedEvent.location }}</text>
+                </view>
+                <view class="detail-info-item">
+                  <text class="detail-info-label">🏢 主办方</text>
+                  <text class="detail-info-value">{{ selectedEvent.organizer }}</text>
+                </view>
+                <view class="detail-info-item">
+                  <text class="detail-info-label">📋 类型</text>
+                  <text class="detail-info-value">{{ selectedEvent.type }}</text>
+                </view>
               </view>
-              <view class="detail-btn share" @click="shareEvent(selectedEvent)">↗️ 分享</view>
-            </view>
 
-            <view style="height: 40rpx;"></view>
-          </view>
+              <view class="detail-section">
+                <text class="detail-section-title">📋 赛事简介</text>
+                <text class="detail-section-content">{{ selectedEvent.detail }}</text>
+              </view>
+
+              <view class="detail-section" v-if="selectedEvent.prize">
+                <text class="detail-section-title">🏆 奖项设置</text>
+                <text class="detail-section-content">{{ selectedEvent.prize }}</text>
+              </view>
+
+              <view class="detail-section" v-if="selectedEvent.schedule">
+                <text class="detail-section-title">⏰ 赛程安排</text>
+                <text class="detail-section-content">{{ selectedEvent.schedule }}</text>
+              </view>
+
+              <view class="detail-section" v-if="selectedEvent.history">
+                <text class="detail-section-title">📜 往届回顾</text>
+                <text class="detail-section-content">{{ selectedEvent.history }}</text>
+              </view>
+
+              <view class="detail-actions">
+                <view class="detail-btn primary" v-if="selectedEventRegistration.enabled" @click="registerEvent(selectedEvent)">📝 立即报名</view>
+                <view class="detail-reg-reason" v-else>ℹ️ {{ selectedEventRegistration.reason }}</view>
+              </view>
+
+              <view style="height: 40rpx;"></view>
+            </view>
+          </state-view>
         </view>
       </view>
 
@@ -161,7 +172,9 @@
 
 <script>
 import Dongtai from '@/components/shouye/dongtai.vue'
+import StateView from '@/components/StateView.vue'
 import { productApi, categoryApi, eventApi } from '@/utils/api'
+import { normalizeEvent, normalizeEventList, eventRegistrationState, eventRegistrationFeedback } from '@/utils/ecosystem-events'
 import SkillMarket from '@/components/SkillMarket.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import { BASE_URL } from '@/utils/config'
@@ -171,12 +184,18 @@ const CATALOG_TTL = 5 * 60 * 1000;
 
 export default {
   name: 'EcoCenter',
-  components: { Dongtai, SkillMarket },
+  components: { Dongtai, SkillMarket, StateView },
   data() {
     return {
       currentTab: 'skill',
       accessoryCategory: 'all',
       selectedEvent: null,
+      selectedEventId: null,
+      eventList: [],
+      eventLoading: false,
+      eventError: '',
+      eventDetailLoading: false,
+      eventDetailError: '',
 
       // v3.4:技能搜索(服务端)—— skillResults 为 null 表示"未搜索,显示全部"
 
@@ -187,7 +206,7 @@ export default {
 
 
       accessoryCatalog: [],
-      // 赛事:后台 events 表数据(拉取失败保留 mock 兜底);报名弹窗
+      // 赛事:只展示后台 events 表数据;空/错/格式异常分别交给 StateView
       showEventReg: false,
       regEventId: null,
       eventRegForm: { name: '', phone: '' },
@@ -211,169 +230,6 @@ export default {
         { id: 14, name: '迷彩涂装', price: '329', icon: '🎨', category: 'skin' },
         { id: 15, name: '重装护甲', price: '799', icon: '🛡️', category: 'fight' }
       ],
-
-      eventList: [
-        {
-          id: 1,
-          name: '机甲格斗大赛',
-          status: 'registering',
-          date: '2026年8月15日 9:00-18:00',
-          dateShort: '2026年8月15日',
-          location: '深圳国际会展中心',
-          city: '深圳',
-          organizer: '机甲格斗联盟',
-          type: '格斗竞技',
-          hot: 98,
-          teams: 32,
-          icon: '🏟️',
-          bg: '#FEF3C7',
-          detail: '2026机甲格斗大赛深圳站即将开赛！汇聚全国顶尖选手，采用3V3团队赛制，奖金池50万元。现场设有观众体验区，可亲自操控迷你格斗机器人。',
-          prize: '🏆 冠军：50万元 + 奖杯\n🥈 亚军：20万元\n🥉 季军：10万元\n🌟 最佳设计奖：5万元',
-          schedule: '📌 8月15日 9:00 开幕式\n📌 8月15日 10:00 小组赛\n📌 8月15日 14:00 半决赛\n📌 8月15日 17:00 决赛+颁奖',
-          history: '2025年首届大赛吸引60支队伍参赛，现场观众超5000人，线上直播观看量突破100万。',
-          fav: false
-        },
-        {
-          id: 2,
-          name: '机器人竞速赛',
-          status: 'upcoming',
-          date: '2026年9月1日 8:00-17:00',
-          dateShort: '2026年9月1日',
-          location: '北京亦庄机器人产业园',
-          city: '北京',
-          organizer: '中国机器人运动协会',
-          type: '竞速赛',
-          hot: 85,
-          teams: 24,
-          icon: '🏁',
-          bg: '#E8F0FE',
-          detail: '2026机器人竞速赛北京站正式开启！包含地面竞速和空中竞速两个组别，赛道总长500米，设有多种障碍关卡。',
-          prize: '🏆 冠军：10万元 + 奖牌\n🥈 亚军：5万元\n🥉 季军：3万元',
-          schedule: '📌 9月1日 8:00 选手签到\n📌 9月1日 9:00 预赛\n📌 9月1日 13:00 半决赛\n📌 9月1日 16:00 决赛',
-          history: '往届赛事吸引了来自全国50余所高校和企业队伍参与，打破了多项纪录。',
-          fav: false
-        },
-        {
-          id: 3,
-          name: '技术交流沙龙',
-          status: 'ongoing',
-          date: '2026年8月22日 14:00-18:00',
-          dateShort: '2026年8月22日',
-          location: '上海陆家嘴金融中心',
-          city: '上海',
-          organizer: '机器人产业联盟',
-          type: '行业沙龙',
-          hot: 72,
-          teams: 0,
-          icon: '💬',
-          bg: '#F0F4FA',
-          detail: '聚焦「人形机器人商业化路径」，邀请行业专家、企业高管分享最新成果与市场洞察，现场圆桌讨论+自由交流。',
-          prize: '🎁 参与即送行业报告',
-          schedule: '📌 8月22日 14:00 主题演讲\n📌 8月22日 15:30 圆桌论坛\n📌 8月22日 17:00 自由交流',
-          history: '已成功举办10届，累计参与人数超过2000人。',
-          fav: false
-        },
-        {
-          id: 4,
-          name: '高校机器人挑战',
-          status: 'registering',
-          date: '2026年8月30日 线上赛',
-          dateShort: '2026年8月30日',
-          location: '线上平台',
-          city: '线上',
-          organizer: '教育部机器人竞赛组委会',
-          type: '高校竞赛',
-          hot: 90,
-          teams: 48,
-          icon: '🎯',
-          bg: '#E8F0FE',
-          detail: '面向全国高校在校生，参赛队伍需完成自主导航、物体抓取、语音交互三项任务。优秀队伍将获实习推荐和科研资助。',
-          prize: '🏆 一等奖：科研基金 5万元\n🥈 二等奖：3万元\n🥉 三等奖：1万元\n🏅 优秀奖：精美礼品',
-          schedule: '📌 8月30日 10:00 任务发布\n📌 8月30日 14:00 提交截止\n📌 8月31日 公布结果',
-          history: '去年有超过200支队伍报名参赛，覆盖全国150所高校。',
-          fav: false
-        },
-        {
-          id: 5,
-          name: '改装工坊开放日',
-          status: 'upcoming',
-          date: '2026年9月5日 10:00-17:00',
-          dateShort: '2026年9月5日',
-          location: '广州机器人创客空间',
-          city: '广州',
-          organizer: '机器人创客空间',
-          type: '体验活动',
-          hot: 65,
-          teams: 0,
-          icon: '🔧',
-          bg: '#FEF3C7',
-          detail: '向公众免费开放！现场提供改装工具与材料，专业工程师手把手指导改装技巧。适合爱好者、极客、亲子家庭。',
-          prize: '🎁 完成作品可带走纪念品',
-          schedule: '📌 9月5日 10:00 开场介绍\n📌 10:30 改装教学\n📌 14:00 自由改装\n📌 16:30 作品展示',
-          history: '往期活动参与人数超过300人，满意度达98%。',
-          fav: false
-        },
-        {
-          id: 6,
-          name: '机器人格斗联赛',
-          status: 'ongoing',
-          date: '2026年8月-12月（全国巡回）',
-          dateShort: '2026年8月起',
-          location: '全国10个城市',
-          city: '全国巡回',
-          organizer: '全国机器人格斗联赛组委会',
-          type: '巡回联赛',
-          hot: 95,
-          teams: 120,
-          icon: '🏆',
-          bg: '#E8F0FE',
-          detail: '2026全国机器人格斗联赛覆盖深圳、北京、上海、广州、成都等10城。赛季总冠军获「机甲之王」称号及100万元奖金。',
-          prize: '🏆 总冠军：100万元 + 定制奖杯\n🥈 分站冠军：10万元\n🥉 最佳人气奖：5万元',
-          schedule: '📌 8月 深圳站\n📌 9月 北京站\n📌 10月 上海站\n📌 11月 广州站\n📌 12月 成都站（决赛）',
-          history: '联赛已成功举办三届，累计参赛队伍超过500支，已成为国内规模最大的机器人格斗赛事。',
-          fav: false
-        },
-        {
-          id: 7,
-          name: '机甲科技展',
-          status: 'upcoming',
-          date: '2026年9月18日 9:00-17:00',
-          dateShort: '2026年9月18日',
-          location: '杭州国际博览中心',
-          city: '杭州',
-          organizer: '机甲科技展组委会',
-          type: '展览',
-          hot: 78,
-          teams: 0,
-          icon: '🎪',
-          bg: '#FCE4EC',
-          detail: '大型机甲主题科技展，现场展示多款人形与四足机器人，设互动体验区与新品首发。',
-          prize: '🎫 现场扫码领门票',
-          schedule: '📌 9月18日 9:00 开幕\n📌 9月18日 10:30 新品发布\n📌 9月18日 14:00 互动体验',
-          history: '首届机甲科技展，预计观众超万人。',
-          fav: false
-        },
-        {
-          id: 8,
-          name: '机器人马拉松',
-          status: 'registering',
-          date: '2026年10月1日 8:00-16:00',
-          dateShort: '2026年10月1日',
-          location: '苏州工业园区',
-          city: '苏州',
-          organizer: '智能机器人协会',
-          type: '耐力赛',
-          hot: 82,
-          teams: 40,
-          icon: '🏃',
-          bg: '#D1F5E0',
-          detail: '参赛机器人需自主完成20公里循迹赛道，考验续航与算法稳定性。',
-          prize: '🏆 冠军：20万元\n🥈 亚军：8万元\n🥉 季军：4万元',
-          schedule: '📌 10月1日 8:00 签到\n📌 10月1日 9:00 出发\n📌 10月1日 14:00 颁奖',
-          history: '新增挑战组别，面向高校与企业开放。',
-          fav: false
-        }
-      ]
     };
   },
   computed: {
@@ -400,6 +256,10 @@ export default {
       return this.accessoryCategory === 'all'
         ? this.accessoryList
         : this.accessoryList.filter(item => item.category === this.accessoryCategory);
+    },
+    // 报名按钮只认后端 can_register + status=registering,不在前端猜。
+    selectedEventRegistration() {
+      return eventRegistrationState(this.selectedEvent);
     }
   },
   mounted() {
@@ -410,7 +270,11 @@ export default {
     switchTab(tab) {
       if (['skill', 'accessory', 'event', 'feed'].includes(tab)) {
         this.currentTab = tab;
-        if (tab !== 'event') this.selectedEvent = null;
+        if (tab !== 'event') {
+          this.selectedEvent = null;
+          this.selectedEventId = null;
+          this.eventDetailError = '';
+        }
       }
       if (tab === 'accessory') this.loadAccessory();
     },
@@ -508,11 +372,17 @@ export default {
       uni.switchTab({ url: '/pages/robot/index' });
     },
 
-    showEventDetail(item) {
-      this.selectedEvent = item;
-    },
-    closeDetail() {
+    showEventDetail(id) {
+      const eventId = Number(id);
+      if (!Number.isInteger(eventId) || eventId <= 0) return;
+      this.selectedEventId = eventId;
       this.selectedEvent = null;
+      this.loadEventDetail();
+    },
+    closeEventDetail() {
+      this.selectedEventId = null;
+      this.selectedEvent = null;
+      this.eventDetailError = '';
     },
     getStatusClass(status) {
       const map = {
@@ -532,56 +402,76 @@ export default {
       };
       return map[status] || '';
     },
-    // 赛事:后台 events 表优先(平台级闭环),失败保留 mock 兜底
-    loadEvents() {
-      eventApi.getEvents()
-        .then((res) => {
-          const list = (res && res.data) || []
-          if (Array.isArray(list) && list.length) {
-            this.eventList = list.map(e => ({ ...e, fav: false }))
-          }
-        })
-        .catch((e) => {
-          // 保留 mock 兜底(页面不白屏),但留 warn —— 否则"后台赛事一直不来"这件事没人知道
-          console.warn('[EcoCenter] 赛事列表加载失败,保留本地兜底', e)
-        })
+    // 赛事列表:只用后台真实数据。空列表是空态,请求失败/格式异常是错误态,
+    // 都不能拿样例补位 —— 否则用户会把假赛事当真报名。
+    async loadEvents() {
+      this.eventLoading = true;
+      this.eventError = '';
+      try {
+        const res = await eventApi.getEvents();
+        this.eventList = normalizeEventList(res);
+      } catch (e) {
+        this.eventList = [];
+        this.eventError = (e && e.message) || '赛事加载失败';
+      } finally {
+        this.eventLoading = false;
+      }
+    },
+    // 详情必须按 ID 重新取,不能只依赖列表里的内存对象(列表字段可能已过期)。
+    async loadEventDetail() {
+      const id = this.selectedEventId;
+      if (!id) return;
+
+      this.eventDetailLoading = true;
+      this.eventDetailError = '';
+      try {
+        const res = await eventApi.getEvent(id);
+        const event = normalizeEvent(res && res.data);
+        if (!event) throw new Error('赛事数据格式异常');
+        // 用户可能在请求返回前已经返回列表/切 tab,丢弃过期响应。
+        if (this.selectedEventId !== id) return;
+        this.selectedEvent = event;
+      } catch (e) {
+        if (this.selectedEventId !== id) return;
+        this.selectedEvent = null;
+        this.eventDetailError = (e && e.message) || '赛事详情加载失败';
+      } finally {
+        if (this.selectedEventId === id) this.eventDetailLoading = false;
+      }
     },
 
     registerEvent(item) {
-      if (item.status === 'ended') {
-        uni.showToast({ title: '该赛事已结束报名', icon: 'none' });
+      const state = eventRegistrationState(item);
+      if (!state.enabled) {
+        uni.showToast({ title: state.reason, icon: 'none' });
         return;
       }
-      // 真实报名:落 event_registrations 表(后台报名列表可查)
-      this.regEventId = item.id
-      this.eventRegForm = { name: '', phone: '' }
-      this.showEventReg = true
+      this.regEventId = item.id;
+      this.eventRegForm = { name: '', phone: '' };
+      this.showEventReg = true;
     },
     closeEventReg() {
-      this.showEventReg = false
+      this.showEventReg = false;
     },
     submitEventRegistration() {
-      const f = this.eventRegForm
+      const f = this.eventRegForm;
       if (!f.name.trim()) { uni.showToast({ title: '请输入姓名', icon: 'none' }); return }
       if (!/^1\d{10}$/.test(f.phone.trim())) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
       eventApi.register(this.regEventId, { name: f.name.trim(), phone: f.phone.trim() })
         .then((res) => {
-          this.showEventReg = false
-          uni.showToast({ title: (res && res.message) || '报名成功', icon: 'success' })
+          const feedback = eventRegistrationFeedback(res);
+          if (!feedback.success) {
+            // 结果未知:保留弹窗,避免用户误以为已报名或重复提交。
+            uni.showToast({ title: feedback.message, icon: 'none' });
+            return;
+          }
+          this.showEventReg = false;
+          uni.showToast({ title: feedback.message, icon: 'success' });
+          this.loadEventDetail();
         })
         .catch((err) => {
-          uni.showToast({ title: (err && err.message) || '报名失败，请稍后重试', icon: 'none' })
-        })
-    },
-    toggleFavEvent(item) {
-      item.fav = !item.fav;
-      uni.showToast({
-        title: item.fav ? '已收藏' : '已取消收藏',
-        icon: 'none'
-      });
-    },
-    shareEvent(item) {
-      uni.showToast({ title: '已复制分享链接', icon: 'none' });
+          uni.showToast({ title: (err && err.message) || '报名失败，请稍后重试', icon: 'none' });
+        });
     }
   }
 };
@@ -920,15 +810,16 @@ export default {
   color: #fff;
   border: none;
 }
-.detail-btn.outline {
-  background: transparent;
-  color: #165DFF;
-  border: 2rpx solid #165DFF;
-}
-.detail-btn.share {
-  background: #EEF2F6;
-  color: #1F2937;
-  border: none;
+.detail-reg-reason {
+  flex: 1;
+  min-width: 220rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 14rpx;
+  background: #F8FAFC;
+  border: 1px solid #E5E7EB;
+  font-size: 24rpx;
+  color: #6B7280;
+  line-height: 1.5;
 }
 /* ===== 赛事报名弹窗 ===== */
 .event-reg-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }

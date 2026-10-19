@@ -7,12 +7,19 @@ use Illuminate\Support\Facades\DB;
 use Webkul\Shop\Models\Event;
 
 /**
- * 赛事种子:把 EcoCenter 原有的 8 场 mock 赛事迁入数据库(平台级闭环第一步)。
+ * 赛事演示样例种子。
+ *
+ * 这里的 8 场比赛来自 EcoCenter 旧 mock,只用于本地/测试环境演示,**不是运营真实数据**。
+ * production 等其它环境直接返回,不插入任何记录;不要把它当作正式发布渠道。
  */
 class EventSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
         if (Event::count() > 0) {
             return;
         }

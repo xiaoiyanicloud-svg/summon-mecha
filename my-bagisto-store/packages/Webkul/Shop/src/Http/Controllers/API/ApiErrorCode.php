@@ -232,7 +232,11 @@ final class ApiErrorCode
     public const CMS_PAGE_NOT_FOUND = 'CMS_PAGE_NOT_FOUND';
     public const EVENT_NOT_FOUND = 'EVENT_NOT_FOUND';
     public const EVENT_ENDED = 'EVENT_ENDED';
+    /** 赛事存在但当前不在 registering 阶段(upcoming/ongoing),写入口必须拒绝。 */
+    public const EVENT_NOT_REGISTERING = 'EVENT_NOT_REGISTERING';
     public const EVENT_ALREADY_REGISTERED = 'EVENT_ALREADY_REGISTERED';
+    /** G0:旧站内报名写入口默认关闭，客户端应展示原因而不是重试创建。 */
+    public const EVENT_REGISTRATION_DISABLED = 'EVENT_REGISTRATION_DISABLED';
 
     // ── AI 召唤 ──────────────────────────────────────────────────────────
 

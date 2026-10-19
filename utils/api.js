@@ -228,6 +228,8 @@ export const sceneApi = {
 // ==================== 赛事(生态中心赛事活动 tab) ====================
 export const eventApi = {
   getEvents: () => http.get('/api/events', { loading: false }),
+  // 独立详情必须按 ID 重新取，不能只依赖首页列表内存对象
+  getEvent: (id) => http.get(`/api/events/${id}`, { loading: false }),
   // 真实报名(落 event_registrations 表,后台报名列表可查)
   register: (id, data) => http.post(`/api/events/${id}/register`, data, { loading: true, loadingText: '报名中...' }),
 }
