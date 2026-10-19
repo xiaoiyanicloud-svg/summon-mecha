@@ -210,6 +210,36 @@ return [
         'route' => 'admin.catalog.scenes.delete',
         'sort'  => 3,
     ], [
+        // 赛事管理:列表入口(菜单 key 同为 catalog.events)
+        'key'   => 'catalog.events',
+        'name'  => '赛事活动',
+        'route' => 'admin.catalog.events.index',
+        'sort'  => 4,
+    ], [
+        'key'   => 'catalog.events.create',
+        'name'  => 'admin::app.acl.create',
+        'route' => 'admin.catalog.events.create',
+        'sort'  => 1,
+    ], [
+        // delete 只作权限树条目,不映射 DELETE 路由:
+        // 写动作由控制器统一返回 403,避免 Bouncer 中间件先以 401 拦截。
+        // 此 route 必须排在 catalog.events.edit 之前,让后者的同名映射生效。
+        'key'   => 'catalog.events.delete',
+        'name'  => 'admin::app.acl.delete',
+        'route' => 'admin.catalog.events.edit',
+        'sort'  => 3,
+    ], [
+        'key'   => 'catalog.events.edit',
+        'name'  => 'admin::app.acl.edit',
+        'route' => 'admin.catalog.events.edit',
+        'sort'  => 2,
+    ], [
+        // 报名列表(G0-04 的 PII 脱敏/导出不在本批次范围内)
+        'key'   => 'catalog.events.registrations',
+        'name'  => '报名列表',
+        'route' => 'admin.catalog.events.registrations',
+        'sort'  => 4,
+    ], [
         // 技能管理:技能包的版本 / 交付物 / 安装指引
         'key'   => 'catalog.skills',
         'name'  => '技能管理',

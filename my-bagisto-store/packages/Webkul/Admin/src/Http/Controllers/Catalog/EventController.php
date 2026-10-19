@@ -17,6 +17,8 @@ class EventController extends Controller
 {
     public function index()
     {
+        $this->authorizePermission('catalog.events');
+
         if (request()->ajax()) {
             return datagrid(EventDataGrid::class)->process();
         }
@@ -26,11 +28,15 @@ class EventController extends Controller
 
     public function create()
     {
+        $this->authorizePermission('catalog.events.create');
+
         return view('admin::catalog.events.create');
     }
 
     public function store(Request $request)
     {
+        $this->authorizePermission('catalog.events.create');
+
         $data = $this->validated($request);
 
         Event::create($data);
@@ -42,6 +48,8 @@ class EventController extends Controller
 
     public function edit($id)
     {
+        $this->authorizePermission('catalog.events.edit');
+
         $event = Event::findOrFail($id);
 
         return view('admin::catalog.events.edit', compact('event'));
@@ -49,6 +57,8 @@ class EventController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->authorizePermission('catalog.events.edit');
+
         $event = Event::findOrFail($id);
 
         $event->update($this->validated($request));
@@ -60,7 +70,15 @@ class EventController extends Controller
 
     public function destroy($id)
     {
+        $this->authorizePermission('catalog.events.delete');
+
         $event = Event::findOrFail($id);
+
+        if ($event->registrations()->exists()) {
+            return response()->json([
+                'message' => '该赛事已有报名，不能直接删除；请先停用/归档（归档能力待 G1）',
+            ], 422);
+        }
 
         $event->registrations()->delete();
         $event->delete();
@@ -73,11 +91,28 @@ class EventController extends Controller
      */
     public function registrations()
     {
+        $this->authorizePermission('catalog.events.registrations');
+
         if (request()->ajax()) {
             return datagrid(EventRegistrationDataGrid::class)->process();
         }
 
         return view('admin::catalog.events.registrations');
+    }
+
+    /**
+     * 服务端授权:不能只靠隐藏菜单/按钮,直接访问 URL / Ajax 同样拒绝。
+     *
+     * 读动作的路由已登记在 acl.php,通常由 Bouncer 中间件先以 401 拦截;
+     * 写动作(store/update/destroy)刻意不做路由映射,由此处统一返回 403。
+     */
+    private function authorizePermission(string $permission): void
+    {
+        abort_unless(
+            bouncer()->hasPermission($permission),
+            403,
+            '无权执行该赛事操作。'
+        );
     }
 
     private function validated(Request $request): array

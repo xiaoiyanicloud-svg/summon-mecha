@@ -3,6 +3,7 @@
 namespace Webkul\Admin\DataGrids\Catalog;
 
 use Illuminate\Support\Facades\DB;
+use Webkul\Admin\DataGrids\Concerns\RejectsExportBypass;
 use Webkul\DataGrid\DataGrid;
 
 /**
@@ -10,6 +11,8 @@ use Webkul\DataGrid\DataGrid;
  */
 class EventDataGrid extends DataGrid
 {
+    use RejectsExportBypass;
+
     protected $primaryColumn = 'id';
 
     public function prepareQueryBuilder()
@@ -103,22 +106,26 @@ class EventDataGrid extends DataGrid
 
     public function prepareActions()
     {
-        $this->addAction([
-            'icon'   => 'icon-edit',
-            'title'  => '编辑',
-            'method' => 'GET',
-            'url'    => function ($row) {
-                return route('admin.catalog.events.edit', $row->id);
-            },
-        ]);
+        if (bouncer()->hasPermission('catalog.events.edit')) {
+            $this->addAction([
+                'icon'   => 'icon-edit',
+                'title'  => '编辑',
+                'method' => 'GET',
+                'url'    => function ($row) {
+                    return route('admin.catalog.events.edit', $row->id);
+                },
+            ]);
+        }
 
-        $this->addAction([
-            'icon'   => 'icon-delete',
-            'title'  => '删除',
-            'method' => 'DELETE',
-            'url'    => function ($row) {
-                return route('admin.catalog.events.delete', $row->id);
-            },
-        ]);
+        if (bouncer()->hasPermission('catalog.events.delete')) {
+            $this->addAction([
+                'icon'   => 'icon-delete',
+                'title'  => '删除',
+                'method' => 'DELETE',
+                'url'    => function ($row) {
+                    return route('admin.catalog.events.delete', $row->id);
+                },
+            ]);
+        }
     }
 }

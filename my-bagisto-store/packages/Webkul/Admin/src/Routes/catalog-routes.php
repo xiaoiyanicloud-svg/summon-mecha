@@ -121,9 +121,15 @@ Route::prefix('catalog')->group(function () {
         Route::get('', 'index')->name('admin.catalog.events.index');
         Route::get('create', 'create')->name('admin.catalog.events.create');
         Route::post('', 'store')->name('admin.catalog.events.store');
-        Route::get('edit/{id}', 'edit')->name('admin.catalog.events.edit');
-        Route::post('edit/{id}', 'update')->name('admin.catalog.events.update');
-        Route::delete('delete/{id}', 'destroy')->name('admin.catalog.events.delete');
+        Route::get('edit/{id}', 'edit')->whereNumber('id')->name('admin.catalog.events.edit');
+        Route::post('edit/{id}', 'update')->whereNumber('id')->name('admin.catalog.events.update');
+        Route::delete('delete/{id}', 'destroy')->whereNumber('id')->name('admin.catalog.events.delete');
+        // 非数字 ID 显式 404。否则会落到 Shop 的 {fallbackPlaceholder} 兜底路由,
+        // DELETE 请求在那里会变成 405(该兜底只接受 GET/HEAD)。
+        // 参数名用 eventId 是为了避开 Laravel 对「同 method + 同 URI」路由的覆盖。
+        Route::get('edit/{eventId}', fn () => abort(404));
+        Route::post('edit/{eventId}', fn () => abort(404));
+        Route::delete('delete/{eventId}', fn () => abort(404));
         Route::get('registrations', 'registrations')->name('admin.catalog.events.registrations');
     });
 
