@@ -237,6 +237,13 @@ final class ApiErrorCode
     public const EVENT_ALREADY_REGISTERED = 'EVENT_ALREADY_REGISTERED';
     /** G0:旧站内报名写入口默认关闭，客户端应展示原因而不是重试创建。 */
     public const EVENT_REGISTRATION_DISABLED = 'EVENT_REGISTRATION_DISABLED';
+    /**
+     * G1-08 乐观并发：调用方 `expected_row_version` 与库内不一致。
+     *
+     * 客户端处置是“重取最新版本后人工合并”，不是重放 —— 与 EVENT_REGISTRATION_DISABLED
+     * 的“不重试创建”同属 409/403 的稳定分支，但原因不同，故单独登记。
+     */
+    public const EVENT_REVISION_CONFLICT = 'EVENT_REVISION_CONFLICT';
 
     // ── AI 召唤 ──────────────────────────────────────────────────────────
 

@@ -112,5 +112,5 @@
 ## G1 进度（2026-10-19）
 
 - **G1-01 ADR**：已完成 [ADR-0001-trusted-publishing.md](./ADR-0001-trusted-publishing.md)，状态为 **Proposed**，等待产品、架构、业务/活动、内容、法务、QA 签署。
-- **G1-02**：尚未开始。获批后只做 `events` 兼容扩展与 `ecosystem_outbox`；公开、报名、内容开关保持 `false`，不建 revision/FK，不删除旧列，不清理样例。
-- **阻塞项**：B-01 外链许可、B-03 主办方核验、B-06 取消/改期政策、B-07 内容法律责任；未确认前对应写能力保持关闭。
+- **G1-02**：代码与独立测试库验证已完成（2026-10-19），证据见 [G1-02-migration-evidence.md](./G1-02-migration-evidence.md)。已落地 `events` 兼容扩展与 `ecosystem_outbox`；不建 revision/FK、不删旧列、不改 `event_registrations`。root 主库尚未迁移，Admin 尚未接 `row_version`，无 outbox worker，公开/报名/内容开关仍为 `false`。
+- **入口确认**：用户已于 2026-10-19 确认按 ADR 默认口径执行；B-01 外链许可、B-03 主办方核验、B-06 取消/改期政策、B-07 内容法律责任对应的写能力仍保持关闭。
