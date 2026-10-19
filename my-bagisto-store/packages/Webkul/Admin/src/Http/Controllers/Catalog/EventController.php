@@ -15,6 +15,21 @@ use Webkul\Shop\Models\Event;
  */
 class EventController extends Controller
 {
+    /**
+     * 非空列的应用层默认值。
+     *
+     * 不能依赖 DB 默认值兜底:events.icon 在线上/测试库里的实际默认值是 `?`,
+     * 与迁移声明的 🏆 不一致;其余字段也存在库间漂移的可能。
+     */
+    private const CREATE_DEFAULTS = [
+        'type'     => '格斗竞技',
+        'hot'      => 60,
+        'teams'    => 0,
+        'icon'     => '🏆',
+        'bg_color' => '#E8F0FE',
+        'sort'     => 0,
+    ];
+
     public function index()
     {
         $this->authorizePermission('catalog.events');
@@ -37,7 +52,7 @@ class EventController extends Controller
     {
         $this->authorizePermission('catalog.events.create');
 
-        $data = $this->validated($request);
+        $data = $this->normalizeForCreate($this->validated($request));
 
         Event::create($data);
 
@@ -61,7 +76,7 @@ class EventController extends Controller
 
         $event = Event::findOrFail($id);
 
-        $event->update($this->validated($request));
+        $event->update($this->normalizeForUpdate($this->validated($request)));
 
         return redirect()
             ->route('admin.catalog.events.index')
@@ -118,22 +133,56 @@ class EventController extends Controller
     private function validated(Request $request): array
     {
         return $request->validate([
-            'name'      => 'required|string',
-            'type'      => 'nullable|string',
-            'status'    => 'required|in:registering,ongoing,upcoming,ended',
-            'date'      => 'nullable|string',
-            'city'      => 'nullable|string',
-            'location'  => 'nullable|string',
-            'organizer' => 'nullable|string',
+            'name'      => 'required|string|max:191',
+            'type'      => 'nullable|string|max:191',
+            'status'    => 'required|string|max:20|in:registering,ongoing,upcoming,ended',
+            'date'      => 'nullable|string|max:191',
+            'city'      => 'nullable|string|max:191',
+            'location'  => 'nullable|string|max:191',
+            'organizer' => 'nullable|string|max:191',
             'hot'       => 'nullable|integer|min:0|max:100',
-            'teams'     => 'nullable|integer|min:0',
-            'prize'     => 'nullable|string',
-            'schedule'  => 'nullable|string',
-            'history'   => 'nullable|string',
-            'detail'    => 'nullable|string',
-            'icon'      => 'nullable|string',
-            'bg_color'  => 'nullable|string',
-            'sort'      => 'nullable|integer',
+            'teams'     => 'nullable|integer|min:0|max:4294967295',
+            'prize'     => 'nullable|string|max:16000',
+            'schedule'  => 'nullable|string|max:16000',
+            'history'   => 'nullable|string|max:16000',
+            'detail'    => 'nullable|string|max:16000',
+            'icon'      => 'nullable|string|max:191',
+            'bg_color'  => 'nullable|string|max:20',
+            'sort'      => 'nullable|integer|min:-2147483648|max:2147483647',
         ]);
+    }
+
+    /**
+     * 新建:非空列一律由应用层写入值,空/null 时使用默认值。
+     */
+    private function normalizeForCreate(array $data): array
+    {
+        foreach (self::CREATE_DEFAULTS as $field => $default) {
+            if ($this->isBlank($data[$field] ?? null)) {
+                $data[$field] = $default;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * 编辑:允许只提交部分字段。非空列收到空/null 时保留原值,
+     * 不把「没填」误当成「清空」;可空文本(date/city/…)仍可传空串清空。
+     */
+    private function normalizeForUpdate(array $data): array
+    {
+        foreach (array_keys(self::CREATE_DEFAULTS) as $field) {
+            if (array_key_exists($field, $data) && $this->isBlank($data[$field])) {
+                unset($data[$field]);
+            }
+        }
+
+        return $data;
+    }
+
+    private function isBlank(mixed $value): bool
+    {
+        return $value === null || $value === '';
     }
 }
