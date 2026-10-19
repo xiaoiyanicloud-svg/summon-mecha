@@ -108,3 +108,9 @@
   禁止对 `root` 主库执行 `migrate:fresh` / `truncate` / `seed`。
 - 用例内用事务清理数据并回滚,不跨用例残留。
 - 任何「未做/部分完成」必须写明缺口,不得标 ✅。
+
+## G1 进度（2026-10-19）
+
+- **G1-01 ADR**：已完成 [ADR-0001-trusted-publishing.md](./ADR-0001-trusted-publishing.md)，状态为 **Proposed**，等待产品、架构、业务/活动、内容、法务、QA 签署。
+- **G1-02**：尚未开始。获批后只做 `events` 兼容扩展与 `ecosystem_outbox`；公开、报名、内容开关保持 `false`，不建 revision/FK，不删除旧列，不清理样例。
+- **阻塞项**：B-01 外链许可、B-03 主办方核验、B-06 取消/改期政策、B-07 内容法律责任；未确认前对应写能力保持关闭。
