@@ -11,6 +11,14 @@
         </div>
 
         <div class="flex items-center gap-x-2.5">
+            @if (bouncer()->hasPermission('ecosystem.events.create'))
+                <a href="{{ route('admin.catalog.ecosystem.events.create') }}" class="primary-button">新建活动</a>
+            @endif
+
+            @if (bouncer()->hasPermission('ecosystem.media.view'))
+                <a href="{{ route('admin.catalog.ecosystem.media.index') }}" class="transparent-button hover:bg-gray-200 dark:text-white dark:hover:bg-gray-800">媒体</a>
+            @endif
+
             @if (bouncer()->hasPermission('ecosystem.content.view'))
                 <a href="{{ route('admin.catalog.ecosystem.content.index') }}" class="transparent-button hover:bg-gray-200 dark:text-white dark:hover:bg-gray-800">文章列表</a>
             @endif

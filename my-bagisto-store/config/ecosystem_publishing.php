@@ -203,6 +203,8 @@ return [
     // 审计 action 词表（OperationLogger::logOrFail 的 action）。
     'audit_actions' => [
         'event' => [
+            // G1 Admin 新建活动草稿壳（EventDraftService）。
+            'create'         => 'ecosystem.event.create',
             'submit'         => 'ecosystem.event.submit',
             'approve'        => 'ecosystem.event.approve',
             'reject'         => 'ecosystem.event.reject',
@@ -235,6 +237,7 @@ return [
     // 只允许稳定原因码进入审计 payload；不写自由文本（可能含 PII）。
     // withhold / retract 的调用方原因只进内部日志，公开读取永远拿不到。
     'reason_codes' => [
+        'created'            => 'created',
         'submitted'          => 'submitted',
         'approved'           => 'approved',
         'review_rejected'    => 'review_rejected',

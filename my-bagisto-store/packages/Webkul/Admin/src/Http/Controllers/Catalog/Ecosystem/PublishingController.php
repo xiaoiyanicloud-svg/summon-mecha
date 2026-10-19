@@ -7,12 +7,16 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Webkul\Admin\Exceptions\AdminPublishingConflictException;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Shop\Models\ContentPost;
 use Webkul\Shop\Models\ContentRevision;
+use Webkul\Shop\Models\EcosystemMedia;
+use Webkul\Shop\Models\EcosystemMediaRef;
 use Webkul\Shop\Models\EcosystemOrganizer;
 use Webkul\Shop\Models\Event;
 use Webkul\Shop\Models\EventRevision;
@@ -22,15 +26,22 @@ use Webkul\Shop\Services\Ecosystem\ContentPostService;
 use Webkul\Shop\Services\Ecosystem\ContentReviewService;
 use Webkul\Shop\Services\Ecosystem\ContentRevisionConflictException;
 use Webkul\Shop\Services\Ecosystem\ContentRevisionFingerprintConflictException;
+use Webkul\Shop\Services\Ecosystem\ContentRevisionService;
 use Webkul\Shop\Services\Ecosystem\ContentSlugTakenException;
 use Webkul\Shop\Services\Ecosystem\ContentSourceValidationException;
 use Webkul\Shop\Services\Ecosystem\ContentTransitionException;
+use Webkul\Shop\Services\Ecosystem\EventDraftService;
 use Webkul\Shop\Services\Ecosystem\EventPublicationService;
 use Webkul\Shop\Services\Ecosystem\EventRevisionConflictException;
+use Webkul\Shop\Services\Ecosystem\EventRevisionService;
 use Webkul\Shop\Services\Ecosystem\EventReviewService;
 use Webkul\Shop\Services\Ecosystem\EventSourceValidationException;
 use Webkul\Shop\Services\Ecosystem\EventTimeValidationException;
 use Webkul\Shop\Services\Ecosystem\EventWriteService;
+use Webkul\Shop\Services\Ecosystem\MediaRefService;
+use Webkul\Shop\Services\Ecosystem\MediaService;
+use Webkul\Shop\Services\Ecosystem\MediaTransitionException;
+use Webkul\Shop\Services\Ecosystem\MediaValidationException;
 use Webkul\Shop\Services\Ecosystem\OrganizerService;
 use Webkul\Shop\Services\Ecosystem\PublicationPreconditionException;
 use Webkul\Shop\Services\Ecosystem\PublicationTransitionException;
@@ -55,8 +66,8 @@ use Webkul\Shop\Services\Ecosystem\RevisionImmutableException;
  *   3. **业务异常转回表单错误**，不 500；并发冲突统一提示“已被他人修改，请刷新后
  *      再试”。真正的未知异常仍然向上抛，不能被吞成“保存成功”。
  *
- * 本控制器不含：媒体上传 / 审核（G1 媒体面未在本批范围内）、报名写、公开开关。
- * 预览只走 Admin 会话路由，不生成公开预览 token。
+ * 本控制器同时提供媒体工作台（上传 / 审核 / 隔离）与 revision 媒体引用维护，
+ * 但**不提供**报名写、公开开关。预览只走 Admin 会话路由，不生成公开预览 token。
  */
 class PublishingController extends Controller
 {
@@ -64,11 +75,16 @@ class PublishingController extends Controller
         private readonly EventWriteService $eventWrites,
         private readonly EventReviewService $eventReviews,
         private readonly EventPublicationService $eventPublications,
+        private readonly EventDraftService $eventDrafts,
+        private readonly EventRevisionService $eventRevisions,
+        private readonly ContentRevisionService $contentRevisions,
         private readonly ContentPostService $contentPosts,
         private readonly ContentReviewService $contentReviews,
         private readonly ContentPublicationService $contentPublications,
         private readonly BeginRevisionService $beginRevisions,
         private readonly OrganizerService $organizers,
+        private readonly MediaService $media,
+        private readonly MediaRefService $mediaRefs,
     ) {}
 
     // ==================== 工作台 / 列表 ====================
@@ -104,6 +120,53 @@ class PublishingController extends Controller
 
     // ==================== 活动 ====================
 
+    public function createEvent()
+    {
+        $this->authorizeRoute();
+
+        return view('admin::catalog.ecosystem-publishing.events.create', [
+            'organizers' => EcosystemOrganizer::query()
+                ->whereIn('status', ['pending', 'verified'])
+                ->orderBy('name')
+                ->get(['id', 'name', 'platform_role', 'status']),
+        ]);
+    }
+
+    public function storeEvent(Request $request): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        $data = $request->validate([
+            'name'               => ['required', 'string', 'max:255'],
+            'kind'               => ['required', 'string', Rule::in((array) config('ecosystem_publishing.event_kinds', []))],
+            'participation_mode' => ['nullable', 'string', Rule::in((array) config('ecosystem_revisions.participation_modes', []))],
+            'hosting_status'     => ['required', 'string', Rule::in((array) config('ecosystem_publishing.review_allowed_hosting_statuses', []))],
+            'timezone'           => ['required', 'string', 'max:64', Rule::in(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))],
+            'starts_at'          => ['nullable', 'date'],
+            'ends_at'            => ['nullable', 'date'],
+            'source_type'        => ['required', 'string', Rule::in((array) config('ecosystem_organizers.source_types', []))],
+            'platform_role'      => ['required', 'string', Rule::in((array) config('ecosystem_organizers.platform_roles', []))],
+            'organizer_id'       => ['required', 'integer', 'min:1'],
+        ]);
+
+        try {
+            $event = $this->eventDrafts->createDraft($this->adminId(), $data);
+        } catch (
+            EventSourceValidationException
+            |EventTimeValidationException
+            |InvalidArgumentException $exception
+        ) {
+            return $this->failBack(
+                route('admin.catalog.ecosystem.events.create'),
+                $exception->getMessage(),
+            );
+        }
+
+        return redirect()
+            ->route('admin.catalog.ecosystem.events.show', $event->id)
+            ->with('success', '活动草稿已创建；请创建 revision 并走审核后才能发布。');
+    }
+
     public function showEvent(int $id)
     {
         $this->authorizeRoute();
@@ -112,12 +175,25 @@ class PublishingController extends Controller
             ->with([
                 'organizerEntity',
                 'revisions' => fn ($query) => $query->orderByDesc('revision_no'),
+                // 只取展示需要的列：storage_key / disk / sha256 不进入视图数据。
+                'revisions.mediaRefs.media' => fn ($query) => $query->select(
+                    'id',
+                    'original_name',
+                    'mime',
+                    'byte_size',
+                    'width',
+                    'height',
+                    'status',
+                ),
             ])
             ->findOrFail($id);
 
         return view('admin::catalog.ecosystem-publishing.events.show', [
-            'event'      => $event,
-            'organizers' => EcosystemOrganizer::query()->orderBy('name')->get(),
+            'event'         => $event,
+            'organizers'    => EcosystemOrganizer::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'platform_role', 'status']),
+            'approvedMedia' => $this->approvedMediaForSelection(),
         ]);
     }
 
@@ -241,6 +317,79 @@ class PublishingController extends Controller
         );
     }
 
+    /**
+     * 二次编辑仍在 draft 的活动 revision。
+     *
+     * 与创建的关键差异：
+     *   · 用 `expected_fingerprint` 做内容 CAS，而不是父行 row_version ——
+     *     编辑 revision 不改变父对象版本，指纹才是“页面基于哪一版内容”的凭据；
+     *   · 服务层在 revision 行锁内复核 `review_state=draft`，已提审 / 批准 /
+     *     拒绝的 revision 即使直接 POST 也会被拒绝；
+     *   · 指纹过期时返回明确的“内容已被他人修改”，**不静默覆盖**；
+     *   · 只写表单覆盖的内容字段；来源快照（source_type / platform_role /
+     *     organizer_*）、授权证据引用与外部报名 URL 保留原值；
+     *   · 媒体引用由 MediaRefService 维护，编辑正文不会清空引用，指纹按合并
+     *     后的完整内容重算（含 media_manifest_hash）。
+     */
+    public function updateEventRevisionDraft(Request $request, int $id, int $revision): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        [, $draft] = $this->eventRevision($id, $revision);
+
+        $data = $request->validate([
+            'expected_fingerprint'  => ['required', 'string', 'size:64'],
+            'name'                  => ['required', 'string', 'max:255'],
+            'summary'               => ['nullable', 'string', 'max:500'],
+            'detail_html'           => ['nullable', 'string'],
+            'city'                  => ['nullable', 'string', 'max:100'],
+            'location_text'         => ['nullable', 'string', 'max:255'],
+            'participation_mode'    => ['nullable', 'string', Rule::in((array) config('ecosystem_revisions.participation_modes', []))],
+            'timezone'              => ['required', 'string', 'max:64', Rule::in(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))],
+            'starts_at'             => ['nullable', 'date'],
+            'ends_at'               => ['nullable', 'date'],
+            'source_name'           => ['required', 'string', 'max:191'],
+            'source_url'            => ['nullable', 'url', 'max:2048'],
+            'source_verified_at'    => ['required', 'date'],
+            'authorization_basis'   => ['required', 'string', Rule::in((array) config('ecosystem_revisions.authorization_bases', []))],
+            'change_summary'        => ['required', 'string', 'max:500'],
+        ]);
+
+        $timezone = (string) $data['timezone'];
+        $startsAt = $this->localTime($data['starts_at'] ?? null, $timezone, 'starts_at');
+        $endsAt = $this->localTime($data['ends_at'] ?? null, $timezone, 'ends_at');
+
+        $this->assertTimeRange($startsAt, $endsAt);
+
+        $payload = [
+            'name'                => (string) $data['name'],
+            'summary'             => $data['summary'] ?? null,
+            'detail_html'         => $data['detail_html'] ?? null,
+            'city'                => $data['city'] ?? null,
+            'location_text'       => $data['location_text'] ?? null,
+            'participation_mode'  => $data['participation_mode'] ?? null,
+            'timezone'            => $timezone,
+            'starts_at'           => $startsAt,
+            'ends_at'             => $endsAt,
+            'source_name'         => (string) $data['source_name'],
+            'source_url'          => $data['source_url'] ?? null,
+            'source_verified_at'  => $this->localTime($data['source_verified_at'], $timezone, 'source_verified_at'),
+            'authorization_basis' => (string) $data['authorization_basis'],
+            'change_summary'      => (string) $data['change_summary'],
+        ];
+
+        return $this->runAction(
+            fn () => $this->eventRevisions->updateDraft(
+                $draft,
+                (string) $data['expected_fingerprint'],
+                $payload,
+            ),
+            $this->eventUrl($id),
+            '活动草稿 revision '.$draft->id.' 已保存。',
+            '内容已被他人修改，请刷新后重试；本次编辑未保存。',
+        );
+    }
+
     public function previewEventRevision(int $id, int $revision)
     {
         $this->authorizeRoute();
@@ -262,6 +411,35 @@ class PublishingController extends Controller
             '结束时间'   => $this->displayUtc($revision->ends_at),
             'revision'   => '#'.$revision->revision_no.'（ID '.$revision->id.'，'.$revision->review_state.'）',
         ], $revision->detail_html, $revision->sanitizer_version, 'event_revision', (int) $revision->id);
+    }
+
+    /**
+     * 整组替换某条活动 revision 的媒体引用。
+     *
+     * 只能在 draft 上操作：MediaRefService 与模型守卫双重拒绝非 draft。
+     * 替换会重算 media_manifest_hash / content_fingerprint，旧的批准不会继承。
+     */
+    public function replaceEventRevisionMediaRefs(Request $request, int $id, int $revision): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        [, $revision] = $this->eventRevision($id, $revision);
+        $refs = $this->mediaRefInput($request);
+
+        return $this->runAction(
+            fn () => $this->mediaRefs->replaceForRevision('event_revision', (int) $revision->id, $refs),
+            $this->eventUrl($id),
+            '媒体引用已保存；引用审核通过后才能提交 revision。',
+        );
+    }
+
+    public function reviewEventMediaRef(Request $request, int $id, int $revision, int $ref): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        [, $revision] = $this->eventRevision($id, $revision);
+
+        return $this->reviewMediaRef($request, 'event_revision', (int) $revision->id, $ref, $this->eventUrl($id));
     }
 
     public function submitEventRevision(Request $request, int $id, int $revision): RedirectResponse
@@ -442,11 +620,22 @@ class PublishingController extends Controller
             ->with([
                 'revisions' => fn ($query) => $query->orderByDesc('revision_no'),
                 'revisions.sources',
+                // 只取展示需要的列：storage_key / disk / sha256 不进入视图数据。
+                'revisions.mediaRefs.media' => fn ($query) => $query->select(
+                    'id',
+                    'original_name',
+                    'mime',
+                    'byte_size',
+                    'width',
+                    'height',
+                    'status',
+                ),
             ])
             ->findOrFail($id);
 
         return view('admin::catalog.ecosystem-publishing.content.show', [
-            'post' => $post,
+            'post'          => $post,
+            'approvedMedia' => $this->approvedMediaForSelection(),
         ]);
     }
 
@@ -473,6 +662,54 @@ class PublishingController extends Controller
             ->with('success', '文章壳已创建（草稿）。');
     }
 
+    /**
+     * 编辑文章壳元数据（type / slug / category）。
+     *
+     * 走 ContentPostService::updateDraft + expected_row_version：
+     *   · 只有 draft 文章可编辑；
+     *   · slug 首次发布后冻结，错误必须原样回给运营，而不是被泛化成“保存失败”。
+     */
+    public function updateContentMetadata(Request $request, int $id): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        $post = ContentPost::findOrFail($id);
+
+        $data = $request->validate([
+            'expected_row_version' => ['required', 'integer', 'min:0'],
+            'type'                 => ['required', 'string', Rule::in((array) config('ecosystem_content.content_types', []))],
+            'slug'                 => ['required', 'string', 'max:120'],
+            'category'             => ['nullable', 'string', 'max:64'],
+        ]);
+
+        // 已首次发布的 slug 冻结要给出明确原因；否则服务层会先以
+        // “非 draft 不可编辑”拒绝，运营看不到真正的问题。
+        if ($post->first_published_at !== null && (string) $data['slug'] !== (string) $post->slug) {
+            return $this->failBack(
+                $this->contentUrl($id),
+                sprintf(
+                    '文章 %d 已首次发布，slug 不可修改；如需更换公开地址必须走独立迁移策略。',
+                    $id,
+                ),
+            );
+        }
+
+        return $this->runAction(
+            fn () => $this->contentPosts->updateDraft(
+                $post,
+                (int) $data['expected_row_version'],
+                $this->adminId(),
+                [
+                    'type'     => (string) $data['type'],
+                    'slug'     => (string) $data['slug'],
+                    'category' => $data['category'] ?? null,
+                ],
+            ),
+            $this->contentUrl($id),
+            '文章元数据已保存。',
+        );
+    }
+
     public function storeContentRevision(Request $request, int $id): RedirectResponse
     {
         $this->authorizeRoute();
@@ -490,12 +727,14 @@ class PublishingController extends Controller
             'original_published_at' => ['nullable', 'date'],
             'correction_note'       => ['nullable', 'string'],
             'change_summary'        => ['required', 'string', 'max:500'],
-            'source_name'           => ['required', 'string', 'max:191'],
-            'source_url'            => ['required', 'url', 'max:2048'],
-            'source_verified_at'    => ['required', 'date'],
-            'rights_basis'          => ['required', 'string', Rule::in((array) config('ecosystem_content.rights_bases', []))],
-            'rights_scope'          => ['nullable', 'string', 'max:255'],
-            'evidence_ref'          => ['nullable', 'string', 'max:255'],
+            // 1~N 条来源。空行由 parseContentSources() 丢弃；至少保留一条。
+            'sources'               => ['required', 'array', 'min:1', 'max:20'],
+            'sources.*.source_name' => ['nullable', 'string', 'max:191'],
+            'sources.*.source_url'  => ['nullable', 'string', 'max:2048'],
+            'sources.*.source_verified_at' => ['nullable', 'date'],
+            'sources.*.rights_basis' => ['nullable', 'string', Rule::in((array) config('ecosystem_content.rights_bases', []))],
+            'sources.*.rights_scope' => ['nullable', 'string', 'max:255'],
+            'sources.*.evidence_ref' => ['nullable', 'string', 'max:255'],
         ]);
 
         $payload = [
@@ -510,14 +749,7 @@ class PublishingController extends Controller
             'change_summary'        => (string) $data['change_summary'],
         ];
 
-        $sources = [[
-            'source_name'        => (string) $data['source_name'],
-            'source_url'         => (string) $data['source_url'],
-            'source_verified_at' => $this->appTime($data['source_verified_at']),
-            'rights_basis'       => (string) $data['rights_basis'],
-            'rights_scope'       => $data['rights_scope'] ?? null,
-            'evidence_ref'       => $data['evidence_ref'] ?? null,
-        ]];
+        $sources = $this->parseContentSources((array) $data['sources']);
 
         return $this->runAction(
             fn () => $this->beginRevisions->startContentRevision(
@@ -528,7 +760,68 @@ class PublishingController extends Controller
                 $sources,
             ),
             $this->contentUrl($id),
-            '已创建新的资讯 revision（草稿）。多来源将在后续批次支持；当前每条 revision 只登记一条来源。',
+            '已创建新的资讯 revision（草稿），共 '.count($sources).' 条来源。',
+        );
+    }
+
+    /**
+     * 二次编辑仍在 draft 的资讯 revision。
+     *
+     * 来源表单始终提交 1~N 行，因此按“整组替换”写入：服务层在 draft 守卫下
+     * 先删旧来源再按输入顺序重排 0..n-1，并把有序来源纳入指纹。
+     * stale 指纹与活动同口径：明确提示“内容已被他人修改”，不改库。
+     */
+    public function updateContentRevisionDraft(Request $request, int $id, int $revision): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        [, $draft] = $this->contentRevision($id, $revision);
+
+        $data = $request->validate([
+            'expected_fingerprint'  => ['required', 'string', 'size:64'],
+            'title'                 => ['required', 'string', 'max:255'],
+            'summary'               => ['nullable', 'string', 'max:500'],
+            'body_html'             => ['nullable', 'string'],
+            'author_name'           => ['required', 'string', 'max:191'],
+            'author_org'            => ['nullable', 'string', 'max:191'],
+            'source_type'           => ['required', 'string', Rule::in((array) config('ecosystem_content.source_types', []))],
+            'original_published_at' => ['nullable', 'date'],
+            'correction_note'       => ['nullable', 'string'],
+            'change_summary'        => ['required', 'string', 'max:500'],
+            // 1~N 条来源。空行由 parseContentSources() 丢弃；至少保留一条。
+            'sources'               => ['required', 'array', 'min:1', 'max:20'],
+            'sources.*.source_name' => ['nullable', 'string', 'max:191'],
+            'sources.*.source_url'  => ['nullable', 'string', 'max:2048'],
+            'sources.*.source_verified_at' => ['nullable', 'date'],
+            'sources.*.rights_basis' => ['nullable', 'string', Rule::in((array) config('ecosystem_content.rights_bases', []))],
+            'sources.*.rights_scope' => ['nullable', 'string', 'max:255'],
+            'sources.*.evidence_ref' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $payload = [
+            'title'                 => (string) $data['title'],
+            'summary'               => $data['summary'] ?? null,
+            'body_html'             => $data['body_html'] ?? null,
+            'author_name'           => (string) $data['author_name'],
+            'author_org'            => $data['author_org'] ?? null,
+            'source_type'           => (string) $data['source_type'],
+            'original_published_at' => $this->appTime($data['original_published_at'] ?? null),
+            'correction_note'       => $data['correction_note'] ?? null,
+            'change_summary'        => (string) $data['change_summary'],
+        ];
+
+        $sources = $this->parseContentSources((array) $data['sources']);
+
+        return $this->runAction(
+            fn () => $this->contentRevisions->updateDraft(
+                $draft,
+                (string) $data['expected_fingerprint'],
+                $payload,
+                $sources,
+            ),
+            $this->contentUrl($id),
+            '资讯草稿 revision '.$draft->id.' 已保存，共 '.count($sources).' 条来源。',
+            '内容已被他人修改，请刷新后重试；本次编辑未保存。',
         );
     }
 
@@ -562,6 +855,32 @@ class PublishingController extends Controller
             '更正说明'   => (string) ($revision->correction_note ?? ''),
             'revision'   => '#'.$revision->revision_no.'（ID '.$revision->id.'，'.$revision->review_state.'）',
         ], $revision->body_html, $revision->sanitizer_version, 'content_revision', (int) $revision->id);
+    }
+
+    /**
+     * 整组替换某条资讯 revision 的媒体引用（同上：仅 draft，审核不继承）。
+     */
+    public function replaceContentRevisionMediaRefs(Request $request, int $id, int $revision): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        [, $revision] = $this->contentRevision($id, $revision);
+        $refs = $this->mediaRefInput($request);
+
+        return $this->runAction(
+            fn () => $this->mediaRefs->replaceForRevision('content_revision', (int) $revision->id, $refs),
+            $this->contentUrl($id),
+            '媒体引用已保存；引用审核通过后才能提交 revision。',
+        );
+    }
+
+    public function reviewContentMediaRef(Request $request, int $id, int $revision, int $ref): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        [, $revision] = $this->contentRevision($id, $revision);
+
+        return $this->reviewMediaRef($request, 'content_revision', (int) $revision->id, $ref, $this->contentUrl($id));
     }
 
     public function submitContentRevision(Request $request, int $id, int $revision): RedirectResponse
@@ -782,6 +1101,408 @@ class PublishingController extends Controller
         );
     }
 
+    public function rejectOrganizer(Request $request, int $id): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        $data = $request->validate([
+            'expected_status' => ['required', 'string', Rule::in((array) config('ecosystem_organizers.statuses', []))],
+            'reason'          => ['required', 'string', 'max:5000'],
+        ]);
+
+        return $this->reviewOrganizer(
+            $id,
+            'reject',
+            (string) $data['expected_status'],
+            (string) $data['reason'],
+        );
+    }
+
+    public function suspendOrganizer(Request $request, int $id): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        $data = $request->validate([
+            'expected_status' => ['required', 'string', Rule::in((array) config('ecosystem_organizers.statuses', []))],
+            'reason'          => ['required', 'string', 'max:5000'],
+        ]);
+
+        return $this->reviewOrganizer(
+            $id,
+            'suspend',
+            (string) $data['expected_status'],
+            (string) $data['reason'],
+        );
+    }
+
+    // ==================== 媒体工作台 ====================
+
+    public function mediaIndex()
+    {
+        $this->authorizeRoute();
+
+        return view('admin::catalog.ecosystem-publishing.media.index', [
+            // 只查询展示需要的列：storage_key / disk / sha256 不进入视图数据。
+            'media' => EcosystemMedia::query()
+                ->select('id', 'original_name', 'mime', 'byte_size', 'width', 'height', 'status', 'uploaded_by', 'created_at')
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get(),
+        ]);
+    }
+
+    public function storeMedia(Request $request): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        $data = $request->validate([
+            // 真实 MIME / 扩展名 / 尺寸 / sha256 由 MediaService 用 finfo 等解码校验，
+            // 这里的 max 只是先把超大文件挡在应用层之外（KB）。
+            'file' => ['required', 'file', 'max:10240'],
+        ]);
+
+        return $this->runAction(
+            fn () => $this->media->upload($data['file'], $this->adminId()),
+            route('admin.catalog.ecosystem.media.index'),
+            '媒体已上传（pending）；审核通过后才能被 revision 引用。',
+        );
+    }
+
+    public function approveMedia(Request $request, int $id): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        return $this->reviewMedia($request, $id, 'approve');
+    }
+
+    public function rejectMedia(Request $request, int $id): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        return $this->reviewMedia($request, $id, 'reject');
+    }
+
+    public function quarantineMedia(Request $request, int $id): RedirectResponse
+    {
+        $this->authorizeRoute();
+
+        return $this->reviewMedia($request, $id, 'quarantine');
+    }
+
+    /**
+     * Admin 媒体预览流（ecosystem.media.view）。
+     *
+     * 只服务后台已登录且有权用户，从私有盘流式输出：
+     *   · `Content-Type` 使用数据库里经 MediaService 解码校验的真实 MIME；
+     *   · 图片 inline，PDF（及其他非图片）attachment，避免浏览器内联打开不可信文档；
+     *   · `X-Content-Type-Options: nosniff` + `Cache-Control: private, no-store`；
+     *   · 响应头 / 响应体都不出现 `disk` / `storage_key` / 磁盘路径；
+     *   · 文件缺失统一 404（不区分“记录不存在”与“私有盘缺件”）。
+     */
+    public function previewMedia(int $id)
+    {
+        $this->authorizeRoute();
+
+        $media = EcosystemMedia::query()->findOrFail($id);
+
+        $disk = (string) $media->disk;
+        $key = (string) $media->storage_key;
+
+        if (! Storage::disk($disk)->exists($key)) {
+            abort(404, '媒体文件不存在。');
+        }
+
+        try {
+            $size = (int) Storage::disk($disk)->size($key);
+        } catch (\Throwable) {
+            abort(404, '媒体文件不存在。');
+        }
+
+        $mime = (string) $media->mime;
+        $mime = $mime !== '' ? $mime : 'application/octet-stream';
+
+        // rawurlencode 去掉引号 / 换行等响应头注入字符；原文件名在上传时已净化。
+        $filename = rawurlencode((string) ($media->original_name ?: 'media'));
+
+        $headers = [
+            'Content-Type'           => $mime,
+            'Content-Length'         => (string) $size,
+            'Content-Disposition'    => str_starts_with($mime, 'image/')
+                ? 'inline'
+                : "attachment; filename*=UTF-8''".$filename,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control'          => 'private, no-store',
+            'X-Robots-Tag'           => 'noindex, nofollow',
+        ];
+
+        return response()->stream(
+            function () use ($disk, $key): void {
+                $stream = Storage::disk($disk)->readStream($key);
+
+                if (! is_resource($stream)) {
+                    return;
+                }
+
+                fpassthru($stream);
+                fclose($stream);
+            },
+            200,
+            $headers,
+        );
+    }
+
+    // ==================== 内部动作 ====================
+
+    private function reviewOrganizer(
+        int $id,
+        string $action,
+        string $expectedStatus,
+        string $reason,
+    ): RedirectResponse {
+        $organizer = EcosystemOrganizer::findOrFail($id);
+
+        // expected_status 是页面状态 CAS：页面过期时不得静默覆盖别人的核验结论。
+        if ((string) $organizer->status !== $expectedStatus) {
+            return $this->failBack(
+                route('admin.catalog.ecosystem.organizers.index'),
+                '已被他人修改，请刷新后再试。',
+            );
+        }
+
+        return $this->runAction(
+            fn () => $action === 'reject'
+                ? $this->organizers->reject($id, $this->adminId(), $reason)
+                : $this->organizers->suspend($id, $this->adminId(), $reason),
+            route('admin.catalog.ecosystem.organizers.index'),
+            $action === 'reject' ? '主办方已驳回。' : '主办方已暂停。',
+        );
+    }
+
+    private function reviewMedia(Request $request, int $id, string $action): RedirectResponse
+    {
+        $data = $request->validate([
+            'expected_status' => ['required', 'string', Rule::in((array) config('ecosystem_media.statuses', []))],
+        ]);
+
+        $media = EcosystemMedia::findOrFail($id);
+
+        if ((string) $media->status !== (string) $data['expected_status']) {
+            return $this->failBack(
+                route('admin.catalog.ecosystem.media.index'),
+                '已被他人修改，请刷新后再试。',
+            );
+        }
+
+        [$callback, $message] = match ($action) {
+            'approve'    => [fn () => $this->media->approve($media, $this->adminId()), '媒体已批准。'],
+            'reject'     => [fn () => $this->media->reject($media, $this->adminId()), '媒体已拒绝。'],
+            'quarantine' => [fn () => $this->media->quarantine($media, $this->adminId()), '媒体已隔离；已隔离不能原地恢复。'],
+        };
+
+        return $this->runAction($callback, route('admin.catalog.ecosystem.media.index'), $message);
+    }
+
+    /**
+     * 解析 revision 媒体引用输入。
+     *
+     * 固定 5 行表单会提交空行；空行必须被忽略而不是当成非法 media_id。
+     * `sort_order` 不由调用方决定：MediaRefService 按本数组顺序重排 0..n-1。
+     *
+     * @return array<int, array{media_id: int, role: string, alt_text: ?string}>
+     */
+    private function mediaRefInput(Request $request): array
+    {
+        $raw = $request->input('refs', []);
+
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+
+        if (! is_array($raw)) {
+            throw ValidationException::withMessages(['refs' => '媒体引用格式非法。']);
+        }
+
+        $max = (int) config('ecosystem_media.max_refs_per_revision', 20);
+
+        if (count($raw) > $max) {
+            throw ValidationException::withMessages([
+                'refs' => sprintf('一个 revision 最多引用 %d 个媒体。', $max),
+            ]);
+        }
+
+        $roles = array_values((array) config('ecosystem_media.roles', []));
+        $refs = [];
+
+        foreach (array_values($raw) as $index => $row) {
+            if (! is_array($row)) {
+                throw ValidationException::withMessages([
+                    "refs.$index" => '第 '.($index + 1).' 行媒体引用格式非法。',
+                ]);
+            }
+
+            $mediaId = $row['media_id'] ?? null;
+
+            // 空行：没有选媒体即不提交该行。
+            if ($mediaId === null || $mediaId === '') {
+                continue;
+            }
+
+            if (
+                ! (is_int($mediaId) && $mediaId > 0)
+                && ! (is_string($mediaId) && preg_match('/^[1-9]\d*$/', $mediaId) === 1)
+            ) {
+                throw ValidationException::withMessages([
+                    "refs.$index.media_id" => 'media_id 必须是正整数。',
+                ]);
+            }
+
+            $role = $row['role'] ?? null;
+
+            if (! is_string($role) || ! in_array($role, $roles, true)) {
+                throw ValidationException::withMessages([
+                    "refs.$index.role" => '选择媒体后必须选择引用角色（'.implode(' / ', $roles).'）。',
+                ]);
+            }
+
+            $altText = $row['alt_text'] ?? null;
+
+            if ($altText !== null && ! is_string($altText)) {
+                throw ValidationException::withMessages([
+                    "refs.$index.alt_text" => 'alt_text 必须是字符串或留空。',
+                ]);
+            }
+
+            $altText = is_string($altText) ? trim($altText) : null;
+
+            if (is_string($altText) && mb_strlen($altText) > 255) {
+                throw ValidationException::withMessages([
+                    "refs.$index.alt_text" => 'alt_text 不得超过 255 个字符。',
+                ]);
+            }
+
+            $refs[] = [
+                'media_id' => (int) $mediaId,
+                'role'     => $role,
+                'alt_text' => $altText === '' ? null : $altText,
+            ];
+        }
+
+        return $refs;
+    }
+
+    private function reviewMediaRef(
+        Request $request,
+        string $ownerType,
+        int $ownerId,
+        int $refId,
+        string $redirect,
+    ): RedirectResponse {
+        $data = $request->validate([
+            'expected_review_status' => ['required', 'string', Rule::in((array) config('ecosystem_media.review_statuses', []))],
+            'status'                 => ['required', 'string', Rule::in(['approved', 'rejected'])],
+        ]);
+
+        $ref = EcosystemMediaRef::query()
+            ->where('owner_type', $ownerType)
+            ->where('owner_id', $ownerId)
+            ->findOrFail($refId);
+
+        if ((string) $ref->review_status !== (string) $data['expected_review_status']) {
+            return $this->failBack($redirect, '已被他人修改，请刷新后再试。');
+        }
+
+        return $this->runAction(
+            fn () => $this->mediaRefs->reviewRef((int) $ref->id, (string) $data['status'], $this->adminId()),
+            $redirect,
+            '媒体引用已标记为 '.$data['status'].'。',
+        );
+    }
+
+    /**
+     * 把表单里的 1~N 行来源整理成 ContentRevisionService 的 sources 数组。
+     *
+     * 全空行直接丢弃；至少保留一条。必填项（名称 / 核验时间 / 权利依据，
+     * 以及 authorized_repost 的 scope + evidence）由服务层按 source_type 校验。
+     *
+     * @param  array<int, mixed>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function parseContentSources(array $rows): array
+    {
+        $sources = [];
+
+        foreach (array_values($rows) as $index => $row) {
+            if (! is_array($row)) {
+                throw ValidationException::withMessages([
+                    "sources.$index" => '第 '.($index + 1).' 行来源格式非法。',
+                ]);
+            }
+
+            $name = $this->trimmedOrNull($row['source_name'] ?? null, "sources.$index.source_name");
+            $url = $this->trimmedOrNull($row['source_url'] ?? null, "sources.$index.source_url");
+            $verifiedAt = $row['source_verified_at'] ?? null;
+            $rightsBasis = $this->trimmedOrNull($row['rights_basis'] ?? null, "sources.$index.rights_basis");
+            $rightsScope = $this->trimmedOrNull($row['rights_scope'] ?? null, "sources.$index.rights_scope");
+            $evidenceRef = $this->trimmedOrNull($row['evidence_ref'] ?? null, "sources.$index.evidence_ref");
+
+            $verifiedAtEmpty = $verifiedAt === null || $verifiedAt === '';
+
+            if ($name === null && $url === null && $verifiedAtEmpty
+                && $rightsBasis === null && $rightsScope === null && $evidenceRef === null) {
+                continue;
+            }
+
+            $sources[] = [
+                'source_name'        => $name,
+                'source_url'         => $url,
+                'source_verified_at' => $verifiedAtEmpty
+                    ? null
+                    : $this->appTime($verifiedAt, "sources.$index.source_verified_at"),
+                'rights_basis'       => $rightsBasis,
+                'rights_scope'       => $rightsScope,
+                'evidence_ref'       => $evidenceRef,
+            ];
+        }
+
+        if ($sources === []) {
+            throw ValidationException::withMessages([
+                'sources' => '至少填写一条来源。',
+            ]);
+        }
+
+        return $sources;
+    }
+
+    private function trimmedOrNull(mixed $value, string $field): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (! is_string($value)) {
+            throw ValidationException::withMessages([
+                $field => '该字段必须是字符串。',
+            ]);
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * 下拉选择用的已批准媒体。刻意不选择 storage_key / disk / sha256。
+     */
+    private function approvedMediaForSelection()
+    {
+        return EcosystemMedia::query()
+            ->where('status', 'approved')
+            ->select('id', 'original_name', 'mime', 'byte_size', 'width', 'height')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+    }
+
     // ==================== 授权 / 并发 / 错误 ====================
 
     /**
@@ -880,15 +1601,24 @@ class PublishingController extends Controller
     /**
      * 执行业务动作；领域异常转回表单错误，未知异常继续向上抛。
      *
+     * `$conflictMessage` 只覆盖“并发冲突”一类（指纹 / 版本），让草稿编辑能给出
+     * “内容已被他人修改，请刷新”这一明确提示；其他领域异常仍用服务层原文。
+     *
      * 注意：`ValidationException` 不在捕获列表里 —— 参数校验由 Laravel 的
      * validate() 统一处理（web 请求自动回填 + 错误包），不能被这里吞成普通错误。
      */
-    private function runAction(callable $action, string $redirect, string $success): RedirectResponse
-    {
+    private function runAction(
+        callable $action,
+        string $redirect,
+        string $success,
+        ?string $conflictMessage = null,
+    ): RedirectResponse {
         try {
             $action();
+        } catch (RevisionConflictException|ContentRevisionFingerprintConflictException $exception) {
+            return $this->failBack($redirect, $conflictMessage ?? $exception->getMessage());
         } catch (AdminPublishingConflictException|EventRevisionConflictException|ContentRevisionConflictException $exception) {
-            return $this->failBack($redirect, '已被他人修改，请刷新后再试。');
+            return $this->failBack($redirect, $conflictMessage ?? '已被他人修改，请刷新后再试。');
         } catch (
             PublicationPreconditionException
             |PublicationTransitionException
@@ -897,9 +1627,9 @@ class PublishingController extends Controller
             |ContentSourceValidationException
             |ContentTransitionException
             |ContentSlugTakenException
-            |RevisionConflictException
-            |ContentRevisionFingerprintConflictException
             |RevisionImmutableException
+            |MediaValidationException
+            |MediaTransitionException
             |InvalidArgumentException $exception
         ) {
             return $this->failBack($redirect, $exception->getMessage());
@@ -938,7 +1668,7 @@ class PublishingController extends Controller
      * 后台排期/来源核验时间按应用时区（北京时间）填写；服务层只接受
      * DateTimeInterface 并显式转 UTC，避免“字符串被当成什么时区”的猜测。
      */
-    private function appTime(mixed $value): ?Carbon
+    private function appTime(mixed $value, string $field = 'scheduled_publish_at'): ?Carbon
     {
         if ($value === null || $value === '') {
             return null;
@@ -948,7 +1678,7 @@ class PublishingController extends Controller
             return Carbon::parse((string) $value, (string) config('app.timezone', 'Asia/Shanghai'))->utc();
         } catch (\Throwable) {
             throw ValidationException::withMessages([
-                'scheduled_publish_at' => sprintf('时间「%s」无法解析。', (string) $value),
+                $field => sprintf('时间「%s」无法解析。', (string) $value),
             ]);
         }
     }

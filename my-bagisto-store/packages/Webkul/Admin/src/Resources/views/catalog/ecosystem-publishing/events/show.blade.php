@@ -10,7 +10,16 @@
         $canPublish = bouncer()->hasPermission('ecosystem.events.publish');
         $canWithhold = bouncer()->hasPermission('ecosystem.events.withhold');
         $canRetract = bouncer()->hasPermission('ecosystem.events.retract');
+        $canEditMediaRefs = bouncer()->hasPermission('ecosystem.events.edit');
+        $canReviewMediaRefs = bouncer()->hasPermission('ecosystem.media.review');
         $revisions = $event->revisions;
+        $draftRevisions = $revisions->where('review_state', 'draft');
+        $latestDraft = $draftRevisions->sortByDesc('revision_no')->first();
+        // 草稿时间输入按该 revision 自己的时区回显（保存时再转 UTC）。
+        $revisionLocalInput = fn ($value, ?string $timezone) => $value
+            ? \Illuminate\Support\Carbon::parse($value)->timezone($timezone ?: config('app.timezone', 'Asia/Shanghai'))->format('Y-m-d\TH:i')
+            : '';
+        $mediaRoles = (array) config('ecosystem_media.roles', []);
     @endphp
 
     <div class="flex items-center justify-between gap-4 max-sm:flex-wrap">
@@ -207,7 +216,7 @@
                 </label>
 
                 <label class="text-xs text-gray-600 md:col-span-3">
-                    正文 HTML（服务端会净化；媒体 ID 列表暂不支持）
+                    正文 HTML（服务端会净化；正文里的 data-media-id 只能引用本 revision 已批准的媒体）
                     <textarea name="detail_html" rows="6" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">{{ old('detail_html') }}</textarea>
                     @error('detail_html') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
                 </label>
@@ -291,6 +300,126 @@
             </form>
         @else
             <p class="text-sm text-gray-500">当前账号没有创建活动 revision 的权限。</p>
+        @endif
+    </div>
+
+    {{-- ── 编辑草稿（仅最新 draft） ───────────────────────────── --}}
+    <div class="mb-6 box-shadow rounded bg-white p-4 dark:bg-gray-900">
+        <div class="mb-3 flex items-center justify-between">
+            <p class="font-semibold text-gray-800 dark:text-white">编辑草稿（最新 draft）</p>
+            <span class="text-xs text-gray-500">
+                只有 draft 可编辑；提交审核 / 批准 / 拒绝后不可再改。保存时按指纹校验，不会覆盖他人修改。
+            </span>
+        </div>
+
+        @if (! $latestDraft)
+            <p class="text-sm text-gray-500">当前没有 draft revision；创建草稿后才能二次编辑。</p>
+        @elseif (! $canEditMediaRefs)
+            <p class="text-sm text-gray-500">当前账号没有编辑活动 revision 的权限。</p>
+        @else
+            <p class="mb-3 text-xs text-gray-500">
+                Revision #{{ $latestDraft->revision_no }}（ID {{ $latestDraft->id }}），
+                当前指纹 <code title="{{ $latestDraft->content_fingerprint }}">{{ substr((string) $latestDraft->content_fingerprint, 0, 12) }}…</code>。
+                来源快照、授权依据引用与外部报名 URL 保留原值；媒体引用在下方单独维护，编辑正文不会清空。
+            </p>
+
+            <form method="POST" action="{{ route('admin.catalog.ecosystem.events.revisions.update', [$event->id, $latestDraft->id]) }}" class="grid gap-3 md:grid-cols-3">
+                @csrf
+                <input type="hidden" name="expected_fingerprint" value="{{ $latestDraft->content_fingerprint }}">
+
+                <label class="text-xs text-gray-600 md:col-span-2">
+                    活动名称
+                    <input name="name" value="{{ old('name', $latestDraft->name) }}" maxlength="255" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('name') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    participation_mode
+                    <select name="participation_mode" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                        <option value="">（未填写）</option>
+                        @foreach ((array) config('ecosystem_revisions.participation_modes', []) as $mode)
+                            <option value="{{ $mode }}" @selected(old('participation_mode', $latestDraft->participation_mode) === $mode)>{{ $mode }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="text-xs text-gray-600 md:col-span-3">
+                    摘要
+                    <input name="summary" value="{{ old('summary', $latestDraft->summary) }}" maxlength="500" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                </label>
+
+                <label class="text-xs text-gray-600 md:col-span-3">
+                    正文 HTML（服务端会净化；正文里的 data-media-id 只能引用本 revision 已批准的媒体）
+                    <textarea name="detail_html" rows="6" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">{{ old('detail_html', $latestDraft->detail_html) }}</textarea>
+                    @error('detail_html') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    城市
+                    <input name="city" value="{{ old('city', $latestDraft->city) }}" maxlength="100" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                </label>
+
+                <label class="text-xs text-gray-600 md:col-span-2">
+                    地点描述
+                    <input name="location_text" value="{{ old('location_text', $latestDraft->location_text) }}" maxlength="255" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    timezone（IANA）
+                    <input name="timezone" list="eco-tz-list" value="{{ old('timezone', $latestDraft->timezone) }}" maxlength="64" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('timezone') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    starts_at
+                    <input type="datetime-local" name="starts_at" value="{{ old('starts_at', $revisionLocalInput($latestDraft->starts_at, $latestDraft->timezone)) }}" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('starts_at') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    ends_at
+                    <input type="datetime-local" name="ends_at" value="{{ old('ends_at', $revisionLocalInput($latestDraft->ends_at, $latestDraft->timezone)) }}" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('ends_at') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    来源名称
+                    <input name="source_name" value="{{ old('source_name', $latestDraft->source_name) }}" maxlength="191" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('source_name') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    来源 URL
+                    <input name="source_url" value="{{ old('source_url', $latestDraft->source_url) }}" maxlength="2048" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('source_url') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    来源核验时间（活动时区）
+                    <input type="datetime-local" name="source_verified_at" value="{{ old('source_verified_at', $revisionLocalInput($latestDraft->source_verified_at, $latestDraft->timezone)) }}" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('source_verified_at') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600">
+                    authorization_basis
+                    <select name="authorization_basis" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                        @foreach ((array) config('ecosystem_revisions.authorization_bases', []) as $basis)
+                            <option value="{{ $basis }}" @selected(old('authorization_basis', $latestDraft->authorization_basis) === $basis)>{{ $basis }}</option>
+                        @endforeach
+                    </select>
+                    @error('authorization_basis') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="text-xs text-gray-600 md:col-span-2">
+                    变更说明（必填，500 字内）
+                    <input name="change_summary" value="{{ old('change_summary', $latestDraft->change_summary) }}" maxlength="500" class="mt-1 w-full rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900">
+                    @error('change_summary') <span class="mt-1 block text-red-600">{{ $message }}</span> @enderror
+                </label>
+
+                <div class="flex items-end">
+                    <button type="submit" class="primary-button">保存草稿</button>
+                </div>
+            </form>
         @endif
     </div>
 
@@ -399,6 +528,139 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    {{-- ── 媒体引用（仅 draft） ────────────────────────────────── --}}
+    <div class="mb-6 box-shadow rounded bg-white p-4 dark:bg-gray-900">
+        <div class="mb-3 flex items-center justify-between">
+            <p class="font-semibold text-gray-800 dark:text-white">Revision 媒体引用（仅 draft 可编辑）</p>
+            <span class="text-xs text-gray-500">
+                只展示元数据，不展示 storage_key / 私有路径。引用审核通过后才能提审。
+            </span>
+        </div>
+
+        @if ($draftRevisions->isEmpty())
+            <p class="text-sm text-gray-500">当前没有 draft revision；创建草稿后才能挂媒体。</p>
+        @elseif ($approvedMedia->isEmpty())
+            <p class="mb-3 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                还没有 approved 媒体。请先到
+                @if (bouncer()->hasPermission('ecosystem.media.view'))
+                    <a href="{{ route('admin.catalog.ecosystem.media.index') }}" class="text-blue-600 hover:underline">媒体工作台</a>
+                @else
+                    媒体工作台
+                @endif
+                上传并审核通过后再添加引用。
+            </p>
+        @endif
+
+        @foreach ($draftRevisions as $revision)
+            <div class="mb-5 rounded border p-3 dark:border-gray-800">
+                <p class="mb-2 text-sm font-semibold text-gray-800 dark:text-white">
+                    Revision #{{ $revision->revision_no }}（ID {{ $revision->id }}）
+                </p>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead class="border-b text-left text-gray-600 dark:border-gray-800 dark:text-gray-300">
+                            <tr>
+                                <th class="px-2 py-2">media_id</th>
+                                <th class="px-2 py-2">媒体</th>
+                                <th class="px-2 py-2">role</th>
+                                <th class="px-2 py-2">alt</th>
+                                <th class="px-2 py-2">媒体状态</th>
+                                <th class="px-2 py-2">引用审核</th>
+                                <th class="px-2 py-2">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($revision->mediaRefs as $ref)
+                                <tr class="border-b last:border-b-0 dark:border-gray-800">
+                                    <td class="px-2 py-2">{{ $ref->media_id }}</td>
+                                    <td class="px-2 py-2">
+                                        {{ $ref->media?->original_name ?: '（媒体 #'.$ref->media_id.'）' }}
+                                        <div class="text-gray-500">{{ $ref->media?->mime ?: '—' }}</div>
+                                    </td>
+                                    <td class="px-2 py-2">{{ $ref->role }}</td>
+                                    <td class="px-2 py-2">{{ $ref->alt_text ?: '—' }}</td>
+                                    <td class="px-2 py-2">{{ $ref->media?->status ?: 'missing' }}</td>
+                                    <td class="px-2 py-2">
+                                        <span class="rounded px-2 py-0.5 {{ $ref->review_status === 'approved' ? 'bg-green-100 text-green-800' : ($ref->review_status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800') }}">
+                                            {{ $ref->review_status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-2 py-2">
+                                        @if ($canReviewMediaRefs && $ref->review_status === 'pending')
+                                            <div class="flex gap-2">
+                                                <form method="POST" action="{{ route('admin.catalog.ecosystem.events.revisions.media_refs.review', [$event->id, $revision->id, $ref->id]) }}">
+                                                    @csrf
+                                                    <input type="hidden" name="expected_review_status" value="{{ $ref->review_status }}">
+                                                    <input type="hidden" name="status" value="approved">
+                                                    <button type="submit" class="primary-button !py-1 !text-xs">批准引用</button>
+                                                </form>
+                                                <form method="POST" action="{{ route('admin.catalog.ecosystem.events.revisions.media_refs.review', [$event->id, $revision->id, $ref->id]) }}">
+                                                    @csrf
+                                                    <input type="hidden" name="expected_review_status" value="{{ $ref->review_status }}">
+                                                    <input type="hidden" name="status" value="rejected">
+                                                    <button type="submit" class="transparent-button !py-1 !text-xs">驳回引用</button>
+                                                </form>
+                                            </div>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="7" class="px-2 py-4 text-center text-gray-500">还没有媒体引用。</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                @if ($canEditMediaRefs)
+                    <form method="POST" action="{{ route('admin.catalog.ecosystem.events.revisions.media_refs.store', [$event->id, $revision->id]) }}" class="mt-3">
+                        @csrf
+                        <p class="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                            整组替换引用（最多 {{ (int) config('ecosystem_media.max_refs_per_revision', 20) }} 条；按行顺序展示）
+                        </p>
+
+                        <div class="grid gap-2 md:grid-cols-5">
+                            @for ($i = 0; $i < 5; $i++)
+                                <div class="rounded border p-2 dark:border-gray-800">
+                                    <label class="block text-[11px] text-gray-500">
+                                        媒体
+                                        <select name="refs[{{ $i }}][media_id]" class="mt-1 w-full rounded-md border px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-900">
+                                            <option value="">（空行）</option>
+                                            @foreach ($approvedMedia as $item)
+                                                <option value="{{ $item->id }}">#{{ $item->id }} {{ $item->original_name }} · {{ $item->mime }}</option>
+                                            @endforeach
+                                        </select>
+                                    </label>
+
+                                    <label class="mt-1 block text-[11px] text-gray-500">
+                                        role
+                                        <select name="refs[{{ $i }}][role]" class="mt-1 w-full rounded-md border px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-900">
+                                            @foreach ($mediaRoles as $role)
+                                                <option value="{{ $role }}" @selected($role === 'cover')>{{ $role }}</option>
+                                            @endforeach
+                                        </select>
+                                    </label>
+
+                                    <label class="mt-1 block text-[11px] text-gray-500">
+                                        alt
+                                        <input name="refs[{{ $i }}][alt_text]" maxlength="255" class="mt-1 w-full rounded-md border px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-900">
+                                    </label>
+                                </div>
+                            @endfor
+                        </div>
+
+                        <button type="submit" class="primary-button mt-2">保存媒体引用</button>
+                        <span class="ml-2 text-xs text-gray-500">
+                            替换会重算指纹；提交后必须重新审核，旧批准不会继承。
+                        </span>
+                    </form>
+                @endif
+            </div>
+        @endforeach
     </div>
 
     {{-- ── 处置动作 ─────────────────────────────────────────── --}}

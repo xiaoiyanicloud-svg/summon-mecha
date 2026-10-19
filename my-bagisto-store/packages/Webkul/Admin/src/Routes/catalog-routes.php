@@ -145,6 +145,10 @@ Route::prefix('catalog')->group(function () {
         Route::get('', 'index')->name('admin.catalog.ecosystem.index');
 
         // 活动
+        // 新建入口放在 {id} 之前；{id} 也全部 whereNumber，静态段不会被吞。
+        Route::get('events/create', 'createEvent')->name('admin.catalog.ecosystem.events.create');
+        Route::post('events', 'storeEvent')->name('admin.catalog.ecosystem.events.store');
+
         Route::get('events/{id}', 'showEvent')->whereNumber('id')->name('admin.catalog.ecosystem.events.show');
         Route::post('events/{id}/metadata', 'updateEventMetadata')->whereNumber('id')->name('admin.catalog.ecosystem.events.metadata');
         Route::post('events/{id}/revisions', 'storeEventRevision')->whereNumber('id')->name('admin.catalog.ecosystem.events.revisions.store');
@@ -152,6 +156,15 @@ Route::prefix('catalog')->group(function () {
         Route::get('events/{id}/revisions/{revision}/preview', 'previewEventRevision')
             ->whereNumber('id')->whereNumber('revision')
             ->name('admin.catalog.ecosystem.events.revisions.preview');
+        Route::post('events/{id}/revisions/{revision}/update', 'updateEventRevisionDraft')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.update');
+        Route::post('events/{id}/revisions/{revision}/media-refs', 'replaceEventRevisionMediaRefs')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.media_refs.store');
+        Route::post('events/{id}/revisions/{revision}/media-refs/{ref}/review', 'reviewEventMediaRef')
+            ->whereNumber('id')->whereNumber('revision')->whereNumber('ref')
+            ->name('admin.catalog.ecosystem.events.revisions.media_refs.review');
         Route::post('events/{id}/revisions/{revision}/submit', 'submitEventRevision')
             ->whereNumber('id')->whereNumber('revision')
             ->name('admin.catalog.ecosystem.events.revisions.submit');
@@ -177,11 +190,21 @@ Route::prefix('catalog')->group(function () {
         Route::get('content', 'contentIndex')->name('admin.catalog.ecosystem.content.index');
         Route::post('content', 'storeContent')->name('admin.catalog.ecosystem.content.store');
         Route::get('content/{id}', 'showContent')->whereNumber('id')->name('admin.catalog.ecosystem.content.show');
+        Route::post('content/{id}/metadata', 'updateContentMetadata')->whereNumber('id')->name('admin.catalog.ecosystem.content.metadata');
         Route::post('content/{id}/revisions', 'storeContentRevision')->whereNumber('id')->name('admin.catalog.ecosystem.content.revisions.store');
 
         Route::get('content/{id}/revisions/{revision}/preview', 'previewContentRevision')
             ->whereNumber('id')->whereNumber('revision')
             ->name('admin.catalog.ecosystem.content.revisions.preview');
+        Route::post('content/{id}/revisions/{revision}/update', 'updateContentRevisionDraft')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.update');
+        Route::post('content/{id}/revisions/{revision}/media-refs', 'replaceContentRevisionMediaRefs')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.media_refs.store');
+        Route::post('content/{id}/revisions/{revision}/media-refs/{ref}/review', 'reviewContentMediaRef')
+            ->whereNumber('id')->whereNumber('revision')->whereNumber('ref')
+            ->name('admin.catalog.ecosystem.content.revisions.media_refs.review');
         Route::post('content/{id}/revisions/{revision}/submit', 'submitContentRevision')
             ->whereNumber('id')->whereNumber('revision')
             ->name('admin.catalog.ecosystem.content.revisions.submit');
@@ -207,6 +230,17 @@ Route::prefix('catalog')->group(function () {
         Route::get('organizers', 'organizerIndex')->name('admin.catalog.ecosystem.organizers.index');
         Route::post('organizers', 'storeOrganizer')->name('admin.catalog.ecosystem.organizers.store');
         Route::post('organizers/{id}/verify', 'verifyOrganizer')->whereNumber('id')->name('admin.catalog.ecosystem.organizers.verify');
+        Route::post('organizers/{id}/reject', 'rejectOrganizer')->whereNumber('id')->name('admin.catalog.ecosystem.organizers.reject');
+        Route::post('organizers/{id}/suspend', 'suspendOrganizer')->whereNumber('id')->name('admin.catalog.ecosystem.organizers.suspend');
+
+        // 媒体工作台（上传 / 审核 / 隔离）。上传与审核权限分离；
+        // 列表只输出元数据，任何页面都不出现 storage_key。
+        Route::get('media', 'mediaIndex')->name('admin.catalog.ecosystem.media.index');
+        Route::get('media/{id}/preview', 'previewMedia')->whereNumber('id')->name('admin.catalog.ecosystem.media.preview');
+        Route::post('media', 'storeMedia')->name('admin.catalog.ecosystem.media.store');
+        Route::post('media/{id}/approve', 'approveMedia')->whereNumber('id')->name('admin.catalog.ecosystem.media.approve');
+        Route::post('media/{id}/reject', 'rejectMedia')->whereNumber('id')->name('admin.catalog.ecosystem.media.reject');
+        Route::post('media/{id}/quarantine', 'quarantineMedia')->whereNumber('id')->name('admin.catalog.ecosystem.media.quarantine');
     });
 
     /**

@@ -127,6 +127,13 @@ return [
         'sort'       => 4,
         'icon'       => '',
     ], [
+        // 媒体工作台。上传 / 审核权限分离；菜单只负责可见性。
+        'key'        => 'ecosystem.media',
+        'name'       => '生态媒体',
+        'route'      => 'admin.catalog.ecosystem.media.index',
+        'sort'       => 5,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.skills',
         'name'       => '技能管理',
         'route'      => 'admin.catalog.skills.index',

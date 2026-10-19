@@ -74,7 +74,7 @@
                     <th class="px-4 py-3">平台角色</th>
                     <th class="px-4 py-3">状态</th>
                     <th class="px-4 py-3">核验人 / 时间</th>
-                    <th class="px-4 py-3">核验</th>
+                    <th class="px-4 py-3">核验 / 驳回 / 暂停</th>
                 </tr>
             </thead>
             <tbody>
@@ -99,13 +99,39 @@
                             <div class="text-gray-500">{{ $organizer->verified_at ? $organizer->verified_at->utc()->format('Y-m-d H:i') : '—' }}</div>
                         </td>
                         <td class="px-4 py-3">
-                            @if (bouncer()->hasPermission('ecosystem.organizers.verify') && in_array($organizer->status, ['pending', 'rejected', 'suspended'], true))
-                                <form method="POST" action="{{ route('admin.catalog.ecosystem.organizers.verify', $organizer->id) }}" class="flex flex-col gap-2">
-                                    @csrf
-                                    <input type="hidden" name="expected_status" value="{{ $organizer->status }}">
-                                    <input name="verification_note" placeholder="核验说明（可选）" maxlength="5000" class="w-full rounded-md border px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-900">
-                                    <button type="submit" class="primary-button !py-1 !text-xs">核验通过</button>
-                                </form>
+                            @if (bouncer()->hasPermission('ecosystem.organizers.verify'))
+                                <div class="flex flex-col gap-2">
+                                    @if (in_array($organizer->status, ['pending', 'rejected', 'suspended'], true))
+                                        <form method="POST" action="{{ route('admin.catalog.ecosystem.organizers.verify', $organizer->id) }}" class="flex flex-col gap-1">
+                                            @csrf
+                                            <input type="hidden" name="expected_status" value="{{ $organizer->status }}">
+                                            <input name="verification_note" placeholder="核验说明（可选）" maxlength="5000" class="w-full rounded-md border px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-900">
+                                            <button type="submit" class="primary-button !py-1 !text-xs">核验通过</button>
+                                        </form>
+                                    @endif
+
+                                    @if ($organizer->status === 'pending')
+                                        <form method="POST" action="{{ route('admin.catalog.ecosystem.organizers.reject', $organizer->id) }}" class="flex flex-col gap-1">
+                                            @csrf
+                                            <input type="hidden" name="expected_status" value="{{ $organizer->status }}">
+                                            <input name="reason" required placeholder="驳回原因（必填）" maxlength="5000" class="w-full rounded-md border px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-900">
+                                            <button type="submit" class="transparent-button !py-1 !text-xs">驳回</button>
+                                        </form>
+                                    @endif
+
+                                    @if ($organizer->status === 'verified')
+                                        <form method="POST" action="{{ route('admin.catalog.ecosystem.organizers.suspend', $organizer->id) }}" class="flex flex-col gap-1">
+                                            @csrf
+                                            <input type="hidden" name="expected_status" value="{{ $organizer->status }}">
+                                            <input name="reason" required placeholder="暂停原因（必填）" maxlength="5000" class="w-full rounded-md border px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-900">
+                                            <button type="submit" class="transparent-button !py-1 !text-xs">暂停</button>
+                                        </form>
+                                    @endif
+
+                                    @if (! in_array($organizer->status, ['pending', 'rejected', 'suspended', 'verified'], true))
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </div>
                             @else
                                 <span class="text-xs text-gray-400">—</span>
                             @endif

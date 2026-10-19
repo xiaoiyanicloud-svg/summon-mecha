@@ -261,7 +261,7 @@ return [
         'sort'  => 1,
     ], [
         'key'   => 'ecosystem.events.create',
-        'name'  => '创建修订',
+        'name'  => '新建活动 / 创建修订',
         'route' => 'admin.catalog.ecosystem.events.revisions.store',
         'sort'  => 2,
     ], [
@@ -316,7 +316,7 @@ return [
         'sort'  => 2,
     ], [
         'key'   => 'ecosystem.content.edit',
-        'name'  => '创建修订',
+        'name'  => '编辑文章 / 创建修订',
         'route' => 'admin.catalog.ecosystem.content.revisions.store',
         'sort'  => 3,
     ], [
@@ -366,8 +366,31 @@ return [
         'sort'  => 2,
     ], [
         'key'   => 'ecosystem.organizers.verify',
-        'name'  => '核验主办方',
+        'name'  => '核验 / 驳回 / 暂停',
         'route' => 'admin.catalog.ecosystem.organizers.verify',
+        'sort'  => 3,
+    ], [
+        // ── 媒体工作台 ────────────────────────────────────────────────
+        // 上传与审核刻意分成两个权限：能传文件不等于能批准自己的文件。
+        // 列表查看单独成 key，避免只有审核权的人因缺少上传权看不到队列。
+        'key'   => 'ecosystem.media',
+        'name'  => '生态媒体',
+        'route' => 'admin.catalog.ecosystem.media.index',
+        'sort'  => 4,
+    ], [
+        'key'   => 'ecosystem.media.view',
+        'name'  => '查看媒体',
+        'route' => 'admin.catalog.ecosystem.media.index',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.media.upload',
+        'name'  => '上传媒体',
+        'route' => 'admin.catalog.ecosystem.media.store',
+        'sort'  => 2,
+    ], [
+        'key'   => 'ecosystem.media.review',
+        'name'  => '审核 / 隔离媒体与引用',
+        'route' => 'admin.catalog.ecosystem.media.approve',
         'sort'  => 3,
     ], [
         // 技能管理:技能包的版本 / 交付物 / 安装指引

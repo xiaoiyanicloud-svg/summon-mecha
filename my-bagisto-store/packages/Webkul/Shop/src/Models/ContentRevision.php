@@ -136,4 +136,18 @@ class ContentRevision extends Model
     {
         return $this->hasMany(ContentSource::class, 'revision_id');
     }
+
+    /**
+     * 该 revision 的媒体引用（ADR §4.10）。
+     *
+     * 引用归属用 `owner_type=content_revision` 固定；`owner_id` 指向本 revision。
+     * 正常写入必须走 MediaRefService（媒体批准状态、排序与指纹重算）。
+     */
+    public function mediaRefs()
+    {
+        return $this->hasMany(EcosystemMediaRef::class, 'owner_id')
+            ->where('owner_type', 'content_revision')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
 }

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Models\Event;
 use Webkul\User\Models\Admin;
 use Webkul\User\Models\Role;
@@ -52,11 +53,15 @@ function ecoAclSuperAdmin(): Admin
 }
 
 /**
- * @return array{event: int, event_revision: int, post: int, content_revision: int, organizer: int}
+ * @return array{event: int, event_revision: int, post: int, content_revision: int, organizer: int, media_approved: int, media_pending: int, event_ref: int, content_ref: int}
  */
 function ecoAclFixtures(): array
 {
     $now = '2026-10-19 04:00:00';
+
+    // 媒体预览流要求私有盘文件真实存在；授权用例只验证 ACL，
+    // 用 fake 盘放一份占位内容即可（不涉及真实文件）。
+    Storage::fake('local');
 
     $organizerId = (int) DB::table('ecosystem_organizers')->insertGetId([
         'name'                 => '授权测试主办方',
@@ -169,12 +174,70 @@ function ecoAclFixtures(): array
 
     DB::table('content_posts')->where('id', $postId)->update(['working_revision_id' => $contentRevisionId]);
 
+    $mediaApproved = (int) DB::table('ecosystem_media')->insertGetId([
+        'disk'          => 'local',
+        'storage_key'   => 'ecosystem/media/aa/'.str_repeat('a', 64).'.png',
+        'original_name' => 'approved.png',
+        'mime'          => 'image/png',
+        'byte_size'     => 128,
+        'width'         => 16,
+        'height'        => 16,
+        'sha256'        => str_repeat('a', 64),
+        'status'        => 'approved',
+        'uploaded_by'   => 1,
+        'created_at'    => $now,
+        'updated_at'    => $now,
+    ]);
+
+    $mediaPending = (int) DB::table('ecosystem_media')->insertGetId([
+        'disk'          => 'local',
+        'storage_key'   => 'ecosystem/media/bb/'.str_repeat('b', 64).'.png',
+        'original_name' => 'pending.png',
+        'mime'          => 'image/png',
+        'byte_size'     => 64,
+        'width'         => 8,
+        'height'        => 8,
+        'sha256'        => str_repeat('b', 64),
+        'status'        => 'pending',
+        'uploaded_by'   => 1,
+        'created_at'    => $now,
+        'updated_at'    => $now,
+    ]);
+
+    Storage::disk('local')->put('ecosystem/media/aa/'.str_repeat('a', 64).'.png', 'approved-media-bytes');
+
+    $eventRef = (int) DB::table('ecosystem_media_refs')->insertGetId([
+        'media_id'      => $mediaApproved,
+        'owner_type'    => 'event_revision',
+        'owner_id'      => $eventRevisionId,
+        'role'          => 'cover',
+        'sort_order'    => 0,
+        'alt_text'      => '活动封面',
+        'review_status' => 'pending',
+        'created_at'    => $now,
+    ]);
+
+    $contentRef = (int) DB::table('ecosystem_media_refs')->insertGetId([
+        'media_id'      => $mediaApproved,
+        'owner_type'    => 'content_revision',
+        'owner_id'      => $contentRevisionId,
+        'role'          => 'inline',
+        'sort_order'    => 0,
+        'alt_text'      => '文章配图',
+        'review_status' => 'pending',
+        'created_at'    => $now,
+    ]);
+
     return [
         'event'            => $eventId,
         'event_revision'   => $eventRevisionId,
         'post'             => $postId,
         'content_revision' => $contentRevisionId,
         'organizer'        => $organizerId,
+        'media_approved'   => $mediaApproved,
+        'media_pending'    => $mediaPending,
+        'event_ref'        => $eventRef,
+        'content_ref'      => $contentRef,
     ];
 }
 
@@ -186,10 +249,15 @@ function ecoAclRouteParams(array $ids): array
 {
     return [
         'admin.catalog.ecosystem.index'                     => [],
+        'admin.catalog.ecosystem.events.create'             => [],
+        'admin.catalog.ecosystem.events.store'              => [],
         'admin.catalog.ecosystem.events.show'               => ['id' => $ids['event']],
         'admin.catalog.ecosystem.events.metadata'           => ['id' => $ids['event']],
         'admin.catalog.ecosystem.events.revisions.store'    => ['id' => $ids['event']],
         'admin.catalog.ecosystem.events.revisions.preview'  => ['id' => $ids['event'], 'revision' => $ids['event_revision']],
+        'admin.catalog.ecosystem.events.revisions.update'   => ['id' => $ids['event'], 'revision' => $ids['event_revision']],
+        'admin.catalog.ecosystem.events.revisions.media_refs.store' => ['id' => $ids['event'], 'revision' => $ids['event_revision']],
+        'admin.catalog.ecosystem.events.revisions.media_refs.review' => ['id' => $ids['event'], 'revision' => $ids['event_revision'], 'ref' => $ids['event_ref']],
         'admin.catalog.ecosystem.events.revisions.submit'   => ['id' => $ids['event'], 'revision' => $ids['event_revision']],
         'admin.catalog.ecosystem.events.revisions.approve'  => ['id' => $ids['event'], 'revision' => $ids['event_revision']],
         'admin.catalog.ecosystem.events.revisions.reject'   => ['id' => $ids['event'], 'revision' => $ids['event_revision']],
@@ -203,8 +271,12 @@ function ecoAclRouteParams(array $ids): array
         'admin.catalog.ecosystem.content.index'             => [],
         'admin.catalog.ecosystem.content.store'             => [],
         'admin.catalog.ecosystem.content.show'              => ['id' => $ids['post']],
+        'admin.catalog.ecosystem.content.metadata'          => ['id' => $ids['post']],
         'admin.catalog.ecosystem.content.revisions.store'   => ['id' => $ids['post']],
         'admin.catalog.ecosystem.content.revisions.preview' => ['id' => $ids['post'], 'revision' => $ids['content_revision']],
+        'admin.catalog.ecosystem.content.revisions.update'  => ['id' => $ids['post'], 'revision' => $ids['content_revision']],
+        'admin.catalog.ecosystem.content.revisions.media_refs.store' => ['id' => $ids['post'], 'revision' => $ids['content_revision']],
+        'admin.catalog.ecosystem.content.revisions.media_refs.review' => ['id' => $ids['post'], 'revision' => $ids['content_revision'], 'ref' => $ids['content_ref']],
         'admin.catalog.ecosystem.content.revisions.submit'  => ['id' => $ids['post'], 'revision' => $ids['content_revision']],
         'admin.catalog.ecosystem.content.revisions.approve' => ['id' => $ids['post'], 'revision' => $ids['content_revision']],
         'admin.catalog.ecosystem.content.revisions.reject'  => ['id' => $ids['post'], 'revision' => $ids['content_revision']],
@@ -218,6 +290,15 @@ function ecoAclRouteParams(array $ids): array
         'admin.catalog.ecosystem.organizers.index'          => [],
         'admin.catalog.ecosystem.organizers.store'          => [],
         'admin.catalog.ecosystem.organizers.verify'         => ['id' => $ids['organizer']],
+        'admin.catalog.ecosystem.organizers.reject'         => ['id' => $ids['organizer']],
+        'admin.catalog.ecosystem.organizers.suspend'        => ['id' => $ids['organizer']],
+
+        'admin.catalog.ecosystem.media.index'               => [],
+        'admin.catalog.ecosystem.media.preview'             => ['id' => $ids['media_approved']],
+        'admin.catalog.ecosystem.media.store'               => [],
+        'admin.catalog.ecosystem.media.approve'             => ['id' => $ids['media_pending']],
+        'admin.catalog.ecosystem.media.reject'              => ['id' => $ids['media_pending']],
+        'admin.catalog.ecosystem.media.quarantine'          => ['id' => $ids['media_approved']],
     ];
 }
 
@@ -365,4 +446,64 @@ it('未登录访问生态发布路由会重定向到后台登录', function () {
 
     post(route('admin.catalog.ecosystem.events.metadata', $ids['event']))
         ->assertRedirect(route('admin.session.create'));
+});
+
+it('媒体上传与审核权限分离，引用审核归 ecosystem.media.review', function () {
+    $ids = ecoAclFixtures();
+
+    // 只有上传权（含查看）：能打开列表、能提交上传表单，但不能审核。
+    $this->actingAs(ecoAclAdmin(['ecosystem.media.view', 'ecosystem.media.upload']), 'admin');
+
+    get(route('admin.catalog.ecosystem.media.index'))->assertOk();
+
+    post(route('admin.catalog.ecosystem.media.store'))->assertRedirect();
+
+    post(route('admin.catalog.ecosystem.media.approve', $ids['media_pending']), [
+        'expected_status' => 'pending',
+    ])->assertForbidden();
+
+    post(route('admin.catalog.ecosystem.events.revisions.media_refs.review', [
+        $ids['event'],
+        $ids['event_revision'],
+        $ids['event_ref'],
+    ]), [
+        'expected_review_status' => 'pending',
+        'status'                 => 'approved',
+    ])->assertForbidden();
+
+    expect((string) DB::table('ecosystem_media')->where('id', $ids['media_pending'])->value('status'))->toBe('pending');
+
+    // 只有审核权（含查看）：能审核媒体与引用，但不能上传。
+    $this->actingAs(ecoAclAdmin(['ecosystem.media.view', 'ecosystem.media.review']), 'admin');
+
+    post(route('admin.catalog.ecosystem.media.store'))->assertForbidden();
+
+    post(route('admin.catalog.ecosystem.media.approve', $ids['media_pending']), [
+        'expected_status' => 'pending',
+    ])->assertRedirect(route('admin.catalog.ecosystem.media.index'));
+
+    expect((string) DB::table('ecosystem_media')->where('id', $ids['media_pending'])->value('status'))->toBe('approved');
+
+    post(route('admin.catalog.ecosystem.events.revisions.media_refs.review', [
+        $ids['event'],
+        $ids['event_revision'],
+        $ids['event_ref'],
+    ]), [
+        'expected_review_status' => 'pending',
+        'status'                 => 'approved',
+    ])->assertRedirect(route('admin.catalog.ecosystem.events.show', $ids['event']));
+
+    expect((string) DB::table('ecosystem_media_refs')->where('id', $ids['event_ref'])->value('review_status'))->toBe('approved');
+
+    // 活动编辑权不等于媒体审核权：仍不能审核引用。
+    $this->actingAs(ecoAclAdmin(['ecosystem.events.view', 'ecosystem.events.edit']), 'admin');
+
+    post(route('admin.catalog.ecosystem.content.revisions.media_refs.review', [
+        $ids['post'],
+        $ids['content_revision'],
+        $ids['content_ref'],
+    ]), [
+        'expected_review_status' => 'pending',
+        'status'                 => 'approved',
+    ])->assertForbidden();
 });

@@ -121,18 +121,19 @@
 
 ## G1-08 ~ G1-11 收口（2026-10-19）
 
-**代码与独立测试库验证已完成，但未做生产迁移、未打开公开读取。**
+**本机代码、测试、root 迁移、恢复演练、公开读取、worker/scheduler 与 H5 真实数据 E2E 已完成。**
 
-- **G1-08A**：审核闭环（提交/批准/拒绝）、`approved_revision_id`、`scheduled_publish_at`、审批指纹/媒体 manifest/净化版本绑定、并发 CAS、事务审计、新草稿失效旧批准。证据见 [G1-08-11-implementation-plan.md](./G1-08-11-implementation-plan.md) 与 [G1-08B-publication-evidence.md](./G1-08B-publication-evidence.md)。
-- **G1-08B**：发布、排期、取消排期、暂缓、恢复、撤稿、公开指针原子切换、事务 outbox；`PublicationPointerSwitcher` 是唯一公开指针写入入口。证据见 [G1-08B-publication-evidence.md](./G1-08B-publication-evidence.md)。
-- **G1-09**：outbox 领取/租约/重试/dead/过期恢复、旧 worker 回报拒绝、到期发布扫描、独立公开读取 kill switch。命令默认关闭，调度器未常驻。证据见 [G1-09-worker-evidence.md](./G1-09-worker-evidence.md)。
-- **G1-10**：公开活动/资讯/媒体 API、显式 DTO 白名单、404/410/503、稳定分页筛选、受控媒体流式输出。证据见 [G1-10-public-api-evidence.md](./G1-10-public-api-evidence.md)。
-- **G1-11**：独立活动/资讯列表与详情页、首页真实预览、分页筛选、分享、受控富文本渲染；H5 空态/404 已截图。证据见 [G1-11-frontend-evidence.md](./G1-11-frontend-evidence.md)。
-- **Admin 发布工作台**：活动/资讯 revision、审核、排期、发布、暂缓/恢复/撤稿、主办方核验与安全预览。证据见 [G1-admin-publishing-console-evidence.md](./G1-admin-publishing-console-evidence.md)。
+- **G1-08A/B**：审核、发布、排期、暂缓、恢复、撤稿、指针切换、事务 outbox 与并发 CAS 已完成。
+- **G1-09**：outbox 租约、重试、过期恢复、旧 worker 拒绝、到期发布扫描与 kill switch 已完成；本机 `schedule:work` 已常驻并实测每分钟执行。
+- **G1-10**：公开活动/资讯/媒体 API 与 DTO 白名单已完成；本机公开读取开关已启用。
+- **G1-11**：独立列表/详情、首页预览、筛选分页、分享与富文本渲染已完成；真实数据 H5、410、503 和剪贴板已实测截图。
+- **Admin**：活动新建、草稿二次编辑、多来源、媒体上传/审核/预览、revision 媒体引用、主办方核验/驳回/暂停、审核/排期/发布/处置全链路已完成。
+- **root**：备份 1,530,144 bytes，恢复演练 186 表 / 8 events / 1 registration 一致；additive 迁移后旧字段哈希不变，8 条样例仍为 draft/normal，报名未丢失。
+- 详细生产收口证据：[G1-production-cutover-evidence.md](./G1-production-cutover-evidence.md)。
 
-**仍保持关闭/未验证**
-- root 主库未迁移；生产 DDL 锁影响、备份恢复与维护窗口未演练。
-- `ECOSYSTEM_EVENT_PUBLIC_ENABLED` / `ECOSYSTEM_CONTENT_PUBLIC_ENABLED` 保持 false；对外仍不是“赛事/资讯已上线”。
-- outbox worker 与到期发布 scheduler 默认关闭，`schedule:work` / crontab 未启动；`sent` 只代表事实被消费，不代表用户已收到通知。
-- H5 有数据视图、410/503 截图、小程序真机分享、H5 剪贴板实写、真实多进程锁竞争与长时间稳定性未验证。
-- Admin 媒体上传/审核 UI、多来源编辑、活动新建 G1 入口仍为后续工作；当前页面已明确标注。
+**当前运营边界**
+- root 尚无真实已发布赛事/资讯，公开列表为空是正确状态；不得把 Seeder 样例当作真实内容。
+- 资讯发布仍关闭：B-04/B-07 未签署。资讯公开读取代码已就绪，待签署后开启 `ECOSYSTEM_CONTENT_PUBLISH_ENABLED=true`。
+- 报名 G2、CDN/缓存撤回、搜索/收藏/SSR/OG/sitemap 不在 G1 范围。
+- 小程序真机分享、Safari/微信内置浏览器剪贴板、正式托管主机部署仍需目标环境验证。
+- `sent` 只代表 outbox 事实被消费，不代表用户已收到通知。

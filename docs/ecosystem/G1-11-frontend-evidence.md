@@ -6,9 +6,9 @@
 | 分支 | `codex/ecosystem-g1-trusted-publishing` |
 | 范围 | 活动 / 资讯列表与详情页、首页 EcoCenter / Dongtai 预览、公开 DTO 前端归一化、分享、富文本安全渲染 |
 | 依据 | `docs/ecosystem/G1-08-11-implementation-plan.md` §7、§8.7；`G1-10-public-api-evidence.md` |
-| 数据库 | **未连接、未迁移、未写入**；本批只改前端 |
-| 开关 | `ecosystem.events.public_enabled` / `ecosystem.content.public_enabled` / kill switch **均未改动**（保持关闭） |
-| 结论 | 4 个独立页面 + 首页预览改造完成；新增 18 个 Node 用例，全部 Node 测试 35/35 通过；H5 空态与 404 态已截图；**有数据视图与真机分享未验证**（见 §6） |
+| 数据库 | 2026-10-19 追加的真实数据 E2E **仅在独立测试库 `summon_mecha_step10_test`** 通过真实服务写入；root 主库只读探针确认种子数据 0 条 |
+| 开关 | 仓库 `config/` 与 `.env` 默认值**未改**；仅在 8009/8010 测试进程的环境变量中临时开启，进程已停止 |
+| 结论 | 4 个独立页面 + 首页预览改造完成；新增 18 个 Node 用例，全部 Node 测试 35/35 通过。2026-10-19 追加真实数据 H5 E2E：活动/资讯列表与详情、410、503、首页预览、H5 剪贴板均已实测并截图；**小程序真机分享仍未验证**（见 §6） |
 
 ---
 
@@ -211,39 +211,99 @@ duration_ms 219.7861
 
 ---
 
-## 6. H5 证据与**未验证项**
+## 6. H5 证据
 
-### 6.1 已完成的 H5 截图
+### 6.1 真实数据 E2E（2026-10-19 追加）
 
-截图工具：`node tools/shot.mjs <url> <png> <width> <height> 2 5000`。
-环境：H5 dev server `http://127.0.0.1:5173`；后端 `http://127.0.0.1:8000`；
-两个域开关与 kill switch **保持默认关闭**（实测 `/api/events`、`/api/content/posts` 返回 `{"data":[]}`）。
+**环境**
 
-| 截图 | 视口 | 展示状态 |
+| 项 | 值 |
+|---|---|
+| H5 dev server | `http://127.0.0.1:5173`（HBuilderX / Vite，未停止） |
+| 独立后端 8009 | `DB_DATABASE=summon_mecha_step10_test APP_ENV=testing ECOSYSTEM_EVENT_PUBLIC_ENABLED=true ECOSYSTEM_CONTENT_PUBLIC_ENABLED=true php artisan serve --host=127.0.0.1 --port=8009` |
+| 独立后端 8010 | 同 8009，另加 `ECOSYSTEM_PUBLIC_READ_EMERGENCY_DISABLED=true`（仅用于 503 截图） |
+| 既有后端 8000 | **未停止、未重启、未写入**（root 库 + 公开开关 false） |
+| `utils/config.js` | 临时改为 8009 / 8010 截图，结束后按备份**逐字节恢复**（md5 `4c637db145ec4da1dbfa76abab7fd20b`，与备份一致；用户既有的 `BASE_URL='http://127.0.0.1:8000'` 改动保留） |
+
+**真实数据（全部经服务层写入，不是裸 SQL 伪造发布轴）**
+
+| 对象 | ID | 状态 / 关键字段 |
 |---|---|---|
-| `.claude/backup/G1-11/screenshots/events-375.png` | 375×812 | 活动列表：加载完成后的**诚实空态**（域开关关闭） |
-| `.claude/backup/G1-11/screenshots/events-390.png` | 390×844 | 同上 |
-| `.claude/backup/G1-11/screenshots/content-390.png` | 390×844 | 资讯列表：诚实空态 |
-| `.claude/backup/G1-11/screenshots/event-detail-404-375.png` | 375×812 | 活动详情：**404 错误态**（非空态） |
-| `.claude/backup/G1-11/screenshots/content-detail-404-390.png` | 390×844 | 资讯详情：**404 错误态** |
-| `.claude/backup/G1-11/screenshots/home-event-tab-390.png` | 390×844 | 首页 EcoCenter 赛事 tab：compact 预览 + 查看全部 + 空态 |
-| `.claude/backup/G1-11/screenshots/home-feed-tab-390.png` | 390×844 | 首页动态资讯 tab：Dongtai 真实预览 + 查看全部 + 空态 |
+| 后台账号 | admin `4029` | `g1-h5-e2e@example.test` |
+| 主办方 | organizer `2054` | `verified`，`platform_role=organizer`（`OrganizerService::create` + `verify`） |
+| 活动 | event `4436` | `publish_status=published`，`disposition=normal`，`published_revision_id=2233`，`published_at=first_published_at=2026-10-19 13:04:03 UTC`（21:04 +08）；时间 `2026-11-15 09:30~17:30 Asia/Shanghai`，city=上海，participation_mode=offline |
+| 活动媒体 | media `1150` | 真实 PNG 1200×800，`approved`；`event_revision 2233` 引用 `role=cover`、ref `approved`；sha256 `6ae9aaf0…2b6e` |
+| 资讯 | post `1450` | slug `h5-e2e-embodied-ai-open-day`，`publish_status=published`，`published_revision_id=1445`，`published_at=2026-10-19 13:04:03 UTC`；含 1 条来源与 `body_html` |
+| 资讯媒体 | media `1151` | 真实 PNG 1200×800，`approved`；`content_revision 1445` 引用 `role=cover`、ref `approved`；sha256 `7e9eb976…9f53` |
+| 撤稿活动 | event `4437` | 曾发布（`published_at` 非空）、`publish_status=published`、`disposition=retracted`（`EventPublicationService::retract`） |
 
-> 这些截图证明页面可加载、导航栏/筛选/空态/404 态样式在 375、390px 下可用；
-> **不证明有数据时的卡片、长标题、正文图片布局**。
+服务链路：`EventDraftService` → `EventRevisionService` → `MediaService` + `MediaRefService` → `EventReviewService`（submit/approve）→ `EventPublicationService::publishNow`；资讯同构（`ContentPostService` / `ContentRevisionService` / `ContentReviewService` / `ContentPublicationService`）。发布开关与 B-04/B-07 **只在种子进程内** `config()->set`，仓库默认值未改。
 
-### 6.2 未完成 / 未验证（明确未做）
+**真实 API 证据**（原始响应保存在 `.claude/backup/G1-H5-E2E/`）
 
-| 项 | 状态 | 原因 |
+| 请求 | 结果 | 证据文件 |
 |---|---|---|
-| 有数据视图的 H5 截图（活动/资讯卡片、详情媒体、正文图片） | **未完成** | 任务严禁打开 `public_enabled`；本机未使用隔离库发布测试数据，不用静态伪造截图冒充 |
+| `GET http://127.0.0.1:8009/api/events` | `200`，列表含 event 4436 | `api-events-list.json` / `http-events-list.headers` |
+| `GET /api/events/4436` | `200`，DTO 含 organizer/source/city/timezone/body_html/media | `api-event-detail.json` |
+| `GET /api/events/4436/media/1150` | `200 image/png`，33040 字节，md5 与种子 PNG 一致 | `api-event-media.png` |
+| `GET /api/content/posts` | `200`，列表含 slug | `api-content-list.json` |
+| `GET /api/content/posts/h5-e2e-embodied-ai-open-day` | `200`，含 sources 与 body_html | `api-content-detail.json` |
+| `GET /api/events/4437` | `410 Gone`，`EVENT_UNAVAILABLE`，中性文案 | `api-event-410.json` |
+| `GET http://127.0.0.1:8010/api/events` | `503`，`SERVICE_UNAVAILABLE` | `api-events-503.json` / `public-read-503-390.png` |
+
+**截图**（`node tools/shot.mjs`，375/390 宽，DSF=2，均来自 8009 真实数据；逐张用 view_image 检查过，无空白/404/错误态）
+
+| 截图 | 视口（CSS） | 实际像素 | 内容 |
+|---|---|---|---|
+| `docs/ecosystem/screenshots/events-data-375.png` | 375×812 | 750×1624 | 活动列表真实卡片（唯一 E2E 活动） |
+| `docs/ecosystem/screenshots/events-data-390.png` | 390×844 | 780×1688 | 同上 |
+| `docs/ecosystem/screenshots/event-detail-data-390.png` | 390×844 | 780×1688 | 活动详情：标题/时间/地点/参与方式/主办方/报名只读/正文 |
+| `docs/ecosystem/screenshots/content-data-390.png` | 390×844 | 780×1688 | 资讯列表真实卡片 |
+| `docs/ecosystem/screenshots/content-detail-data-390.png` | 390×844 | 780×1688 | 资讯详情：标题/作者/来源/正文 + 正文内真实图片 |
+| `docs/ecosystem/screenshots/event-detail-410-390.png` | 390×844 | 780×1688 | 撤稿活动：410「内容已撤稿」 |
+| `docs/ecosystem/screenshots/public-read-503-390.png` | 390×844 | 780×1688 | kill switch：503「服务暂不可用」+ 重试 |
+| `docs/ecosystem/screenshots/home-event-feed-data-390.png` | 390×844 | 780×1688 | 首页 EcoCenter 赛事 tab 的真实活动预览 |
+
+> 8000 后端保持公开开关关闭，页面只会得到空列表；截图里出现的 E2E 活动/资讯只能来自 8009 的独立测试库，可排除静态假数据。
+
+### 6.2 H5 剪贴板实测
+
+通过 CDP 在**真实详情页**点击「复制链接」，再用 `navigator.clipboard.readText()` 读回：
+
+| 页面 | 读回内容 | 结果 |
+|---|---|---|
+| 活动详情 `?id=4436` | `http://127.0.0.1:5173/#/pages/ecosystem/event-detail?id=4436` | ✅ 与预期完全一致；不含 `8000` / `8009` |
+| 资讯详情 `?slug=h5-e2e-embodied-ai-open-day` | `http://127.0.0.1:5173/#/pages/ecosystem/content-detail?slug=h5-e2e-embodied-ai-open-day` | ✅ 与预期完全一致；不含 `8000` / `8009` |
+
+**真实失败记录（未隐藏）**：首次在 headless Chrome 中直接 `readText()` 时返回
+`NotAllowedError: Failed to execute 'readText' on 'Clipboard': Document is not focused.`。
+此时页面 toast 已是「链接已复制」，但**读回被浏览器拒绝，不能据此判成功**。
+补上 `Emulation.setFocusEmulationEnabled(true)` + `Page.bringToFront` 后重测才读回上述 URL。
+原始成功记录：`.claude/backup/G1-H5-E2E/clipboard-result-event.json`、`clipboard-result-content.json`。首次失败只保留在当次 CDP 终端输出中（该次 JSON 后来被成功结果覆盖），此处按原文如实记录，未把它算作成功。
+
+### 6.3 环境清理与无副作用证明
+
+| 检查 | 证据 |
+|---|---|
+| 8009 / 8010 已停止 | `taskkill /T /F` 后 `netstat` 无 `:8009` / `:8010` LISTEN |
+| `utils/config.js` 逐字节恢复 | md5 `4c637db145ec4da1dbfa76abab7fd20b`，与 `.claude/backup/G1-H5-E2E/config.js.orig` 相同；`git diff` 只剩用户原有的 8008→8000 改动 |
+| root 主库无写入 | 只读探针输出 `database=root`，两个 E2E 活动名、资讯 slug、主办方名、后台邮箱、两个媒体 sha256 计数均为 **0**（`.claude/backup/G1-H5-E2E/root-db-readonly-probe.json`） |
+| 仓库开关默认值未改 | `config/ecosystem_publishing.php`、`config/ecosystem.php`、`config/ecosystem_public_read.php`、`.env` 本轮均未被写入；仅在测试进程环境变量中临时开启 |
+| 未执行 git add / commit | 无 |
+| 临时脚本已备份 | `.claude/backup/G1-H5-E2E/`：种子脚本、PNG 生成脚本、CDP 剪贴板脚本、API 原始响应、种子结果 JSON |
+
+### 6.4 仍未完成 / 未验证
+
+| 项 | 状态 | 说明 |
+|---|---|---|
 | 小程序真机 / 开发者工具分享 | **未验证** | 本机只有 H5 dev server，没有小程序运行环境 |
-| H5 剪贴板真实写入 | **未验证** | 截图环境未实际操作剪贴板；代码只在 `setClipboardData` resolve 后提示成功 |
-| 长正文 / 大字号 / 键盘遮挡 | **未验证** | 无有数据页面可测 |
-| `bash tools/api-regression.sh` | **未运行** | 本批未改后端；运行会依赖后端测试环境，且不属于 G1-11 验收范围 |
-| 410 / 503 页面截图 | **未完成** | 域开关关闭时无法构造 410；kill switch 未打开。映射逻辑已由 Node 用例覆盖 |
-| 生产 / root 迁移、开关变更 | **未做** | 不在本批范围 |
+| 小程序端有数据视图 | **未验证** | 同上；页面代码与 H5 共用，但未在真机运行 |
+| 多浏览器剪贴板 | **部分验证** | 仅验证 headless Chrome；Safari / 微信内置浏览器未测，且无用户手势时可能仍被拒绝 |
+| 长正文滚动、极端字号、键盘遮挡 | **未专门验证** | 已截到正文首屏与正文内图片；未做长文滚动全量截图 |
+| root / 生产迁移与开关发布 | **未做** | 不在本批范围；kill switch 只在 8010 进程环境变量中验证 |
 | SSR / OG / sitemap / 搜索 / 收藏 / 报名写 | **未做** | G1-11 明确排除 |
+
+> 既有空态 / 404 截图仍保留在 `.claude/backup/G1-11/screenshots/`，证明域开关关闭时的诚实空态与 404 态；本次新增截图证明**有数据、410、503** 三种此前缺失的状态。
 
 ---
 
@@ -293,8 +353,9 @@ rm -r .claude/backup/G1-11/screenshots
 
 ## 9. 闸门复核
 
-- 未打开任何 `public_enabled` / kill switch；未改后端 API、Admin、报名写入口。
-- 未执行数据库迁移、`migrate:fresh` / `truncate` / `seed`。
+- 仓库 `config/` 与 `.env` 中的 `public_enabled` / kill switch 默认值**未改**；2026-10-19 的 H5 E2E 只在 8009/8010 测试进程环境变量中临时开启，进程已停止。
+- 未改后端 API、Admin、报名写入口。
+- 未执行数据库迁移、`migrate:fresh` / `truncate` / `seed`；E2E 数据仅写入独立测试库 `summon_mecha_step10_test`，root 主库只读探针 0 条。
 - 未实现 SSR / OG / sitemap / 搜索 / 收藏 / 评论。
 - 未执行 `git add -A` / `git commit` / `git push`。
 - `node --test tools/tests/*.test.mjs`：35 passed / 0 failed。

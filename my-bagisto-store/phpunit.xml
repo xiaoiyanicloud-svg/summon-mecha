@@ -49,6 +49,13 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="ECOSYSTEM_EVENT_PUBLIC_ENABLED" value="false"/>
+        <env name="ECOSYSTEM_CONTENT_PUBLIC_ENABLED" value="false"/>
+        <env name="ECOSYSTEM_EVENT_PUBLISH_ENABLED" value="false"/>
+        <env name="ECOSYSTEM_CONTENT_PUBLISH_ENABLED" value="false"/>
+        <env name="ECOSYSTEM_SCHEDULER_ENABLED" value="false"/>
+        <env name="ECOSYSTEM_OUTBOX_WORKER_ENABLED" value="false"/>
+        <env name="ECOSYSTEM_PUBLIC_READ_EMERGENCY_DISABLED" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
     </php>
