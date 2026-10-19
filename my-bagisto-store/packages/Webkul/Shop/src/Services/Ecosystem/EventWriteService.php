@@ -25,7 +25,7 @@ use Webkul\Shop\Models\Event;
  *   让另一个正在编辑的人无故收到冲突。
  *
  * ── 写入范围 ──
- *   仅 G1-02 新增字段。旧列（name/status/date/...）继续由旧管理页维护，
+ *   仅 G1-02 发布字段与 G1-03 来源字段。旧列（name/status/date/...）继续由旧管理页维护，
  *   本服务拒绝通过“新的并发写入口”改它们，避免两条写路径互相绕过版本校验。
  *   需要扩大范围时应由 G1-08 明确扩展白名单并补测试，而不是在这里静默透传。
  *
@@ -40,7 +40,7 @@ use Webkul\Shop\Models\Event;
 class EventWriteService
 {
     /**
-     * G1-02 可写字段。
+     * G1 可写字段（G1-02 发布字段 + G1-03 来源字段）。
      *
      * 刻意**不含** `row_version`：版本号只能由本服务按“期望值 + 1”维护，
      * 不接受调用方直接设置（否则乐观并发形同虚设）。
@@ -58,7 +58,16 @@ class EventWriteService
         'working_revision_id',
         'first_published_at',
         'published_at',
+
+        // G1-03 来源与主办方；组合/枚举/核验边界见 EventSourceValidator。
+        'source_type',
+        'platform_role',
+        'organizer_id',
     ];
+
+    public function __construct(
+        private readonly EventSourceValidator $sourceValidator,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $attributes  只允许 WRITABLE_FIELDS 中的键
@@ -72,7 +81,7 @@ class EventWriteService
 
         if ($unsupported !== []) {
             throw new InvalidArgumentException(sprintf(
-                'EventWriteService 不接受字段：%s；G1-02 只允许：%s。',
+                'EventWriteService 不接受字段：%s；本入口只允许：%s。',
                 implode(', ', $unsupported),
                 implode(', ', self::WRITABLE_FIELDS),
             ));
@@ -95,6 +104,12 @@ class EventWriteService
             }
 
             $locked->fill($attributes);
+
+            // 来源三字段任一变更都必须复核“同时为空或同时齐全 + 组合 + 主体状态”，
+            // 防止通过本入口绕过 EventSourceService 直接写入半个来源。
+            if ($locked->isDirty(['source_type', 'platform_role', 'organizer_id'])) {
+                $this->sourceValidator->assertDraftAssignment($locked);
+            }
 
             // 真实变更才递增；重复提交同一份表单是 no-op。
             if (! $locked->isDirty()) {

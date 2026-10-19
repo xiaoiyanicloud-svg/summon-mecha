@@ -245,6 +245,23 @@ final class ApiErrorCode
      */
     public const EVENT_REVISION_CONFLICT = 'EVENT_REVISION_CONFLICT';
 
+    /**
+     * G1-03：活动来源三字段缺失/不完整、枚举未知、来源与平台角色组合非法、
+     * 或（发布前）官方来源 URL 缺失/非法。
+     *
+     * 客户端处置是“补齐主办方与来源资料后重新提交”，不是重试。
+     */
+    public const EVENT_SOURCE_REQUIRED = 'EVENT_SOURCE_REQUIRED';
+
+    /**
+     * G1-03：主办方未通过核验、处于 rejected/suspended，或当前来源/角色组合
+     * 不在发布放行名单（B-01/B-03 未签署前只放行 platform + organizer）。
+     *
+     * 与 EVENT_SOURCE_REQUIRED 分开：资料齐但主体没核验，去补资料没有用，
+     * 必须先完成核验；混成一个码会把排查引向错误动作。
+     */
+    public const EVENT_ORGANIZER_UNVERIFIED = 'EVENT_ORGANIZER_UNVERIFIED';
+
     // ── AI 召唤 ──────────────────────────────────────────────────────────
 
     public const SUMMON_QUERY_REQUIRED = 'SUMMON_QUERY_REQUIRED';

@@ -47,6 +47,12 @@ class Event extends Model
         'first_published_at',
         'published_at',
         'row_version',
+
+        // G1-03 来源与主办方（ADR-0001 §4.2）。三字段必须同时为空或同时齐全；
+        // 并发写入口是 Services\Ecosystem\EventSourceService（草稿校验）→ EventWriteService。
+        'source_type',
+        'platform_role',
+        'organizer_id',
     ];
 
     protected $casts = [
@@ -59,10 +65,25 @@ class Event extends Model
         'published_revision_id' => 'integer',
         'working_revision_id'   => 'integer',
         'row_version'           => 'integer',
+        'organizer_id'          => 'integer',
     ];
 
     public function registrations()
     {
         return $this->hasMany(EventRegistration::class);
+    }
+
+    /**
+     * 主办/承办主体（ADR-0001 G1-D01）。
+     *
+     * 只认 `organizer_id`，不得由商品 seller 或旧 `organizer` 自由文本推定。
+     *
+     * 关系名刻意用 `organizerEntity`：旧列 `organizer`（自由文本）仍保留，
+     * 若关系也叫 `organizer()`，`$event->organizer` 会命中属性列而不是关系，
+     * eager load 后同样容易被误读。读主体请显式 `$event->organizerEntity`。
+     */
+    public function organizerEntity()
+    {
+        return $this->belongsTo(EcosystemOrganizer::class, 'organizer_id');
     }
 }

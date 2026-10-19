@@ -128,8 +128,13 @@ it('G1-02 · events 五个新索引按名字和列序存在', function () {
     }
 });
 
-it('G1-02 · 新增的 revision 指针列没有外键（G1-04 才建 event_revisions）', function () {
-    expect(g1ForeignKeysOn('events'))->toBe([]);
+it('G1-02 · revision 指针列仍没有外键（G1-04 才建 event_revisions）', function () {
+    // 只约束两个 revision 指针列。G1-03 已为 organizer_id 建了 FK，
+    // 断言“events 零外键”会把后续合法外键（G1-03/G1-04）一起误伤。
+    $foreignKeys = g1ForeignKeysOn('events');
+
+    expect($foreignKeys)->not->toContain('published_revision_id')
+        ->and($foreignKeys)->not->toContain('working_revision_id');
 });
 
 it('G1-02 · events 旧列一个都不少，旧默认值不被改写', function () {

@@ -1,5 +1,7 @@
 # G1-02 迁移与验证证据
 
+> 后续变更：G1-03 已按 ADR 在 `events` 增加 `fk_events_organizer_id`。本文中“events FK 数=0”仅指 G1-02 完成时状态，不代表当前最终 schema。
+
 - **日期**：2026-10-19
 - **验证角色**：独立验证工程师（Codex 负责最终验收）
 - **验证范围**：`events` 可信发布字段（ADR-0001 §4.2 / §11.1）、`ecosystem_outbox`（§4.11 / G1-D07）、`EventWriteService` / `OutboxWriter` 行为

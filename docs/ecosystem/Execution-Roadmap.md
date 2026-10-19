@@ -113,4 +113,5 @@
 
 - **G1-01 ADR**：已完成 [ADR-0001-trusted-publishing.md](./ADR-0001-trusted-publishing.md)，状态为 **Proposed**，等待产品、架构、业务/活动、内容、法务、QA 签署。
 - **G1-02**：代码与独立测试库验证已完成（2026-10-19），证据见 [G1-02-migration-evidence.md](./G1-02-migration-evidence.md)。已落地 `events` 兼容扩展与 `ecosystem_outbox`；不建 revision/FK、不删旧列、不改 `event_registrations`。root 主库尚未迁移，Admin 尚未接 `row_version`，无 outbox worker，公开/报名/内容开关仍为 `false`。
+- **G1-03**：代码与独立测试库验证已完成（2026-10-19），证据见 [G1-03-organizer-evidence.md](./G1-03-organizer-evidence.md)。已落地 `ecosystem_organizers` 与 `events.source_type/platform_role/organizer_id`（含 `RESTRICT` 外键），以及 `OrganizerService` / `EventSourceService` / `EventSourceValidator`；回滚/分步重跑、真实服务探针与 9 个指定测试文件（86 passed / 761 assertions）均通过。**root 主库尚未迁移**；无 Admin UI/路由、无发布状态机/revision/内容/媒体、无报名改动；四个开关仍为 `false`；B-01/B-03 未签署前只放行 `platform + organizer` 发布。
 - **入口确认**：用户已于 2026-10-19 确认按 ADR 默认口径执行；B-01 外链许可、B-03 主办方核验、B-06 取消/改期政策、B-07 内容法律责任对应的写能力仍保持关闭。
