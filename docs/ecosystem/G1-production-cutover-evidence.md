@@ -108,7 +108,7 @@ ECOSYSTEM_PUBLIC_READ_EMERGENCY_DISABLED=false
 
 ## 7. 当前真实运营边界
 
-- root 没有真实已发布赛事/资讯，因此公开页面为空是正确状态。
+- root 没有真实运营赛事/资讯；2026-10-19 起 root 存在 3 条测试活动 + 3 条测试资讯（名称/标题均带 `【测试】`，见 §9），它们只是试效果用的测试数据，不是运营内容。
 - 不应把 8 条 Seeder 样例当作运营内容发布。
 - 资讯发布待 B-04/B-07 签署后开启 `ECOSYSTEM_CONTENT_PUBLISH_ENABLED=true`。
 - Admin 媒体文件保留/清理策略仍依赖 B-05，不做自动物理清理。
@@ -123,3 +123,106 @@ ECOSYSTEM_PUBLIC_READ_EMERGENCY_DISABLED=false
 4. 代码回滚到 G1 前的提交。
 5. 数据库恢复使用备份 `root-pre-g1-20261019-210256.sql`；必须先演练到临时库再切换。
 6. 不清空 outbox / revision / 审计记录；按恢复演练结果整体回切数据库快照。
+
+## 9. root 测试数据（2026-10-19，试效果用，非运营内容）
+
+目标：在本机 root 库验证活动/资讯公开链路的真实效果。全部数据通过 G1 服务创建，未用 SQL 伪造发布状态。
+
+### 9.1 创建/复用结果
+
+| 对象 | ID | 说明 |
+|---|---|---|
+| 主办方 `召唤机甲（上海）科技有限公司` | `1` | `OrganizerService` 创建并 `verify`，`platform_role=organizer`，来源为测试保留域名 `https://test.ecosystem.invalid/root-testdata/...` |
+| 活动媒体（第一轮 events 占位图，已退出公开引用） | `1` | sha256 `adef7dd6...08c12`，`MediaService` 上传 + `approve`；旧版占位图含历史样例文字 |
+| 资讯媒体（第一轮 content 占位图，已退出公开引用） | `2` | sha256 `a431d79a...ba806`，`MediaService` 上传 + `approve`；旧版占位图含历史样例文字 |
+| 活动媒体（第二轮干净测试横幅） | `3` | `image/png`，1200×800，sha256 `444f6415...fea583`，`test-event-banner.png` |
+| 资讯媒体（第二轮干净测试横幅） | `4` | `image/png`，1200×800，sha256 `2ddbf25f...635d94`，`test-content-banner.png` |
+| 【测试】具身智能开放日 · 张江 | event `9` / revision `1`（旧）→ revision `4`（当前公开） | `open_day` / `offline` / `scheduled`，2026-11-15 09:30–17:30 |
+| 【测试】机器人格斗邀请赛 · 上海站 | event `10` / revision `2`（旧）→ revision `5`（当前公开） | `competition` / `offline` / `scheduled`，2026-12-05 10:00–18:00 |
+| 【测试】机器人技能工作坊 · Agent 入门 | event `11` / revision `3`（旧）→ revision `6`（当前公开） | `workshop` / `hybrid` / `scheduled`，2026-12-12 14:00–17:00 |
+| 【测试】赛事与动态资讯频道上线说明 | content post `1` / revision `1`（旧）→ revision `4`（当前公开） | `announcement`，slug `test-ecosystem-channel-launch` |
+| 【测试】机器人赛事报名将在 G2 阶段开放 | content post `2` / revision `2`（旧）→ revision `5`（当前公开） | `news`，slug `test-event-registration-g2` |
+| 【测试】开发者入驻与技能生态进展 | content post `3` / revision `3`（旧）→ revision `6`（当前公开） | `news`，slug `test-developer-ecosystem-progress` |
+
+执行链路（每项均走真实服务）：
+
+- 活动：`EventDraftService` → 媒体上传/复用 + `approve` → `EventRevisionService`（`detail_html` 含 `data-media-id`）→ `MediaRefService::replaceForRevision` + `reviewRef(approved)` → `EventReviewService::submit/approve` → `EventPublicationService::publishNow`
+- 资讯：`ContentPostService` → 媒体上传/复用 + `approve` → `ContentRevisionService`（`body_html` 含 `data-media-id`、`source_type=original` / `rights_basis=platform_original`）→ refs `approved` → `ContentReviewService::submit/approve` → `ContentPublicationService::publishNow`
+- 第二轮（见 §9.6）改为在已发布对象上 `BeginRevisionService::startEventRevision` / `startContentRevision` 开 draft，再走同一审核/发布链路。
+- 资讯 B-04 / B-07：只在种子脚本进程内 `config()->set(..., true)`；`.env` 未改，`ECOSYSTEM_CONTENT_PUBLISH_ENABLED=false` 与仓库默认保持关闭。
+
+种子脚本与结果：`.claude/backup/G1-ROOT-TESTDATA/seed.php`、`seed-result-first-run.json`、`seed-result.json`（第一轮）；`.claude/backup/G1-ROOT-TESTDATA/seed-clean-banners.php`、`seed-clean-banners-result-first-run.json`、`seed-clean-banners-result.json`（第二轮，脚本均未提交）。
+
+### 9.2 公开 API 验证
+
+| 校验 | 结果 |
+|---|---|
+| `GET /api/events?per_page=20` | 200；`meta.total=3`；返回 event `11/10/9`，均带 `【测试】` 前缀；封面为新媒体 `3` |
+| `GET /api/events/{9,10,11}` | 全部 200；名称/城市/地点/参与方式/起止时间与定义一致；`body_html` 含 `data-media-id="3"` 与 `/api/events/{id}/media/3` |
+| `GET /api/content/posts?per_page=20` | 200；`meta.total=3`；返回 3 个测试 slug；封面为新媒体 `4` |
+| `GET /api/content/posts/{slug}` | 全部 200；标题/摘要/来源正确；`body_html` 含 `data-media-id="4"` 与受控媒体 URL |
+| `GET /api/events/{9,10,11}/media/3` | 全部 200，`image/png`，233,358 bytes |
+| `GET /api/content/posts/{slug}/media/4` | 全部 200，`image/png`，235,032 bytes |
+| 旧媒体 `1` / `2` | 记录与文件仍保留，但已不在任何当前公开 revision 中；对应 URL 不再由公开接口渲染 |
+
+### 9.3 原有数据未变
+
+- 原 8 条 Seeder 活动旧字段快照 SHA-256：`a997fe6c5310380ab146c0b605c45641c2f6642905fc2580ad6587c866435867`，第一轮与第二轮执行前后均一致（与 §2 迁移前记录相同）。
+- `event_registrations` 仍为 `1` 条。
+- 未删除/改写原 8 条活动和 1 条报名；未删除旧媒体 `1` / `2` 与旧 revision `1`–`3`。
+- 当前计数：`events=11`（8 原有 + 3 测试）、`event_revisions=6`（每活动 1 旧 + 1 新）、`content_posts=3`、`content_revisions=6`、`ecosystem_media=4`、`ecosystem_media_refs=12`。
+
+### 9.4 截图（8000 + 5173 真实数据）
+
+| 文件 | 页面 |
+|---|---|
+| `docs/ecosystem/screenshots/root-test-events-390.png` | `/#/pages/ecosystem/events` |
+| `docs/ecosystem/screenshots/root-test-event-detail-390.png` | `/#/pages/ecosystem/event-detail?id=9` |
+| `docs/ecosystem/screenshots/root-test-content-390.png` | `/#/pages/ecosystem/content` |
+| `docs/ecosystem/screenshots/root-test-content-detail-390.png` | `/#/pages/ecosystem/content-detail?slug=test-ecosystem-channel-launch` |
+
+已按第二轮新 revision 重拍并逐张用图片查看工具检查：列表/详情均为 root API 返回的 `【测试】` 数据，封面与正文图是干净测试横幅（`test-event-banner.png` / `test-content-banner.png`），画面中不再出现「机甲格斗联盟 / 宇树科技」等旧样例文字。
+
+### 9.5 边界与风险
+
+- 这些是**测试数据**，不是运营真实内容，也不是对真实合作方的冒称。
+- 来源 URL 统一使用测试保留域名 `https://test.ecosystem.invalid/root-testdata/...`，不解析、不冒充真实合作。
+- 第一轮占位图 `events-current-placeholder.jpg` / `content-current-placeholder.jpg` 本身是旧版样例页面的截图，画面中带有「机甲格斗联盟 / 宇树科技」等历史示例文字。第二轮已把当前公开 revision 的正文图与封面全部切到干净测试横幅；旧媒体 `1` / `2` 与旧 revision 按「不删除」要求保留在库内，但公开接口不再引用。
+- 脚本幂等：第一轮第二次执行时 6 项均为 `reused+already-published`；第二轮第二次执行时 6 项均为 `skipped-already-published`，媒体为 `reused`，计数不变，未重复创建 revision。
+- 未改代码、开关、worker、scheduler；未 `git add/commit`。
+
+### 9.6 第二轮 clean-banner revision（2026-10-19，替换旧占位图）
+
+第一轮截图不合格的原因不是正文数据，而是媒体文件本身含旧样例文字。第二轮只替换内容/媒体版本，不改标题、slug、时间、来源、主办方。
+
+流程（每个对象）：
+
+1. 用 `MediaService::upload` 上传 1200×800 PNG（服务端 finfo 判定真实 MIME 为 `image/png`）并 `approve`。
+2. 在**已发布**对象上调用 `BeginRevisionService::startEventRevision` / `startContentRevision` 开新 draft；此时 `published_revision_id` 仍指向旧 revision。
+3. 新 revision 的 `detail_html` / `body_html` 引用新横幅 `data-media-id`；`MediaRefService::replaceForRevision` 挂 `cover`，再 `reviewRef(approved)`。
+4. `submit` → `approve` → `publishNow`；公开指针切到新 revision，旧 revision 保留。
+5. B-04 / B-07 仍只在脚本进程内 `config()->set`，`.env` 未改。
+
+| 对象 | 新 revision | 当前公开指针 | 正文/封面媒体 | 旧 revision 保留 |
+|---|---|---|---|---|
+| event `9` | `4`（revision_no 2） | `4` | `3` | `1` |
+| event `10` | `5`（revision_no 2） | `5` | `3` | `2` |
+| event `11` | `6`（revision_no 2） | `6` | `3` | `3` |
+| post `1` | `4`（revision_no 2） | `4` | `4` | `1` |
+| post `2` | `5`（revision_no 2） | `5` | `4` | `2` |
+| post `3` | `6`（revision_no 2） | `6` | `4` | `3` |
+
+新 media：
+
+| 媒体 ID | 文件 | MIME | 尺寸 | sha256 | 状态 |
+|---|---|---|---|---|---|
+| `3` | `.claude/backup/G1-ROOT-TESTDATA/banners/test-event-banner.png` | `image/png` | 1200×800 | `444f6415c00057406aa0a9b2f6d0ab44a8108af7ce292ec12055ddb6b8fea583` | approved |
+| `4` | `.claude/backup/G1-ROOT-TESTDATA/banners/test-content-banner.png` | `image/png` | 1200×800 | `2ddbf25f1851bc092b469e6ba4cec9068d17566ac98e34c8d41d4b3cc6355d94` | approved |
+
+复核：
+
+- 6 个对象 `publish_status=published`、`working_revision_id=NULL`、`row_version=7`，`published_revision_id` 指向新 revision。
+- 旧/新 revision 除 `detail_html` / `body_html`、`media_manifest_hash`、`content_fingerprint`、`change_summary` 与审计字段外，标题、slug、起止时间、来源快照逐字段一致。
+- 原 8 条 Seeder 旧字段哈希仍为 `a997fe6c5310380ab146c0b605c45641c2f6642905fc2580ad6587c866435867`；报名仍 `1`。
+- 计数：`event_revisions=6`、`content_revisions=6`、`ecosystem_media=4`、`ecosystem_media_refs=12`。
+- 公开 API 与 4 张 390 宽截图均复验通过。
