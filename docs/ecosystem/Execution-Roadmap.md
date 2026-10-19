@@ -40,20 +40,30 @@
 补充:G0 只负责**关闭**旧链路,不打开任何公开读取。`ecosystem.events.public_enabled`
 的打开动作属于 G1,必须在可信发布链路验收(而非"页面能显示")完成后单独执行。
 
-## 批次 B（G0 收口）
+## 批次 B（G0 收口，已完成 2026-10-19）
 
-**目标:把后台与新入口的安全边界补齐,再做 G0-07 回归。**
+**状态：已完成并提交。**
 
-1. G0-01 基线冻结:路由、表/索引、ACL、读写链路留档;区分当前事实与历史文档。
-2. G0-03/G0-04 Admin 逐动作授权;报名列表遮罩;PII 查看/导出分权,关闭 DataGrid 导出旁路。
-3. G0-05 Admin 赛事编辑回填、old 值、字段长度与截断边界。
-4. G0-07 回归:T01–03、T05–10 及 T11/12 的非法输入/停写子场景。
+- 提交：`8b236bc`（Admin ACL + PII/导出）、`a22fc0a`（编辑回填 + 校验）。
+- **G0-03**：赛事 7 个 Admin 动作逐动作授权；custom 角色直接 URL/Ajax 被拒；
+  非法 ID 404；有报名的赛事禁止硬删除（422，保留赛事与报名）。
+- **G0-04**：报名 PII 只对 `permission_type=all` 超管显示明文；custom 角色
+  name/phone 输出遮罩、列不可搜索/排序；两个赛事 DataGrid 的
+  `export`/`format` 参数一律 403，不生成导出文件。
+- **G0-05**：create/edit 共用表单；全字段 `old()` 回填；非空列应用层默认值；
+  只改一个字段不清空其它字段；name/bg_color/status/hot/teams/sort 边界校验。
+- **G0-07 回归证据（本机独立测试库 `summon_mecha_step10_test`）**：
+  - Admin ACL：7 passed / 72 assertions
+  - Admin PII：5 passed / 120 assertions
+  - Admin 表单：11 passed / 137 assertions
+  - Shop 停写/公开闸：7 passed / 45 assertions
+  - 合计：**30 passed / 374 assertions**
+  - 前端 Node：**17 passed**
+  - `git diff --check`：通过
 
-**健康门槛**
-- 自定义角色直接访问 URL 被拒,不只隐藏菜单。
-- `export=true` / csv / xls / xlsx 都不能绕过权限与 PII 遮罩。
-- 只改一个字段不会清空其它字段;超长输入不会被数据库静默截断。
-- 前端 API 空/错/格式异常分别有状态;无样例 ID 报名。
+**仍未完成**：Admin 浏览器截图/端到端演练；全量 Admin 套件；G1 归档/停用能力；
+状态转移合法性；真实运营数据。root 库 8 条 Seeder 样例和 1 条 RegTest 报名仍保留，
+公开读取保持关闭。
 
 ## 批次 C（G1 只读可信目录 → G2 报名写能力）
 
