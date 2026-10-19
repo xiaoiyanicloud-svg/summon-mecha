@@ -23,7 +23,7 @@ use Webkul\Shop\Services\Ecosystem\ContentTransitionException;
  *   · link_summary 禁止复制全文（body_html 必须 NULL）；
  *   · updateDraft 只改内容字段、draft-only、expectedFingerprint CAS；
  *   · sources 传数组即整组替换，传 NULL 保持原来源；
- *   · 本批 media_manifest_hash 必须 NULL，sanitizer_version 固定占位值；
+ *   · 本批 media_manifest_hash 由媒体服务维护，sanitizer_version 写真实净化版本；
  *   · 非 draft 后服务与模型双层拒绝内容 / 来源修改。
  *
  * 所有用例继承 ShopTestCase → DatabaseTransactions，运行必须指向 summon_mecha_step10_test。
@@ -106,7 +106,7 @@ function g5RevCurrentFingerprint(ContentRevision $revision): string
     );
 }
 
-it('G1-05 · createDraft 生成 revision_no 1/2，强制 draft / 占位净化 / 空媒体', function () {
+it('G1-05 · createDraft 生成 revision_no 1/2，强制 draft / 真实净化版本 / 空媒体', function () {
     $adminId = g5RevAdminId();
     $post = g5RevPost($adminId);
     $service = g5RevService();
@@ -122,7 +122,7 @@ it('G1-05 · createDraft 生成 revision_no 1/2，强制 draft / 占位净化 / 
         ->and((string) $first->review_state)->toBe('draft')
         ->and((int) $first->created_by)->toBe($adminId)
         ->and($first->media_manifest_hash)->toBeNull()
-        ->and((string) $first->sanitizer_version)->toBe((string) config('ecosystem_content.sanitizer_placeholder_version'))
+        ->and((string) $first->sanitizer_version)->toBe((string) config('ecosystem_rich_text.sanitizer_version'))
         ->and(strlen((string) $first->content_fingerprint))->toBe(64);
 
     expect(g5RevCurrentFingerprint($first))->toBe((string) $first->content_fingerprint);
@@ -507,7 +507,7 @@ it('G1-05 · 非 draft revision 的来源记录不可修改 / 删除 / 新增', 
     ]))->toThrow(ContentTransitionException::class);
 });
 
-it('G1-05 · media_manifest_hash 本批强制 NULL', function () {
+it('G1-05/07 · media_manifest_hash 调用方不可写，服务端维护', function () {
     $adminId = g5RevAdminId();
     $post = g5RevPost($adminId);
     $service = g5RevService();
@@ -526,27 +526,71 @@ it('G1-05 · media_manifest_hash 本批强制 NULL', function () {
     ]))->toThrow(InvalidArgumentException::class);
 });
 
-it('G1-05 · sanitizer_version 固定为配置占位值', function () {
+it('G1-05/07 · updateDraft 保留既有 media_manifest_hash，不清空', function () {
     $adminId = g5RevAdminId();
     $post = g5RevPost($adminId);
     $service = g5RevService();
-    $placeholder = (string) config('ecosystem_content.sanitizer_placeholder_version');
+
+    $revision = $service->createDraft($post, $adminId, g5RevPayload());
+
+    $manifest = str_repeat('d', 64);
+    DB::table('content_revisions')->where('id', $revision->getKey())->update([
+        'media_manifest_hash' => $manifest,
+    ]);
+
+    $fresh = ContentRevision::query()->findOrFail($revision->getKey());
+    $updated = $service->updateDraft($fresh, (string) $fresh->content_fingerprint, [
+        'summary' => '只改摘要',
+    ]);
+
+    expect((string) $updated->fresh()->media_manifest_hash)->toBe($manifest);
+});
+
+it('G1-05/07 · sanitizer_version 写真实版本，调用方不得传值', function () {
+    $adminId = g5RevAdminId();
+    $post = g5RevPost($adminId);
+    $service = g5RevService();
+    $version = (string) config('ecosystem_rich_text.sanitizer_version');
 
     $revision = $service->createDraft($post, $adminId, array_merge(g5RevPayload(), [
-        'sanitizer_version' => $placeholder,
+        'sanitizer_version' => null,
     ]));
 
-    expect((string) $revision->fresh()->sanitizer_version)->toBe($placeholder)
+    expect((string) $revision->fresh()->sanitizer_version)->toBe($version)
         ->and((string) DB::table('content_revisions')->where('id', $revision->getKey())->value('sanitizer_version'))
-        ->toBe($placeholder);
+        ->toBe($version);
 
-    expect(fn () => $service->createDraft($post, $adminId, array_merge(g5RevPayload(), [
-        'sanitizer_version' => 'v1',
-    ])))->toThrow(InvalidArgumentException::class);
+    foreach (['v1', $version] as $value) {
+        expect(fn () => $service->createDraft($post, $adminId, array_merge(g5RevPayload(), [
+            'sanitizer_version' => $value,
+        ])))->toThrow(InvalidArgumentException::class);
+    }
 
     expect(fn () => $service->updateDraft($revision, (string) $revision->content_fingerprint, [
         'sanitizer_version' => 'v1',
     ]))->toThrow(InvalidArgumentException::class);
+});
+
+it('G1-05/07 · createDraft 净化 body_html：脚本 / 事件属性 / 危险链接被移除', function () {
+    $adminId = g5RevAdminId();
+    $post = g5RevPost($adminId);
+    $service = g5RevService();
+
+    $revision = $service->createDraft($post, $adminId, g5RevPayload([
+        'body_html' => '<p onclick="alert(1)">资讯正文</p>'
+            .'<script>alert(2)</script>'
+            .'<a href="javascript:alert(3)">坏链接</a>'
+            .'<img src="https://evil.example/x.png" data-media-id="1">',
+    ]));
+
+    $html = (string) $revision->fresh()->body_html;
+
+    expect($html)->toContain('资讯正文')
+        ->and($html)->not->toContain('<script')
+        ->and($html)->not->toContain('onclick')
+        ->and($html)->not->toContain('javascript:')
+        ->and($html)->not->toContain('<img')
+        ->and((string) $revision->sanitizer_version)->toBe((string) config('ecosystem_rich_text.sanitizer_version'));
 });
 
 it('G1-05 · 调用方不得传审核 / 指纹 / 版本 / 归属字段', function () {

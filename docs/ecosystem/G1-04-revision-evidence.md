@@ -1,6 +1,6 @@
 # G1-04 活动修订与规则版本 · 迁移与验证证据
 
-> 后续变更：G1-05 已新增 `content_posts` / `content_revisions` / `content_sources`。本文中“内容域未建”仅指 G1-04 完成时状态。
+> 后续变更：G1-05 已新增 `content_posts` / `content_revisions` / `content_sources`；G1-06/07 又新增媒体域与富文本净化。本文中“内容域未建 / 无媒体 / sanitizer 为空”等表述仅指 G1-04 完成时状态。
 
 - **日期**：2026-10-19
 - **验证方式**：Codex 人工独立验收（Claude 验证会话因余额中断后接手）

@@ -25,9 +25,10 @@ use Webkul\Shop\Models\ContentSource;
  *   同理，`content_fingerprint`、`revision_no`、审核字段与创建人一律拒绝透传。
  *
  * 本批边界：
- *   · `media_manifest_hash` 强制 NULL（媒体留 G1-06）；
- *   · `sanitizer_version` 强制 `ecosystem_content.sanitizer_placeholder_version`
- *     （真正的净化留 G1-07，渲染端必须能看见“尚未净化”）；
+ *   · `media_manifest_hash` 由 MediaRefService 维护；编辑时保留既有值，不清空；
+ *   · `sanitizer_version` 写真实净化版本（G1-07），调用方不得传值；
+ *   · `body_html` 在服务端净化：只允许白名单标签、http(s) 链接与本 revision
+ *     已审核媒体（`data-media-id`）；
  *   · draft 允许 0 条来源；“in_review 起至少一条且 original 需要 canonical URL”
  *     的提交前置留 G1-08。
  */
@@ -79,6 +80,8 @@ class ContentRevisionService
     public function __construct(
         private readonly EventSourceValidator $sourceValidator,
         private readonly ContentFingerprint $fingerprints,
+        private readonly MediaRefService $mediaRefs,
+        private readonly RichTextSanitizer $sanitizer,
     ) {}
 
     /**
@@ -86,12 +89,18 @@ class ContentRevisionService
      *
      * @param  array<string, mixed>  $data  只允许 CONTENT_FIELDS 中的键
      * @param  array<int, array<string, mixed>>  $sources  服务端按输入顺序重排 sort_order
+     * @param  array<int, int|string>  $allowedMediaIds  body_html 中允许引用的媒体 ID
      *
-     * @throws InvalidArgumentException 缺必填字段、越权字段、非法枚举 / 文本
+     * @throws InvalidArgumentException 缺必填字段、越权字段、非法枚举 / 文本、正文超长
      * @throws ContentSourceValidationException 来源缺字段、权利依据不匹配或 URL 非法
      */
-    public function createDraft(ContentPost $post, int $adminId, array $data, array $sources = []): ContentRevision
-    {
+    public function createDraft(
+        ContentPost $post,
+        int $adminId,
+        array $data,
+        array $sources = [],
+        array $allowedMediaIds = [],
+    ): ContentRevision {
         $this->assertOnlyContentFields($data, '创建内容修订');
         $this->assertAdminExists($adminId);
 
@@ -99,13 +108,13 @@ class ContentRevisionService
             throw new InvalidArgumentException('创建内容修订前必须先保存文章。');
         }
 
-        return DB::transaction(function () use ($post, $adminId, $data, $sources): ContentRevision {
+        return DB::transaction(function () use ($post, $adminId, $data, $sources, $allowedMediaIds): ContentRevision {
             $lockedPost = ContentPost::query()
                 ->whereKey($post->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $attributes = $this->normalizeContentAttributes($data);
+            $attributes = $this->normalizeContentAttributes($data, $allowedMediaIds);
 
             $revision = new ContentRevision;
             $revision->fill($attributes);
@@ -141,6 +150,8 @@ class ContentRevisionService
      *
      * @param  array<string, mixed>  $data  只允许 CONTENT_FIELDS 中的键
      * @param  array<int, array<string, mixed>>|null  $sources
+     * @param  array<int, int|string>|null  $allowedMediaIds
+     *         NULL 时按该 revision 当前已审核的媒体引用自动取集合
      *
      * @throws ContentTransitionException 修订已离开 draft
      * @throws ContentRevisionFingerprintConflictException 调用方基于的指纹已过期
@@ -150,6 +161,7 @@ class ContentRevisionService
         string $expectedFingerprint,
         array $data,
         ?array $sources = null,
+        ?array $allowedMediaIds = null,
     ): ContentRevision {
         $this->assertOnlyContentFields($data, '更新内容修订');
 
@@ -157,7 +169,7 @@ class ContentRevisionService
             throw new InvalidArgumentException('更新内容修订前 revision 必须已保存。');
         }
 
-        return DB::transaction(function () use ($revision, $expectedFingerprint, $data, $sources): ContentRevision {
+        return DB::transaction(function () use ($revision, $expectedFingerprint, $data, $sources, $allowedMediaIds): ContentRevision {
             $locked = ContentRevision::query()
                 ->whereKey($revision->getKey())
                 ->lockForUpdate()
@@ -181,13 +193,16 @@ class ContentRevisionService
                 );
             }
 
-            $attributes = $this->normalizeContentAttributes($data);
+            $mediaIds = $allowedMediaIds
+                ?? $this->mediaRefs->approvedMediaIdsForRevision('content_revision', (int) $locked->getKey());
+
+            $attributes = $this->normalizeContentAttributes($data, $mediaIds);
 
             // 在副本上校验“合并后的完整内容”，避免半套更新落库；
             // clone 不触发模型 updating 守卫，守卫仍由下面的 save() 兜底。
             $candidate = clone $locked;
             $candidate->fill($attributes);
-            $candidate->media_manifest_hash = null;
+            // 媒体集合指纹由 MediaRefService 维护；编辑正文不得清空。
             $candidate->sanitizer_version = $this->sanitizerVersion();
 
             $this->assertContent($candidate);
@@ -201,7 +216,6 @@ class ContentRevisionService
             $candidate->content_fingerprint = $this->fingerprints->contentRevision($candidate, $effectiveSources);
 
             $locked->fill($attributes);
-            $locked->media_manifest_hash = null;
             $locked->sanitizer_version = $this->sanitizerVersion();
             $locked->content_fingerprint = (string) $candidate->content_fingerprint;
             $locked->save();
@@ -252,14 +266,15 @@ class ContentRevisionService
 
     private function sanitizerVersion(): string
     {
-        return (string) config('ecosystem_content.sanitizer_placeholder_version');
+        return $this->sanitizer->version();
     }
 
     /**
      * @param  array<string, mixed>  $data
+     * @param  array<int, int|string>  $allowedMediaIds
      * @return array<string, mixed>
      */
-    private function normalizeContentAttributes(array $data): array
+    private function normalizeContentAttributes(array $data, array $allowedMediaIds): array
     {
         $attributes = [];
 
@@ -272,31 +287,30 @@ class ContentRevisionService
 
             if ($field === 'media_manifest_hash') {
                 if ($value !== null) {
-                    throw new InvalidArgumentException('本批不写媒体，media_manifest_hash 必须为 NULL（G1-06）。');
+                    throw new InvalidArgumentException(
+                        'media_manifest_hash 由 MediaRefService 维护，调用方不得写入。'
+                    );
                 }
 
-                $attributes[$field] = null;
-
+                // NULL 表示“不动”；编辑时保留库内既有值，创建时显式置 NULL。
                 continue;
             }
 
             if ($field === 'sanitizer_version') {
-                $placeholder = $this->sanitizerVersion();
-
-                if ($value !== null && $value !== $placeholder) {
-                    throw new InvalidArgumentException(sprintf(
-                        '本批不写富文本净化，sanitizer_version 只能是服务端占位值「%s」（G1-07）。',
-                        $placeholder,
-                    ));
+                if ($value !== null) {
+                    throw new InvalidArgumentException(
+                        'sanitizer_version 由服务端按实际净化结果写入，调用方不得传入。'
+                    );
                 }
-
-                $attributes[$field] = $placeholder;
 
                 continue;
             }
 
             if ($field === 'body_html') {
-                $attributes[$field] = $this->normalizeOptionalText($value, $field);
+                $attributes[$field] = $this->sanitizer->sanitize(
+                    $this->normalizeOptionalText($value, $field),
+                    $allowedMediaIds,
+                );
 
                 continue;
             }

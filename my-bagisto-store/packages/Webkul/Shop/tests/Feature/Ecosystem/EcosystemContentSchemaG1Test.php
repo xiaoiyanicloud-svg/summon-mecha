@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
  *   · `content_posts` 双 revision 指针外键真实阻止删除被引用的 revision；
  *   · 内容域与 CMS 静态页彻底分开：`cms_pages` 仍是 10 页、`content_posts` 初始 0、
  *     三表都没有 `cms_page_id`；
- *   · `ecosystem_media` 仍不存在（G1-06 才建）；
+ *   · `ecosystem_media` / `ecosystem_media_refs` 已由 G1-06 建好，内容域仍不借用媒体表；
  *   · 内容公开开关仍为 false。
  *
  * 所有用例继承 ShopTestCase → DatabaseTransactions，不做 migrate:fresh / seed。
@@ -426,7 +426,7 @@ it('G1-05 · 外键真实阻止删除被引用的文章 / revision / 来源父�
     expect(DB::table('content_revisions')->where('id', $otherRevisionId)->delete())->toBe(1);
 });
 
-it('G1-05 · 内容域与 CMS 静态页彻底分开：10 页不变、初始 0 篇、无 cms_page_id、无媒体表', function () {
+it('G1-05 · 内容域与 CMS 静态页彻底分开：10 页不变、初始 0 篇、无 cms_page_id、媒体表由 G1-06 建好', function () {
     // ADR G1-D06：CMS 默认静态页不是资讯，不得把 CMS 页数量宣称成文章数。
     expect(DB::table('cms_pages')->count())->toBe(10)
         ->and(DB::table('content_posts')->count())->toBe(0);
@@ -435,7 +435,8 @@ it('G1-05 · 内容域与 CMS 静态页彻底分开：10 页不变、初始 0 �
         expect(Schema::hasColumn($table, 'cms_page_id'))->toBeFalse();
     }
 
-    expect(Schema::hasTable('ecosystem_media'))->toBeFalse()
-        ->and(Schema::hasTable('ecosystem_media_refs'))->toBeFalse()
+    // G1-06 已建媒体域；内容表仍不得借用 cms_pages 或媒体表做主键。
+    expect(Schema::hasTable('ecosystem_media'))->toBeTrue()
+        ->and(Schema::hasTable('ecosystem_media_refs'))->toBeTrue()
         ->and(config('ecosystem.content.public_enabled'))->toBeFalse();
 });

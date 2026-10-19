@@ -14,7 +14,7 @@ use Webkul\Shop\Services\Ecosystem\RevisionImmutableException;
  *   · 两张表的全列类型 / NULL / 默认值逐字段比对；
  *   · 唯一约束与索引按名字、列序、唯一性比对；
  *   · FK 指向、删除/更新规则；
- *   · `event_rule_versions.file_media_id` 本批**没有**外键（G1-06 再补）；
+ *   · `event_rule_versions.file_media_id` 的外键由 G1-06（000014）补上；
  *   · `created_by` / `submitted_by` / `reviewed_by` 无外键，但列必须存在；
  *   · 模型守卫：非 draft 内容冻结、身份列冻结、禁止删除；
  *   · 唯一约束真实阻止重复版本号。
@@ -322,7 +322,7 @@ it('G1-04 · event_rule_versions 唯一约束与索引按名字和列序存在',
         ->toBe(['columns' => ['file_media_id'], 'unique' => false]);
 });
 
-it('G1-04 · event_rule_versions 只有 event 外键，file_media_id 本批无 FK', function () {
+it('G1-04 · event_rule_versions 有 event 与 file_media 两个外键，后者指向 G1-06 媒体表', function () {
     $eventFk = g4RevForeignKey('event_rule_versions', 'fk_event_rule_versions_event_id');
 
     expect($eventFk)->not->toBeNull()
@@ -332,7 +332,19 @@ it('G1-04 · event_rule_versions 只有 event 外键，file_media_id 本批无 F
         ->and(strtoupper((string) $eventFk->delete_rule))->toBe('RESTRICT')
         ->and(strtoupper((string) $eventFk->update_rule))->toBe('RESTRICT');
 
-    expect(g4RevForeignKeysOn('event_rule_versions'))->toBe(['event_id']);
+    $fileMediaFk = g4RevForeignKey('event_rule_versions', 'fk_event_rule_versions_file_media_id');
+
+    expect($fileMediaFk)->not->toBeNull()
+        ->and($fileMediaFk->column_name)->toBe('file_media_id')
+        ->and($fileMediaFk->referenced_table_name)->toBe('ecosystem_media')
+        ->and($fileMediaFk->referenced_column_name)->toBe('id')
+        ->and(strtoupper((string) $fileMediaFk->delete_rule))->toBe('RESTRICT')
+        ->and(strtoupper((string) $fileMediaFk->update_rule))->toBe('RESTRICT');
+
+    $foreignKeys = g4RevForeignKeysOn('event_rule_versions');
+    sort($foreignKeys);
+
+    expect($foreignKeys)->toBe(['event_id', 'file_media_id']);
 });
 
 it('G1-04 · event_rule_versions 唯一约束真实阻止同活动重复 version_no', function () {

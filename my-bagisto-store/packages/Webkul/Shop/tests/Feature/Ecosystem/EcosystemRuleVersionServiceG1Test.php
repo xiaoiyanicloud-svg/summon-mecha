@@ -2,12 +2,14 @@
 
 use Illuminate\Support\Facades\DB;
 use Webkul\Shop\Http\Controllers\API\ApiErrorCode;
+use Webkul\Shop\Models\EcosystemMedia;
 use Webkul\Shop\Models\Event;
 use Webkul\Shop\Models\EventRuleVersion;
 use Webkul\Shop\Services\Ecosystem\ContentFingerprint;
 use Webkul\Shop\Services\Ecosystem\EventRuleVersionService;
 use Webkul\Shop\Services\Ecosystem\EventSourceValidationException;
 use Webkul\Shop\Services\Ecosystem\EventTimeValidationException;
+use Webkul\Shop\Services\Ecosystem\MediaService;
 use Webkul\Shop\Services\Ecosystem\RevisionConflictException;
 use Webkul\Shop\Services\Ecosystem\RevisionImmutableException;
 
@@ -18,7 +20,7 @@ use Webkul\Shop\Services\Ecosystem\RevisionImmutableException;
  *   · version_no 在活动行锁内从 1 递增；
  *   · body_html 与 external_url 至少一项，外链必须通过公开 URL 校验；
  *   · authority_language 必须是 BCP 47 形态；
- *   · file_media_id 本批必须 NULL（G1-06 才有媒体表）；
+ *   · file_media_id 由 MediaService 绑定，编辑时保留既有值（G1-06/G1-07）；
  *   · 指纹服务端计算，同内容同指纹、内容变化指纹即变；
  *   · updateDraft 只改内容字段、draft-only、expectedFingerprint CAS；
  *   · 非 draft 后服务与模型双层拒绝内容修改。
@@ -81,6 +83,28 @@ function g4RulePayload(array $overrides = []): array
         'effective_from'     => '2026-11-01 00:00:00',
         'change_summary'     => '初始规则',
     ], $overrides);
+}
+
+function g4RuleMedia(): EcosystemMedia
+{
+    $sha256 = hash('sha256', random_bytes(32));
+
+    $id = (int) DB::table('ecosystem_media')->insertGetId([
+        'disk'          => 'local',
+        'storage_key'   => 'ecosystem/media/'.substr($sha256, 0, 2).'/'.$sha256.'.pdf',
+        'original_name' => 'rules.pdf',
+        'mime'          => 'application/pdf',
+        'byte_size'     => 2048,
+        'width'         => null,
+        'height'        => null,
+        'sha256'        => $sha256,
+        'status'        => 'approved',
+        'uploaded_by'   => 1,
+        'created_at'    => now(),
+        'updated_at'    => now(),
+    ]);
+
+    return EcosystemMedia::query()->findOrFail($id);
 }
 
 function g4RuleSourceErrorCode(callable $callback): ?string
@@ -217,7 +241,7 @@ it('G1-04 · authority_language 必须是 BCP 47 形态且不超过列宽', func
     }
 });
 
-it('G1-04 · 本批 file_media_id 必须 NULL', function () {
+it('G1-04/06 · 创建时调用方不得写 file_media_id，null 表示沿用服务端默认', function () {
     $adminId = g4RuleAdminId();
     $event = g4RuleEvent();
     $service = g4RuleService();
@@ -231,6 +255,62 @@ it('G1-04 · 本批 file_media_id 必须 NULL', function () {
     ]));
 
     expect($rule->file_media_id)->toBeNull();
+});
+
+it('G1-04/07 · updateDraft 保留既有 file_media_id，调用方仍不可写', function () {
+    $adminId = g4RuleAdminId();
+    $event = g4RuleEvent();
+    $service = g4RuleService();
+    $media = g4RuleMedia();
+
+    $rule = $service->createDraft($event, $adminId, g4RulePayload());
+    $bound = app(MediaService::class)->attachRuleFile($rule, (int) $media->getKey(), $adminId);
+
+    expect((int) $bound->file_media_id)->toBe((int) $media->getKey());
+
+    expect(fn () => $service->updateDraft($bound, (string) $bound->content_fingerprint, [
+        'file_media_id' => 999,
+    ]))->toThrow(InvalidArgumentException::class);
+
+    $updated = $service->updateDraft($bound, (string) $bound->content_fingerprint, [
+        'title'         => 'G4 改后的规则标题',
+        'file_media_id' => null,
+    ]);
+
+    expect((int) $updated->file_media_id)->toBe((int) $media->getKey())
+        ->and((string) $updated->title)->toBe('G4 改后的规则标题')
+        ->and((int) $updated->fresh()->file_media_id)->toBe((int) $media->getKey());
+
+    expect(g4RuleFingerprint()->ruleVersion($updated->fresh()))->toBe((string) $updated->content_fingerprint);
+});
+
+it('G1-04/07 · createDraft / updateDraft 服务端净化 body_html', function () {
+    $adminId = g4RuleAdminId();
+    $event = g4RuleEvent();
+    $service = g4RuleService();
+
+    $rule = $service->createDraft($event, $adminId, g4RulePayload([
+        'body_html' => '<p onclick="alert(1)">规则正文</p>'
+            .'<script>alert(2)</script>'
+            .'<a href="javascript:alert(3)">坏链接</a>',
+    ]));
+
+    $created = (string) $rule->fresh()->body_html;
+
+    expect($created)->toContain('规则正文')
+        ->and($created)->not->toContain('<script')
+        ->and($created)->not->toContain('onclick')
+        ->and($created)->not->toContain('javascript:');
+
+    $updated = $service->updateDraft($rule, (string) $rule->content_fingerprint, [
+        'body_html' => '<p>改后的规则</p><iframe src="https://evil.example"></iframe>',
+    ]);
+
+    $body = (string) $updated->fresh()->body_html;
+
+    expect($body)->toContain('改后的规则')
+        ->and($body)->not->toContain('<iframe')
+        ->and($body)->not->toContain('evil.example');
 });
 
 it('G1-04 · 调用方不得传 content_fingerprint、status 或版本字段', function () {

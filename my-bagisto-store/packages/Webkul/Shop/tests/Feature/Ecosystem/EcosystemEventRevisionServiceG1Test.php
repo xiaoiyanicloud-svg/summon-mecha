@@ -21,7 +21,7 @@ use Webkul\Shop\Services\Ecosystem\RevisionImmutableException;
  *   · 指纹服务端计算且稳定：同内容同指纹，任一内容字段变化指纹即变；
  *   · 来源快照必须与活动当前来源一致，主办方快照必须等于主体当前名称；
  *   · 时间（IANA 时区、起止同空或同有、ends >= starts）与 URL/枚举严格校验；
- *   · 本批 media_manifest_hash / sanitizer_version 必须 NULL；
+ *   · 本批 media_manifest_hash 由媒体服务维护，sanitizer_version 由服务端写入；
  *   · updateDraft 只改内容字段、draft-only、expectedFingerprint CAS；
  *   · 非 draft 后服务与模型双层拒绝内容修改。
  *
@@ -143,7 +143,7 @@ it('G1-04 · createDraft 生成 revision_no 1/2，强制 draft 与服务端字�
         ->and((string) $second->review_state)->toBe('draft')
         ->and((int) $first->created_by)->toBe($adminId)
         ->and($first->media_manifest_hash)->toBeNull()
-        ->and($first->sanitizer_version)->toBeNull()
+        ->and((string) $first->sanitizer_version)->toBe((string) config('ecosystem_rich_text.sanitizer_version'))
         ->and(strlen((string) $first->content_fingerprint))->toBe(64);
 
     expect(g4SvcFingerprint()->eventRevision($first->fresh()))->toBe((string) $first->content_fingerprint);
@@ -312,11 +312,12 @@ it('G1-04 · participation_mode 与 authorization_basis 只接受注册表枚举
         ->and((string) $revision->authorization_basis)->toBe('written_authorization');
 });
 
-it('G1-04 · 本批 media_manifest_hash / sanitizer_version 必须 NULL', function () {
+it('G1-04/07 · sanitizer_version 服务端写入，media_manifest_hash 调用方不可写', function () {
     $adminId = g4SvcAdminId();
     $organizer = g4SvcOrganizer();
     $event = g4SvcEvent($organizer);
     $service = g4SvcService();
+    $version = (string) config('ecosystem_rich_text.sanitizer_version');
 
     expect(fn () => $service->createDraft($event, $adminId, g4SvcPayload($organizer, [
         'media_manifest_hash' => str_repeat('a', 64),
@@ -331,7 +332,56 @@ it('G1-04 · 本批 media_manifest_hash / sanitizer_version 必须 NULL', functi
     ]));
 
     expect($revision->media_manifest_hash)->toBeNull()
-        ->and($revision->sanitizer_version)->toBeNull();
+        ->and((string) $revision->sanitizer_version)->toBe($version);
+
+    expect(fn () => $service->updateDraft($revision, (string) $revision->content_fingerprint, [
+        'sanitizer_version' => 'v1',
+    ]))->toThrow(InvalidArgumentException::class);
+});
+
+it('G1-04/07 · createDraft 净化 detail_html：脚本 / 事件属性 / 远程图片被移除', function () {
+    $adminId = g4SvcAdminId();
+    $organizer = g4SvcOrganizer();
+    $event = g4SvcEvent($organizer);
+    $service = g4SvcService();
+
+    $revision = $service->createDraft($event, $adminId, g4SvcPayload($organizer, [
+        'detail_html' => '<p onclick="alert(1)">活动正文</p>'
+            .'<script>alert(2)</script>'
+            .'<a href="javascript:alert(3)">坏链接</a>'
+            .'<img src="https://evil.example/x.png" data-media-id="1">',
+    ]));
+
+    $html = (string) $revision->fresh()->detail_html;
+
+    expect($html)->toContain('活动正文')
+        ->and($html)->not->toContain('<script')
+        ->and($html)->not->toContain('onclick')
+        ->and($html)->not->toContain('javascript:')
+        ->and($html)->not->toContain('<img')
+        ->and((string) $revision->sanitizer_version)->toBe((string) config('ecosystem_rich_text.sanitizer_version'));
+});
+
+it('G1-04/07 · updateDraft 保留既有 media_manifest_hash，不清空', function () {
+    $adminId = g4SvcAdminId();
+    $organizer = g4SvcOrganizer();
+    $event = g4SvcEvent($organizer);
+    $service = g4SvcService();
+
+    $revision = $service->createDraft($event, $adminId, g4SvcPayload($organizer));
+
+    $manifest = str_repeat('c', 64);
+    DB::table('event_revisions')->where('id', $revision->getKey())->update([
+        'media_manifest_hash' => $manifest,
+    ]);
+
+    $fresh = EventRevision::query()->findOrFail($revision->getKey());
+    $updated = $service->updateDraft($fresh, (string) $fresh->content_fingerprint, [
+        'summary' => '只改摘要',
+    ]);
+
+    expect((string) $updated->fresh()->media_manifest_hash)->toBe($manifest)
+        ->and((string) $updated->sanitizer_version)->toBe((string) config('ecosystem_rich_text.sanitizer_version'));
 });
 
 it('G1-04 · 调用方不得传 content_fingerprint、审核字段或版本字段', function () {

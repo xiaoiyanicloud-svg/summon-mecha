@@ -1,5 +1,7 @@
 # G1-05 独立资讯内容域 · 迁移与验证证据
 
+> 后续变更：G1-06/07 已新增 `ecosystem_media` / refs 与富文本净化，并把文章/活动 revision 的正文改为净化后内容、接入 media manifest。本文中“无媒体 / 无净化 / sanitizer placeholder”等表述仅指 G1-05 完成时状态。
+
 - **日期**：2026-10-19
 - **验证方式**：Codex 人工独立验收（Claude 辅助实现）
 - **验证范围**：ADR-0001 §4.6 / §4.7 / §4.8、G1-D06、content_posts / content_revisions / content_sources、slug 冲突策略、来源权利依据、内容指纹、CMS 边界

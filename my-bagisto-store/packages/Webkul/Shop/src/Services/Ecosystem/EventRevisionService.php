@@ -24,6 +24,11 @@ use Webkul\Shop\Models\EventRevision;
  *   调用方传指纹等于允许它“声明内容没变”，审核与发布前的指纹核验就失去意义。
  *   同理，`content_fingerprint`、审核字段、`revision_no`、`created_by` 一律拒绝透传。
  *
+ * G1-07 起 `detail_html` 在服务端净化：
+ *   · 图片只允许引用本 revision 已审核的媒体（`data-media-id`）；
+ *   · `sanitizer_version` 由服务端写成真实净化版本，调用方传值一律拒绝；
+ *   · `media_manifest_hash` 由 MediaRefService 维护，编辑时保留既有值，不清空。
+ *
  * 来源快照必须与活动当前三字段一致：
  *   revision 是公开内容的快照，但“来源是谁”这一事实来自 `events`（G1-D01/D05）。
  *   允许快照写另一套来源，会让审核通过的内容与活动归属脱节。
@@ -32,6 +37,9 @@ class EventRevisionService
 {
     /**
      * 调用方可写的修订内容字段（与 §4.3 内容列一致，排除指纹与审核字段）。
+     *
+     * `media_manifest_hash` / `sanitizer_version` 保留在表内，是为了让误传时
+     * 能给出明确拒绝，而不是被静默丢弃；最终值仍由服务端钉死。
      *
      * @var array<int, string>
      */
@@ -96,16 +104,19 @@ class EventRevisionService
     public function __construct(
         private readonly EventSourceValidator $sourceValidator,
         private readonly ContentFingerprint $fingerprints,
+        private readonly MediaRefService $mediaRefs,
+        private readonly RichTextSanitizer $sanitizer,
     ) {}
 
     /**
      * @param  array<string, mixed>  $data  只允许 CONTENT_FIELDS 中的键
+     * @param  array<int, int|string>  $allowedMediaIds  detail_html 中允许引用的媒体 ID
      *
      * @throws EventSourceValidationException 活动缺来源，或修订来源与活动不一致
      * @throws EventTimeValidationException 时区/起止时间非法
-     * @throws InvalidArgumentException 缺必填字段、越权字段、非法枚举
+     * @throws InvalidArgumentException 缺必填字段、越权字段、非法枚举、正文超长
      */
-    public function createDraft(Event $event, int $adminId, array $data): EventRevision
+    public function createDraft(Event $event, int $adminId, array $data, array $allowedMediaIds = []): EventRevision
     {
         $this->assertOnlyContentFields($data, '创建活动修订');
         $this->assertAdminExists($adminId);
@@ -114,15 +125,13 @@ class EventRevisionService
             throw new InvalidArgumentException('创建活动修订前必须先保存活动。');
         }
 
-        return DB::transaction(function () use ($event, $adminId, $data): EventRevision {
+        return DB::transaction(function () use ($event, $adminId, $data, $allowedMediaIds): EventRevision {
             $lockedEvent = Event::query()
                 ->whereKey($event->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $attributes = $this->normalizeContentAttributes($data);
-
-            $this->assertBatchNullFields($attributes);
+            $attributes = $this->normalizeContentAttributes($data, $allowedMediaIds);
 
             $revision = new EventRevision;
             $revision->fill($attributes);
@@ -133,7 +142,7 @@ class EventRevisionService
             $revision->created_by = $adminId;
             $revision->review_state = 'draft';
             $revision->media_manifest_hash = null;
-            $revision->sanitizer_version = null;
+            $revision->sanitizer_version = $this->sanitizer->version();
 
             $this->assertContent($lockedEvent, $revision, true);
 
@@ -148,19 +157,25 @@ class EventRevisionService
      * 只允许改内容字段；必须仍是 draft；指纹不符即冲突。
      *
      * @param  array<string, mixed>  $data  只允许 CONTENT_FIELDS 中的键
+     * @param  array<int, int|string>|null  $allowedMediaIds
+     *         NULL 时按该 revision 当前已审核的媒体引用自动取集合
      *
      * @throws RevisionImmutableException 修订已离开 draft
      * @throws RevisionConflictException 调用方基于的指纹已过期
      */
-    public function updateDraft(EventRevision $revision, string $expectedFingerprint, array $data): EventRevision
-    {
+    public function updateDraft(
+        EventRevision $revision,
+        string $expectedFingerprint,
+        array $data,
+        ?array $allowedMediaIds = null,
+    ): EventRevision {
         $this->assertOnlyContentFields($data, '更新活动修订');
 
         if ($revision->getKey() === null) {
             throw new InvalidArgumentException('更新活动修订前 revision 必须已保存。');
         }
 
-        return DB::transaction(function () use ($revision, $expectedFingerprint, $data): EventRevision {
+        return DB::transaction(function () use ($revision, $expectedFingerprint, $data, $allowedMediaIds): EventRevision {
             $locked = EventRevision::query()
                 ->whereKey($revision->getKey())
                 ->lockForUpdate()
@@ -186,9 +201,10 @@ class EventRevisionService
 
             $event = Event::query()->findOrFail($locked->event_id);
 
-            $attributes = $this->normalizeContentAttributes($data);
+            $mediaIds = $allowedMediaIds
+                ?? $this->mediaRefs->approvedMediaIdsForRevision('event_revision', (int) $locked->getKey());
 
-            $this->assertBatchNullFields($attributes);
+            $attributes = $this->normalizeContentAttributes($data, $mediaIds);
 
             // 只有本次显式触碰来源/主办方字段时才要求快照等于主体当前名称；
             // 其他内容编辑保留历史快照，不能因为主体后来改名就阻塞草稿。
@@ -201,14 +217,13 @@ class EventRevisionService
             // clone 不触发模型 updating 守卫，守卫仍由下面的 save() 兜底。
             $candidate = clone $locked;
             $candidate->fill($attributes);
-            $candidate->media_manifest_hash = null;
-            $candidate->sanitizer_version = null;
+            $candidate->sanitizer_version = $this->sanitizer->version();
 
             $this->assertContent($event, $candidate, $assertOrganizerSnapshot);
 
             $locked->fill($attributes);
-            $locked->media_manifest_hash = null;
-            $locked->sanitizer_version = null;
+            // 媒体集合指纹由 MediaRefService 维护；编辑正文不得清空。
+            $locked->sanitizer_version = $this->sanitizer->version();
             $locked->content_fingerprint = $this->fingerprints->eventRevision($locked);
             $locked->save();
 
@@ -250,9 +265,10 @@ class EventRevisionService
 
     /**
      * @param  array<string, mixed>  $data
+     * @param  array<int, int|string>  $allowedMediaIds
      * @return array<string, mixed>
      */
-    private function normalizeContentAttributes(array $data): array
+    private function normalizeContentAttributes(array $data, array $allowedMediaIds): array
     {
         $attributes = [];
 
@@ -271,6 +287,36 @@ class EventRevisionService
 
             if (in_array($field, ['source_url', 'external_registration_url'], true)) {
                 $attributes[$field] = $this->normalizeOptionalUrl($value, $field);
+
+                continue;
+            }
+
+            if ($field === 'detail_html') {
+                $attributes[$field] = $this->sanitizer->sanitize(
+                    $this->normalizeOptionalText($value, $field),
+                    $allowedMediaIds,
+                );
+
+                continue;
+            }
+
+            if ($field === 'media_manifest_hash') {
+                if ($value !== null) {
+                    throw new InvalidArgumentException(
+                        'media_manifest_hash 由 MediaRefService 维护，调用方不得写入。'
+                    );
+                }
+
+                // NULL 表示“不动”；编辑时保留库内既有值，创建时显式置 NULL。
+                continue;
+            }
+
+            if ($field === 'sanitizer_version') {
+                if ($value !== null) {
+                    throw new InvalidArgumentException(
+                        'sanitizer_version 由服务端按实际净化结果写入，调用方不得传入。'
+                    );
+                }
 
                 continue;
             }
@@ -354,20 +400,6 @@ class EventRevisionService
         $this->sourceValidator->assertSourceUrl($value);
 
         return $value;
-    }
-
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    private function assertBatchNullFields(array $attributes): void
-    {
-        if (array_key_exists('media_manifest_hash', $attributes) && $attributes['media_manifest_hash'] !== null) {
-            throw new InvalidArgumentException('本批不写媒体，media_manifest_hash 必须为 NULL（G1-06）。');
-        }
-
-        if (array_key_exists('sanitizer_version', $attributes) && $attributes['sanitizer_version'] !== null) {
-            throw new InvalidArgumentException('本批不写富文本净化版本，sanitizer_version 必须为 NULL（G1-07）。');
-        }
     }
 
     /**

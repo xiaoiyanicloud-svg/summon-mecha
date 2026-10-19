@@ -310,6 +310,25 @@ final class ApiErrorCode
      */
     public const CONTENT_TRANSITION_INVALID = 'CONTENT_TRANSITION_INVALID';
 
+    // ── 媒体（G1-06）──────────────────────────────────────────────────────
+
+    /**
+     * G1-06：媒体上传 / 审核失败 —— 真实 MIME 不允许、扩展名与 MIME 不符、
+     * 图片解码或尺寸不合法、PDF 头部缺失、大小超限、sha256 重复，
+     * 或当前状态不允许该审核动作。
+     *
+     * 客户端处置是换一份合法文件 / 新建媒体重新审核，不是重试原请求。
+     */
+    public const MEDIA_INVALID = 'MEDIA_INVALID';
+
+    /**
+     * G1-06：公开媒体不可访问 —— 域开关关闭、引用或媒体未审核、
+     * 父 revision / 父对象未发布、文件缺失，统一 404。
+     *
+     * 刻意不区分原因：公开端不得泄露草稿 / 待审 / 暂缓媒体的存在性。
+     */
+    public const MEDIA_NOT_FOUND = 'MEDIA_NOT_FOUND';
+
     // ── AI 召唤 ──────────────────────────────────────────────────────────
 
     public const SUMMON_QUERY_REQUIRED = 'SUMMON_QUERY_REQUIRED';

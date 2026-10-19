@@ -16,8 +16,10 @@ use Webkul\Shop\Models\EventRuleVersion;
  * 边界：
  *   · 只做 draft 的创建与编辑；批准/废止/替代属于后续审核流程；
  *   · `version_no` 在活动行锁内 `max + 1`，同活动内不复用；
+ *   · `body_html` 在服务端净化（G1-07），规则正文暂不支持内嵌图片；
  *   · `body_html` 与 `external_url` 至少一项 —— 只有外链许可时不得复制全文；
- *   · `file_media_id` 本批必须为 NULL（`ecosystem_media` 归 G1-06）；
+ *   · `file_media_id` 由 MediaService 绑定（G1-06），编辑时保留既有值；
+ *     调用方仍不得直接写入；
  *   · 指纹由服务端计算，调用方传入 `content_fingerprint` / `status` / `version_no`
  *     一律拒绝，否则“声明内容没变”会绕过审核。
  *
@@ -56,6 +58,7 @@ class EventRuleVersionService
     public function __construct(
         private readonly EventSourceValidator $sourceValidator,
         private readonly ContentFingerprint $fingerprints,
+        private readonly RichTextSanitizer $sanitizer,
     ) {}
 
     /**
@@ -77,8 +80,6 @@ class EventRuleVersionService
                 ->firstOrFail();
 
             $attributes = $this->normalizeContentAttributes($data);
-
-            $this->assertFileMediaNull($attributes);
 
             $rule = new EventRuleVersion;
             $rule->fill($attributes);
@@ -137,16 +138,13 @@ class EventRuleVersionService
 
             $attributes = $this->normalizeContentAttributes($data);
 
-            $this->assertFileMediaNull($attributes);
-
             $candidate = clone $locked;
             $candidate->fill($attributes);
-            $candidate->file_media_id = null;
 
             $this->assertContent($candidate);
 
             $locked->fill($attributes);
-            $locked->file_media_id = null;
+            // 规则文件由 MediaService 绑定，编辑正文不得清空。
             $locked->content_fingerprint = $this->fingerprints->ruleVersion($locked);
             $locked->save();
 
@@ -202,8 +200,13 @@ class EventRuleVersionService
             }
 
             if ($field === 'file_media_id') {
-                $attributes[$field] = $this->normalizeNullableInt($value);
+                if ($value !== null && $value !== '') {
+                    throw new InvalidArgumentException(
+                        'file_media_id 由 MediaService 绑定，调用方不得直接写入。'
+                    );
+                }
 
+                // NULL 表示“不动”；编辑时保留库内既有绑定，创建时显式置 NULL。
                 continue;
             }
 
@@ -214,7 +217,11 @@ class EventRuleVersionService
             }
 
             if ($field === 'body_html') {
-                $attributes[$field] = $this->normalizeOptionalText($value);
+                // 规则正文暂不支持内嵌图片：本批 allowedMediaIds = []。
+                $attributes[$field] = $this->sanitizer->sanitize(
+                    $this->normalizeOptionalText($value),
+                    [],
+                );
 
                 continue;
             }
@@ -244,23 +251,6 @@ class EventRuleVersionService
         } catch (\Throwable) {
             throw new EventTimeValidationException(sprintf('effective_from 的时间「%s」无法解析。', $value));
         }
-    }
-
-    private function normalizeNullableInt(mixed $value): ?int
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (is_int($value)) {
-            return $value;
-        }
-
-        if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
-            return (int) $value;
-        }
-
-        throw new InvalidArgumentException('file_media_id 必须是整数或 NULL。');
     }
 
     private function normalizeOptionalText(mixed $value): ?string
@@ -294,16 +284,6 @@ class EventRuleVersionService
         return $value;
     }
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    private function assertFileMediaNull(array $attributes): void
-    {
-        if (array_key_exists('file_media_id', $attributes) && $attributes['file_media_id'] !== null) {
-            throw new InvalidArgumentException('本批不写规则文件，file_media_id 必须为 NULL（G1-06）。');
-        }
-    }
-
     private function assertContent(EventRuleVersion $rule): void
     {
         foreach (self::REQUIRED_TEXT_FIELDS as $field) {
@@ -326,10 +306,6 @@ class EventRuleVersionService
         }
 
         $this->assertLanguageTag($rule->authority_language);
-
-        if ($rule->file_media_id !== null) {
-            throw new InvalidArgumentException('本批不写规则文件，file_media_id 必须为 NULL（G1-06）。');
-        }
     }
 
     private function assertLanguageTag(?string $language): void

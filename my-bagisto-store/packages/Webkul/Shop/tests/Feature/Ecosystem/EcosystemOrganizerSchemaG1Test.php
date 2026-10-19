@@ -281,15 +281,15 @@ it('G1-03 · event_registrations 结构与 G0 收口时完全一致', function (
     expect($actual)->toBe($expected);
 });
 
-it('G1-05 · revision 与内容域三表已建，媒体表仍未提前创建', function () {
-    // G1-04 新增 revision 与规则版本；G1-05 新增内容域三表；
-    // 媒体域（G1-06）必须继续缺席 —— 提前建空表会让后续迁移误以为前置已完成。
+it('G1-05 · revision、内容域与媒体域已建', function () {
+    // G1-04 新增 revision 与规则版本；G1-05 新增内容域三表；G1-06 新增媒体域。
     expect(Schema::hasTable('event_revisions'))->toBeTrue()
         ->and(Schema::hasTable('event_rule_versions'))->toBeTrue()
         ->and(Schema::hasTable('content_posts'))->toBeTrue()
         ->and(Schema::hasTable('content_revisions'))->toBeTrue()
         ->and(Schema::hasTable('content_sources'))->toBeTrue()
-        ->and(Schema::hasTable('ecosystem_media'))->toBeFalse();
+        ->and(Schema::hasTable('ecosystem_media'))->toBeTrue()
+        ->and(Schema::hasTable('ecosystem_media_refs'))->toBeTrue();
 });
 
 it('G1-03 · 迁移后四个公开/报名开关仍为 false', function () {

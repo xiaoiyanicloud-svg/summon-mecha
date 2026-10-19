@@ -14,8 +14,8 @@
 |   · slug 冲突策略已冻结（§3 G1-D06）：全局唯一、首次发布后不可变、撤稿后不复用；
 |   · `source_type_rights_basis` 是提交/批准前的匹配表：source_type 只能配
 |     表中列出的 rights_basis；
-|   · `sanitizer_placeholder_version` 是 G1-05 写入 revision 的占位净化版本。
-|     真正的富文本净化在 G1-07；渲染端必须把该占位视为“尚未净化”，不得公开输出。
+|   · `sanitizer_placeholder_version` 是 G1-05 的占位值，仅供历史数据 / 测试夹具；
+|     G1-07 起 revision 写入真实净化版本，见 config/ecosystem_rich_text.php。
 |
 */
 return [
