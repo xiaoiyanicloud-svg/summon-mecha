@@ -132,6 +132,32 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('ops:reclaim-expired-trials')
             ->everyMinute()
             ->withoutOverlapping();
+
+        /**
+         * G1-09 · 生态 outbox worker 与到期发布扫描。
+         *
+         * ⚠ 两条都**默认关闭**，且“注册”不等于“在跑”：
+         *   · `ecosystem_outbox.worker_enabled=false`
+         *   · `ecosystem_publishing.scheduler_enabled=false`
+         *   即使把开关改成 true，也必须先启动 `schedule:work` 或 crontab，
+         *   否则任务不会执行；执行失败也不会有人告诉你。
+         *
+         * 每条 minute 只跑**一轮有界批次**（batch_size 上限 20 / limit 默认 50），
+         * 不在这里写无限循环。`withoutOverlapping` 防止上一轮未完成时叠加。
+         *
+         * 手工演练（不受开关限制，但受域发布开关约束）：
+         *   php artisan ecosystem:process-outbox --dry-run
+         *   php artisan ecosystem:publish-scheduled --dry-run
+         */
+        $schedule->command('ecosystem:process-outbox')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->when(fn () => (bool) config('ecosystem_outbox.worker_enabled', false));
+
+        $schedule->command('ecosystem:publish-scheduled')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->when(fn () => (bool) config('ecosystem_publishing.scheduler_enabled', false));
     })
     ->withExceptions(function (Exceptions $exceptions) {
         /**

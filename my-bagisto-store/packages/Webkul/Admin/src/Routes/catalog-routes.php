@@ -6,6 +6,7 @@ use Webkul\Admin\Http\Controllers\Catalog\AttributeFamilyController;
 use Webkul\Admin\Http\Controllers\Catalog\CategoryController;
 use Webkul\Admin\Http\Controllers\Catalog\ContentSecurityController;
 use Webkul\Admin\Http\Controllers\Catalog\DeviceModelController;
+use Webkul\Admin\Http\Controllers\Catalog\Ecosystem\PublishingController;
 use Webkul\Admin\Http\Controllers\Catalog\EventController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\BundleController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\ConfigurableController;
@@ -131,6 +132,81 @@ Route::prefix('catalog')->group(function () {
         Route::post('edit/{eventId}', fn () => abort(404));
         Route::delete('delete/{eventId}', fn () => abort(404));
         Route::get('registrations', 'registrations')->name('admin.catalog.events.registrations');
+    });
+
+    /**
+     * 生态发布工作台（G1-08 ~ G1-11 的管理端操作面）。
+     *
+     * 授权登记在 `config/ecosystem_admin.php`，控制器入口显式执行；
+     * `config/acl.php` 中的 `ecosystem.*` 权限 key 供角色分配与菜单使用。
+     * 所有 {id}/{revision} 都加 whereNumber，避免非数字命中兜底路由。
+     */
+    Route::controller(PublishingController::class)->prefix('ecosystem-publishing')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.ecosystem.index');
+
+        // 活动
+        Route::get('events/{id}', 'showEvent')->whereNumber('id')->name('admin.catalog.ecosystem.events.show');
+        Route::post('events/{id}/metadata', 'updateEventMetadata')->whereNumber('id')->name('admin.catalog.ecosystem.events.metadata');
+        Route::post('events/{id}/revisions', 'storeEventRevision')->whereNumber('id')->name('admin.catalog.ecosystem.events.revisions.store');
+
+        Route::get('events/{id}/revisions/{revision}/preview', 'previewEventRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.preview');
+        Route::post('events/{id}/revisions/{revision}/submit', 'submitEventRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.submit');
+        Route::post('events/{id}/revisions/{revision}/approve', 'approveEventRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.approve');
+        Route::post('events/{id}/revisions/{revision}/reject', 'rejectEventRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.reject');
+        Route::post('events/{id}/revisions/{revision}/schedule', 'scheduleEventRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.schedule');
+        Route::post('events/{id}/revisions/{revision}/publish', 'publishEventRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.events.revisions.publish');
+
+        Route::post('events/{id}/unschedule', 'unscheduleEvent')->whereNumber('id')->name('admin.catalog.ecosystem.events.unschedule');
+        Route::post('events/{id}/withhold', 'withholdEvent')->whereNumber('id')->name('admin.catalog.ecosystem.events.withhold');
+        Route::post('events/{id}/restore', 'restoreEvent')->whereNumber('id')->name('admin.catalog.ecosystem.events.restore');
+        Route::post('events/{id}/retract', 'retractEvent')->whereNumber('id')->name('admin.catalog.ecosystem.events.retract');
+
+        // 资讯
+        Route::get('content', 'contentIndex')->name('admin.catalog.ecosystem.content.index');
+        Route::post('content', 'storeContent')->name('admin.catalog.ecosystem.content.store');
+        Route::get('content/{id}', 'showContent')->whereNumber('id')->name('admin.catalog.ecosystem.content.show');
+        Route::post('content/{id}/revisions', 'storeContentRevision')->whereNumber('id')->name('admin.catalog.ecosystem.content.revisions.store');
+
+        Route::get('content/{id}/revisions/{revision}/preview', 'previewContentRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.preview');
+        Route::post('content/{id}/revisions/{revision}/submit', 'submitContentRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.submit');
+        Route::post('content/{id}/revisions/{revision}/approve', 'approveContentRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.approve');
+        Route::post('content/{id}/revisions/{revision}/reject', 'rejectContentRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.reject');
+        Route::post('content/{id}/revisions/{revision}/schedule', 'scheduleContentRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.schedule');
+        Route::post('content/{id}/revisions/{revision}/publish', 'publishContentRevision')
+            ->whereNumber('id')->whereNumber('revision')
+            ->name('admin.catalog.ecosystem.content.revisions.publish');
+
+        Route::post('content/{id}/unschedule', 'unscheduleContent')->whereNumber('id')->name('admin.catalog.ecosystem.content.unschedule');
+        Route::post('content/{id}/withhold', 'withholdContent')->whereNumber('id')->name('admin.catalog.ecosystem.content.withhold');
+        Route::post('content/{id}/restore', 'restoreContent')->whereNumber('id')->name('admin.catalog.ecosystem.content.restore');
+        Route::post('content/{id}/retract', 'retractContent')->whereNumber('id')->name('admin.catalog.ecosystem.content.retract');
+
+        // 主办方
+        Route::get('organizers', 'organizerIndex')->name('admin.catalog.ecosystem.organizers.index');
+        Route::post('organizers', 'storeOrganizer')->name('admin.catalog.ecosystem.organizers.store');
+        Route::post('organizers/{id}/verify', 'verifyOrganizer')->whereNumber('id')->name('admin.catalog.ecosystem.organizers.verify');
     });
 
     /**

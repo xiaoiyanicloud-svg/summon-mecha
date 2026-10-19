@@ -22,10 +22,10 @@
 		</view>
 
 		<view v-else-if="error" class="sv-box">
-			<text class="sv-icon">📡</text>
+			<text class="sv-icon">{{ errorIcon }}</text>
 			<text class="sv-text">{{ errorText || '数据没能加载' }}</text>
 			<text v-if="errorDetail" class="sv-hint">{{ errorDetail }}</text>
-			<view v-if="retry" class="sv-btn" :style="{ background: btnColor }" @click="$emit('retry')">
+			<view v-if="retry" class="sv-btn" role="button" tabindex="0" :style="{ background: btnColor }" @click="$emit('retry')">
 				{{ retryText }}
 			</view>
 		</view>
@@ -34,7 +34,7 @@
 			<text v-if="emptyIcon" class="sv-icon">{{ emptyIcon }}</text>
 			<text class="sv-text">{{ emptyText }}</text>
 			<text v-if="emptyHint" class="sv-hint">{{ emptyHint }}</text>
-			<view v-if="emptyAction" class="sv-btn" :style="{ background: btnColor }" @click="$emit('empty-action')">
+			<view v-if="emptyAction" class="sv-btn" role="button" tabindex="0" :style="{ background: btnColor }" @click="$emit('empty-action')">
 				{{ emptyActionText }}
 			</view>
 		</view>
@@ -62,6 +62,8 @@ export default {
 		error: { type: [String, Boolean], default: '' },
 		// 「故障」标题文案;不传则用默认
 		errorText: { type: String, default: '' },
+		// 故障图标;404/410/503 可用不同图标,避免只靠颜色/文案区分
+		errorIcon: { type: String, default: '📡' },
 
 		// 「真的没有数据」—— 只在**请求成功但结果为空**时为真
 		empty: { type: Boolean, default: false },

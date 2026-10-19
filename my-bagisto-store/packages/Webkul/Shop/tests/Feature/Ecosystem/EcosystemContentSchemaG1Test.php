@@ -207,10 +207,12 @@ it('G1-05 · content_posts 唯一约束与索引按名字和列序存在', funct
         ->toBe(['columns' => ['working_revision_id'], 'unique' => false]);
 });
 
-it('G1-05 · content_posts 双 revision 指针外键指向 content_revisions 且为 RESTRICT', function () {
+it('G1-05 · content_posts 三个 revision 指针外键指向 content_revisions 且为 RESTRICT', function () {
     foreach ([
         'fk_content_posts_published_revision_id' => 'published_revision_id',
         'fk_content_posts_working_revision_id'   => 'working_revision_id',
+        // G1-08A A-01：已批准候选版本指针；同样 RESTRICT。
+        'fk_content_posts_approved_revision_id'  => 'approved_revision_id',
     ] as $constraint => $column) {
         $fk = g5SchemaForeignKey('content_posts', $constraint);
 
@@ -226,7 +228,7 @@ it('G1-05 · content_posts 双 revision 指针外键指向 content_revisions 且
     sort($foreignKeys);
 
     // created_by / updated_by 必须存在，但不得有外键。
-    expect($foreignKeys)->toBe(['published_revision_id', 'working_revision_id'])
+    expect($foreignKeys)->toBe(['approved_revision_id', 'published_revision_id', 'working_revision_id'])
         ->and(Schema::hasColumn('content_posts', 'created_by'))->toBeTrue()
         ->and(Schema::hasColumn('content_posts', 'updated_by'))->toBeTrue();
 });

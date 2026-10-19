@@ -2,6 +2,7 @@
 
 namespace Webkul\Shop\Services\Ecosystem;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Models\ContentPost;
 use Webkul\Shop\Models\ContentRevision;
@@ -32,11 +33,20 @@ use Webkul\Shop\Models\EventRevision;
  */
 class MediaAccessService
 {
+    public function __construct(
+        private readonly PublicReadGate $gate,
+    ) {}
+
     /**
+     * @throws PublicReadUnavailableException 平台整体停读（503，优先于一切判断）
      * @throws MediaAccessException 任一公开条件不满足
      */
     public function resolvePublic(string $ownerType, int $ownerId, int $mediaId): EcosystemMedia
     {
+        // kill switch 必须最先检查：不查业务表、不落到 404。
+        // 停读时通过 404 “看起来像不存在”会让调用方误判为内容被删除。
+        $this->gate->assertAvailable();
+
         if ($ownerId <= 0 || $mediaId <= 0
             || ! in_array($ownerType, $this->ownerTypes(), true)) {
             throw MediaAccessException::notFound();
@@ -81,6 +91,14 @@ class MediaAccessService
         }
 
         if (! Storage::disk((string) $media->disk)->exists((string) $media->storage_key)) {
+            // 门禁通过但私有盘缺件：这是运维事实，必须留 error 日志（G1-10 契约）。
+            // 日志只写 ID，不写 storage_key / 磁盘路径。
+            Log::error('ecosystem.public_media.file_missing', [
+                'owner_type' => $ownerType,
+                'owner_id'   => $ownerId,
+                'media_id'   => $mediaId,
+            ]);
+
             throw MediaAccessException::notFound();
         }
 

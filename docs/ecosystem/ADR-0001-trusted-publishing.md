@@ -583,6 +583,8 @@ reason 按以下优先级返回第一条命中项（保证同一状态稳定）�
 | events | `source_type` | VARCHAR(20) | 是 | NULL | `idx(source_type, platform_role)` | `platform/external`；NULL=历史未核定 | G1-03 |
 | events | `platform_role` | VARCHAR(20) | 是 | NULL | 同上 | `organizer/co_organizer/authorized_operator/directory_only`；NULL=未核定 | G1-03 |
 | events | `organizer_id` | BIGINT UNSIGNED | 是 | NULL | `idx`，G1-03 建 FK | 指向 `ecosystem_organizers.id`；不得指向 customer/seller | G1-03 |
+| events | `approved_revision_id` | BIGINT UNSIGNED | 是 | NULL | `idx` + FK → `event_revisions.id` | 当前已批准候选版本；公开读取仍只认 `published_revision_id` | G1-08A |
+| events | `scheduled_publish_at` | DATETIME | 是 | NULL | `idx(publish_status, scheduled_publish_at)` | UTC；G1-08A 只建列，写入属于 G1-08B | G1-08A/B |
 
 约束（应用层，不依赖 MySQL 5.7 CHECK）：
 
@@ -706,6 +708,8 @@ reason 按以下优先级返回第一条命中项（保证同一状态稳定）�
 | content_posts | `created_by` | BIGINT UNSIGNED | 否 | — | — | 创建人 | G1-05 |
 | content_posts | `updated_by` | BIGINT UNSIGNED | 是 | NULL | — | 最近操作人 | G1-05 |
 | content_posts | `created_at` / `updated_at` | TIMESTAMP | 是 | NULL | — | — | G1-05 |
+| content_posts | `approved_revision_id` | BIGINT UNSIGNED | 是 | NULL | `idx` + FK → `content_revisions.id` | 当前已批准候选版本；公开读取仍只认 `published_revision_id` | G1-08A |
+| content_posts | `scheduled_publish_at` | DATETIME | 是 | NULL | `idx(publish_status, scheduled_publish_at)` | UTC；G1-08A 只建列，写入属于 G1-08B | G1-08A/B |
 
 ### 4.7 `content_revisions`
 
@@ -1108,3 +1112,125 @@ MySQL 5.7 DDL 不能假定事务回滚；迁移前必须有可恢复备份。新
 | G1-D08 | 公开 DTO、HTTP 语义与错误码 | 2026-10-19 | 待签 |
 | G1-D09 | 权限与数据保留 | 2026-10-19 | 待签 |
 | B-01 至 B-07 | 阻塞项（见 §9） | 未冻结 | 待确认 |
+
+---
+
+## 附录 B：G1-08A / G1-08B ADR 增量修订（A-01 ~ A-06）
+
+| 项 | 内容 |
+|---|---|
+| 日期 | 2026-10-19 |
+| 授权 | **2026-10-19 用户授权按 G1 真实闭环推进**；本附录为增量留档，不改变 G1-D01 ~ G1-D09 已冻结口径 |
+| 范围 | A-01/A-05/A-06 支撑 G1-08A（提交 / 批准 / 拒绝）；A-02/A-03/A-04 的发布语义在 G1-08B（发布 / 排期 / 暂缓 / 恢复 / 撤稿）落地。worker / 公开 API / 前端仍属 G1-09 ~ G1-11 |
+| 性质 | 增量修订；与正文冲突时以本附录的**新增字段与已发布对象语义**为准 |
+
+### A-01 `approved_revision_id`
+
+- `events` / `content_posts` 新增 `approved_revision_id BIGINT UNSIGNED NULL`，索引 + 外键指向对应 revision 表，`RESTRICT/RESTRICT`。
+- 语义：**当前已批准、尚未成为公开版本的候选 revision**。它不是公开指针，公开读取仍只认 `published_revision_id`。
+- `working_revision_id` 继续只指 `draft`；`RevisionPointerValidator` 的 draft 约束不放宽。
+- 普通写入口（`EventWriteService` / `ContentPostService`）不得透传；只有审核服务的受控校验可以写入。
+
+### A-02 `scheduled_publish_at`
+
+- `events` / `content_posts` 新增 `scheduled_publish_at DATETIME NULL`（UTC），并增加 `idx(publish_status, scheduled_publish_at)`。
+- G1-08A 只建列与索引；G1-08B 起由 `EventPublicationService` / `ContentPublicationService` 写入 UTC 值，`PublicationState` 负责合法状态判断。
+- 排期不是 outbox 的 `available_at`；outbox 只记录已发生事实。`schedule` / `unschedule` 不写 outbox，G1-09 扫描 `publish_status=scheduled AND scheduled_publish_at <= UTC_NOW()`。
+
+### A-03 outbox 恢复事件
+
+- `event.restored` / `content.restored` 已在 `config/ecosystem_outbox.php` 登记为正式事件类型；G1-08A 不写任何 outbox 发布/恢复事件。
+- 本条已于 G1-08B 落地：`withhold -> restore` 必须写独立的 `*.restored`，不得复用 `*.published`。
+- 只有**已发生**的公开事实写 outbox（publish / withhold / restore / retract）；`schedule` / `unschedule` 不写 outbox，未来时间只存父对象 `scheduled_publish_at`。
+- payload 只含 `revision_id` / `revision_no` / `row_version` / `fingerprint_version` / `reason_code`；`dedupe_key` 由事件类型 + 聚合 + revision + 变更后的 `row_version` 组成，同一事实重放不新增记录。
+
+### A-04 已发布对象的新版本语义
+
+- 已发布对象（`publish_status=published`）提交/批准新 revision 时，父 `publish_status` **保持 `published`**，`published_revision_id` 不变；候选版本由 `approved_revision_id` 表达。
+- 从未发布对象按 `draft → in_review → approved/rejected`。
+- 已 `approved` / `scheduled` 对象创建新 working draft 时，批准失效：清 `approved_revision_id`、清 `scheduled_publish_at`，父回 `draft`。
+- 已发布对象创建新 working draft 时，`publish_status` 与 `published_revision_id` 不变；但**清空 `approved_revision_id` 与 `scheduled_publish_at`** —— 任何未公开候选被新 draft 取代即失效。
+- 已发布对象即使 `working_revision_id` 为空，只要同对象存在 `review_state=in_review` 的 revision，也必须拒绝开始新 draft（不得并行审核）；该探测在父行锁事务内完成（已发布对象提交后 working 指针为空、父状态仍是 `published`，仅凭父行无法发现）。
+- 拒绝（reject）不区分父对象是否 `published`：一律清空 `approved_revision_id`（被拒绝的候选不得残留可发布指针），`scheduled_publish_at` 存在也清空，避免旧排期复活；`published_revision_id` 仍不变。
+
+**G1-08B 补充（发布 / 排期 / 处置）**
+
+- 发布只允许 `approved_revision_id` 指向的 `review_state=approved` revision；发布 / 排期 / 恢复必须重新执行全部前置（来源、指纹、媒体 manifest、sanitizer、主办方核验、B 开关），不得复用审批结论。
+- 已发布对象发布新候选时，`publish_status` 保持 `published`；切换前旧 `published_revision_id` 继续公开，切换后旧 revision 保留（不删除）但其媒体不再可通过公开门禁读取。
+- 排期：从未发布对象 `approved → scheduled`；已发布对象保持 `published`，只写 `approved_revision_id + scheduled_publish_at`。取消排期：`scheduled → approved`，已发布对象保持 `published`；只清时间，不删 revision。
+- 暂缓（withhold）：仅当前已发布对象；`disposition=withheld`，公开指针保留，清 `approved_revision_id` 与 `scheduled_publish_at`；原因必填但只进内部日志与稳定审计原因码。
+- 恢复（restore）：仅 `withheld → normal`，必须重新通过前置；不得自动恢复。
+- 撤稿（retract）：`disposition=retracted` 为终态，清候选与排期、公开指针保留作审计；任何后续 publish / restore / schedule / 新 revision 均拒绝。
+- 重复发布同一 revision、重复暂缓、重复撤稿是 no-op：不写 outbox、不推 `row_version`。
+- `published_revision_id` 的唯一生产写入口是 `PublicationPointerSwitcher`（Query Builder 原子更新 + `where row_version = ?` CAS）；普通写入口与模型守卫继续拒绝非 NULL 写入。
+
+### A-05 审核 / 发布开关
+
+- 新增 `config/ecosystem_publishing.php`：状态转移表、B-01/B-03/B-04/B-07 开关、审核前置开关、原因码词表。
+- `event_publish_enabled` / `content_publish_enabled` / `scheduler_enabled` 默认 **false**；G1-08A 不提供发布/排期能力。
+- 审核开关默认允许提交/批准/拒绝演练；任何公开开关保持 false。
+- 所有 `in_review` / `approved` / `rejected` 后内容列不可变；审核要改必须拒绝并新建 revision。
+
+### A-06 媒体引用审核时序
+
+- 媒体引用审核（`MediaRefService::reviewRef()`）**只在 draft revision 上执行**，不得为审核方便放开到 `in_review`。
+- 工作流固定为：上传媒体 → 媒体批准 → 引用审核（draft 期）→ 提交 revision → 审核 revision → 批准 → 发布。
+- 提交 / 批准前置统一校验：每条 ref `review_status=approved`、媒体 `status=approved`、私有盘文件存在；同时重算 `content_fingerprint` 与 `media_manifest_hash`，并校验 `sanitizer_version` 等于当前配置版本。任一不一致 fail-closed。
+- 前置校验不得生成公开 URL，不得读取公开盘。
+
+---
+
+## 附录 C：G1-09 落地记录（2026-10-19）
+
+| 项 | 内容 |
+|---|---|
+| 日期 | 2026-10-19 |
+| 分支 | `codex/ecosystem-g1-trusted-publishing` |
+| 范围 | outbox worker（领取 / 租约 / 结算 / 重试 / dead / 过期恢复）、到期发布扫描、公开读取 kill switch、调度注册 |
+| 性质 | 落地记录；**不改变** G1-D01 ~ G1-D09 与附录 B A-01 ~ A-06 的冻结口径 |
+| 数据库 | 独立测试库 `summon_mecha_step10_test`；未新增迁移、未触碰 root 主库 |
+
+### C-01 outbox worker
+
+- `config/ecosystem_outbox.php` 新增：`worker_enabled=false`、`lease_seconds=300`、`batch_size=20`（代码硬上限 20）、`max_attempts=5`、`retry_backoff_seconds=[30,120,600,1800,3600]`。
+- 领取：短事务 `FOR UPDATE` 选中 `status=pending AND available_at <= UTC_NOW()` 的批次，逐行更新为 `processing`，写入每次唯一的 `lease_owner=host:pid:uuid`、`lease_until=now+TTL`、`attempts+1`，事务提交后才执行 handler。**不使用** MySQL 8 的 `SKIP LOCKED`。
+- 结算 / 失败回报：条件更新必须同时匹配 `id + status=processing + lease_owner + lease_until >= now`；影响 0 行抛 `OutboxLeaseLostException`，旧 worker 静默丢弃结果（只记 warning），不写 `sent` / `dead` / `pending`。
+- 过期恢复：`processing AND (lease_until < now OR NULL)` → `pending`，清租约，`last_error=lease_expired`，**不**重复增加 attempts。
+- 重试：`QueryException` 视为瞬时错误，回 `pending` 并按 attempts 退避；达到 `max_attempts` → `dead`。未知 event_type / aggregate_type、payload 非法、父对象不存在、状态不符、`row_version` 被取代一律 `dead`，不无限重试。
+- handler 只做事实核验与消费记账：`sent` **不代表**已向用户发送任何通知。G1 未接通知渠道。
+
+### C-02 superseded 语义
+
+- 父对象 `row_version` 与 outbox payload 不一致时标记 `dead`，`last_error` 以 `superseded:` 开头。
+- 旧事实不得投递给 G2 消费者；不产生第二条公开事实。
+
+### C-03 到期发布扫描
+
+- 只处理 `scheduled_publish_at <= UTC_NOW()`、`disposition=normal`、`publish_status ∈ {scheduled,published}` 的父对象，稳定按 `scheduled_publish_at, id` 排序。
+- 域发布开关为 false（内容域还要求 B-04 / B-07）时**整域跳过**：运营关开关不是“该排期失败”，不得回退。
+- 业务前置 / 状态机 / 版本冲突 → 不可重试：在事务内安全回退：
+  - 从未发布（`published_revision_id IS NULL`）→ `approved`，清 `scheduled_publish_at`，保留 `approved_revision_id`；
+  - 已发布 → 保持 `published` 与旧公开指针，清 `scheduled_publish_at` 与 `approved_revision_id`；
+  - 写 `ecosystem.{event|content}.schedule_aborted` 审计（`actor_type=system`，`reason_code=schedule_aborted`），并发 `AdminAlertService` 告警（dedupe key 含域 + ID + UTC 日期）。
+- `withheld` / `retracted` 永不自动复活：查询先按 `disposition=normal` 过滤，回退事务再校验一次。
+- 瞬时 `QueryException` → 行保持 `scheduled`，下一轮重试；未预期异常同样保持 `scheduled` 并告警，不伪装成功。
+
+### C-04 公开读取 kill switch
+
+- 新增 `config/ecosystem_public_read.php`：`emergency_disabled=false`（env `ECOSYSTEM_PUBLIC_READ_EMERGENCY_DISABLED`）。
+- `PublicReadGate::assertAvailable()` 只读配置、不查业务表；命中抛 `PublicReadUnavailableException`（503 / `SERVICE_UNAVAILABLE`）。
+- `MediaAccessService::resolvePublic()` 在域开关与任何查询之前调用 gate：kill switch 命中时为 503，而不是 404 / 空列表。
+- 公开列表 / 详情 / 媒体的 controller 映射属 G1-10；本批只提供服务层语义与异常。
+
+### C-05 调度注册
+
+- `bootstrap/app.php` 注册两条 `everyMinute + withoutOverlapping`：
+  - `ecosystem:process-outbox` 受 `ecosystem_outbox.worker_enabled` 控制（默认 false）；
+  - `ecosystem:publish-scheduled` 受 `ecosystem_publishing.scheduler_enabled` 控制（默认 false）。
+- **仅注册不等于已运行**：没有 `schedule:work` / crontab 时两条都不会执行；本批不声称常驻进程已启动。
+
+### C-06 命令
+
+- `php artisan ecosystem:process-outbox [--limit=] [--dry-run]`：一轮有界批次；dry-run 只读统计。
+- `php artisan ecosystem:publish-scheduled [--limit=50] [--dry-run]`：一轮有界扫描；瞬时/未预期错误返回非零退出码。
+- 过期租约恢复内置于 `ecosystem:process-outbox` 每轮开头，不单设 `ecosystem:recover-outbox`。

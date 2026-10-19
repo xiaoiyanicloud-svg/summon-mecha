@@ -225,13 +225,20 @@ export const sceneApi = {
   },
 }
 
-// ==================== 赛事(生态中心赛事活动 tab) ====================
+// ==================== 赛事 / 资讯(G1 公开只读合同) ====================
+// G1-10 公开 DTO：列表只返回 published + normal，详情 404/410/503 有独立语义。
+// 报名写入口不在 G1 前端开放 —— 报名状态只读 DTO 的 registration.* 展示。
 export const eventApi = {
-  getEvents: () => http.get('/api/events', { loading: false }),
-  // 独立详情必须按 ID 重新取，不能只依赖首页列表内存对象
+  // params: { page, per_page, kind, participation_mode, city, hosting_status, starts_from, starts_to }
+  getEvents: (params = {}) => http.get('/api/events', { data: params, loading: false }),
+  // 独立详情必须按 ID 重新取，不能只依赖列表内存对象
   getEvent: (id) => http.get(`/api/events/${id}`, { loading: false }),
-  // 真实报名(落 event_registrations 表,后台报名列表可查)
-  register: (id, data) => http.post(`/api/events/${id}/register`, data, { loading: true, loadingText: '报名中...' }),
+}
+
+export const contentApi = {
+  // params: { page, per_page, type, category, published_from, published_to }
+  getPosts: (params = {}) => http.get('/api/content/posts', { data: params, loading: false }),
+  getPost: (slug) => http.get(`/api/content/posts/${encodeURIComponent(slug)}`, { loading: false }),
 }
 
 // ==================== 小召·召唤引擎(意图→场景→机型) ====================

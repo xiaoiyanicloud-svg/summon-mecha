@@ -120,6 +120,13 @@ return [
         'sort'       => 3,
         'icon'       => '',
     ], [
+        // G1 生态发布工作台。菜单隐藏≠授权：直接 URL / Ajax 由控制器逐动作拒绝。
+        'key'        => 'ecosystem',
+        'name'       => '生态发布',
+        'route'      => 'admin.catalog.ecosystem.index',
+        'sort'       => 4,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.skills',
         'name'       => '技能管理',
         'route'      => 'admin.catalog.skills.index',

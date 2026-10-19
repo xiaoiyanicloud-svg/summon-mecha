@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\DB;
 use Webkul\Shop\Http\Controllers\API\ApiErrorCode;
 use Webkul\Shop\Models\Event;
 use Webkul\Shop\Models\EventRegistration;
+use Webkul\Shop\Tests\Feature\Ecosystem\G1PublicApiFixtures as G1Fixtures;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\postJson;
@@ -131,79 +132,58 @@ it('G0-06 双重闸都打开时,只有 registering 状态允许报名', function
     ]);
 });
 
-it('G0-02 公开合同下发 can_register/registration_reason,且不返回 hot/teams/fav', function () {
+it('G0-02 公开合同只下发 registration 白名单,且不返回 hot/teams/fav', function () {
     g0EnableEventPublic();
 
-    Event::create([
-        'name'   => '公开合同赛事',
-        'status' => 'registering',
-        'hot'    => 98,
-        'teams'  => 32,
-    ]);
+    // G1-10：公开读取只认 published revision；旧 events 行不再直接公开。
+    $event = G1Fixtures::event();
 
     $response = getJson('/api/events')->assertOk();
 
-    $response->assertJsonPath('data.0.can_register', false)
-        ->assertJsonPath('data.0.registration_reason', '测试期站内报名停写。')
+    $response->assertJsonPath('data.0.id', $event['id'])
+        ->assertJsonPath('data.0.registration.can_register', false)
+        ->assertJsonPath('data.0.registration.registration_reason', 'registration_disabled')
         ->assertJsonMissingPath('data.0.hot')
         ->assertJsonMissingPath('data.0.teams')
-        ->assertJsonMissingPath('data.0.fav');
+        ->assertJsonMissingPath('data.0.fav')
+        ->assertJsonMissingPath('data.0.can_register');
 
-    // 详情走同一合同,前端按 ID 重新取也能拿到停写原因。
-    $id = $response->json('data.0.id');
-
-    getJson("/api/events/{$id}")
+    // 详情走同一合同,前端按 ID 重新取也能拿到稳定报名原因。
+    getJson("/api/events/{$event['id']}")
         ->assertOk()
-        ->assertJsonPath('data.can_register', false)
-        ->assertJsonPath('data.registration_reason', '测试期站内报名停写。')
+        ->assertJsonPath('data.registration.can_register', false)
+        ->assertJsonPath('data.registration.registration_reason', 'registration_disabled')
         ->assertJsonMissingPath('data.hot')
         ->assertJsonMissingPath('data.teams')
         ->assertJsonMissingPath('data.fav');
 });
 
-it('G0-02 公开打开后,can_register 仍只由双重闸与 registering 状态决定', function () {
+it('G1-10 公开打开后 can_register 恒为 false（G2 写入口未接）', function () {
     g0EnableEventPublic();
 
-    $registering = Event::create([
-        'name'   => '可报名赛事',
-        'status' => 'registering',
-    ]);
+    $event = G1Fixtures::event();
 
     // 双重闸未开:公开可读,但不可报名。
     getJson('/api/events')
         ->assertOk()
-        ->assertJsonPath('data.0.can_register', false)
-        ->assertJsonPath('data.0.registration_reason', '测试期站内报名停写。');
+        ->assertJsonPath('data.0.registration.can_register', false)
+        ->assertJsonPath('data.0.registration.registration_reason', 'registration_disabled');
 
-    getJson("/api/events/{$registering->id}")
+    getJson("/api/events/{$event['id']}")
         ->assertOk()
-        ->assertJsonPath('data.can_register', false);
+        ->assertJsonPath('data.registration.can_register', false);
 
-    // 双重闸打开后,registering 才允许报名。
+    // G1 即使双重闸被打开也不得返回 true —— 站内报名写入口属于 G2。
     g0EnableEventRegistration();
 
     getJson('/api/events')
         ->assertOk()
-        ->assertJsonPath('data.0.can_register', true)
-        ->assertJsonPath('data.0.registration_reason', '');
+        ->assertJsonPath('data.0.registration.can_register', false)
+        ->assertJsonPath('data.0.registration.registration_reason', 'registration_disabled');
 
-    getJson("/api/events/{$registering->id}")
+    getJson("/api/events/{$event['id']}")
         ->assertOk()
-        ->assertJsonPath('data.can_register', true);
-
-    // 非 registering 状态即使双重闸打开也不可报名。
-    $upcoming = Event::create([
-        'name'   => '未开始赛事',
-        'status' => 'upcoming',
-        'sort'   => 100,
-    ]);
-
-    $payload = getJson('/api/events')->assertOk()->json('data');
-    $upcomingRow = collect($payload)->firstWhere('id', $upcoming->id);
-
-    expect($upcomingRow)->not->toBeNull()
-        ->and($upcomingRow['can_register'])->toBeFalse()
-        ->and($upcomingRow['registration_reason'])->toBe('当前不在报名阶段。');
+        ->assertJsonPath('data.registration.can_register', false);
 });
 
 it('G0 路由只接受数字 ID', function () {

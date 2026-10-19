@@ -47,13 +47,20 @@
         </view>
       </view>
 
-      <!-- ========== 赛事活动 ========== -->
+      <!-- ========== 赛事活动（G1 公开只读预览） ========== -->
       <view v-show="currentTab === 'event'" class="tab-panel">
+        <view class="eco-subhead">
+          <text class="eco-subtitle">近期赛事</text>
+          <text class="eco-more" role="button" tabindex="0" @click="goAllEvents">查看全部 →</text>
+        </view>
+
         <state-view
-          v-if="!selectedEventId"
           :loading="eventLoading"
           :error="eventError"
-          :empty="!eventList.length"
+          :error-text="eventErrorInfo ? eventErrorInfo.title : ''"
+          :error-icon="eventErrorInfo ? eventErrorInfo.icon : '📡'"
+          :retry="eventErrorInfo ? eventErrorInfo.retryable : true"
+          :empty="!eventLoading && !eventError && eventList.length === 0"
           empty-icon="🏟️"
           empty-text="暂无赛事"
           empty-hint="赛事发布后会在这里展示。"
@@ -61,110 +68,33 @@
           @retry="loadEvents"
         >
           <view class="event-list">
-            <view class="event-card" v-for="item in eventList" :key="item.id" @click="showEventDetail(item.id)">
-              <view class="event-icon-area" :style="{ backgroundColor: item.bg }">
-                <text class="event-icon">{{ item.icon }}</text>
+            <view
+              v-for="item in eventList"
+              :key="item.id"
+              class="event-card"
+              role="button"
+              tabindex="0"
+              @click="openEvent(item)"
+              @keyup.enter="openEvent(item)"
+            >
+              <view class="event-cover">
+                <image v-if="coverOf(item)" class="event-cover-img" :src="coverOf(item)" mode="aspectFill"></image>
+                <text v-else class="event-cover-icon">🏁</text>
+                <text class="event-status" :class="'st-' + statusOf(item).code">{{ statusOf(item).label }}</text>
               </view>
               <view class="event-info">
                 <text class="event-name">{{ item.name }}</text>
-                <text class="event-meta">{{ item.dateShort }} · {{ item.city }}</text>
-              </view>
-              <view class="event-actions">
-                <view class="action-btn primary">查看</view>
+                <text class="event-meta">{{ whenOf(item) }}</text>
+                <text v-if="placeOf(item)" class="event-meta">{{ placeOf(item) }}</text>
               </view>
             </view>
           </view>
         </state-view>
-
-        <view v-else class="event-detail-view">
-          <view class="detail-back-btn" @click="closeEventDetail">
-            <text class="detail-back-icon">‹</text>
-            <text class="detail-back-text">返回列表</text>
-          </view>
-
-          <state-view
-            :loading="eventDetailLoading"
-            :error="eventDetailError"
-            :empty="!selectedEvent"
-            empty-icon="🏟️"
-            empty-text="赛事不存在或已下线"
-            compact
-            @retry="loadEventDetail"
-          >
-            <view class="detail-hero" :style="{ backgroundColor: selectedEvent.bg }">
-              <text class="detail-hero-icon">{{ selectedEvent.icon }}</text>
-              <view class="detail-status-tag" :class="getStatusClass(selectedEvent.status)">
-                {{ getStatusText(selectedEvent.status) }}
-              </view>
-            </view>
-
-            <view class="detail-info-area">
-              <text class="detail-name">{{ selectedEvent.name }}</text>
-
-              <view class="detail-info-grid">
-                <view class="detail-info-item">
-                  <text class="detail-info-label">📅 时间</text>
-                  <text class="detail-info-value">{{ selectedEvent.date }}</text>
-                </view>
-                <view class="detail-info-item">
-                  <text class="detail-info-label">📍 地点</text>
-                  <text class="detail-info-value">{{ selectedEvent.location }}</text>
-                </view>
-                <view class="detail-info-item">
-                  <text class="detail-info-label">🏢 主办方</text>
-                  <text class="detail-info-value">{{ selectedEvent.organizer }}</text>
-                </view>
-                <view class="detail-info-item">
-                  <text class="detail-info-label">📋 类型</text>
-                  <text class="detail-info-value">{{ selectedEvent.type }}</text>
-                </view>
-              </view>
-
-              <view class="detail-section">
-                <text class="detail-section-title">📋 赛事简介</text>
-                <text class="detail-section-content">{{ selectedEvent.detail }}</text>
-              </view>
-
-              <view class="detail-section" v-if="selectedEvent.prize">
-                <text class="detail-section-title">🏆 奖项设置</text>
-                <text class="detail-section-content">{{ selectedEvent.prize }}</text>
-              </view>
-
-              <view class="detail-section" v-if="selectedEvent.schedule">
-                <text class="detail-section-title">⏰ 赛程安排</text>
-                <text class="detail-section-content">{{ selectedEvent.schedule }}</text>
-              </view>
-
-              <view class="detail-section" v-if="selectedEvent.history">
-                <text class="detail-section-title">📜 往届回顾</text>
-                <text class="detail-section-content">{{ selectedEvent.history }}</text>
-              </view>
-
-              <view class="detail-actions">
-                <view class="detail-btn primary" v-if="selectedEventRegistration.enabled" @click="registerEvent(selectedEvent)">📝 立即报名</view>
-                <view class="detail-reg-reason" v-else>ℹ️ {{ selectedEventRegistration.reason }}</view>
-              </view>
-
-              <view style="height: 40rpx;"></view>
-            </view>
-          </state-view>
-        </view>
       </view>
 
-      <!-- ========== 动态资讯（引用组件） ========== -->
+      <!-- ========== 动态资讯（Dongtai 真实预览） ========== -->
       <view v-show="currentTab === 'feed'" class="tab-panel">
         <Dongtai />
-      </view>
-    </view>
-
-    <!-- ===== 赛事报名弹窗（真实落库） ===== -->
-    <view class="event-reg-mask" v-if="showEventReg" @tap="closeEventReg">
-      <view class="event-reg-modal" @tap.stop>
-        <view class="event-reg-title">赛事报名</view>
-        <view class="event-reg-sub">留下联系方式，赛事动态与参赛指引将发送给您</view>
-        <input class="event-reg-input" v-model="eventRegForm.name" placeholder="姓名" />
-        <input class="event-reg-input" v-model="eventRegForm.phone" type="number" maxlength="11" placeholder="手机号" />
-        <view class="event-reg-btn" @tap="submitEventRegistration">确认报名</view>
       </view>
     </view>
   </view>
@@ -174,7 +104,15 @@
 import Dongtai from '@/components/shouye/dongtai.vue'
 import StateView from '@/components/StateView.vue'
 import { productApi, categoryApi, eventApi } from '@/utils/api'
-import { normalizeEvent, normalizeEventList, eventRegistrationState, eventRegistrationFeedback } from '@/utils/ecosystem-events'
+import {
+  normalizeEventPage,
+  errorState,
+  eventStatus,
+  formatEventWhen,
+  resolveMediaUrl,
+  pickCover,
+  buildSharePath,
+} from '@/utils/ecosystem-public'
 import SkillMarket from '@/components/SkillMarket.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import { BASE_URL } from '@/utils/config'
@@ -189,13 +127,11 @@ export default {
     return {
       currentTab: 'skill',
       accessoryCategory: 'all',
-      selectedEvent: null,
-      selectedEventId: null,
+      // 赛事预览:只消费 G1-10 公开 DTO;空/错/格式异常分别交给 StateView
       eventList: [],
       eventLoading: false,
       eventError: '',
-      eventDetailLoading: false,
-      eventDetailError: '',
+      eventErrorInfo: null,
 
       // v3.4:技能搜索(服务端)—— skillResults 为 null 表示"未搜索,显示全部"
 
@@ -206,10 +142,6 @@ export default {
 
 
       accessoryCatalog: [],
-      // 赛事:只展示后台 events 表数据;空/错/格式异常分别交给 StateView
-      showEventReg: false,
-      regEventId: null,
-      eventRegForm: { name: '', phone: '' },
 
       // 技能 mock 已抽到 components/jiqi/skill-data.js(与机器页共用一份, 见 skillCards 计算属性)
       // 配件 mock 仅本页使用(机器页配件是纯后台数据)
@@ -257,10 +189,6 @@ export default {
         ? this.accessoryList
         : this.accessoryList.filter(item => item.category === this.accessoryCategory);
     },
-    // 报名按钮只认后端 can_register + status=registering,不在前端猜。
-    selectedEventRegistration() {
-      return eventRegistrationState(this.selectedEvent);
-    }
   },
   mounted() {
     this.loadAccessory();
@@ -270,11 +198,6 @@ export default {
     switchTab(tab) {
       if (['skill', 'accessory', 'event', 'feed'].includes(tab)) {
         this.currentTab = tab;
-        if (tab !== 'event') {
-          this.selectedEvent = null;
-          this.selectedEventId = null;
-          this.eventDetailError = '';
-        }
       }
       if (tab === 'accessory') this.loadAccessory();
     },
@@ -372,106 +295,44 @@ export default {
       uni.switchTab({ url: '/pages/robot/index' });
     },
 
-    showEventDetail(id) {
-      const eventId = Number(id);
-      if (!Number.isInteger(eventId) || eventId <= 0) return;
-      this.selectedEventId = eventId;
-      this.selectedEvent = null;
-      this.loadEventDetail();
-    },
-    closeEventDetail() {
-      this.selectedEventId = null;
-      this.selectedEvent = null;
-      this.eventDetailError = '';
-    },
-    getStatusClass(status) {
-      const map = {
-        registering: 'status-registering',
-        ongoing: 'status-ongoing',
-        ended: 'status-ended',
-        upcoming: 'status-upcoming'
-      };
-      return map[status] || '';
-    },
-    getStatusText(status) {
-      const map = {
-        registering: '🔥 报名中',
-        ongoing: '⏳ 进行中',
-        ended: '✅ 已结束',
-        upcoming: '📅 即将开始'
-      };
-      return map[status] || '';
-    },
-    // 赛事列表:只用后台真实数据。空列表是空态,请求失败/格式异常是错误态,
-    // 都不能拿样例补位 —— 否则用户会把假赛事当真报名。
+    // 赛事预览:只消费 G1-10 公开 DTO。空列表是空态,请求失败/格式异常是错误态,
+    // 都不能拿样例补位 —— 也不提供任何报名写交互(G1 不允许 register)。
     async loadEvents() {
       this.eventLoading = true;
       this.eventError = '';
+      this.eventErrorInfo = null;
       try {
-        const res = await eventApi.getEvents();
-        this.eventList = normalizeEventList(res);
+        const res = await eventApi.getEvents({ page: 1, per_page: 5 });
+        const page = normalizeEventPage(res, 1);
+        this.eventList = page.items;
       } catch (e) {
+        const info = errorState(e);
         this.eventList = [];
-        this.eventError = (e && e.message) || '赛事加载失败';
+        this.eventError = info.message;
+        this.eventErrorInfo = info;
       } finally {
         this.eventLoading = false;
       }
     },
-    // 详情必须按 ID 重新取,不能只依赖列表里的内存对象(列表字段可能已过期)。
-    async loadEventDetail() {
-      const id = this.selectedEventId;
-      if (!id) return;
-
-      this.eventDetailLoading = true;
-      this.eventDetailError = '';
-      try {
-        const res = await eventApi.getEvent(id);
-        const event = normalizeEvent(res && res.data);
-        if (!event) throw new Error('赛事数据格式异常');
-        // 用户可能在请求返回前已经返回列表/切 tab,丢弃过期响应。
-        if (this.selectedEventId !== id) return;
-        this.selectedEvent = event;
-      } catch (e) {
-        if (this.selectedEventId !== id) return;
-        this.selectedEvent = null;
-        this.eventDetailError = (e && e.message) || '赛事详情加载失败';
-      } finally {
-        if (this.selectedEventId === id) this.eventDetailLoading = false;
-      }
+    openEvent(item) {
+      const path = buildSharePath('event', item.id);
+      if (path) uni.navigateTo({ url: path });
     },
-
-    registerEvent(item) {
-      const state = eventRegistrationState(item);
-      if (!state.enabled) {
-        uni.showToast({ title: state.reason, icon: 'none' });
-        return;
-      }
-      this.regEventId = item.id;
-      this.eventRegForm = { name: '', phone: '' };
-      this.showEventReg = true;
+    goAllEvents() {
+      uni.navigateTo({ url: '/pages/ecosystem/events' });
     },
-    closeEventReg() {
-      this.showEventReg = false;
+    coverOf(item) {
+      const cover = pickCover(item.media);
+      return cover ? resolveMediaUrl(cover.url, BASE_URL) : '';
     },
-    submitEventRegistration() {
-      const f = this.eventRegForm;
-      if (!f.name.trim()) { uni.showToast({ title: '请输入姓名', icon: 'none' }); return }
-      if (!/^1\d{10}$/.test(f.phone.trim())) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
-      eventApi.register(this.regEventId, { name: f.name.trim(), phone: f.phone.trim() })
-        .then((res) => {
-          const feedback = eventRegistrationFeedback(res);
-          if (!feedback.success) {
-            // 结果未知:保留弹窗,避免用户误以为已报名或重复提交。
-            uni.showToast({ title: feedback.message, icon: 'none' });
-            return;
-          }
-          this.showEventReg = false;
-          uni.showToast({ title: feedback.message, icon: 'success' });
-          this.loadEventDetail();
-        })
-        .catch((err) => {
-          uni.showToast({ title: (err && err.message) || '报名失败，请稍后重试', icon: 'none' });
-        });
+    statusOf(item) {
+      return eventStatus(item);
+    },
+    whenOf(item) {
+      return formatEventWhen(item);
+    },
+    placeOf(item) {
+      return [item.city, item.locationText].filter(Boolean).join(' · ');
     }
   }
 };
@@ -616,41 +477,83 @@ export default {
   background: #F0F7FF;
 }
 
-/* ===== 赛事列表 ===== */
+/* ===== 赛事预览（G1 公开只读） ===== */
+.eco-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6rpx 2rpx 14rpx;
+}
+.eco-subtitle {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #102F6E;
+}
+.eco-more {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #165DFF;
+}
+.eco-more:focus-visible,
+.event-card:focus-visible {
+  outline: 3rpx solid #165DFF;
+  outline-offset: 2rpx;
+}
 .event-list {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 16rpx;
 }
 .event-card {
   background: #ffffff;
   border-radius: 16rpx;
-  padding: 26rpx 24rpx;
+  padding: 18rpx;
   display: flex;
   align-items: center;
-  min-height: 200rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-  border: 1px solid #F1F5F9;
+  min-height: 180rpx;
+  box-shadow: 0 2rpx 12rpx rgba(16, 47, 110, 0.05);
+  border: 1rpx solid #E5EAF3;
   cursor: pointer;
   transition: all 0.2s;
 }
 .event-card:active {
   transform: scale(0.98);
-  background: #F8FAFC;
+  background: #F8FAFF;
 }
-.event-icon-area {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 16rpx;
+.event-cover {
+  position: relative;
+  width: 180rpx;
+  height: 140rpx;
+  border-radius: 14rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+  margin-right: 20rpx;
+  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  margin-right: 20rpx;
 }
-.event-icon {
-  font-size: 72rpx;
+.event-cover-img {
+  width: 100%;
+  height: 100%;
 }
+.event-cover-icon { font-size: 64rpx; }
+.event-status {
+  position: absolute;
+  left: 8rpx;
+  bottom: 8rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 20rpx;
+  font-size: 19rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  background: #475569;
+}
+.st-ongoing { background: #165DFF; }
+.st-upcoming { background: #0E7C5A; }
+.st-ended,
+.st-canceled { background: #52607A; }
+.st-pending { background: #92400E; }
 .event-info {
   flex: 1;
   min-width: 0;
@@ -659,175 +562,16 @@ export default {
   justify-content: center;
 }
 .event-name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1F2937;
-  margin-bottom: 6rpx;
+  font-size: 29rpx;
+  font-weight: 700;
+  color: #102F6E;
+  line-height: 1.4;
 }
 .event-meta {
-  font-size: 23rpx;
-  color: #9CA3AF;
-  margin-top: 4rpx;
-}
-.event-actions {
-  flex-shrink: 0;
-}
-.action-btn {
-  padding: 6rpx 20rpx;
-  border-radius: 30rpx;
   font-size: 22rpx;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
+  color: #7A8AA3;
+  margin-top: 6rpx;
 }
-.action-btn.primary {
-  background: #5588FF;
-  color: #fff;
-  border: none;
-}
-
-/* ===== 赛事详情 ===== */
-.event-detail-view {
-  animation: fadeIn 0.3s ease;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20rpx); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.detail-back-btn {
-  display: flex;
-  align-items: center;
-  padding: 12rpx 0 20rpx;
-  border-bottom: 2rpx solid #F1F5F9;
-  margin-bottom: 16rpx;
-  cursor: pointer;
-}
-.detail-back-icon {
-  font-size: 44rpx;
-  color: #1F2937;
-  font-weight: 300;
-  margin-right: 6rpx;
-}
-.detail-back-text {
-  font-size: 26rpx;
-  color: #1F2937;
-}
-
-.detail-hero {
-  width: 100%;
-  height: 240rpx;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20rpx;
-  position: relative;
-}
-.detail-hero-icon {
-  font-size: 120rpx;
-}
-.detail-status-tag {
-  position: absolute;
-  top: 16rpx;
-  right: 16rpx;
-  font-size: 22rpx;
-  font-weight: 600;
-  padding: 6rpx 20rpx;
-  border-radius: 30rpx;
-  color: #fff;
-}
-.status-registering { background: #FF6B00; }
-.status-ongoing { background: #165DFF; }
-.status-ended { background: #9CA3AF; }
-.status-upcoming { background: #10B981; }
-
-.detail-info-area {
-  padding: 0 6rpx;
-}
-.detail-name {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #1F2937;
-  display: block;
-  margin-bottom: 20rpx;
-}
-.detail-info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12rpx 20rpx;
-  background: #F8FAFC;
-  border-radius: 16rpx;
-  padding: 16rpx 20rpx;
-  margin-bottom: 20rpx;
-}
-.detail-info-item {
-  display: flex;
-  flex-direction: column;
-}
-.detail-info-label {
-  font-size: 22rpx;
-  color: #9CA3AF;
-}
-.detail-info-value {
-  font-size: 26rpx;
-  color: #1F2937;
-  font-weight: 500;
-}
-.detail-section {
-  margin-bottom: 20rpx;
-}
-.detail-section-title {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #1F2937;
-  display: block;
-  margin-bottom: 6rpx;
-}
-.detail-section-content {
-  font-size: 24rpx;
-  color: #4B5563;
-  line-height: 1.7;
-  white-space: pre-line;
-}
-.detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-.detail-btn {
-  padding: 12rpx 30rpx;
-  border-radius: 48rpx;
-  font-size: 26rpx;
-  font-weight: 600;
-  text-align: center;
-  flex: 1;
-  min-width: 120rpx;
-}
-.detail-btn.primary {
-  background: #165DFF;
-  color: #fff;
-  border: none;
-}
-.detail-reg-reason {
-  flex: 1;
-  min-width: 220rpx;
-  padding: 12rpx 24rpx;
-  border-radius: 14rpx;
-  background: #F8FAFC;
-  border: 1px solid #E5E7EB;
-  font-size: 24rpx;
-  color: #6B7280;
-  line-height: 1.5;
-}
-/* ===== 赛事报名弹窗 ===== */
-.event-reg-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
-.event-reg-modal { width: 580rpx; background: #fff; border-radius: 24rpx; padding: 40rpx 36rpx; box-sizing: border-box; }
-.event-reg-title { font-size: 34rpx; font-weight: 700; color: #1F2937; text-align: center; }
-.event-reg-sub { font-size: 24rpx; color: #6B7280; margin: 12rpx 0 24rpx; text-align: center; }
-.event-reg-input { height: 84rpx; border: 1px solid #E5E7EB; border-radius: 14rpx; padding: 0 22rpx; font-size: 28rpx; margin-bottom: 18rpx; background: #F8FAFC; }
-.event-reg-btn { height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: #165DFF; border-radius: 42rpx; }
 
 /* ===== 技能搜索(v3.4) ===== */
 .skill-search { display: flex; align-items: center; height: 76rpx; margin: 16rpx 0 8rpx; padding: 0 24rpx; background: #fff; border-radius: 38rpx; }

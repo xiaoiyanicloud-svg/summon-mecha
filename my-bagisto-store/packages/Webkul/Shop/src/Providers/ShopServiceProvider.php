@@ -52,6 +52,9 @@ class ShopServiceProvider extends ServiceProvider
                 \Webkul\Shop\Console\Commands\RedeliverSkills::class,
                 \Webkul\Shop\Console\Commands\ScanSkillDeliveryRetries::class,
                 \Webkul\Shop\Console\Commands\AuditSkillDelivery::class,
+                // G1-09 生态 outbox worker / 到期发布扫描
+                \Webkul\Shop\Console\Commands\ProcessEcosystemOutbox::class,
+                \Webkul\Shop\Console\Commands\PublishScheduledEcosystem::class,
             ]);
         }
     }

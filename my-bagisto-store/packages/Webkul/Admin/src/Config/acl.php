@@ -240,6 +240,136 @@ return [
         'route' => 'admin.catalog.events.registrations',
         'sort'  => 4,
     ], [
+        // ── 生态发布工作台（G1-08 ~ G1-11）──────────────────────────────
+        // ⚠ 不得复用 catalog.events 授权 G1 动作：旧赛事 CRUD 与可信发布状态机
+        //   是两条写路径，授权边界也必须分开。
+        // 路由 → 权限的细粒度登记在 config/ecosystem_admin.php；本处的 route 字段
+        // 用于权限树展示与角色分配。
+        'key'   => 'ecosystem',
+        'name'  => '生态发布',
+        'route' => 'admin.catalog.ecosystem.index',
+        'sort'  => 5,
+    ], [
+        'key'   => 'ecosystem.events',
+        'name'  => '活动发布',
+        'route' => 'admin.catalog.ecosystem.index',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.events.view',
+        'name'  => '查看活动',
+        'route' => 'admin.catalog.ecosystem.events.show',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.events.create',
+        'name'  => '创建修订',
+        'route' => 'admin.catalog.ecosystem.events.revisions.store',
+        'sort'  => 2,
+    ], [
+        'key'   => 'ecosystem.events.edit',
+        'name'  => '编辑元数据',
+        'route' => 'admin.catalog.ecosystem.events.metadata',
+        'sort'  => 3,
+    ], [
+        'key'   => 'ecosystem.events.submit',
+        'name'  => '提交审核',
+        'route' => 'admin.catalog.ecosystem.events.revisions.submit',
+        'sort'  => 4,
+    ], [
+        'key'   => 'ecosystem.events.review',
+        'name'  => '批准 / 拒绝',
+        'route' => 'admin.catalog.ecosystem.events.revisions.approve',
+        'sort'  => 5,
+    ], [
+        'key'   => 'ecosystem.events.schedule',
+        'name'  => '排期 / 取消排期',
+        'route' => 'admin.catalog.ecosystem.events.revisions.schedule',
+        'sort'  => 6,
+    ], [
+        'key'   => 'ecosystem.events.publish',
+        'name'  => '立即发布',
+        'route' => 'admin.catalog.ecosystem.events.revisions.publish',
+        'sort'  => 7,
+    ], [
+        'key'   => 'ecosystem.events.withhold',
+        'name'  => '暂缓 / 恢复',
+        'route' => 'admin.catalog.ecosystem.events.withhold',
+        'sort'  => 8,
+    ], [
+        'key'   => 'ecosystem.events.retract',
+        'name'  => '撤稿',
+        'route' => 'admin.catalog.ecosystem.events.retract',
+        'sort'  => 9,
+    ], [
+        'key'   => 'ecosystem.content',
+        'name'  => '资讯发布',
+        'route' => 'admin.catalog.ecosystem.content.index',
+        'sort'  => 2,
+    ], [
+        'key'   => 'ecosystem.content.view',
+        'name'  => '查看资讯',
+        'route' => 'admin.catalog.ecosystem.content.show',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.content.create',
+        'name'  => '创建文章',
+        'route' => 'admin.catalog.ecosystem.content.store',
+        'sort'  => 2,
+    ], [
+        'key'   => 'ecosystem.content.edit',
+        'name'  => '创建修订',
+        'route' => 'admin.catalog.ecosystem.content.revisions.store',
+        'sort'  => 3,
+    ], [
+        'key'   => 'ecosystem.content.submit',
+        'name'  => '提交审核',
+        'route' => 'admin.catalog.ecosystem.content.revisions.submit',
+        'sort'  => 4,
+    ], [
+        'key'   => 'ecosystem.content.review',
+        'name'  => '批准 / 拒绝',
+        'route' => 'admin.catalog.ecosystem.content.revisions.approve',
+        'sort'  => 5,
+    ], [
+        'key'   => 'ecosystem.content.schedule',
+        'name'  => '排期 / 取消排期',
+        'route' => 'admin.catalog.ecosystem.content.revisions.schedule',
+        'sort'  => 6,
+    ], [
+        'key'   => 'ecosystem.content.publish',
+        'name'  => '立即发布',
+        'route' => 'admin.catalog.ecosystem.content.revisions.publish',
+        'sort'  => 7,
+    ], [
+        'key'   => 'ecosystem.content.withhold',
+        'name'  => '暂缓 / 恢复',
+        'route' => 'admin.catalog.ecosystem.content.withhold',
+        'sort'  => 8,
+    ], [
+        'key'   => 'ecosystem.content.retract',
+        'name'  => '撤稿',
+        'route' => 'admin.catalog.ecosystem.content.retract',
+        'sort'  => 9,
+    ], [
+        'key'   => 'ecosystem.organizers',
+        'name'  => '主办方',
+        'route' => 'admin.catalog.ecosystem.organizers.index',
+        'sort'  => 3,
+    ], [
+        'key'   => 'ecosystem.organizers.view',
+        'name'  => '查看主办方',
+        'route' => 'admin.catalog.ecosystem.organizers.index',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.organizers.manage',
+        'name'  => '新建主办方',
+        'route' => 'admin.catalog.ecosystem.organizers.store',
+        'sort'  => 2,
+    ], [
+        'key'   => 'ecosystem.organizers.verify',
+        'name'  => '核验主办方',
+        'route' => 'admin.catalog.ecosystem.organizers.verify',
+        'sort'  => 3,
+    ], [
         // 技能管理:技能包的版本 / 交付物 / 安装指引
         'key'   => 'catalog.skills',
         'name'  => '技能管理',

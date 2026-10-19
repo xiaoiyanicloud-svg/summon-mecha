@@ -118,3 +118,21 @@
 - **G1-05**：代码与独立测试库验证已完成（2026-10-19），证据见 [G1-05-content-evidence.md](./G1-05-content-evidence.md)。已落地 `content_posts` / `content_revisions` / `content_sources`、slug 冲突策略、来源权利依据、内容指纹（含有序来源）、文章壳与 revision/source 草稿服务；回滚/重跑、CMS 10 页比对、真实内容链路探针与 16 个指定测试文件（192 passed / 1711 assertions）均通过。**root 主库尚未迁移**；无内容公开 API/前端、无非空 published 指针写入、无审核/发布状态机、无 Admin UI/路由、无报名改动；媒体与富文本净化由 G1-06/07 补齐；内容开关仍为 `false`；B-04 最终 slug 词表未冻结。
 - **G1-06/07**：代码与独立测试库验证已完成（2026-10-19），证据见 [G1-06-07-media-rich-text-evidence.md](./G1-06-07-media-rich-text-evidence.md)。已落地 `ecosystem_media` / `ecosystem_media_refs`、私有媒体上传与严格解码校验、媒体引用/manifest/指纹联动、公开媒体门禁、HTMLPurifier 白名单净化和 revision 服务集成；回滚/重跑、真实链路探针与 22 个指定测试文件（258 passed / 2206 assertions）均通过。**root 主库尚未迁移**；无公开媒体/内容 HTTP 路由与前端渲染、无审核/发布状态机、无媒体清理/保留策略/CDN、无 Admin UI、无报名改动；四开关仍为 `false`。
 - **入口确认**：用户已于 2026-10-19 确认按 ADR 默认口径执行；B-01 外链许可、B-03 主办方核验、B-06 取消/改期政策、B-07 内容法律责任对应的写能力仍保持关闭。
+
+## G1-08 ~ G1-11 收口（2026-10-19）
+
+**代码与独立测试库验证已完成，但未做生产迁移、未打开公开读取。**
+
+- **G1-08A**：审核闭环（提交/批准/拒绝）、`approved_revision_id`、`scheduled_publish_at`、审批指纹/媒体 manifest/净化版本绑定、并发 CAS、事务审计、新草稿失效旧批准。证据见 [G1-08-11-implementation-plan.md](./G1-08-11-implementation-plan.md) 与 [G1-08B-publication-evidence.md](./G1-08B-publication-evidence.md)。
+- **G1-08B**：发布、排期、取消排期、暂缓、恢复、撤稿、公开指针原子切换、事务 outbox；`PublicationPointerSwitcher` 是唯一公开指针写入入口。证据见 [G1-08B-publication-evidence.md](./G1-08B-publication-evidence.md)。
+- **G1-09**：outbox 领取/租约/重试/dead/过期恢复、旧 worker 回报拒绝、到期发布扫描、独立公开读取 kill switch。命令默认关闭，调度器未常驻。证据见 [G1-09-worker-evidence.md](./G1-09-worker-evidence.md)。
+- **G1-10**：公开活动/资讯/媒体 API、显式 DTO 白名单、404/410/503、稳定分页筛选、受控媒体流式输出。证据见 [G1-10-public-api-evidence.md](./G1-10-public-api-evidence.md)。
+- **G1-11**：独立活动/资讯列表与详情页、首页真实预览、分页筛选、分享、受控富文本渲染；H5 空态/404 已截图。证据见 [G1-11-frontend-evidence.md](./G1-11-frontend-evidence.md)。
+- **Admin 发布工作台**：活动/资讯 revision、审核、排期、发布、暂缓/恢复/撤稿、主办方核验与安全预览。证据见 [G1-admin-publishing-console-evidence.md](./G1-admin-publishing-console-evidence.md)。
+
+**仍保持关闭/未验证**
+- root 主库未迁移；生产 DDL 锁影响、备份恢复与维护窗口未演练。
+- `ECOSYSTEM_EVENT_PUBLIC_ENABLED` / `ECOSYSTEM_CONTENT_PUBLIC_ENABLED` 保持 false；对外仍不是“赛事/资讯已上线”。
+- outbox worker 与到期发布 scheduler 默认关闭，`schedule:work` / crontab 未启动；`sent` 只代表事实被消费，不代表用户已收到通知。
+- H5 有数据视图、410/503 截图、小程序真机分享、H5 剪贴板实写、真实多进程锁竞争与长时间稳定性未验证。
+- Admin 媒体上传/审核 UI、多来源编辑、活动新建 G1 入口仍为后续工作；当前页面已明确标注。

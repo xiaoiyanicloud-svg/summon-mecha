@@ -2,6 +2,8 @@
 
 namespace Webkul\Shop\Services\Ecosystem;
 
+use Webkul\Shop\Models\ContentPost;
+use Webkul\Shop\Models\ContentRevision;
 use Webkul\Shop\Models\Event;
 use Webkul\Shop\Models\EventRevision;
 
@@ -64,6 +66,99 @@ class RevisionPointerValidator
                 '活动 %d 的 revision %d 当前 review_state=%s，只有 draft 才能作为工作版本。',
                 (int) $event->getKey(),
                 (int) $workingRevisionId,
+                (string) $revision->review_state,
+            ));
+        }
+    }
+
+    /**
+     * G1-08A · `approved_revision_id` 的受控校验（ADR 附录 B A-01）。
+     *
+     * 唯一允许写入该指针的路径是审核服务（EventReviewService / BeginRevisionService）；
+     * EventWriteService 的白名单**不包含**该字段，普通编辑入口不得透传。
+     * 校验目标 revision 必须属于同一活动且 `review_state=approved`。
+     * NULL 始终允许（拒绝审批、新建工作草稿时失效旧批准）。
+     */
+    public function assertEventApprovedAssignable(Event $event): void
+    {
+        $approvedRevisionId = $event->approved_revision_id;
+
+        if ($approvedRevisionId === null) {
+            return;
+        }
+
+        if ($event->getKey() === null) {
+            throw new RevisionImmutableException('新建活动不能直接挂 approved_revision_id；请先保存活动。');
+        }
+
+        $revision = EventRevision::query()->find($approvedRevisionId);
+
+        if ($revision === null) {
+            throw new RevisionImmutableException(sprintf(
+                '活动 %d 的 approved_revision_id=%d 不存在。',
+                (int) $event->getKey(),
+                (int) $approvedRevisionId,
+            ));
+        }
+
+        if ((int) $revision->event_id !== (int) $event->getKey()) {
+            throw new RevisionImmutableException(sprintf(
+                '活动 %d 不能把活动 %d 的 revision %d 作为已批准版本。',
+                (int) $event->getKey(),
+                (int) $revision->event_id,
+                (int) $approvedRevisionId,
+            ));
+        }
+
+        if ((string) $revision->review_state !== 'approved') {
+            throw new RevisionImmutableException(sprintf(
+                '活动 %d 的 revision %d 当前 review_state=%s，只有 approved 才能作为已批准版本。',
+                (int) $event->getKey(),
+                (int) $approvedRevisionId,
+                (string) $revision->review_state,
+            ));
+        }
+    }
+
+    /**
+     * 内容域的 `approved_revision_id` 受控校验；语义同活动域。
+     */
+    public function assertContentApprovedAssignable(ContentPost $post): void
+    {
+        $approvedRevisionId = $post->approved_revision_id;
+
+        if ($approvedRevisionId === null) {
+            return;
+        }
+
+        if ($post->getKey() === null) {
+            throw new ContentTransitionException('新建文章不能直接挂 approved_revision_id；请先保存文章。');
+        }
+
+        $revision = ContentRevision::query()->find($approvedRevisionId);
+
+        if ($revision === null) {
+            throw new ContentTransitionException(sprintf(
+                '文章 %d 的 approved_revision_id=%d 不存在。',
+                (int) $post->getKey(),
+                (int) $approvedRevisionId,
+            ));
+        }
+
+        if ((int) $revision->post_id !== (int) $post->getKey()) {
+            throw new ContentTransitionException(sprintf(
+                '文章 %d 不能把文章 %d 的 revision %d 作为已批准版本。',
+                (int) $post->getKey(),
+                (int) $revision->post_id,
+                (int) $approvedRevisionId,
+            ));
+        }
+
+        if ((string) $revision->review_state !== 'approved') {
+            throw new ContentTransitionException(sprintf(
+                '文章 %d 的 revision %d 当前 review_state=%s，只有 approved 才能作为已批准版本。',
+                (int) $post->getKey(),
+                (int) $approvedRevisionId,
                 (string) $revision->review_state,
             ));
         }

@@ -44,6 +44,11 @@ class Event extends Model
         'ends_at',
         'published_revision_id',
         'working_revision_id',
+        // G1-08A：当前已批准候选版本（ADR 附录 B A-01）。
+        // 普通写入口 EventWriteService 不透传；只由审核服务经受控校验写入。
+        'approved_revision_id',
+        // G1-08A 只建列；排期写入属于 G1-08B。
+        'scheduled_publish_at',
         'first_published_at',
         'published_at',
         'row_version',
@@ -64,6 +69,8 @@ class Event extends Model
         'published_at'          => UtcDateTime::class,
         'published_revision_id' => 'integer',
         'working_revision_id'   => 'integer',
+        'approved_revision_id'  => 'integer',
+        'scheduled_publish_at'  => UtcDateTime::class,
         'row_version'           => 'integer',
         'organizer_id'          => 'integer',
     ];
@@ -118,5 +125,14 @@ class Event extends Model
     public function workingRevision()
     {
         return $this->belongsTo(EventRevision::class, 'working_revision_id');
+    }
+
+    /**
+     * 当前已批准候选版本（G1-08A）。已发布对象的新版本在此等待发布，
+     * 公开读取仍只读 `publishedRevision`。
+     */
+    public function approvedRevision()
+    {
+        return $this->belongsTo(EventRevision::class, 'approved_revision_id');
     }
 }

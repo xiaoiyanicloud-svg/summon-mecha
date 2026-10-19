@@ -163,6 +163,44 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "关于"
       }
+    },
+    {
+      "path": "pages/ecosystem/events",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "赛事活动",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/event-detail",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "赛事详情",
+        "enablePullDownRefresh": true,
+        "enableShareAppMessage": true,
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/content",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "动态资讯",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/content-detail",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "资讯详情",
+        "enablePullDownRefresh": true,
+        "enableShareAppMessage": true,
+        "backgroundColor": "#F5F7FB"
+      }
     }
   ],
   "globalStyle": {

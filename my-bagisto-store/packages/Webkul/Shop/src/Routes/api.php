@@ -14,7 +14,9 @@ use Webkul\Shop\Http\Controllers\API\CatalogController;
 use Webkul\Shop\Http\Controllers\API\CartController;
 use Webkul\Shop\Http\Controllers\API\CategoryController;
 use Webkul\Shop\Http\Controllers\API\CmsPageController;
+use Webkul\Shop\Http\Controllers\API\ContentController;
 use Webkul\Shop\Http\Controllers\API\EventController;
+use Webkul\Shop\Http\Controllers\API\EcosystemMediaController;
 use Webkul\Shop\Http\Controllers\API\CompareController;
 use Webkul\Shop\Http\Controllers\API\CoreController;
 use Webkul\Shop\Http\Controllers\API\CustomerController;
@@ -124,10 +126,24 @@ Route::group(['prefix' => 'api'], function () {
     Route::post('tts', [TtsController::class, 'synthesize'])->middleware('throttle:ai')->name('shop.api.tts');
 
     // 赛事(Event):生态中心「赛事活动」tab + 真实报名(平台级闭环)
+    // G1-10：公开列表/详情只读 published revision；媒体走受控路由。
     Route::controller(EventController::class)->prefix('events')->group(function () {
         Route::get('', 'index')->name('shop.api.events.index');
         Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.events.show');
+        Route::get('{id}/media/{mediaId}', [EcosystemMediaController::class, 'event'])
+            ->whereNumber('id')
+            ->whereNumber('mediaId')
+            ->name('shop.api.events.media');
         Route::post('{id}/register', 'register')->whereNumber('id')->name('shop.api.events.register')->middleware(['api.customer']);
+    });
+
+    // 资讯(Content)：G1-10 公开只读域；不借用 CMS 静态页。
+    Route::controller(ContentController::class)->prefix('content/posts')->group(function () {
+        Route::get('', 'index')->name('shop.api.content.posts.index');
+        Route::get('{slug}', 'show')->name('shop.api.content.posts.show');
+        Route::get('{slug}/media/{mediaId}', [EcosystemMediaController::class, 'content'])
+            ->whereNumber('mediaId')
+            ->name('shop.api.content.posts.media');
     });
 
     // 场景(Scene):机器页「场景」Tab 卡片列表 + TOB 场景详情(后台维护图 + 描述)

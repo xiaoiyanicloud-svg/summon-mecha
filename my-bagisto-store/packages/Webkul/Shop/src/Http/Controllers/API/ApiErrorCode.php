@@ -231,6 +231,14 @@ final class ApiErrorCode
 
     public const CMS_PAGE_NOT_FOUND = 'CMS_PAGE_NOT_FOUND';
     public const EVENT_NOT_FOUND = 'EVENT_NOT_FOUND';
+
+    /**
+     * G1-10：活动已撤稿（`disposition=retracted`，终态）且曾经发布过。
+     *
+     * 与 `EVENT_NOT_FOUND` 分开：客户端展示中性撤稿说明并停止重试，
+     * 不回显旧标题/正文/摘要/来源/媒体。从未发布过的 retracted 仍返回 404。
+     */
+    public const EVENT_UNAVAILABLE = 'EVENT_UNAVAILABLE';
     public const EVENT_ENDED = 'EVENT_ENDED';
     /** 赛事存在但当前不在 registering 阶段(upcoming/ongoing),写入口必须拒绝。 */
     public const EVENT_NOT_REGISTERING = 'EVENT_NOT_REGISTERING';
@@ -309,6 +317,20 @@ final class ApiErrorCode
      * 客户端处置是刷新状态后按合法动作重做（例如新建 revision_no + 1），不重放。
      */
     public const CONTENT_TRANSITION_INVALID = 'CONTENT_TRANSITION_INVALID';
+
+    /**
+     * G1-10：文章不存在，或未发布 / 待审 / 已批准未发布 / 已排期 / 暂缓。
+     *
+     * 公开端刻意不区分：统一 404、统一文案与结构，不泄露存在性。
+     */
+    public const CONTENT_NOT_FOUND = 'CONTENT_NOT_FOUND';
+
+    /**
+     * G1-10：文章已撤稿（`disposition=retracted`，终态）且曾经发布过。
+     *
+     * 客户端展示中性撤稿说明并停止重试；不回显旧标题/正文/摘要/来源/媒体。
+     */
+    public const CONTENT_UNAVAILABLE = 'CONTENT_UNAVAILABLE';
 
     // ── 媒体（G1-06）──────────────────────────────────────────────────────
 
