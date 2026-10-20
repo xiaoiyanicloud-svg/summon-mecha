@@ -1,0 +1,257 @@
+{
+  "q": "Q-04",
+  "generated_at": "2026-10-19T18:06:36.244Z",
+  "database": "summon_mecha_step10_test",
+  "checks": [
+    {
+      "name": "fixture_prepared",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "event_id": 10969,
+        "track_id": 1258
+      }
+    },
+    {
+      "name": "servers_ready",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "admin": 200,
+        "h5": 200
+      }
+    },
+    {
+      "name": "customer_login_error_branch",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "observed": "‹\n活动报名\n竞赛\nQA-Q04-2D6AFBCB\n2026年10月21日 02:06 – 2026年10月22日 02:06\n上海 · 张江科学会堂\n登录后继续报名\n登录只用于确认报名身份；不会自动提交表单。\n邮箱\n密码\n登录\n\n请检查您的凭据并重试。"
+      }
+    },
+    {
+      "name": "customer_keyboard_tab_order",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "tab_order": [
+          {
+            "tag": "INPUT",
+            "placeholder": "",
+            "text": "",
+            "type": "text"
+          },
+          {
+            "tag": "INPUT",
+            "placeholder": "",
+            "text": "",
+            "type": "number"
+          },
+          {
+            "tag": "INPUT",
+            "placeholder": "",
+            "text": "",
+            "type": "text"
+          },
+          {
+            "tag": "TEXTAREA",
+            "placeholder": "",
+            "text": "",
+            "type": ""
+          },
+          {
+            "tag": "UNI-VIEW",
+            "placeholder": "",
+            "text": "提交报名",
+            "type": ""
+          },
+          {
+            "tag": "BODY",
+            "placeholder": "",
+            "text": "‹\n活动报名\n竞赛\nQA-Q04-2D6AFBCB\n2026年10月21日 02",
+            "type": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "customer_form_error_branch",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "customer_register_confirmed",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "public_no": "EVABE924913970E875",
+        "status_confirmed": true
+      }
+    },
+    {
+      "name": "customer_my_registrations",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "public_no": "EVABE924913970E875",
+        "body": "‹\n我的报名\nQA-Q04-2D6AFBCB\n已确认\n报名编号\nEVABE924913970E875\n轮次\n#1\n联系人\nQ****** · 135****0001\n提交时间\n2026-10-20 02:06:49\n取消报名\n入场凭证\n查看变更\n\n报名已提交"
+      }
+    },
+    {
+      "name": "customer_375_no_horizontal_overflow",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "innerWidth": 375,
+        "scrollWidth": 375,
+        "innerHeight": 667,
+        "scrollHeight": 667,
+        "overflowX": false
+      }
+    },
+    {
+      "name": "captain_team_view",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "is_captain": true
+      }
+    },
+    {
+      "name": "captain_invite_token",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "token_length": 48
+      }
+    },
+    {
+      "name": "team_invalid_invite_error_branch",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "captain_375_no_horizontal_overflow",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "innerWidth": 375,
+        "scrollWidth": 375,
+        "innerHeight": 667,
+        "scrollHeight": 907,
+        "overflowX": false
+      }
+    },
+    {
+      "name": "admin_keyboard_tab_order",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "tab_order": [
+          {
+            "tag": "INPUT",
+            "placeholder": "电子邮件地址",
+            "text": "",
+            "type": "email"
+          },
+          {
+            "tag": "INPUT",
+            "placeholder": "密码",
+            "text": "",
+            "type": "password"
+          },
+          {
+            "tag": "SPAN",
+            "placeholder": "",
+            "text": "",
+            "type": ""
+          },
+          {
+            "tag": "A",
+            "placeholder": "",
+            "text": "忘记密码？",
+            "type": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "referee_can_view_results",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "referee_registration_list_denied",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 403,
+        "leaks_email": false
+      }
+    },
+    {
+      "name": "admin_390_layout_observed",
+      "passed": true,
+      "status": "observed",
+      "detail": {
+        "innerWidth": 390,
+        "scrollWidth": 390,
+        "innerHeight": 844,
+        "scrollHeight": 844,
+        "overflowX": false
+      }
+    },
+    {
+      "name": "super_admin_registration_list",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "event_listed": true
+      }
+    },
+    {
+      "name": "fixture_cleanup",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "result": {
+          "deleted": true,
+          "event_id": 10969,
+          "marker": "QA-Q04-2D6AFBCB",
+          "tracks": 1,
+          "teams": 1,
+          "entries": 0,
+          "customers": 3,
+          "admins": 2,
+          "roles": 2
+        },
+        "stderr": ""
+      }
+    }
+  ],
+  "screenshot_dir": "D:/main/docs/ecosystem/q04-screenshots",
+  "ok": true,
+  "browser_errors": {
+    "referee_page_errors": [],
+    "referee_console_errors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "customer_page_errors": []
+  },
+  "server_logs": [
+    {
+      "out": "m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.31ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/app-C2Wq9G4i.css \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.16ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/logo-CXf-crI0.svg \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 1.90ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/app-Cq9kI4oM.js \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 3.67ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/bagisto-admin-BzOkv6lg.woff?jwnnow \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.16ms\u001b[39m\r\n",
+      "err": ""
+    },
+    {
+      "out": "",
+      "err": "epted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49186 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49943 [200]: GET /assets/uni.2d7fd40d.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49943 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52988 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49186 [200]: GET /assets/index-Kd8wjbWM.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52988 [200]: GET /assets/index-cM8vzTIY.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52988 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49186 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:57369 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:57369 [200]: GET /assets/pages-ecosystem-competition-team.MpGXnqi8.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:57369 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:55547 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:61377 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:58540 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:55547 [200]: GET /assets/StateView-B8dnDgqq.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:55547 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52867 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:60357 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:61377 [200]: GET /assets/StateView.C3AQG4Wd.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:58540 [200]: GET /assets/config.DrCcEAYU.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52867 [200]: GET /assets/competition-team-DrPP5cDh.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:60357 [200]: GET /assets/api.DqZuJYbz.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:61377 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:58540 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52867 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:60357 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:65148 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:65148 [200]: GET /favicon.ico\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:65148 Closing\n[Tue Oct 20 02:07:01 2026] 127.0.0.1:61473 Accepted\n[Tue Oct 20 02:07:12 2026] 127.0.0.1:61473 Invalid request (远程主机强迫关闭了一个现有的连接。)\n[Tue Oct 20 02:07:12 2026] 127.0.0.1:61473 Closing\n"
+    }
+  ]
+}

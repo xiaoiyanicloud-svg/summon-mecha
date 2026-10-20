@@ -1,0 +1,47 @@
+{
+    "database": "summon_mecha_step10_test",
+    "seeded": 2000,
+    "samples": 20,
+    "initial_page": {
+        "samples": 20,
+        "p50_ms": 22.3,
+        "p95_ms": 29.41,
+        "max_ms": 33.18
+    },
+    "cursor_first_page": {
+        "samples": 20,
+        "p50_ms": 16.02,
+        "p95_ms": 19.08,
+        "max_ms": 22.34
+    },
+    "keyword": {
+        "samples": 20,
+        "p50_ms": 31.09,
+        "p95_ms": 39.91,
+        "max_ms": 45.62
+    },
+    "registration_open": {
+        "samples": 20,
+        "p50_ms": 7.43,
+        "p95_ms": 8.52,
+        "max_ms": 8.56
+    },
+    "sitemap": {
+        "samples": 20,
+        "p50_ms": 151.5,
+        "p95_ms": 199.86,
+        "max_ms": 259.22
+    },
+    "content_initial_page": {
+        "samples": 20,
+        "p50_ms": 0.78,
+        "p95_ms": 1.03,
+        "max_ms": 2.31
+    },
+    "cursor_10_pages": {
+        "samples": 6,
+        "p50_ms": 160.48,
+        "p95_ms": 173.36,
+        "max_ms": 181.03
+    }
+}

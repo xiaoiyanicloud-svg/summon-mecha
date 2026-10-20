@@ -1,0 +1,171 @@
+{
+    "q": "Q-03",
+    "generated_at": "2026-10-19T17:55:02+00:00",
+    "database": "summon_mecha_step10_test",
+    "app_env": "testing",
+    "checks": [
+        {
+            "name": "guard_rejects_root",
+            "passed": true,
+            "exit": 2
+        },
+        {
+            "name": "after_commit_visibility",
+            "passed": true,
+            "detail": {
+                "prefix": "qa-q03-tx-ced06b42e765",
+                "ok": true,
+                "before_commit": 0,
+                "after_commit": 1,
+                "visible_during_tx": 1,
+                "after_rollback": 1
+            },
+            "stderr": ""
+        },
+        {
+            "name": "worker_dry_run",
+            "passed": true,
+            "detail": {
+                "exit": 0,
+                "dry_run": true,
+                "limit": 20,
+                "output": "worker_enabled=true（false 时调度器不会自动触发；本命令为手工执行）\r\n[DRY-RUN] 到期待领取 1 条；过期租约 0 条。未写库。",
+                "ok": true
+            }
+        },
+        {
+            "name": "real_worker_consumes_seed",
+            "passed": true,
+            "detail": {
+                "exit": 0,
+                "dry_run": false,
+                "limit": 20,
+                "output": "worker_enabled=true（false 时调度器不会自动触发；本命令为手工执行）\r\n\u001b[32m恢复过期租约 0；领取 1；sent 1 / retried 0 / failed 0 / dead 0 / lease_lost 0 / errors 0。\u001b[39m",
+                "ok": true
+            },
+            "seed_ids": [
+                12411
+            ],
+            "seed_sent": 1,
+            "notifications": 1
+        },
+        {
+            "name": "seed_notifications_created",
+            "passed": true,
+            "notifications": 1,
+            "expected": 1
+        },
+        {
+            "name": "duplicate_delivery_no_duplicate_notification",
+            "passed": true,
+            "detail": {
+                "outbox_id": 12411,
+                "dedupe_key": "registration:9323:registration.confirmed",
+                "event_type": "registration.confirmed",
+                "status_before": "sent",
+                "reset": true
+            },
+            "worker": {
+                "exit": 0,
+                "dry_run": false,
+                "limit": 20,
+                "output": "worker_enabled=true（false 时调度器不会自动触发；本命令为手工执行）\r\n\u001b[32m恢复过期租约 0；领取 1；sent 1 / retried 0 / failed 0 / dead 0 / lease_lost 0 / errors 0。\u001b[39m",
+                "ok": true
+            },
+            "before": 1,
+            "after": 1,
+            "row_status": "sent"
+        },
+        {
+            "name": "lease_recovery_and_stale_rejection",
+            "passed": true,
+            "detail": {
+                "outbox_id": 12414,
+                "dedupe_key": "qa-q03-lease-bff586dd8436",
+                "recovered": 1,
+                "state_after_recovery": "pending",
+                "lease_owner_cleared": true,
+                "stale_settle_rejected": true,
+                "status_after_stale": "pending",
+                "ok": true
+            },
+            "worker": {
+                "exit": 0,
+                "dry_run": false,
+                "limit": 20,
+                "output": "worker_enabled=true（false 时调度器不会自动触发；本命令为手工执行）\r\n\u001b[32m恢复过期租约 0；领取 1；sent 1 / retried 0 / failed 0 / dead 0 / lease_lost 0 / errors 0。\u001b[39m",
+                "ok": true
+            },
+            "row_status": "sent",
+            "notifications": {
+                "before": 1,
+                "after": 2
+            }
+        },
+        {
+            "name": "backlog_drained_across_batches",
+            "passed": true,
+            "inserted": 25,
+            "sent": 25,
+            "batch_a": {
+                "exit": 0,
+                "dry_run": false,
+                "limit": 20,
+                "output": "worker_enabled=true（false 时调度器不会自动触发；本命令为手工执行）\r\n\u001b[32m恢复过期租约 0；领取 20；sent 20 / retried 0 / failed 0 / dead 0 / lease_lost 0 / errors 0。\u001b[39m",
+                "ok": true
+            },
+            "batch_b": {
+                "exit": 0,
+                "dry_run": false,
+                "limit": 20,
+                "output": "worker_enabled=true（false 时调度器不会自动触发；本命令为手工执行）\r\n\u001b[32m恢复过期租约 0；领取 5；sent 5 / retried 0 / failed 0 / dead 0 / lease_lost 0 / errors 0。\u001b[39m",
+                "ok": true
+            },
+            "notifications": {
+                "before": 2,
+                "after": 27
+            }
+        },
+        {
+            "name": "compensation_failed_retry_and_dead_terminal",
+            "passed": true,
+            "detail": {
+                "failed_outbox_id": 12440,
+                "dead_outbox_id": 12441,
+                "fail_target": "failed",
+                "status_after_retry": "pending",
+                "attempts_after_retry": 0,
+                "dead_retry_rejected": true,
+                "dead_status_after": "dead",
+                "ok": true
+            },
+            "worker": {
+                "exit": 0,
+                "dry_run": false,
+                "limit": 20,
+                "output": "worker_enabled=true（false 时调度器不会自动触发；本命令为手工执行）\r\n\u001b[32m恢复过期租约 0；领取 1；sent 1 / retried 0 / failed 0 / dead 0 / lease_lost 0 / errors 0。\u001b[39m",
+                "ok": true
+            },
+            "failed_status": "sent",
+            "dead_status": "dead",
+            "notifications": {
+                "before": 27,
+                "after": 28
+            }
+        },
+        {
+            "name": "fixture_cleanup",
+            "passed": true,
+            "exit": 0,
+            "detail": {
+                "deleted": true,
+                "event_id": 10962,
+                "registrations": 1,
+                "attempts": 1,
+                "customers": 2
+            },
+            "stderr": ""
+        }
+    ],
+    "ok": true
+}

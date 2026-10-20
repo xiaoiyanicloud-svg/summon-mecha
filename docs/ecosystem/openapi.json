@@ -1,0 +1,3523 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "召唤机甲 · 生态赛事与资讯公开 API",
+        "version": "2026-10-20",
+        "description": "Q-01 契约基线。operationId 与 Laravel 路由名一一对应；x-error-codes 必须与 config/ecosystem_contract.php 完全一致。本文件由人工维护，`php artisan ecosystem:contract-check` 做双向校验。",
+        "x-contract-version": "2026-10-20-q1"
+    },
+    "servers": [
+        {
+            "url": "/"
+        }
+    ],
+    "security": [],
+    "paths": {
+        "/api/content/posts": {
+            "get": {
+                "operationId": "shop.api.content.posts.index",
+                "summary": "shop.api.content.posts.index",
+                "tags": [
+                    "content"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContentPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "CONTENT_NOT_FOUND",
+                    "CONTENT_UNAVAILABLE",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/content/posts/{slug}": {
+            "get": {
+                "operationId": "shop.api.content.posts.show",
+                "summary": "shop.api.content.posts.show",
+                "tags": [
+                    "content"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContentPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "CONTENT_NOT_FOUND",
+                    "CONTENT_UNAVAILABLE",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/content/posts/{slug}/media/{mediaId}": {
+            "get": {
+                "operationId": "shop.api.content.posts.media",
+                "summary": "shop.api.content.posts.media",
+                "tags": [
+                    "content"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "mediaId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "MEDIA_NOT_FOUND"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/appeal-attachments/{attachmentId}": {
+            "get": {
+                "operationId": "shop.api.customer.competition.appeals.attachments.show",
+                "summary": "shop.api.customer.competition.appeals.attachments.show",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_RESULT_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/appeals": {
+            "get": {
+                "operationId": "shop.api.customer.competition.appeals.index",
+                "summary": "shop.api.customer.competition.appeals.index",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_RESULT_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            },
+            "post": {
+                "operationId": "shop.api.customer.competition.appeals.store",
+                "summary": "shop.api.customer.competition.appeals.store",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_RESULT_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/appeals/{id}": {
+            "get": {
+                "operationId": "shop.api.customer.competition.appeals.show",
+                "summary": "shop.api.customer.competition.appeals.show",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_RESULT_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/appeals/{id}/attachments": {
+            "post": {
+                "operationId": "shop.api.customer.competition.appeals.attachments.store",
+                "summary": "shop.api.customer.competition.appeals.attachments.store",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_RESULT_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/appeals/{id}/withdraw": {
+            "post": {
+                "operationId": "shop.api.customer.competition.appeals.withdraw",
+                "summary": "shop.api.customer.competition.appeals.withdraw",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_RESULT_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/attachments/{attachmentId}": {
+            "get": {
+                "operationId": "shop.api.customer.competition.attachments.show",
+                "summary": "shop.api.customer.competition.attachments.show",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_ENTRY_NOT_FOUND",
+                    "COMPETITION_SUBMISSION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/showcases": {
+            "get": {
+                "operationId": "shop.api.customer.competition.showcases.index",
+                "summary": "shop.api.customer.competition.showcases.index",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_SHOWCASE_STATE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/showcases/{id}/consent": {
+            "post": {
+                "operationId": "shop.api.customer.competition.showcases.consent",
+                "summary": "shop.api.customer.competition.showcases.consent",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_SHOWCASE_STATE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "version_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/showcases/{id}/skill-review": {
+            "post": {
+                "operationId": "shop.api.customer.competition.showcases.skill_review",
+                "summary": "shop.api.customer.competition.showcases.skill_review",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_SHOWCASE_STATE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams": {
+            "get": {
+                "operationId": "shop.api.customer.competition.teams.index",
+                "summary": "shop.api.customer.competition.teams.index",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            },
+            "post": {
+                "operationId": "shop.api.customer.competition.teams.store",
+                "summary": "shop.api.customer.competition.teams.store",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/decline": {
+            "post": {
+                "operationId": "shop.api.customer.competition.teams.decline",
+                "summary": "shop.api.customer.competition.teams.decline",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/join": {
+            "post": {
+                "operationId": "shop.api.customer.competition.teams.join",
+                "summary": "shop.api.customer.competition.teams.join",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{id}": {
+            "get": {
+                "operationId": "shop.api.customer.competition.teams.show",
+                "summary": "shop.api.customer.competition.teams.show",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{id}/invites": {
+            "post": {
+                "operationId": "shop.api.customer.competition.teams.invites.store",
+                "summary": "shop.api.customer.competition.teams.invites.store",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{id}/leave": {
+            "post": {
+                "operationId": "shop.api.customer.competition.teams.leave",
+                "summary": "shop.api.customer.competition.teams.leave",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{id}/register": {
+            "post": {
+                "operationId": "shop.api.customer.competition.teams.register",
+                "summary": "shop.api.customer.competition.teams.register",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{id}/transfer": {
+            "post": {
+                "operationId": "shop.api.customer.competition.teams.transfer",
+                "summary": "shop.api.customer.competition.teams.transfer",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "COMPETITION_TRACK_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{teamId}/submission": {
+            "get": {
+                "operationId": "shop.api.customer.competition.submission.workspace",
+                "summary": "shop.api.customer.competition.submission.workspace",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_ENTRY_NOT_FOUND",
+                    "COMPETITION_SUBMISSION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{teamId}/submission/attachments": {
+            "post": {
+                "operationId": "shop.api.customer.competition.submission.attachments.store",
+                "summary": "shop.api.customer.competition.submission.attachments.store",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_ENTRY_NOT_FOUND",
+                    "COMPETITION_SUBMISSION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "version_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{teamId}/submission/draft": {
+            "post": {
+                "operationId": "shop.api.customer.competition.submission.draft",
+                "summary": "shop.api.customer.competition.submission.draft",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_ENTRY_NOT_FOUND",
+                    "COMPETITION_SUBMISSION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "version_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/competition/teams/{teamId}/submission/submit": {
+            "post": {
+                "operationId": "shop.api.customer.competition.submission.submit",
+                "summary": "shop.api.customer.competition.submission.submit",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_ENTRY_NOT_FOUND",
+                    "COMPETITION_SUBMISSION_NOT_FOUND",
+                    "COMPETITION_TEAM_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "version_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/event-registrations": {
+            "get": {
+                "operationId": "shop.api.customer.event-registrations.index",
+                "summary": "shop.api.customer.event-registrations.index",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/event-registrations/{publicNo}": {
+            "get": {
+                "operationId": "shop.api.customer.event-registrations.show",
+                "summary": "shop.api.customer.event-registrations.show",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "publicNo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/event-registrations/{publicNo}/cancel": {
+            "post": {
+                "operationId": "shop.api.customer.event-registrations.cancel",
+                "summary": "shop.api.customer.event-registrations.cancel",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "publicNo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/event-registrations/{publicNo}/changes": {
+            "get": {
+                "operationId": "shop.api.customer.event-registrations.changes",
+                "summary": "shop.api.customer.event-registrations.changes",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "publicNo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/event-registrations/{publicNo}/changes/{changeId}/ack": {
+            "post": {
+                "operationId": "shop.api.customer.event-registrations.changes.ack",
+                "summary": "shop.api.customer.event-registrations.changes.ack",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "publicNo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "changeId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/event-registrations/{publicNo}/credential": {
+            "post": {
+                "operationId": "shop.api.customer.event-registrations.credential",
+                "summary": "shop.api.customer.event-registrations.credential",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "publicNo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "state_guard",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/event-registrations/{publicNo}/reapply": {
+            "post": {
+                "operationId": "shop.api.customer.event-registrations.reapply",
+                "summary": "shop.api.customer.event-registrations.reapply",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "publicNo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "request_key",
+                "x-throttled": false
+            }
+        },
+        "/api/customer/favorites": {
+            "get": {
+                "operationId": "shop.api.customer.favorites.index",
+                "summary": "shop.api.customer.favorites.index",
+                "tags": [
+                    "favorites"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "ECOSYSTEM_FAVORITES_DISABLED",
+                    "FAVORITE_LIMIT_REACHED",
+                    "FAVORITE_TARGET_NOT_FOUND",
+                    "FAVORITE_TYPE_INVALID",
+                    "SERVER_ERROR",
+                    "SERVICE_UNAVAILABLE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "unique_key",
+                "x-throttled": false
+            },
+            "post": {
+                "operationId": "shop.api.customer.favorites.store",
+                "summary": "shop.api.customer.favorites.store",
+                "tags": [
+                    "favorites"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "ECOSYSTEM_FAVORITES_DISABLED",
+                    "FAVORITE_LIMIT_REACHED",
+                    "FAVORITE_TARGET_NOT_FOUND",
+                    "FAVORITE_TYPE_INVALID",
+                    "SERVER_ERROR",
+                    "SERVICE_UNAVAILABLE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "unique_key",
+                "x-throttled": true
+            }
+        },
+        "/api/customer/favorites/{type}/{key}": {
+            "delete": {
+                "operationId": "shop.api.customer.favorites.destroy",
+                "summary": "shop.api.customer.favorites.destroy",
+                "tags": [
+                    "favorites"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "ECOSYSTEM_FAVORITES_DISABLED",
+                    "FAVORITE_LIMIT_REACHED",
+                    "FAVORITE_TARGET_NOT_FOUND",
+                    "FAVORITE_TYPE_INVALID",
+                    "SERVER_ERROR",
+                    "SERVICE_UNAVAILABLE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "unique_key",
+                "x-throttled": true
+            }
+        },
+        "/api/customer/registration-requests/{requestKey}": {
+            "get": {
+                "operationId": "shop.api.customer.registration-requests.show",
+                "summary": "shop.api.customer.registration-requests.show",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "requestKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "REGISTRATION_NOT_FOUND",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events": {
+            "get": {
+                "operationId": "shop.api.events.index",
+                "summary": "shop.api.events.index",
+                "tags": [
+                    "events"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "EVENT_REGISTRATION_DISABLED",
+                    "EVENT_UNAVAILABLE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events/{id}": {
+            "get": {
+                "operationId": "shop.api.events.show",
+                "summary": "shop.api.events.show",
+                "tags": [
+                    "events"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "EVENT_REGISTRATION_DISABLED",
+                    "EVENT_UNAVAILABLE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events/{id}/competition": {
+            "get": {
+                "operationId": "shop.api.events.competition.show",
+                "summary": "shop.api.events.competition.show",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events/{id}/competition/results": {
+            "get": {
+                "operationId": "shop.api.events.competition.results",
+                "summary": "shop.api.events.competition.results",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events/{id}/competition/schedule": {
+            "get": {
+                "operationId": "shop.api.events.competition.schedule",
+                "summary": "shop.api.events.competition.schedule",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events/{id}/competition/showcases": {
+            "get": {
+                "operationId": "shop.api.events.competition.showcases",
+                "summary": "shop.api.events.competition.showcases",
+                "tags": [
+                    "competition"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "COMPETITION_NOT_FOUND"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events/{id}/media/{mediaId}": {
+            "get": {
+                "operationId": "shop.api.events.media",
+                "summary": "shop.api.events.media",
+                "tags": [
+                    "events"
+                ],
+                "security": [
+                    [],
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mediaId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "MEDIA_NOT_FOUND"
+                ],
+                "x-idempotency": "read",
+                "x-throttled": false
+            }
+        },
+        "/api/events/{id}/register": {
+            "post": {
+                "operationId": "shop.api.events.register",
+                "summary": "shop.api.events.register",
+                "tags": [
+                    "registration"
+                ],
+                "security": [
+                    {
+                        "customerToken": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": [
+                    {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationPublic"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    },
+                    {
+                        "$ref": "#/components/responses/ApiError"
+                    }
+                ],
+                "x-error-codes": [
+                    "EVENT_NOT_FOUND",
+                    "EVENT_REGISTRATION_DISABLED",
+                    "EVENT_UNAVAILABLE",
+                    "UNAUTHENTICATED",
+                    "VALIDATION_ERROR"
+                ],
+                "x-idempotency": "request_key",
+                "x-throttled": false
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "customerToken": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "Sanctum"
+            }
+        },
+        "schemas": {
+            "ApiError": {
+                "type": "object",
+                "required": [
+                    "success",
+                    "code",
+                    "message"
+                ],
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "const": false
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "稳定错误码；见 config/ecosystem_contract.php"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "nullable": true
+                    }
+                }
+            },
+            "MediaPublic": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "role",
+                    "url"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "alt_text": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "受控媒体路由；不含存储路径或 storage_key"
+                    }
+                },
+                "x-resource-class": "Webkul\\Shop\\Http\\Resources\\Ecosystem\\MediaPublicResource"
+            },
+            "EventPublic": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "revision_no",
+                    "registration",
+                    "media"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                            "competition",
+                            "salon",
+                            "workshop",
+                            "expo",
+                            "open_day",
+                            null
+                        ]
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "organizer": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "platform_role": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "source": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "participation_mode": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "city": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "location_text": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "starts_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "ends_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "published_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "first_published_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "revision_no": {
+                        "type": "integer"
+                    },
+                    "hosting_status": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "body_html": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "服务端已净化"
+                    },
+                    "registration": {
+                        "type": "object",
+                        "required": [
+                            "can_register",
+                            "registration_reason",
+                            "allowed_actions"
+                        ],
+                        "properties": {
+                            "can_register": {
+                                "type": "boolean"
+                            },
+                            "registration_reason": {
+                                "type": "string"
+                            },
+                            "allowed_actions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "form_version": {
+                                "type": "integer",
+                                "nullable": true
+                            },
+                            "privacy_version": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "privacy_summary": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "rules_version_id": {
+                                "type": "integer",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "media": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaPublic"
+                        }
+                    },
+                    "favorited": {
+                        "type": "boolean"
+                    },
+                    "related": {
+                        "type": "object",
+                        "properties": {
+                            "events": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            },
+                            "contents": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            },
+                            "device_models": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            },
+                            "skills": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            },
+                            "scenes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "external_registration_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "仅当已批准版本内是合法 http/https 外链时出现"
+                    }
+                },
+                "x-resource-class": "Webkul\\Shop\\Http\\Resources\\Ecosystem\\EventPublicResource"
+            },
+            "ContentPublic": {
+                "type": "object",
+                "required": [
+                    "slug",
+                    "type",
+                    "title",
+                    "revision_no",
+                    "media"
+                ],
+                "properties": {
+                    "slug": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "author": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "org": {
+                                "type": "string",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "type": "string",
+                                    "nullable": true
+                                },
+                                "verified_at": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "nullable": true
+                                },
+                                "rights_basis": {
+                                    "type": "string"
+                                },
+                                "rights_scope": {
+                                    "type": "string",
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "published_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "first_published_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "revision_no": {
+                        "type": "integer"
+                    },
+                    "correction_note": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "body_html": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "服务端已净化"
+                    },
+                    "media": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaPublic"
+                        }
+                    },
+                    "favorited": {
+                        "type": "boolean"
+                    },
+                    "related": {
+                        "type": "object"
+                    }
+                },
+                "x-resource-class": "Webkul\\Shop\\Http\\Resources\\Ecosystem\\ContentPublicResource"
+            },
+            "RegistrationPublic": {
+                "type": "object",
+                "required": [
+                    "public_no",
+                    "event_id",
+                    "status",
+                    "attempt_no"
+                ],
+                "properties": {
+                    "public_no": {
+                        "type": "string"
+                    },
+                    "event_id": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "submitted",
+                            "confirmed",
+                            "rejected",
+                            "canceled",
+                            "checked_in"
+                        ]
+                    },
+                    "attempt_no": {
+                        "type": "integer"
+                    },
+                    "attempt_id": {
+                        "type": "integer"
+                    },
+                    "form_version": {
+                        "type": "integer"
+                    },
+                    "privacy_version": {
+                        "type": "string"
+                    },
+                    "submitted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "decided_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "canceled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "decision_reason_code": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "can_reapply": {
+                        "type": "boolean"
+                    },
+                    "event": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "city": {
+                                "type": "string",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "contact": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "phone": {
+                                "type": "string"
+                            },
+                            "city": {
+                                "type": "string"
+                            }
+                        },
+                        "description": "已遮罩；不返回密文或明文"
+                    },
+                    "can_cancel": {
+                        "type": "boolean"
+                    }
+                },
+                "x-resource-class": "Webkul\\Shop\\Http\\Resources\\Ecosystem\\RegistrationResource"
+            },
+            "CompetitionPublic": {
+                "type": "object",
+                "description": "赛务公开 DTO；队伍 / 赛项 / 参赛条目 / 作品字段按场景返回。",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "row_version": {
+                        "type": "integer"
+                    },
+                    "my_role": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "is_captain": {
+                        "type": "boolean"
+                    },
+                    "edition": {
+                        "type": "object"
+                    },
+                    "track": {
+                        "type": "object"
+                    },
+                    "members": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "pending_invites": {
+                        "type": "integer"
+                    },
+                    "entry": {
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "submission": {
+                        "type": "object",
+                        "nullable": true
+                    }
+                },
+                "x-resource-class": "Webkul\\Shop\\Http\\Resources\\Ecosystem\\CompetitionResource"
+            }
+        },
+        "responses": {
+            "ApiError": {
+                "description": "统一错误信封",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ApiError"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

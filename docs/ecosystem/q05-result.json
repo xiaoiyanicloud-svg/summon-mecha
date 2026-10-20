@@ -1,0 +1,230 @@
+{
+    "q": "Q-05",
+    "generated_at": "2026-10-19T18:09:25+00:00",
+    "database": "summon_mecha_step10_test",
+    "app_env": "testing",
+    "checks": [
+        {
+            "name": "guard_rejects_root",
+            "passed": true,
+            "exit": 2
+        },
+        {
+            "name": "preflight_exit_nonzero",
+            "passed": true,
+            "exit": 1
+        },
+        {
+            "name": "preflight_detects_risk_codes",
+            "passed": true,
+            "expected": [
+                "scope_counter_mismatch",
+                "scope_counter_exceeds_capacity",
+                "duplicate_active_attempts",
+                "attempt_status_unknown",
+                "event_timezone_invalid",
+                "revision_time_invalid",
+                "outbox_expired_lease"
+            ],
+            "seen": [
+                "revision_time_invalid",
+                "event_timezone_invalid",
+                "attempt_status_unknown",
+                "duplicate_active_attempts",
+                "scope_counter_mismatch",
+                "scope_counter_exceeds_capacity",
+                "outbox_expired_lease"
+            ],
+            "missing": [],
+            "findings": [
+                {
+                    "severity": "warning",
+                    "code": "revision_time_invalid",
+                    "table": "event_revisions",
+                    "count": 1,
+                    "detail": "活动 revision 起止时间颠倒",
+                    "sample_ids": [
+                        9728
+                    ]
+                },
+                {
+                    "severity": "blocker",
+                    "code": "event_timezone_invalid",
+                    "table": "events.timezone",
+                    "count": 1,
+                    "detail": "未知时区：Mars/Base",
+                    "sample_ids": []
+                },
+                {
+                    "severity": "blocker",
+                    "code": "attempt_status_unknown",
+                    "table": "event_registration_attempts",
+                    "count": 1,
+                    "detail": "报名轮次状态不在已声明状态表",
+                    "sample_ids": [
+                        9330
+                    ]
+                },
+                {
+                    "severity": "blocker",
+                    "code": "duplicate_active_attempts",
+                    "table": "event_registration_attempts",
+                    "count": 1,
+                    "detail": "同一报名存在多个活跃轮次",
+                    "sample_ids": [
+                        9360
+                    ]
+                },
+                {
+                    "severity": "blocker",
+                    "code": "scope_counter_mismatch",
+                    "table": "event_registration_scopes",
+                    "count": 1,
+                    "detail": "confirmed_count 与轮次事实不一致",
+                    "sample_ids": [
+                        2767
+                    ]
+                },
+                {
+                    "severity": "blocker",
+                    "code": "scope_counter_exceeds_capacity",
+                    "table": "event_registration_scopes",
+                    "count": 1,
+                    "detail": "已占名额超过容量",
+                    "sample_ids": [
+                        2767
+                    ]
+                },
+                {
+                    "severity": "warning",
+                    "code": "outbox_expired_lease",
+                    "table": "ecosystem_outbox",
+                    "count": 1,
+                    "detail": "outbox 存在过期 / 空租约（worker 崩溃或进程卡住）",
+                    "sample_ids": [
+                        12446
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "preflight_is_read_only",
+            "passed": true,
+            "before": {
+                "events": 1,
+                "registrations": 2,
+                "attempts": 3,
+                "scopes": 1,
+                "outbox": 1
+            },
+            "after": {
+                "events": 1,
+                "registrations": 2,
+                "attempts": 3,
+                "scopes": 1,
+                "outbox": 1
+            }
+        },
+        {
+            "name": "reconcile_dry_run_reports_without_write",
+            "passed": true,
+            "stored_before": 5,
+            "stored_after": 5,
+            "output": "scope #2767 event #10970：stored=5 computed=2 需修正（未写）\r\n\u001b[32m检查 1 个 scope；不一致 1 个。未写库。\u001b[39m"
+        },
+        {
+            "name": "reconcile_apply_fixes_counter",
+            "passed": true,
+            "stored_after_apply": 2,
+            "output": "scope #2767 event #10970：stored=5 computed=2 已修正\r\n\u001b[32m检查 1 个 scope；不一致 1 个。\u001b[39m"
+        },
+        {
+            "name": "retention_dry_run_no_delete",
+            "passed": true,
+            "before": {
+                "events": 1,
+                "registrations": 2,
+                "attempts": 3,
+                "scopes": 1,
+                "outbox": 1
+            },
+            "after": {
+                "events": 1,
+                "registrations": 2,
+                "attempts": 3,
+                "scopes": 1,
+                "outbox": 1
+            },
+            "output": "留存窗口：365 天；早于 2025-10-19 18:09:31（UTC）的轮次仅统计，不处理。\r\n历史 legacy 报名：0 条（不自动认领、不自动清理）\r\n超过留存窗口的有效轮次合计：0 条；未执行任何删除。\r\n\u001b[37;41m密钥抽样：解密失败（Webkul\\Shop\\Services\\Ecosystem\\RegistrationException）；请检查 APP_KEY / 轮换记录。\u001b[39;49m"
+        },
+        {
+            "name": "migration_drill",
+            "passed": true,
+            "exit": 0,
+            "detail": {
+                "event_id": 10970,
+                "checks": [
+                    {
+                        "name": "backfill_idempotent",
+                        "passed": true,
+                        "source": 2,
+                        "target": 2
+                    },
+                    {
+                        "name": "failure_before_switch_preserves_source",
+                        "passed": true,
+                        "before_hash": "39af954f3f6c810698162e594cc23a7aa108a36b844f78b2d8d897d2560470ac",
+                        "after_hash": "39af954f3f6c810698162e594cc23a7aa108a36b844f78b2d8d897d2560470ac"
+                    },
+                    {
+                        "name": "switch_view_matches_source",
+                        "passed": true,
+                        "source": 2,
+                        "view": 2
+                    },
+                    {
+                        "name": "destructive_down_blocked_after_new_write",
+                        "passed": true,
+                        "new_rows": 1,
+                        "checkpoint": 9361
+                    },
+                    {
+                        "name": "forward_recovery_includes_new_write",
+                        "passed": true,
+                        "source_ids": [
+                            9360,
+                            9361,
+                            9362
+                        ],
+                        "target_ids": [
+                            9360,
+                            9361,
+                            9362
+                        ]
+                    },
+                    {
+                        "name": "cleanup_removed_probes",
+                        "passed": true,
+                        "remaining": 2
+                    }
+                ],
+                "ok": true
+            },
+            "stderr": ""
+        },
+        {
+            "name": "fixture_cleanup",
+            "passed": true,
+            "exit": 0,
+            "detail": {
+                "deleted": true,
+                "event_id": 10970,
+                "registrations": 2,
+                "attempts": 3,
+                "customers": 2
+            },
+            "stderr": ""
+        }
+    ],
+    "ok": true
+}

@@ -1,0 +1,130 @@
+{
+    "q": "Q-02",
+    "generated_at": "2026-10-19T17:52:22+00:00",
+    "database": "summon_mecha_step10_test",
+    "app_env": "testing",
+    "checks": [
+        {
+            "name": "guard_rejects_root",
+            "passed": true,
+            "exit": 2,
+            "stderr": "[qa-guard] 拒绝执行：APP_ENV=local，DB_DATABASE=root。\n[qa-guard] 必须显式设置 APP_ENV=testing 且使用以 _test 结尾的独立库。"
+        },
+        {
+            "name": "guard_accepts_test_db",
+            "passed": true,
+            "exit": 0,
+            "database": "summon_mecha_step10_test"
+        },
+        {
+            "name": "capacity_race_one_confirmed",
+            "passed": true,
+            "successes": 1,
+            "failures": 1,
+            "confirmed_rows": 1,
+            "registrations": 1,
+            "confirmed_count": 1,
+            "workers": [
+                {
+                    "pid": 19584,
+                    "event_id": 10958,
+                    "customer_id": 3367,
+                    "request_key": "q02-QA-Q02-59e4718fc4dc-0",
+                    "ok": false,
+                    "error_code": "REGISTRATION_FULL",
+                    "error_message": "名额已满。"
+                },
+                {
+                    "pid": 25304,
+                    "event_id": 10958,
+                    "customer_id": 3368,
+                    "request_key": "q02-QA-Q02-59e4718fc4dc-1",
+                    "ok": true,
+                    "registration_id": 9354,
+                    "attempt_id": 9322,
+                    "status": "confirmed",
+                    "public_no": "EVC95A602769423C6F",
+                    "replayed": false
+                }
+            ]
+        },
+        {
+            "name": "capacity_race_loser_rejected",
+            "passed": true,
+            "rejections": [
+                {
+                    "pid": 19584,
+                    "event_id": 10958,
+                    "customer_id": 3367,
+                    "request_key": "q02-QA-Q02-59e4718fc4dc-0",
+                    "ok": false,
+                    "error_code": "REGISTRATION_FULL",
+                    "error_message": "名额已满。"
+                }
+            ]
+        },
+        {
+            "name": "real_lock_wait",
+            "passed": true,
+            "holder": {
+                "role": "holder",
+                "pid": 24448,
+                "event": 10958,
+                "scope": 2751,
+                "held_seconds": 3
+            },
+            "waiter": {
+                "role": "waiter",
+                "pid": 8460,
+                "scope": 2751,
+                "waited_ms": 2530,
+                "blocked": true
+            },
+            "holder_stderr": ""
+        },
+        {
+            "name": "repeatable_read_snapshot_vs_current",
+            "passed": true,
+            "exit": 0,
+            "detail": {
+                "isolation": "REPEATABLE-READ",
+                "snapshot_before": {
+                    "capacity": 1,
+                    "confirmed_count": 1,
+                    "registration_closes_at": "2026-10-22 17:52:24",
+                    "status": "open"
+                },
+                "snapshot_after": {
+                    "capacity": 1,
+                    "confirmed_count": 1,
+                    "registration_closes_at": "2026-10-22 17:52:24",
+                    "status": "open"
+                },
+                "current_read": {
+                    "capacity": 0,
+                    "confirmed_count": 8,
+                    "registration_closes_at": "2000-01-01 00:00:00",
+                    "status": "closed"
+                },
+                "snapshot_held": true,
+                "current_read_fresh": true,
+                "ok": true
+            },
+            "stderr": ""
+        },
+        {
+            "name": "fixture_cleanup",
+            "passed": true,
+            "exit": 0,
+            "detail": {
+                "deleted": true,
+                "event_id": 10958,
+                "registrations": 1,
+                "attempts": 1,
+                "customers": 2
+            },
+            "stderr": ""
+        }
+    ],
+    "ok": true
+}

@@ -101,6 +101,13 @@
 | Q-04 | QA/设计/运营 | G1-11 | 隔离服务真实Admin/客户/队长/裁判浏览器演练、窄屏/键盘/错误分支证据 |
 | Q-05 | DB/运维/安全 | G1-02 | 存量重复/孤儿/超长/时区preflight、expand/回填/切换/恢复及资料生命周期演练 |
 
+**2026-10-20 完成记录**：Q-01 ~ Q-05 已全部落地并跑通，入口与实测结果见
+[Q-01-05-quality-evidence.md](./Q-01-05-quality-evidence.md) 与
+[qa/ecosystem/README.md](../../my-bagisto-store/qa/ecosystem/README.md)。
+Q-01 增加 `ecosystem:contract-check` 构建门禁；Q-05 增加只读 `ecosystem:data-preflight`。
+Q-03 修正了 outbox `failed` / `dead` 语义（可重试耗尽 → failed 可人工重排；
+不可重试 → dead 终态）。生产规模并发、CI 接入、小程序真机与生产迁移仍未完成。
+
 以上共59个工作包，其中G0为7、G1为11、G2为15、G3为12、G4为9、横向为5；数量不代表完成。粗估工期前先评审规则、UI和数据规模；不得按页面数量估算完整赛务。
 
 ## 8 具体代码落点

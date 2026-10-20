@@ -137,3 +137,149 @@
 - 报名 G2、CDN/缓存撤回、搜索/收藏/SSR/OG/sitemap 不在 G1 范围。
 - 小程序真机分享、Safari/微信内置浏览器剪贴板、正式托管主机部署仍需目标环境验证。
 - `sent` 只代表 outbox 事实被消费，不代表用户已收到通知。
+
+## G2 进度（2026-10-19，本机）
+
+**代码与独立库验证已完成；生产报名闸仍关闭。**
+
+- **G2-01/02/14**：scope/attempt/幂等/人员范围 schema 与服务；Admin 范围配置与人员授权。
+- **G2-03/04/06/07**：提交、幂等、自动/人工确认、审核、取消/重报；审核到期扫描。
+- **G2-08/09**：活动取消/改期记录、变更确认、凭证与签到；B-06 生命周期写闸默认关闭。
+- **G2-11/13**：联系人加密/遮罩/解密审计；专用 CSV 导出（公式中和、短期 token）。
+- **G2-12**：报名 outbox 消费与站内信去重；只发 inapp。
+- **G2-05/10**：报名页/我的报名/变更确认/凭证前端。
+- **G2-15**：真实浏览器客户侧 + Admin 签到演练通过；多进程容量竞争、锁等待、审核抢名额、取消/提交竞争、等锁截止/降容、afterCommit/回滚、520 行扇出与密钥轮换均已验证。
+- **root**：已备份、恢复演练并 additive 迁移 9 个迁移；旧报名保留为 legacy；
+  `registration_enabled` / `registration_write_verified` / `ecosystem_registration.enabled`
+  仍为 false，未创建 scope、未开放任何活动。
+
+详细证据：[G2-A-B-evidence.md](./G2-A-B-evidence.md)、
+[G2-C-D-E-evidence.md](./G2-C-D-E-evidence.md)、
+[G2-implementation-plan.md](./G2-implementation-plan.md)。
+
+**G2 仍未完成 / 需业务签署**
+- B-06 取消/改期责任、B-05 留存/注销、P-10 重报上限、P-12/P-13 变更政策；
+  签署前 `policy_confirmed_at` 不能写入，生产 scope 不能 open。
+- 生产部署侧需启动 `schedule:work`/cron，并逐个活动执行激活与演练。
+- T31 切号/跨账号浏览器状态、T47 跨设备一致性仍需补；T57 受 B-05 政策阻塞，只提供 dry-run。
+- 生产密钥托管与旧 key 恢复演练未做（本机轮换已通过）。
+- 小程序真机扫码、Safari/微信内置浏览器未验证。
+
+## G3-01 ~ G3-06 进度（2026-10-19，本机）
+
+**代码、迁移、独立库测试与 root additive 迁移已完成；赛务写闸仍关闭。**
+
+- **G3-01**：规则冻结模板与机器契约已完成（[G3-01-competition-rule-freeze.md](./G3-01-competition-rule-freeze.md)）。
+  首场真实赛规尚未签署，因此**不创建真实赛项、不开放报名/成绩**。
+- **G3-02**：系列 / 届次 / 赛项 / 专属 team scope、规则版本绑定与激活前置已完成；
+  跨届/跨赛项/scope 复用被拒绝；普通活动个人报名保持 person 单位。
+- **G3-03/04**：队伍、一次性邀请码、成员接受/退出、队长移交、一人多队限制、
+  队伍报名归属（`subject_key=t:{team_id}`）、成员/资格/机器人声明冻结快照已完成。
+- **G3-05**：作品草稿/版本/提交/补正、截止锁后重检、跨队拒绝、私有附件
+  （真实 MIME/大小/数量/路径校验，仅有效成员可下载）已完成。
+- **G3-06**：阶段/场次、CSV 预览导入（逐行错误定位、幂等重试、已发布不可覆盖）、
+  发布门禁与公开赛程只读接口已完成；公开赛程开关默认关闭。
+- **Admin**：赛务工作台、规则确认、赛项激活、报名范围开放/关闭、赛程预览/导入/发布；
+  路由逐条登记权限并通过 ACL 全路由测试。
+- **前端**：活动详情赛项/赛程区块、组队/邀请/队员管理、队伍报名、作品提交页。
+- **数据库**：独立库 `summon_mecha_step10_test` 迁移通过；root 已备份
+  `backups/root-before-g3-20261019-232107.sql`（1,650,618 bytes）后 additive 迁移，
+  旧活动/报名未改写，`competition_*` 表为空，赛务写闸/公开赛程闸均为 false。
+- **测试**：G3 专项 34 passed / 170 assertions；Ecosystem 全量 453 passed / 3,227
+  assertions；Admin ACL + G3 10 passed / 357 assertions；前端 Node 29 passed。
+- 详细证据：[G3-01-06-evidence.md](./G3-01-06-evidence.md)。
+
+**G3 仍未完成 / 需业务签署**
+- 首场目标赛事的赛项、资格、评分、同分、申诉与安全责任尚未由负责人签署；
+  签署前只能使用测试活动，生产 `rules_confirmed_at` 不应写入。
+- G3 的 MySQL 多连接并发压测、真实浏览器全链路演练、小程序真机附件上传/下载
+  尚未执行；现有证据为服务层 + HTTP 功能测试 + 独立库迁移。
+- 作品附件为私有盘；未接 CDN/对象存储，未验证撤稿后的缓存清理。
+
+## G3-07 ~ G3-12 进度（2026-10-20，本机）
+
+**代码、独立库测试与 root additive 迁移已完成；赛务写闸与公开成绩/展示闸仍关闭。**
+
+- **G3-07**：计分契约（策略/精度/字段/缺赛/弃权/同分）与策略注册完成；
+  定点整数计算，拒绝浮点/用户公式；`manual`、`total_desc` 两种已登记策略。
+- **G3-08**：成绩草稿/提交复核/排名/暂定/终审/修订完成；录分与发布分权；
+  旧版本保留并标 `superseded`；公开成绩只返回已公布版本，修订中标记复核中。
+- **G3-09**：申诉窗口/主体/证据类型校验、受理/调查/裁决、私有证据下载完成；
+  裁决记录理由与适用成绩版本；事件时间线只追加。
+- **G3-10**：奖项版本完成；成绩修订后旧奖项转 `pending_review`，新版本显式
+  重新发布并指向新成绩；历史版本不删除。
+- **G3-11**：作品展示必须由队长对具体版本授权；授权指纹绑定内容；
+  公开字段最小化；获奖不自动上架/发 license/下发真机；技能提审走既有闸门。
+- **G3-12**：整届受控演练测试通过（T59–T69、T72；
+  [G3-12-drill.md](./G3-12-drill.md)）。
+- **Admin**：成绩、申诉、奖项、展示四个工作台；路由逐条登记权限，
+  scoring/results/appeal/awards/showcase 分权。
+- **前端**：成绩与展示页、队长展示授权/技能提审入口；活动详情入口。
+- **数据库**：独立库迁移通过；root 备份
+  `backups/root-before-g3-07-20261020.sql`（1,674,468 bytes）后 additive 迁移；
+  新 `competition_*` 表为空，活动/报名未改写。
+- **测试**：G3 专项 62 passed / 409 assertions；Ecosystem 全量 477 passed /
+  3,441 assertions；Admin ACL + G3 14 passed / 453 assertions；前端 Node 29 passed。
+- 详细证据：[G3-07-12-evidence.md](./G3-07-12-evidence.md)。
+
+**G3-07 ~ G3-12 仍未完成 / 需业务签署**
+- 首场赛规仍未签署；不得创建真实赛项、写生产 `rules_confirmed_at` 或开放成绩/展示。
+- 并发压测、真实浏览器全链路、小程序真机附件仍未做。
+- 技能提审正向链路在演练中使用 mock；真实提审仍受协议/包/L0/L2 闸门约束。
+- 通知只有站内信 outbox；未接短信/邮件/微信，`sent` 不代表已送达。
+
+## G4-01 ~ G4-09 进度（2026-10-20，本机）
+
+**代码、独立库测试与 root additive 迁移已完成；G4 新开关全部关闭。**
+
+- **G4-01**：关键词/城市/日期/类型/报名状态筛选；LIKE 通配符转义；游标分页 +
+  筛选指纹；page 模式保留并加 200 页上限。
+- **G4-02**：收藏表/服务/API/我的收藏；唯一键幂等、跨账号隔离、撤稿目标只计
+  `stale_count`、单用户上限 500、响应 `private, no-store`。
+- **G4-03**：活动/资讯关联；失效/草稿/撤稿/下架目标整项省略；Admin 维护入口；
+  不修改设备/商品真相源。
+- **G4-04**：Laravel SSR `/events`、`/content`、详情、`/sitemap.xml`；
+  canonical/OG/JSON-LD；撤稿 410 中性页；草稿预览沿用 `X-Robots-Tag: noindex`。
+- **G4-05**：H5 SEO 纯函数与详情页接入；canonical 指向 SSR；分享路径不含私有状态。
+- **G4-06**：指标口径与事实同页；报名按 attempt、席位按当前 confirmed/checked_in；
+  内容访问日聚合（不存 IP/UA/用户 ID）；无源返回 `available=false`。
+- **G4-07**：运营工作台（待审 revision/报名、即将截止、通知失败、来源复核、撤稿）；
+  PII 遮罩 + 活动人员范围；失败通知重排只接受未租用 failed。
+- **G4-08**：撤稿/取消/停读同步降级演练；独立测试库基准命令
+  （`ecosystem:g4-benchmark`，非生产压测）。
+- **G4-09**：`config/ecosystem_g4.php` 开关矩阵、`ecosystem:g4-status` 只读状态、
+  上线/回退/值守手册 `G4-runbook.md`。
+- **数据库**：root 备份 `backups/root-before-g4-20261020.sql`（1,696,955 bytes）后
+  additive 迁移 3 个；旧活动/报名未改写，新表为空。
+- **测试**：Ecosystem 全量 511 passed / 3,679 assertions；Admin ACL + G4 13 passed /
+  495 assertions；前端 Node 37 passed。
+- 详细证据：[G4-evidence.md](./G4-evidence.md)。
+
+**G4 仍未完成 / 需真实环境**
+- 生产并发压测、真实浏览器 H5/SSR 全链路、搜索引擎收录、CDN 撤稿 purge、
+  小程序真机分享与统计生产验证均未做；不得用单进程基准冒充并发结论。
+- 所有 G4 开关默认 false；打开顺序与回退见 [G4-runbook.md](./G4-runbook.md)。
+
+## Q-01 ~ Q-05 横向质量（2026-10-20，本机）
+
+**五个横向工作包全部落地；演练脚本可复跑，证据已归档。**
+
+- **Q-01 契约门禁**：`config/ecosystem_contract.php` 冻结 45 条公开路由 / 85 个错误码 /
+  11 个状态快照；`php artisan ecosystem:contract-check` 双向核对路由—ACL—错误码—状态—OpenAPI，
+  失败即非零退出。抓到并修复 `COMPETITION_TRACK_NOT_FOUND` 未定义常量。
+- **Q-02 并发/隔离**：专用测试库硬校验（root 拒绝）、容量 1 两进程竞争、真实行锁等待、
+  REPEATABLE READ 快照 vs `FOR UPDATE` 当前读；7/7 通过。
+- **Q-03 worker/补偿**：afterCommit/回滚、真实 worker、重复投递、崩溃租约、25 条积压、
+  failed 人工补偿 vs dead 终态；10/10 通过。修复了“worker 从不写 failed，
+  运营台重排入口永远为空”的缺陷。
+- **Q-04 浏览器演练**：客户 / 队长 / 裁判 / 超管四角色；375/390px、键盘 Tab、
+  错误分支、403 无 PII 泄漏；18/18 通过，9 张截图。
+- **Q-05 数据/迁移**：只读 `ecosystem:data-preflight`、计数对账 dry-run/apply、
+  留存 dry-run、expand/backfill/switch/recovery 演练；9/9 通过。
+- 详细证据：[Q-01-05-quality-evidence.md](./Q-01-05-quality-evidence.md)。
+- 运行方式：[my-bagisto-store/qa/ecosystem/README.md](../../my-bagisto-store/qa/ecosystem/README.md)。
+
+**Q 仍未完成 / 需真实环境**
+- 生产规模并发与真实部署环境的 worker / 浏览器复跑；CI 流水线尚未接入。
+- Q-04 仅 Chrome headless；小程序真机、微信内置浏览器、Safari 未验证。
+- Q-05 的迁移演练是测试库流程演练，不等于生产迁移已批准。
