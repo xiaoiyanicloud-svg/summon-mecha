@@ -63,12 +63,14 @@ try {
     $tables = ['scene_revisions', 'scene_requests', 'scene_request_revisions', 'scene_request_contacts', 'scene_activities',
         'scene_attachments', 'scene_guest_capabilities', 'scene_evidence', 'scene_assessments', 'scene_price_codes', 'scene_price_items',
         'scene_quotes', 'scene_quote_items', 'scene_quote_acceptances', 'scene_quote_decisions', 'scene_resources', 'scene_reservations',
-        'scene_projects', 'scene_order_links', 'scene_project_tasks', 'scene_acceptance_records', 'scene_project_changes',
+        'scene_projects', 'scene_order_links', 'scene_project_tasks', 'scene_acceptance_records', 'scene_offline_acceptances', 'scene_project_changes',
         'scene_service_tickets', 'scene_commercial_records', 'scene_operation_todos', 'business_outbox', 'business_event_receipts',
         'business_idempotency_keys', 'operation_log'];
     $missingTables = array_values(array_filter($tables, fn ($table) => ! $schema->hasTable($table)));
-    $requiredColumns = ['scenes' => ['active_revision_id', 'public_seq'], 'scene_quotes' => ['row_version', 'customer_visible', 'sent_at'],
-        'business_outbox'        => ['lease_token', 'lease_until', 'processed_at'], 'scene_resources' => ['binding_id', 'row_version']];
+    $requiredColumns = ['scenes'    => ['active_revision_id', 'public_seq'], 'scene_quotes' => ['row_version', 'customer_visible', 'sent_at'],
+        'business_outbox'           => ['lease_token', 'lease_until', 'processed_at'], 'scene_resources' => ['binding_id', 'row_version'],
+        'scene_acceptance_records'  => ['occurred_at', 'offline_acceptance_id'],
+        'scene_offline_acceptances' => ['row_version', 'project_version', 'content_hash', 'encrypted_attestation']];
     $missingColumns = [];
     foreach ($requiredColumns as $table => $columns) {
         foreach ($columns as $column) {
@@ -83,12 +85,13 @@ try {
     $ran = $schema->hasTable('migrations') ? $connection->table('migrations')->whereIn('migration', $expectedMigrations)->pluck('migration')->all() : [];
     $pendingMigrations = array_values(array_diff($expectedMigrations, $ran));
     $indexes = [];
-    foreach (['scene_quotes' => ['request_id', 'version'], 'scene_quote_decisions' => ['quote_id', 'kind'], 'scene_order_links' => ['quote_id']] as $table => $columns) {
+    foreach (['scene_quotes' => ['request_id', 'version'], 'scene_quote_decisions' => ['quote_id', 'kind'], 'scene_order_links' => ['quote_id'], 'scene_offline_acceptances' => ['project_id', 'project_version']] as $table => $columns) {
         $indexes[$table] = $schema->hasTable($table) && count(array_filter($schema->getIndexes($table), fn ($index) => $index['unique'] && $index['columns'] === $columns)) > 0;
     }
     $stage = 'routes';
     $routeNames = ['shop.api.scene-workflow.capabilities', 'shop.api.scene-requests.store', 'shop.api.scene-requests.compare',
-        'shop.api.scene-quotes.accept', 'shop.api.scene-quotes.reject', 'shop.api.scene-projects.action', 'admin.catalog.scene-workflow.quote-action'];
+        'shop.api.scene-quotes.accept', 'shop.api.scene-quotes.reject', 'shop.api.scene-projects.action', 'admin.catalog.scene-workflow.quote-action',
+        'admin.catalog.scene-workflow.offline-record', 'admin.catalog.scene-workflow.offline-review'];
     $routes = [];
     $collection = app('router')->getRoutes();
     foreach ($routeNames as $name) {

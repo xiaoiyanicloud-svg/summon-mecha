@@ -242,6 +242,10 @@ return [
     ], [
         'key' => 'catalog.scene-workflow.support', 'name' => '处理服务售后', 'route' => 'admin.catalog.scene-workflow.ticket', 'sort' => 14,
     ], [
+        'key' => 'catalog.scene-workflow.acceptance_record', 'name' => '代录客户线下验收凭证', 'route' => 'admin.catalog.scene-workflow.offline-record', 'sort' => 15,
+    ], [
+        'key' => 'catalog.scene-workflow.acceptance_review', 'name' => '独立复核线下验收凭证', 'route' => 'admin.catalog.scene-workflow.offline-review', 'sort' => 16,
+    ], [
         // 技能管理:技能包的版本 / 交付物 / 安装指引
         'key'   => 'catalog.skills',
         'name'  => '技能管理',

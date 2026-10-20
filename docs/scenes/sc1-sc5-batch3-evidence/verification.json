@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-10-20T23:39:37.6489534+08:00",
+  "base_commit": "78b062950f88590285fb95383444e61bbdcb914b",
+  "phase": "SC1-SC5 batch 3, partial implementation",
+  "checks": [
+    {
+      "scope": "SQLite memory + private temporary file + actual Blade content rendering, no application database",
+      "failed": 0,
+      "command": "D:\\java\\php\\php.exe -d extension=pdo_sqlite tools/tests/scene-workflow.php",
+      "exit_code": 0,
+      "passed": 61,
+      "evidence": "workflow.json"
+    },
+    {
+      "exit_code": 0,
+      "command": "D:\\java\\php\\php.exe tools/tests/scene-controller-runtime.php",
+      "evidence": "controller-runtime.json",
+      "failed": 0,
+      "passed": 15
+    },
+    {
+      "exit_code": 0,
+      "command": "node --test tools/tests/scene-request.test.mjs tools/tests/scene-catalog.test.mjs tools/tests/scene-preflight.test.mjs",
+      "failed": 0,
+      "passed": 26
+    },
+    {
+      "page_errors": 0,
+      "command": "node tools/tests/scene-workflow-ui.mjs",
+      "exit_code": 0,
+      "browser_checks": 14,
+      "sfc_compiled": 12,
+      "evidence": "ui-verification.json"
+    },
+    {
+      "exit_code": 0,
+      "php_path_invocations": 14,
+      "command": "PHP -l on explicitly enumerated changed PHP paths and 2 compiled Blade outputs",
+      "raw_blade_in_php_paths": 1,
+      "compiled_blade_files": 2
+    },
+    {
+      "exit_code": 0,
+      "command": "Pint --test on 10 explicitly enumerated production/QA PHP paths",
+      "files": 10
+    }
+  ],
+  "remote_database_accessed": false,
+  "remote_mutations_performed": false,
+  "mysql_migration_verified": false,
+  "mysql_concurrency_verified": false,
+  "full_admin_session_http_verified": false,
+  "hbuilderx_or_miniprogram_verified": false,
+  "physical_device_verified": false,
+  "automatic_order_conversion_available": false,
+  "source_sha256": {
+    "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_100005_add_scene_offline_acceptance.php": "78a0a22bf4a3456fb60f746a8f70bac68c0f9df317cdb1b3e3b99db36144ebc6",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAcceptanceService.php": "cb9f6393688de5ccc5ac7b61db374526785adc43e7ad4664cd7cc6a98b51e757",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php": "0cdda4d59d2eac39e97954b356e00d819a26d8d5bdd9b4f36f0677d9870262de",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneTime.php": "df2d68f81e23ec9e593f8859eed555eea55e2636e495ea4d92a0de8a29d0e3fc",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php": "9f480d5352b68a043d7d8f56f2b6371802365f7868932f468c9ec77d398f2333",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php": "44fcc3accc3d830d410c647e974816eeb6132bceadd23350b8c2d499b6f2d500",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/AuthorizeSceneWorkflow.php": "7140bcaa3e03e23693f7cdfcc70bf9c2ad499f14aceeaf6a6ef8b1cada12fac0",
+    "my-bagisto-store/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php": "c4c2f1d6e31d3fce70330471d1db389a619c2cd2bf0d1e5f94ab1588bc4fac65",
+    "my-bagisto-store/packages/Webkul/Admin/src/Config/acl.php": "5375e5791c07fd4b2c8c2d8ff207eee61827a1ffece9e6dc20d06955d9da173c",
+    "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php": "5c5be69b39d2e2bb696839d562ad39dc6bacf791f6e3910bd1feb009a4c2c2e9",
+    "my-bagisto-store/qa/scenes/preflight.php": "8cb73047a8582d266e5c9035a866ec63971a0b536e8f7455c67342e1f908834d",
+    "pages/scene/project.vue": "6560da3b4ab36683762d4d41207ef47fcfb26d7f3eecb5d2794872318c1ca3e7",
+    "tools/tests/scene-workflow.php": "b499021783d7c78a417ce98d5349a94438c614084b7e0e784e698ec0d25433b2",
+    "tools/tests/scene-acceptance-cases.php": "2e978073c7367f04d13cb388f2dd37fc9021d5c6b579d5e1fd8ef1aee433a840",
+    "tools/tests/scene-controller-runtime.php": "a8a78df97cc27c251af6dcc1806f7943e23845a6facf8288cb86dbfde4b959d4",
+    "tools/tests/scene-workflow-ui.mjs": "4a20fc1974f6599164351e02764cc2cf098c860f5de279a5ac97211abe837c62"
+  }
+}

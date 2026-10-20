@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\Shop\Services\Scenes\SceneAcceptanceService;
 use Webkul\Shop\Services\Scenes\SceneAssessmentService;
 use Webkul\Shop\Services\Scenes\SceneOperationsService;
 use Webkul\Shop\Services\Scenes\SceneProjectService;
@@ -45,13 +46,23 @@ class SceneWorkflowController extends Controller
         $prices = DB::table('scene_price_items')->whereNull('revoked_at')->where('valid_until', '>', now())->orderBy('code')->get();
         $resources = DB::table('scene_resources')->where('state', 'ready')->orderBy('id')->get();
         $projects = DB::table('scene_projects')->where('request_id', $id)->get();
+        $offlineConfirmations = collect();
+        if (bouncer()->hasPermission('catalog.scene-workflow.acceptance_record') || bouncer()->hasPermission('catalog.scene-workflow.acceptance_review')) {
+            $offlineConfirmations = DB::table('scene_offline_acceptances')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
+            foreach ($offlineConfirmations as $confirmation) {
+                $confirmation->attestation = SceneWorkflow::unpack(Crypt::decryptString($confirmation->encrypted_attestation));
+            }
+            if ($offlineConfirmations->isNotEmpty()) {
+                app(\Webkul\Shop\Services\Ops\OperationLogger::class)->logOrFail('admin', $this->actor(), 'scene.offline-acceptance.viewed', 'scene_request', $id, []);
+            }
+        }
         $tasks = DB::table('scene_project_tasks')->whereIn('project_id', $projects->pluck('id'))->orderBy('id')->get();
         $commercial = DB::table('scene_commercial_records')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
         $tickets = DB::table('scene_service_tickets')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
         $attachments = DB::table('scene_attachments')->where('request_id', $id)->where('state', 'clean')->get(['id', 'mime', 'size']);
         $admins = DB::table('admins')->where('status', 1)->get(['id', 'name']);
 
-        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets'));
+        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets', 'offlineConfirmations'));
     }
 
     public function contact(int $id)
@@ -152,6 +163,21 @@ class SceneWorkflowController extends Controller
     public function replay(Request $r, int $id, SceneOperationsService $s)
     {
         return $this->result($r, $s->replay($id, $this->actor()));
+    }
+
+    public function recordOfflineAcceptance(Request $r, int $id, SceneAcceptanceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->recordOffline($id, $r->integer('row_version'), (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $r->all(), $this->actor()));
+    }
+
+    public function reviewOfflineAcceptance(Request $r, int $id, int $confirmationId, SceneAcceptanceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'confirmation_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->reviewOffline($id, $confirmationId, $r->integer('row_version'), $r->integer('confirmation_version'),
+            (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $r->all(), $this->actor()));
     }
 
     public function commercial(Request $r, int $id, SceneProjectService $s)

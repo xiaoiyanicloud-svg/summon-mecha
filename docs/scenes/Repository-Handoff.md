@@ -9,6 +9,7 @@
 - 范围：SC0 真实性修复、SC1–SC5 首批代码、测试和实施文档；全部阶段的剩余项见[第 14 步](../skill-dev-step14.md)。这不是生产上线或全部阶段签收。
 - 后续第二批代码/验证和剩余项见[第 15 步](../skill-dev-step15.md)，包含共享订单事务修复、报价退回/拒绝/对比、客户可见性、原载荷回执恢复、事件范围隔离及只读预检。始终 fetch 本分支最新 HEAD，不只取首批提交。
 - 最新跨机复测和控制器继承签名修复见[第 16 步](../skill-dev-step16.md)。已取得生态分支合并提交 `2609992`，它只合入至首批 `546a6a0`；capabilities 已 200，但 schemas 404、未签发凭证 500 尚待运行环境核对。第二批必须包含后续 `rejectQuote` 修复及 15 项真实控制器装载/Router 检查。
+- 第三批开发见[第 17 步](../skill-dev-step17.md)：线下验收凭证代录/独立复核与客户来源展示、履约时间/阶段约束、返库风险影响及待办。新增 `2026_10_20_100005_add_scene_offline_acceptance.php`、acceptance_record/acceptance_review 两项 ACL；须在专用测试库完成增量迁移并以两个真实 Admin 角色联调。本批没有远端部署、迁移或新数据库身份验证。
 - 不包含 `.env`、本机备份、截图、打包 ZIP 或临时 Git index。`docs/scenes/handoff/` 是本机生成的补丁交接目录，不纳入本次提交。
 - `sc0-evidence`、`sc1-sc5-evidence` 中的 JSON/TAP 是生成时的验证快照。其中 `git_commit_created=false`、`pushed=false` 等字段记录验证发生时的状态，不代表仓库提交后的状态。
 

@@ -1,6 +1,6 @@
 # 场景流程 v1 技术契约与开放边界
 
-日期：2026-10-20。实现记录：[第 14 步](../skill-dev-step14.md)、[第 15 步](../skill-dev-step15.md)。该契约是本批代码的实际行为，不替代商业条款、真机能力或上线签收。
+日期：2026-10-20。实现记录：[第 14 步](../skill-dev-step14.md)、[第 15 步](../skill-dev-step15.md)、[第 17 步](../skill-dev-step17.md)。该契约是本批代码的实际行为，不替代商业条款、真机能力或上线签收。
 
 ## 1 当前服务范围
 
@@ -28,6 +28,7 @@
 | 资源预留 | 真实逐台/逐人记录；资源父行按 ID 升序锁；半开区间计入缓冲；expired held 在查询时立即不占用 |
 | 交付 | 从项目冻结的任务模板生成一次；依赖无环、检查及私有证据齐全；实际时间与录入时间分开 |
 | 验收 | 逐项追加初验、失败及复验；失败产生整改待办；无回复不自动通过；验收不表示返库或退款 |
+| 线下验收 | 必须客户代表依据、实际时间、逐项结论和可读的私有原件；代录 pending_review 未生效，另人专权复核才追加结果；方法明确为 customer_offline_recorded；旧凭证不能覆盖新项目版本或倒盖最新验收 |
 | 线下财务 | 原始凭证和独立复核分离；录入不置 paid；应退与实际退款分离，累计金额有上限 |
 | 变更/取消 | 当前只受理申请，`effective=false`；不默改日期、金额、资源或退款 |
 | 服务售后 | 项目所有者申请、授权客服实际处理；不替代技能售后或事故处置 |
@@ -52,6 +53,8 @@
 
 Admin 基础查看为 `catalog.scene-workflow`，另有 contact、requests、assess、quote、approve、revision_write、revision_review、publish、supply、reserve、deliver、finance、finance_review、support、operate。每个真实路由均挂动作鉴权；动态批准、版本编制/审核/发布分别判定权限。编制人不能自审。
 
+新增 acceptance_record/acceptance_review 两项专用权限，代录不能自行复核，即使同人同时拥有两项权限。后台 projects/{id}/offline-acceptances 和 /{confirmationId}/review 需 session/CSRF、项目/凭证版本和幂等键；approve/reject 均留理由。确认人和代表资格加密存储，后台读取留审计；客户只读来源/时间/状态，不取得确认人、内部意见或原件私有路径。代录及复核都会核验原件实际内容；项目发生新操作后旧凭证只能退回重录。
+
 附件仅 PDF/PNG/JPEG、最多 8 MB，检查真实 MIME/文件内容，保存到 `storage/app/private/scenes`，不用公开盘。扫描器未配置或扫描失败时拒绝上传，不能手工将未扫描资料设为 clean。客户和 Admin 下载均核对父需求；Admin 读取客资和附件留强审计。平台代录明确记为 admin，不冒充客户确认。
 
 尚未实现附件保全/到期物理清理工作流、客户跨端上传下载页面及真实扫描器集成验收；180 天是代码中的临时技术保留值，正式开放附件前需要确认保留政策。
@@ -59,6 +62,8 @@ Admin 基础查看为 `catalog.scene-workflow`，另有 contact、requests、ass
 ## 5 时间、开关和部署
 
 业务时间按 UTC 存入 datetime；现场区间要求 ISO 8601 秒级时间含 offset，且与服务地 IANA 时区匹配。不存在的夏令时时间拒绝；区间必须 ends > starts，最多 366 天。运维扫描不能把 confirmed 当 expired 释放。
+
+交付任务/返库/线下确认的实际时间也严格要求含 offset，不接受服务器本地无时区时间；前置任务之后才能记录后续发生时间，验收/返库不得早于已有交付事实。旧实际时间不猜测回填，客户当前在线复验保持可用。并行任务不使项目阶段倒退。损坏争议或晚归暂停本项目实物资源供给并为其他有效占用建影响待办，人员资源不因实物返库争议停用；保留已签资源和原先停用原因，不自动退款/关闭。
 
 按环境开放 `SCENE_PUBLICATION_V2`、`SCENE_REQUESTS_ENABLED`、`SCENE_QUOTES_ENABLED`、`SCENE_RESERVATIONS_ENABLED`、`SCENE_PROJECT_ACTIONS_ENABLED`、`SCENE_OPERATIONS_ENABLED`。报价另需明确配置 `scenes.terms` 和 `commercial_policy.required_price_codes`，缺失即拒绝，不默认免费或补商业责任条款。
 

@@ -38,6 +38,7 @@ $app->instance(Illuminate\Contracts\Routing\ResponseFactory::class, $factory);
 // 阻断任何潜在数据库访问；本测试不依赖本机是否装有 MySQL。
 $app->bind('db', function () { throw new RuntimeException('DATABASE_ACCESS_FORBIDDEN_IN_CONTROLLER_SMOKE'); });
 $router->prefix('api')->group($base.'/packages/Webkul/Shop/src/Routes/scene-workflow.php');
+$router->prefix('admin/catalog')->group($base.'/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php');
 $tests = [];
 function runtimeCase(string $name, callable $fn): void
 {

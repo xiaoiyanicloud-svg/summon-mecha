@@ -15,7 +15,7 @@ class SceneOperationsService
         'scene_price'          => ['scene.price.created', 'scene.price.revoked'],
         'scene_evidence'       => ['scene.evidence.recorded', 'scene.evidence.revoked'],
         'scene_resource'       => ['scene.resource.verified', 'scene.resource.paused'],
-        'scene_project'        => ['scene.project.tasks.initialized', 'scene.project.task.completed', 'scene.project.acceptance.recorded', 'scene.project.change.requested', 'scene.project.cancel.requested', 'scene.project.after_sale.requested', 'scene.commercial.recorded', 'scene.commercial.reviewed', 'scene.project.returned'],
+        'scene_project'        => ['scene.project.tasks.initialized', 'scene.project.task.completed', 'scene.project.acceptance.recorded', 'scene.project.offline-acceptance.recorded', 'scene.project.offline-acceptance.reviewed', 'scene.project.change.requested', 'scene.project.cancel.requested', 'scene.project.after_sale.requested', 'scene.commercial.recorded', 'scene.commercial.reviewed', 'scene.project.returned'],
         'scene_service_ticket' => ['scene.service-ticket.resolved'],
     ];
 
@@ -68,6 +68,12 @@ class SceneOperationsService
                             $this->quoteTodo($quote);
                         }
                     }
+                    if ($row->aggregate_type === 'scene_project' && isset($payload['confirmation_id'])) {
+                        if (! is_int($payload['confirmation_id'])) {
+                            throw new SceneWorkflowException('OUTBOX_SCHEMA_UNSUPPORTED', '线下确认引用类型无效。');
+                        }
+                        $this->offlineTodo($payload['confirmation_id'], (int) $row->aggregate_id);
+                    }
                     DB::table('business_event_receipts')->insert($receipt + ['created_at' => now('UTC')]);
                 }
                 DB::table('business_outbox')->where('id', $row->id)->where('lease_token', $lease['token'])->update(['processed_at' => now('UTC'), 'lease_until' => null, 'lease_token' => null, 'last_error_code' => null, 'updated_at' => now('UTC')]);
@@ -110,6 +116,11 @@ class SceneOperationsService
         DB::table('scene_quotes')->whereIn('state', ['returned', 'rejected'])->orderBy('id')->chunkById(100, function ($quotes) {
             foreach ($quotes as $quote) {
                 $this->quoteTodo($quote);
+            }
+        });
+        DB::table('scene_offline_acceptances')->where('state', 'pending_review')->orderBy('id')->chunkById(100, function ($records) {
+            foreach ($records as $record) {
+                $this->offlineTodo((int) $record->id);
             }
         });
 
@@ -173,6 +184,27 @@ class SceneOperationsService
                 ->update(['state' => 'resolved', 'resolution_code' => 'new_quote_or_request_changed', 'updated_at' => now('UTC')]);
         } else {
             $this->todo($key, (int) $quote->request_id, 'quote_revision_requested');
+        }
+    }
+
+    private function offlineTodo(int $id, ?int $projectId = null): void
+    {
+        $record = DB::table('scene_offline_acceptances')->where('id', $id)->first();
+        if (! $record) {
+            return;
+        }
+        if ($projectId !== null && (int) $record->project_id !== $projectId) {
+            throw new SceneWorkflowException('OUTBOX_SCHEMA_UNSUPPORTED', '线下确认引用不属于事件项目。');
+        }
+        $key = 'offline-acceptance:'.$id;
+        if ($record->state === 'pending_review') {
+            $project = SceneWorkflow::requireRow('scene_projects', (int) $record->project_id, false);
+            $this->todo($key, (int) $project->request_id, 'offline_acceptance_review');
+        } else {
+            // 读取当前凭证事实；旧 recorded 事件重放不能恢复已复核的待办。
+            DB::table('scene_operation_todos')->where('dedupe_key', $key)->where('state', 'open')->update([
+                'state' => 'resolved', 'resolution_code' => 'offline_confirmation_'.$record->state, 'updated_at' => now('UTC'),
+            ]);
         }
     }
 }

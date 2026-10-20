@@ -465,7 +465,7 @@ test('已有项目即使旧需求状态不一致，也不能直接补充或关�
 test('交付任务不能跳过前置、漏检查或使用跨对象证据；保留实际时间与人工来源', function () use ($projectId, $attachmentId) {
     $s = app(SceneProjectService::class);
     $tasks = DB::table('scene_project_tasks')->where('project_id', $projectId)->orderBy('id')->get();
-    $valid = ['checks'=>['scope_confirmed', 'safety_checked', 'evidence_recorded'], 'evidence_ids'=>[$attachmentId], 'occurred_at'=>'2026-10-19 12:00:00'];
+    $valid = ['checks'=>['scope_confirmed', 'safety_checked', 'evidence_recorded'], 'evidence_ids'=>[$attachmentId], 'occurred_at'=>'2026-10-19T12:00:00+08:00'];
     error('SCENE_TASK_DEPENDENCY', fn () =>$s->completeTask($projectId, (int) $tasks->last()->id, 1, $valid, 1));
     error('SCENE_TASK_CHECKS_INCOMPLETE', fn () =>$s->completeTask($projectId, (int) $tasks->first()->id, 1, ['checks'=>['scope_confirmed']] + $valid, 1));
     error('SCENE_EVIDENCE_INVALID', fn () =>$s->completeTask($projectId, (int) $tasks->first()->id, 1, ['evidence_ids'=>[999]] + $valid, 1));
@@ -514,7 +514,7 @@ test('取消申请只产生待评估变更；服务售后有真实处理及客�
 test('返库必须有检查和有效证据；不会自动退款或关闭项目', function () use ($projectId, $attachmentId) {
     $s = app(SceneProjectService::class);
     $row = DB::table('scene_projects')->find($projectId);
-    $r = $s->returnResources($projectId, (int) $row->row_version, ['occurred_at'=>'2026-10-19 18:00:00', 'parts_checked'=>true, 'appearance_checked'=>true, 'damage_dispute'=>true, 'evidence_ids'=>[$attachmentId]], 1);
+    $r = $s->returnResources($projectId, (int) $row->row_version, ['occurred_at'=>'2026-10-19T18:00:00+08:00', 'parts_checked'=>true, 'appearance_checked'=>true, 'damage_dispute'=>true, 'evidence_ids'=>[$attachmentId]], 1);
     same('requires_financial_review', $r['refund_status']);
     $row = DB::table('scene_projects')->find($projectId);
     same(true, (bool) $row->returned);
@@ -697,6 +697,8 @@ test('仅查看不能直接批准；报价编制和批准分权；未知 Admin �
         same(403, $e->getStatusCode());
     }
 });
+require __DIR__.'/scene-acceptance-cases.php';
+
 $failed = count(array_filter($tests, fn ($t) =>! $t['pass']));
 echo json_encode(['environment'=>'isolated SQLite :memory:', 'tests'=>$tests, 'passed'=>count($tests) - $failed, 'failed'=>$failed, 'mysql_concurrency_verified'=>false], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT).PHP_EOL;
 exit($failed ? 1 : 0);

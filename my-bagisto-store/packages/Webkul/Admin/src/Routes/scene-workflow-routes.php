@@ -28,5 +28,7 @@ Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->mid
     Route::post('projects/{id}/commercial', 'commercial')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.commercial');
     Route::post('projects/{id}/commercial/{recordId}/review', 'reviewCommercial')->where(['id' => '[1-9][0-9]{0,14}', 'recordId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.commercial-review');
     Route::post('projects/{id}/return', 'returnResources')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.return');
+    Route::post('projects/{id}/offline-acceptances', 'recordOfflineAcceptance')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.offline-record');
+    Route::post('projects/{id}/offline-acceptances/{confirmationId}/review', 'reviewOfflineAcceptance')->where(['id' => '[1-9][0-9]{0,14}', 'confirmationId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.offline-review');
     Route::post('service-tickets/{id}/resolve', 'resolveTicket')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.ticket');
 });

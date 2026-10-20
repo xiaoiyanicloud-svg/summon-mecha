@@ -72,6 +72,22 @@ try{
   await page.evaluate(()=>window.mountScene('pages/scene/requests.vue'));await page.waitForFunction(()=>window.sceneVm.loading===false);await page.getByText('暂无已提交需求',{exact:true}).waitFor();checks.push('需求列表成功空态')
   await page.evaluate(()=>window.mountScene('pages/scene/project.vue',{id:'2'}));await page.waitForFunction(()=>window.sceneVm.loading===false)
   await page.getByText('按冻结脚本完成迎宾（必需）',{exact:false}).waitFor();await page.screenshot({path:path.join(out,'project-acceptance.png'),fullPage:true});checks.push('冻结验收标准和项目款项状态分离')
+  await page.evaluate(()=>{
+    window.sceneVm.project.acceptances=[{id:10,item_key:'greeting',attempt:1,result:'fail',method:'customer_offline_recorded',occurred_at:'2026-10-19 10:00:00',created_at:'2026-10-20 00:00:00',note:'初验未达到脚本要求'}]
+    window.sceneVm.project.offline_confirmations=[{id:20,state:'pending_review',occurred_at:'2026-10-19 10:00:00',created_at:'2026-10-20 00:00:00'}]
+  })
+  await page.getByText('客户线下确认 · 平台代录并经独立复核',{exact:true}).waitFor()
+  await page.getByText('线下确认凭证 #20 · 待独立复核，未生效',{exact:true}).waitFor()
+  await page.getByText('实际确认：2026-10-19 10:00:00 UTC',{exact:true}).waitFor()
+  await page.getByText('平台记录：2026-10-20 00:00:00 UTC',{exact:true}).waitFor()
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth))throw new Error('线下凭证说明在窄屏出现横向溢出')
+  await page.screenshot({path:path.join(out,'project-offline-confirmation.png'),fullPage:true})
+  checks.push('客户区分线下验收来源、实际确认/平台记录时间和待复核未生效；390px 无横向溢出')
+  await page.evaluate(()=>{window.sceneVm.project.acceptances[0].method='untrusted_source';window.sceneVm.project.acceptances[0].occurred_at=null;window.sceneVm.project.offline_confirmations[0].state='rejected';window.sceneVm.project.offline_confirmations[0].reviewed_at='2026-10-20 01:00:00'})
+  await page.getByText('历史验收记录（来源待核实）',{exact:true}).waitFor()
+  await page.getByText('实际确认：历史实际时间未记录',{exact:true}).waitFor()
+  await page.getByText('线下确认凭证 #20 · 已退回，未生效',{exact:true}).waitFor()
+  checks.push('未知历史来源与时间明确标记，退回凭证不显示验收通过')
   await page.evaluate(async()=>{
     window.projectData=(await window.sceneApiFixture.project()).data
     window.sceneApiFixture.project=async()=>({data:window.projectData})

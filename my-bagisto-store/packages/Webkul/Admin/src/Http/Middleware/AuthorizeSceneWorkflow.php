@@ -8,11 +8,12 @@ use Illuminate\Http\Request;
 class AuthorizeSceneWorkflow
 {
     public const ACTIONS = [
-        'index'      => 'view', 'show' => 'view', 'contact' => 'contact', 'requestAction' => 'requests',
-        'assess'     => 'assess', 'quote' => 'quote', 'quoteAction' => 'quote', 'publication' => 'publish',
-        'supply'     => 'supply', 'hold' => 'reserve', 'pause' => 'reserve', 'task' => 'deliver', 'replay' => 'operate',
-        'commercial' => 'finance', 'reviewCommercial' => 'finance_review', 'returnResources' => 'deliver', 'resolveTicket' => 'support',
-        'attachment' => 'view', 'upload' => 'requests',
+        'index'                   => 'view', 'show' => 'view', 'contact' => 'contact', 'requestAction' => 'requests',
+        'assess'                  => 'assess', 'quote' => 'quote', 'quoteAction' => 'quote', 'publication' => 'publish',
+        'supply'                  => 'supply', 'hold' => 'reserve', 'pause' => 'reserve', 'task' => 'deliver', 'replay' => 'operate',
+        'commercial'              => 'finance', 'reviewCommercial' => 'finance_review', 'returnResources' => 'deliver', 'resolveTicket' => 'support',
+        'attachment'              => 'view', 'upload' => 'requests',
+        'recordOfflineAcceptance' => 'acceptance_record', 'reviewOfflineAcceptance' => 'acceptance_review',
     ];
 
     public function handle(Request $request, Closure $next)

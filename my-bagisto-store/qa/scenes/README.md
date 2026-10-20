@@ -24,6 +24,8 @@ php qa/scenes/preflight.php --check-env-only
 
 本机只执行了环境拒绝和 `--check-env-only` 自动化验证；该机真实 MySQL 正向预检尚待执行。不要把本机 SQLite 夹具结果写成远端 MySQL 已通过。
 
-四份场景迁移应依次为 `2026_10_20_100001` 至 `100004`；迁移必须在双方审查过共享基础设施和独立测试库配置后，由该机执行。`100004` 只把旧状态明确为 sent/accepted/rejected 的报价标为客户可见，不猜测旧 voided 是否曾发送，也不捏造 `sent_at`。
+五份场景迁移应依次为 `2026_10_20_100001` 至 `100005`；迁移必须在双方审查过共享基础设施和独立测试库配置后，由该机执行。`100004` 只把旧状态明确为 sent/accepted/rejected 的报价标为客户可见，不猜测旧 voided 是否曾发送，也不捏造 `sent_at`。`100005_add_scene_offline_acceptance` 增加客户线下凭证/复核表及 nullable 验收实际时间/来源关联；不猜测回填旧实际时间，down 拒绝删除事实。新代录/复核 ACL 为 acceptance_record、acceptance_review，仍受项目写开关控制。
+
+第三批隔离验证和两角色线下确认联调要求见[第 17 步](../../../docs/skill-dev-step17.md)。`php -d extension=pdo_sqlite tools/tests/scene-workflow.php` 固定内存数据库、独立临时私有文件，并包含 Admin Blade 内容渲染、故障回滚和权限直调；它不加载业务 .env，不冒充真实 MySQL/完整 Bagisto Admin 会话。`php qa/scenes/preflight.php` 已包含第五份迁移和新表/列/unique/路由检查；仅 --check-env-only 通过仍不证明迁移已完成。
 
 请回传分支/HEAD、运行路径、预检 JSON、`GET /api/scene-workflow/capabilities` 响应（脱敏 Cookie/token）。然后再准备场景夹具与阶段开关，按[仓库交接](../../../docs/scenes/Repository-Handoff.md)继续联调。订单转换仍未实现，不能通过开关开放。
