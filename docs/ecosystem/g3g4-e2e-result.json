@@ -1,0 +1,363 @@
+{
+  "q": "G2/G3/G4 browser e2e",
+  "generated_at": "2026-10-20T02:56:34.809Z",
+  "database": "summon_mecha_step10_test",
+  "checks": [
+    {
+      "name": "fixture_prepared",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "event": 12692,
+        "track": 1532,
+        "content": "g1-10-content-73af5903"
+      }
+    },
+    {
+      "name": "servers_ready",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "app": 200,
+        "kill": 200,
+        "h5": 200
+      }
+    },
+    {
+      "name": "g2_form_error_branch",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g2_register_confirmed",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "public_no": "EV80B5A6BAE7A3AC17",
+        "confirmed": true
+      }
+    },
+    {
+      "name": "g2_t47_cross_device_same_registration",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "public_no": "EV80B5A6BAE7A3AC17"
+      }
+    },
+    {
+      "name": "g2_t31_account_switch_isolated",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "leaks_public_no": false,
+        "empty_state": true,
+        "body": "‹\n我的报名\n🎟️\n还没有报名记录\n到赛事活动页查看可报名的活动。"
+      }
+    },
+    {
+      "name": "g3_submission_draft_saved",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g3_submission_submitted",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "body": "‹\n作品提交\n当前状态\n已提交\n截止 2026-10-25 10:56\n新建作品版本\n代码仓库链接（https://，可选）\n演示视频链接（https://，可选）\n保存草稿\n提交当前草稿\n提交后版本冻结；需要修改请保存新的补正版本。\n提交作品\n版本记录\nv1 · E2E 机甲作品\n已提交 · 2026-10-20 10:57\n\n作品已提交"
+      }
+    },
+    {
+      "name": "g3_showcase_draft_created",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "action": "create-showcase",
+        "showcase_id": 108,
+        "version_id": 281,
+        "status": "draft",
+        "row_version": 0
+      }
+    },
+    {
+      "name": "g3_showcase_consent",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g3_showcase_published",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "action": "publish-showcase",
+        "showcase_id": 108,
+        "status": "published",
+        "row_version": 3
+      }
+    },
+    {
+      "name": "g3_public_results_visible",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "team": "QA-E2E-E00FC178 A队"
+      }
+    },
+    {
+      "name": "g3_public_showcase_visible",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g3_appeal_submitted",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "appeal_no": "AP089944E4E62CB82B"
+      }
+    },
+    {
+      "name": "g4_h5_search_filter",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "filtered_out_main": true
+      }
+    },
+    {
+      "name": "g4_relations_all_groups",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "groups_ok": true
+      }
+    },
+    {
+      "name": "g4_relations_retracted_target_omitted",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g4_favorite_auth_probe",
+      "passed": true,
+      "status": "observed",
+      "detail": {
+        "token_present": true,
+        "status": 200,
+        "body": "{\"data\":[],\"meta\":{\"mode\":\"cursor\",\"per_page\":20,\"has_more\":false,\"next_cursor\":null,\"total\":null,\"stale_count\":0,\"enabled\":true}}"
+      }
+    },
+    {
+      "name": "g4_favorite_click_target",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "selector": ".nav-fav"
+      }
+    },
+    {
+      "name": "g4_favorite_persisted_after_reload",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g4_my_favorites_event",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g4_content_favorite_click_target",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "selector": ".nav-fav"
+      }
+    },
+    {
+      "name": "g4_my_favorites_content_tab",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g4_t31_favorites_cross_account_isolated",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "empty_state": true
+      }
+    },
+    {
+      "name": "g4_375_detail_no_overflow",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "innerWidth": 375,
+        "scrollWidth": 375,
+        "innerHeight": 667,
+        "scrollHeight": 1388,
+        "overflowX": false
+      }
+    },
+    {
+      "name": "g3_375_results_no_overflow",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "innerWidth": 375,
+        "scrollWidth": 375,
+        "innerHeight": 667,
+        "scrollHeight": 667,
+        "overflowX": false
+      }
+    },
+    {
+      "name": "g4_ssr_list_public_only",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "g4_ssr_event_detail_metadata",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "g4_ssr_content_detail_metadata",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "g4_sitemap_public_only",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "g4_ssr_retracted_410_neutral",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 410
+      }
+    },
+    {
+      "name": "g4_event_retracted",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "action": "retract-event",
+        "event_id": 12692,
+        "disposition": "retracted",
+        "row_version": 2
+      }
+    },
+    {
+      "name": "g4_ssr_retracted_410_after_action",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 410
+      }
+    },
+    {
+      "name": "g4_api_retracted_not_leaking",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 410
+      }
+    },
+    {
+      "name": "g4_sitemap_retracted_excluded",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g4_favorite_stale_hidden",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "stale_note": true
+      }
+    },
+    {
+      "name": "g4_h5_list_retracted_gone",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "g4_kill_switch_503",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "api": 503,
+        "ssr": 503,
+        "sitemap": 503
+      }
+    },
+    {
+      "name": "fixture_cleanup",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "result": {
+          "deleted": true,
+          "marker": "QA-E2E-E00FC178",
+          "events": 4,
+          "tracks": 1,
+          "teams": 2,
+          "entries": 2,
+          "contents": 2,
+          "customers": 5,
+          "admins": 2
+        },
+        "status": 0,
+        "stdout": "{\"deleted\":true,\"marker\":\"QA-E2E-E00FC178\",\"events\":4,\"tracks\":1,\"teams\":2,\"entries\":2,\"contents\":2,\"customers\":5,\"admins\":2}\r\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "screenshot_dir": "D:/main/docs/ecosystem/e2e-screenshots",
+  "ok": true,
+  "browser_errors": {
+    "pageReg": [],
+    "pageRegB": [],
+    "pageCaptain": [],
+    "console_errors": []
+  },
+  "server_logs": [
+    {
+      "out": "[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 1秒\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 10:57:48 /api/customer/favorites \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 510.64ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 10:57:48 /api/customer/favorites \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 507.33ms\u001b[39m\r\n",
+      "err": ""
+    },
+    {
+      "out": "[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 511.22ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 10:57:50 /events \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 504.61ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 10:57:51 /sitemap.xml \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 1秒\u001b[39m\r\n",
+      "err": ""
+    },
+    {
+      "out": "",
+      "err": "d\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:50506 [200]: GET /assets/uni.2d7fd40d.css\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:51283 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:50506 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:63854 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:51283 [200]: GET /assets/index-cM8vzTIY.css\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:63854 [200]: GET /assets/index-qasBeNC-.js\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:51283 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:63854 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:62863 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:62863 [200]: GET /assets/pages-ecosystem-my-favorites.D-MhSA2-.js\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:62863 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:59163 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:59163 [200]: GET /assets/StateView.CQHYwpQi.js\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:59163 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:57312 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:63160 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:57312 [200]: GET /assets/StateView-B8dnDgqq.css\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:54715 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:57312 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:58193 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:63160 [200]: GET /assets/config.DrCcEAYU.js\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:54715 [200]: GET /assets/api.N6JqQwOS.js\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:58193 [200]: GET /assets/ecosystem-public.DvSVqtkA.js\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:63160 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:54715 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:58193 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:61845 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:61845 [200]: GET /assets/my-favorites-RcdCltn2.css\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:61845 Closing\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:57546 Accepted\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:57546 [200]: GET /favicon.ico\n[Tue Oct 20 10:57:48 2026] 127.0.0.1:57546 Closing\n"
+    }
+  ]
+}

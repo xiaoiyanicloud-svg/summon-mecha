@@ -319,7 +319,8 @@ export const favoriteApi = {
     data: { type, per_page: perPage, ...(cursor ? { cursor } : {}) },
     loading: false,
   }),
-  add: (type, key) => http.post('/api/customer/favorites', { type, key }, {
+  // 后端 key 校验为字符串（活动 ID 是数字，必须显式转换，否则 H5 收藏会 422）。
+  add: (type, key) => http.post('/api/customer/favorites', { type, key: String(key) }, {
     loading: true,
     loadingText: '收藏中...',
   }),

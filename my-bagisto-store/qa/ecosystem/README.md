@@ -16,6 +16,18 @@
 | Q-03 | `qa/ecosystem/q03/run.php` | afterCommit/回滚、真实 outbox worker、重复投递、崩溃租约、25 条积压、failed 补偿 vs dead 终态 |
 | Q-04 | `qa/ecosystem/q04/run.mjs` | 真实 Chrome（CDP）：客户 / 队长 / 裁判 / 超管；375/390px、键盘 Tab、错误分支、403 |
 | Q-05 | `qa/ecosystem/q05/run.php` | 只读数据 preflight、计数对账、留存 dry-run、expand/backfill/switch/recovery |
+| G2/G3/G4 e2e | `qa/ecosystem/e2e/run.mjs` | 真实 Chrome：T31 切号 / T47 跨设备、作品提交→展示→成绩→申诉、搜索/收藏/关联/SSR/sitemap/撤稿/停读/375px |
+| G3 Admin 赛务 | `qa/ecosystem/admin-g3/run.mjs` | 真实 Chrome：录分员保存草稿→提交复核→写名次；发布员暂定发布→终审；两账号独立 profile、分权校验 |
+
+## 一键门禁
+
+仓库根目录：
+
+```bash
+bash tools/ecosystem-gate.sh                    # 契约 + preflight + 后端/Admin 测试 + 前端 Node
+bash tools/ecosystem-gate.sh --with-admin-browser  # 额外跑 G3 Admin 录分/发布演练（只需 Chrome）
+bash tools/ecosystem-gate.sh --with-browser     # 额外跑 G3 Admin 演练 + G2/G3/G4 浏览器 e2e（e2e 需先导出 H5）
+```
 
 ## 运行
 
@@ -33,6 +45,15 @@ DB_DATABASE=summon_mecha_step10_test APP_ENV=testing php qa/ecosystem/q05/run.ph
 # Q-04（Windows：需要 Chrome 与已导出的 H5）
 # 先导出 H5：D:/HBuilderX/cli.exe publish web --project D:/main
 node qa/ecosystem/q04/run.mjs --json=D:/main/docs/ecosystem/q04-result.json
+
+# G2/G3/G4 浏览器 e2e（同样需要已导出的 H5）
+node qa/ecosystem/e2e/run.mjs --json=D:/main/docs/ecosystem/g3g4-e2e-result.json
+
+# G3 Admin 录分/发布演练（只需 Chrome；脚本自行启动测试库服务与夹具）
+node qa/ecosystem/admin-g3/run.mjs --json=D:/main/docs/ecosystem/admin-g3-result.json
+
+# 演练中断后的孤儿清理（只清引用对象已消失的夹具；仅独立测试库）
+php qa/ecosystem/e2e/purge-leftovers.php
 ```
 
 Q-04 会自动：
@@ -50,6 +71,18 @@ Q-04 会自动：
 - `q03-result.json`：10 项检查（afterCommit / worker / 去重 / 租约 / 积压 / 补偿）
 - `q04-result.json`：18 项检查（含 9 张截图索引）
 - `q05-result.json`：9 项检查（preflight / 对账 / 留存 / 迁移恢复）
+- `g3g4-e2e-result.json`：39 项检查（G2 T31/T47、G3 客户侧全链路、G4 搜索/收藏/SSR/撤稿/停读/375px）
+- `admin-g3-result.json`：12 项检查（夹具/服务、录分草稿、提交复核、名次、暂定发布、终审、清场）
+
+## CI
+
+`.github/workflows/ecosystem-gate.yml` 用 GitHub 托管 runner 复跑本地门禁的
+非浏览器部分：契约门禁、只读 preflight、Shop Ecosystem / Admin PHPUnit、前端 Node。
+浏览器演练（e2e 与 Admin 录分/发布）依赖 HBuilderX 导出与 Windows Chrome/路径，
+仍以本地 `tools/ecosystem-gate.sh --with-admin-browser|--with-browser` 为准。
+
+> workflow 随 2026-10-20 收尾批次加入，**尚未在 GitHub 上实际运行**；
+> 首次 push 后以运行结果为准，不能把“文件存在”当成 CI 已通过。
 
 ## 纪律
 

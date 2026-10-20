@@ -73,6 +73,14 @@ Admin G4 专项（G4MetricsOpsAdminTest）：6 passed / 57 assertions
 |---|---|
 | `ecosystem-g4.test.mjs` | SEO canonical/OG/JSON-LD、noindex、DOM 写入与 `</script>` 转义、游标分页解析、favorited/related 白名单 |
 
+### 3.1 浏览器 e2e（2026-10-20 收尾）
+
+`qa/ecosystem/e2e/run.mjs` 在独立测试库上跑真实 Chrome，覆盖搜索、收藏、关联、
+SSR/canonical/OG/JSON-LD、sitemap、撤稿 410、停读 503 与 375px：**39/39 通过**。
+首次演练抓到并修复了 H5 收藏的 `key` 类型缺陷（前端发 number、后端要求 string → 422），
+修复后收藏链路 7/7 通过。详见
+[G3-G4-browser-e2e-evidence.md](./G3-G4-browser-e2e-evidence.md)。
+
 ## 4. root 迁移与数据
 
 ```text
@@ -141,7 +149,7 @@ DB_DATABASE=summon_mecha_step10_test APP_ENV=testing \
 | 项 | 状态 | 谁来做 |
 |---|---|---|
 | 生产并发压测 | **未做**；只有单进程基准 | QA/运维按 Q-02/Q-03 |
-| 真实浏览器 H5/SSR 端到端 | **未做**；有 HTTP/HTML 断言与 Node 测试 | QA |
+| 真实浏览器 H5/SSR 端到端 | **已完成（2026-10-20，本机）**；Chrome headless + 独立测试库，39/39 项，见 [G3-G4-browser-e2e-evidence.md](./G3-G4-browser-e2e-evidence.md) | 生产/真机仍需复跑 |
 | CDN/反代缓存与撤稿 purge | **未做**；本批明确不启用页面缓存 | 运维/CDN |
 | 搜索引擎收录/站长平台 | **未做**；sitemap 默认关闭 | 运营 |
 | 小程序真机分享/canonical | **未做**；H5 DOM 写入只在 H5 条件编译 | 真机验证 |

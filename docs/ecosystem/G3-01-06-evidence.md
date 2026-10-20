@@ -150,6 +150,9 @@ php artisan migrate:rollback --step=5
   现有为服务层 + HTTP 功能测试。上线前需按 Q-02/Q-03 补真实锁等待证据。
 - 未做真实浏览器全链路（建队→报名→审核→作品→赛程→公开）截图；
   Admin 页面仅通过 HTTP 200/权限测试，未做视觉与窄屏回归。
+  **2026-10-20 补测**：客户侧作品提交/展示/成绩/申诉已由
+  [G3-G4-browser-e2e-evidence.md](./G3-G4-browser-e2e-evidence.md) 覆盖；
+  Admin 录分/发布 UI 也已用真实浏览器补测（12/12，见同文 §2、[admin-g3-result.json](./admin-g3-result.json)）。
 - 小程序真机附件选择/下载、Safari/微信内置浏览器下载未验证。
 - 前端机器人声明表单目前固定 `model` / `asset_no` 两个字段；若首场规则使用其它
   字段名，需要按 `rules_profile.eligibility.robot_declaration_fields` 扩展 UI

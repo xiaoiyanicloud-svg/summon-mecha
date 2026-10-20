@@ -57,7 +57,7 @@ registration.reason       -> canceled
 | 项 | 原因 |
 |---|---|
 | 生产并发压测 | 只有单进程 CLI 基准；按 Q-02/Q-03 在约定环境补 |
-| 真实浏览器 H5/SSR 全链路 | 本批为 HTTP/HTML 断言 + Node 测试；未做截图级 E2E |
+| 真实浏览器 H5/SSR 全链路 | **2026-10-20 已补**：Chrome headless + 独立测试库，39/39，见 [G3-G4-browser-e2e-evidence.md](./G3-G4-browser-e2e-evidence.md)；生产/真机仍需复跑 |
 | CDN/反代缓存与撤稿 purge | 本批不启用页面缓存 |
 | 搜索引擎实际收录 | sitemap 默认关闭，未提交 |
 | 小程序真机分享 / 二维码 | 无目标环境 |
@@ -68,5 +68,6 @@ registration.reason       -> canceled
 ## 5. 结论
 
 G4 的分发与运营链路在独立库通过功能、权限、隐私、撤稿与恢复演练。
-**未做生产并发、浏览器全链路、CDN purge 与搜索引擎收录**，不得据此宣称生产已验收；
+浏览器 H5/SSR 全链路已于 2026-10-20 本机补测（39/39）；
+**未做生产并发、CDN purge 与搜索引擎收录**，不得据此宣称生产已验收；
 上线顺序与回退见 [G4-runbook.md](./G4-runbook.md)。

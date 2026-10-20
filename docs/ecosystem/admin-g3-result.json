@@ -1,0 +1,114 @@
+{
+  "q": "G3 Admin scoring/publishing browser drill",
+  "generated_at": "2026-10-20T09:37:47.457Z",
+  "database": "summon_mecha_step10_test",
+  "checks": [
+    {
+      "name": "fixture_prepared",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "event": 13941,
+        "track": 1725
+      }
+    },
+    {
+      "name": "server_ready",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "recorder_can_open_results",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "recorder_draft_a_saved",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "recorder_draft_b_saved",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "recorder_submitted_reviews",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "remaining_submit_buttons": 0,
+        "body": "成绩已提交复核，之后不可直接修改。\n\nClose\nG\n\n仪表板\n\n销售\n\n目录\n\n生态发布\n\n生态媒体\n人工赛务\n运营工作台\n运营指标\n\n客户\n\n内容管理系统\n\n营销\n\n报告\n\n设置\n\n配置\n\n成绩 · 机甲对战\n\n旧活动名称 / 2026 届 · robowar · 规则 v2527 · 赛项 v0\n\n赛程\n返回赛务\n成绩已提交复核，之后不可直接修改。\n\n计分规则\n\n策略 total_desc · 精度 2 位 · 同分 shared · 缺赛 exclude · 弃权 disqualify\n\n速度分(speed · higher)伤害分(damage · higher)\n\n分数只接受十进制字符串（如 \"12.50\"），不接受浮点/表达式；名次未确定不能发布。\n\n已确认参赛条目（2）\n\nEN7B49717BFEEB · QA-ADMIN-29CAABFD A队\nEN684B43AB9155 · QA-ADMIN-29CAABFD B队\n正常\n整行缺赛\n整行弃权\n整行取消资格\n保存草稿\n\n成绩记录（2）\n\n暂定发布\n终审公布\n条目\t队伍\t范围\t状态\t当前版本\t公布版本\t操作\nEN7B49717BFEEB\tQA-ADMIN-29CAABFD A队\ttrack\tsubmitted\tv1 · submitted · 总分 10000 · 名次 待定 · 弃权 none\t-\t\nEN684B"
+      }
+    },
+    {
+      "name": "recorder_ranking_form_filled",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "recorder_ranking_saved",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "reviewer_can_open_results",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "reviewer_published_provisional",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "reviewer_finalized",
+      "passed": true,
+      "status": "pass",
+      "detail": {}
+    },
+    {
+      "name": "fixture_cleanup",
+      "passed": true,
+      "status": "pass",
+      "detail": {
+        "result": {
+          "deleted": true,
+          "marker": "QA-ADMIN-29CAABFD",
+          "events": 1,
+          "tracks": 1,
+          "teams": 2,
+          "entries": 2,
+          "contents": 0,
+          "customers": 5,
+          "admins": 2
+        },
+        "stderr": ""
+      }
+    }
+  ],
+  "screenshot_dir": "D:/main/docs/ecosystem/admin-g3-screenshots",
+  "ok": true,
+  "browser_errors": {
+    "recorder": [],
+    "reviewer": []
+  },
+  "server_logs": [
+    {
+      "out": "9m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 3.73ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 17:38:17 /themes/admin/default/build/assets/bagisto-admin-BzOkv6lg.woff?jwnnow \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.06ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 17:38:17 /admin/get-notifications \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.07ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 17:38:18 /api/events/13941/competition/results \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 506.42ms\u001b[39m\r\n",
+      "err": ""
+    }
+  ]
+}

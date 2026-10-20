@@ -1,8 +1,38 @@
 # 赛事活动与动态资讯工程任务及验收矩阵
 
-日期：2026-10-18。状态：实施前方案，以下工作包和测试均未作为本轮新增功能执行。依赖[产品技术方案](Ecosystem-Events-Content-Plan.md)。
+日期：2026-10-18（2026-10-20 收尾更新）。状态：G0、G1、G2、G3、G4 与 Q-01~Q-05 的代码、
+独立测试库验证、root additive 迁移和证据均已完成；所有新增生产开关保持关闭。
+本机可执行的收尾项（G2/G3/G4 浏览器 e2e、G3 Admin 录分/发布演练、本地门禁）已于
+2026-10-20 完成；剩余项均为生产环境、业务签署或真机依赖，见文末“剩余外部依赖”。
+依赖[产品技术方案](Ecosystem-Events-Content-Plan.md)。
 
 本清单按可复核的交付拆解。每个包进入开发前补齐实现人、复核人、代码变更、数据影响和验收人；结束时附测试命令/结果、浏览器或进程证据、回滚步骤及未覆盖项。页面、接口、后台、数据和运营必须共同签收，不能只交一个按钮或CRUD列表。
+
+## 0 收尾状态（2026-10-20）
+
+| 批次 | 工作包 | 本机状态 | 证据 |
+|---|---|---|---|
+| G0 | 7/7 | 代码、权限/去伪、回归完成 | 见 §2 与 `Execution-Roadmap.md` 批次 B |
+| G1 | 11/11 | 可信发布、媒体/富文本、公开 API、前端完成 | `G1-*-evidence.md`、`G1-production-cutover-evidence.md` |
+| G2 | 15/15 | 报名主体/幂等/审核/取消/通知/导出完成；**写闸关闭** | `G2-*-evidence.md`、`G3-G4-browser-e2e-evidence.md` |
+| G3 | 12/12 | 人工赛务全链路完成；**赛务写闸关闭**；客户侧与 Admin 录分/发布浏览器全链路已补测 | `G3-*-evidence.md`、`G3-G4-browser-e2e-evidence.md`、`admin-g3-result.json` |
+| G4 | 9/9 | 搜索/收藏/关联/SSR/sitemap/指标/运营台完成；**新开关全部 false** | `G4-evidence.md`、`G3-G4-browser-e2e-evidence.md` |
+| Q | 5/5 | 契约门禁、并发、worker、浏览器、迁移演练完成 | `Q-01-05-quality-evidence.md` |
+
+**2026-10-20 收尾新增**：
+
+- G2 T31 切号隔离、T47 跨设备一致：真实浏览器通过。
+- G3 客户侧全链路（作品提交→展示授权→公开成绩→申诉）：真实浏览器通过。
+- G3 Admin 录分/发布（录分草稿→提交复核→写名次→暂定发布→终审）：真实浏览器 12/12 通过。
+- G4 搜索/收藏/关联/SSR/sitemap/撤稿/停读/375px：真实浏览器 39/39 通过。
+- 修复 H5 收藏请求 `key` 类型缺陷（number → string），修复前收藏按钮实际返回 422。
+- 新增本地一键门禁 `tools/ecosystem-gate.sh`（契约 + preflight + 后端/Admin + Node，可选浏览器）。
+- 结果：[G3-G4-browser-e2e-evidence.md](./G3-G4-browser-e2e-evidence.md)、
+  [g3g4-e2e-result.json](./g3g4-e2e-result.json)、[admin-g3-result.json](./admin-g3-result.json)。
+
+**剩余外部依赖（本机不可关闭）**：首场赛规签署；B-05/B-06 等业务政策；生产规模并发；
+搜索引擎收录；CDN/反代撤稿 purge；小程序真机与微信/Safari；外部通知渠道；
+生产密钥托管；生产 `schedule:work`/cron 与迁移值守。任何一项都不能用本机证据冒充完成。
 
 ## 1 冻结顺序与职责
 
@@ -106,13 +136,20 @@
 [qa/ecosystem/README.md](../../my-bagisto-store/qa/ecosystem/README.md)。
 Q-01 增加 `ecosystem:contract-check` 构建门禁；Q-05 增加只读 `ecosystem:data-preflight`。
 Q-03 修正了 outbox `failed` / `dead` 语义（可重试耗尽 → failed 可人工重排；
-不可重试 → dead 终态）。生产规模并发、CI 接入、小程序真机与生产迁移仍未完成。
+不可重试 → dead 终态）。生产规模并发、CI 首次运行、小程序真机与生产迁移仍未完成。
+**2026-10-20 收尾追加**：G2/G3/G4 浏览器 e2e 39/39 通过（T31/T47、G3 客户侧全链路、
+G4 搜索/收藏/关联/SSR/sitemap/撤稿/停读）；G3 Admin 录分/发布演练 12/12 通过；
+新增 `tools/ecosystem-gate.sh` 本地门禁（`--with-admin-browser` / `--with-browser`）；
+修复 H5 收藏 `key` 类型缺陷。CI workflow 已提供（`.github/workflows/ecosystem-gate.yml`），
+但尚未在 GitHub 上运行；本地门禁不等于 CI 已通过。
 
 以上共59个工作包，其中G0为7、G1为11、G2为15、G3为12、G4为9、横向为5；数量不代表完成。粗估工期前先评审规则、UI和数据规模；不得按页面数量估算完整赛务。
 
 ## 8 具体代码落点
 
-现有路径以`D:/CodexDeploy/summon-mecha`为根；下面“拟”路径尚未创建，不是已实现的类。
+现有路径以 `D:/main` 为根：前端在 `D:/main`，后端在 `D:/main/my-bagisto-store`
+（历史文档曾写 `D:/CodexDeploy/summon-mecha`）。下表“拟”路径已在 G1–G4 落地为
+`pages/ecosystem/*`、`Services/Ecosystem/*` 等，**以代码为准**，不再逐项标“拟”。
 
 | 范围 | 实际或拟定落点 |
 |---|---|

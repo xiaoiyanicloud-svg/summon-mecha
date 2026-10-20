@@ -81,7 +81,7 @@
 - **现状口径（对外表述必须与代码一致）**:当前**唯一真能跑通的交付通道是「下载 + 人工安装」(`manual`)**;Agent 通道**平台侧已就绪**(签名限时下载 + 包指纹,见 `Services/Deploy/`),但**设备端 Agent 未接真机(E7)**。对外**不要**说"一键下发已打通""覆盖所有机型""跨品牌开箱即用"。
 - **中立清单格式**:文档写的是 `manifest.yaml`,但 `symfony/yaml` **未安装**,实际**只有 `manifest.json` 可用**(`ManifestParser` 对 `.yaml` 会回落报错)。改格式前先看这条。
 - **进度**以 [docs/skill-dev-steps.md](docs/skill-dev-steps.md) 的【进度快照】为准;`NAVIGATION.md` 有过期描述,以代码为准
-- **生态赛事与资讯（G0/G1/G2/G3/G4 + Q-01~Q-05）** 接手先读 [docs/ecosystem/HANDOFF.md](docs/ecosystem/HANDOFF.md):当前到哪、开关状态、未完成项、下一步;细节再进同目录 `*-evidence.md`。G4 分发与运营代码已完成但**所有 G4 开关默认关闭**，上线顺序见 `G4-runbook.md`；首场赛规未签署，G3 写闸保持关闭。Q 横向质量包证据见 `docs/ecosystem/Q-01-05-quality-evidence.md`；构建门禁为 `php artisan ecosystem:contract-check` 与只读 `php artisan ecosystem:data-preflight`。
+- **生态赛事与资讯（G0/G1/G2/G3/G4 + Q-01~Q-05）** 接手先读 [docs/ecosystem/HANDOFF.md](docs/ecosystem/HANDOFF.md):当前到哪、开关状态、未完成项、下一步;细节再进同目录 `*-evidence.md`。G4 分发与运营代码已完成但**所有 G4 开关默认关闭**，上线顺序见 `G4-runbook.md`；首场赛规未签署，G3 写闸保持关闭。Q 横向质量包证据见 `docs/ecosystem/Q-01-05-quality-evidence.md`；浏览器 e2e 见 `docs/ecosystem/G3-G4-browser-e2e-evidence.md`；构建门禁为 `php artisan ecosystem:contract-check`、只读 `php artisan ecosystem:data-preflight`，一键入口 `bash tools/ecosystem-gate.sh`。
 - **改动总览**以 [docs/skill-changes-summary.md](docs/skill-changes-summary.md) 为准(白话+表格;含未做/待决策,让后来者一眼看懂这几天改了什么)
 
 ## 【输出与交付标准】

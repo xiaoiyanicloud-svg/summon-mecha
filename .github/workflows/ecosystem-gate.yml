@@ -1,0 +1,89 @@
+name: ecosystem-gate
+
+# 生态赛事与资讯 · CI 门禁
+#
+# 与本地 tools/ecosystem-gate.sh 同一套检查：契约门禁、只读 preflight、
+# Shop Ecosystem / Admin PHPUnit、前端 Node 纯函数测试。
+# 浏览器演练（G2/G3/G4 e2e 与 G3 Admin 录分/发布）依赖 HBuilderX 导出与
+# Windows Chrome/路径，不在 GitHub 托管 runner 上运行；见 qa/ecosystem/README.md。
+#
+# ⚠ 本文件随收尾批次加入，尚未在 GitHub 上实际运行过；首次 push 后以运行结果为准。
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'codex/ecosystem-*'
+    paths:
+      - 'my-bagisto-store/**'
+      - 'tools/ecosystem-gate.sh'
+      - 'tools/tests/**'
+      - 'utils/api.js'
+      - '.github/workflows/ecosystem-gate.yml'
+  pull_request:
+    paths:
+      - 'my-bagisto-store/**'
+      - 'tools/ecosystem-gate.sh'
+      - 'tools/tests/**'
+      - 'utils/api.js'
+      - '.github/workflows/ecosystem-gate.yml'
+
+concurrency:
+  group: ecosystem-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: summon_mecha_step10_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: summon_mecha_step10_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: bcmath, intl, pdo_mysql, mbstring, gd, zip, xml, curl, fileinfo
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Prepare Laravel environment
+        working-directory: my-bagisto-store
+        run: |
+          mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+          cp -n .env.example .env
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan key:generate --no-interaction
+          php artisan migrate --force
+
+      - name: Run ecosystem gate
+        run: bash tools/ecosystem-gate.sh

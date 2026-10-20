@@ -7,6 +7,7 @@
  */
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -38,6 +39,17 @@ const URL_REWRITE = `
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// 让 OS 分配空闲端口，避免多个 Browser 随机端口碰撞后连到同一个 Chrome
+// （那会导致不同“设备”共享 localStorage，跨设备用例失真）。
+const freePort = () => new Promise((resolve, reject) => {
+  const server = net.createServer()
+  server.once('error', reject)
+  server.listen(0, '127.0.0.1', () => {
+    const { port } = server.address()
+    server.close(() => resolve(port))
+  })
+})
+
 class Page {
   constructor(port, wsUrl, targetId) {
     this.port = port
@@ -54,8 +66,9 @@ class Page {
   async connect() {
     this.ws = new WebSocket(this.wsUrl)
     await new Promise((resolve, reject) => {
-      this.ws.addEventListener('open', resolve, { once: true })
-      this.ws.addEventListener('error', reject, { once: true })
+      const timer = setTimeout(() => reject(new Error('CDP WebSocket 连接超时')), 15000)
+      this.ws.addEventListener('open', () => { clearTimeout(timer); resolve() }, { once: true })
+      this.ws.addEventListener('error', (error) => { clearTimeout(timer); reject(error) }, { once: true })
     })
     this.ws.addEventListener('message', (event) => {
       const message = JSON.parse(event.data)
@@ -80,11 +93,24 @@ class Page {
     })
   }
 
-  send(method, params = {}) {
+  send(method, params = {}, timeoutMs = 30000) {
     const id = this.nextId++
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject })
-      this.ws.send(JSON.stringify({ id, method, params }))
+      const timer = setTimeout(() => {
+        this.pending.delete(id)
+        reject(new Error('CDP 超时：' + method))
+      }, timeoutMs)
+      this.pending.set(id, {
+        resolve: (value) => { clearTimeout(timer); resolve(value) },
+        reject: (error) => { clearTimeout(timer); reject(error) },
+      })
+      try {
+        this.ws.send(JSON.stringify({ id, method, params }))
+      } catch (error) {
+        clearTimeout(timer)
+        this.pending.delete(id)
+        reject(error)
+      }
     })
   }
 
@@ -272,7 +298,7 @@ class Page {
 
 export class Browser {
   static async launch() {
-    const port = 9400 + Math.floor(Math.random() * 400)
+    const port = await freePort()
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'q04-chrome-'))
     const chrome = spawn(CHROME, [
       '--headless=new',
@@ -289,12 +315,18 @@ export class Browser {
     ], { stdio: 'ignore' })
 
     const started = Date.now()
+    let ready = false
     while (Date.now() - started < 15000) {
       try {
-        const response = await fetch(`http://127.0.0.1:${port}/json/version`)
-        if (response.ok) break
+        const response = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(3000) })
+        if (response.ok) { ready = true; break }
       } catch { /* 还没起来 */ }
       await sleep(150)
+    }
+
+    if (!ready) {
+      try { chrome.kill() } catch { /* noop */ }
+      throw new Error('Chrome CDP 未就绪（端口 ' + port + '）')
     }
 
     return new Browser(port, chrome, profile)
@@ -308,7 +340,11 @@ export class Browser {
   }
 
   async newPage(options = {}) {
-    const target = await (await fetch(`http://127.0.0.1:${this.port}/json/new?${encodeURIComponent('about:blank')}`, { method: 'PUT' })).json()
+    const response = await fetch(`http://127.0.0.1:${this.port}/json/new?${encodeURIComponent('about:blank')}`, {
+      method: 'PUT',
+      signal: AbortSignal.timeout(15000),
+    })
+    const target = await response.json()
     const page = new Page(this.port, target.webSocketDebuggerUrl, target.id)
     await page.connect()
     await page.init(options)

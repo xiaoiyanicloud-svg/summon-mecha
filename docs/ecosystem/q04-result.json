@@ -1,6 +1,6 @@
 {
   "q": "Q-04",
-  "generated_at": "2026-10-19T18:06:36.244Z",
+  "generated_at": "2026-10-20T03:02:48.812Z",
   "database": "summon_mecha_step10_test",
   "checks": [
     {
@@ -8,8 +8,8 @@
       "passed": true,
       "status": "pass",
       "detail": {
-        "event_id": 10969,
-        "track_id": 1258
+        "event_id": 13110,
+        "track_id": 1596
       }
     },
     {
@@ -26,7 +26,7 @@
       "passed": true,
       "status": "pass",
       "detail": {
-        "observed": "‹\n活动报名\n竞赛\nQA-Q04-2D6AFBCB\n2026年10月21日 02:06 – 2026年10月22日 02:06\n上海 · 张江科学会堂\n登录后继续报名\n登录只用于确认报名身份；不会自动提交表单。\n邮箱\n密码\n登录\n\n请检查您的凭据并重试。"
+        "observed": "‹\n活动报名\n竞赛\nQA-Q04-812BBAA1\n2026年10月21日 11:02 – 2026年10月22日 11:02\n上海 · 张江科学会堂\n登录后继续报名\n登录只用于确认报名身份；不会自动提交表单。\n邮箱\n密码\n登录\n\n请检查您的凭据并重试。"
       }
     },
     {
@@ -68,7 +68,7 @@
           {
             "tag": "BODY",
             "placeholder": "",
-            "text": "‹\n活动报名\n竞赛\nQA-Q04-2D6AFBCB\n2026年10月21日 02",
+            "text": "‹\n活动报名\n竞赛\nQA-Q04-812BBAA1\n2026年10月21日 11",
             "type": ""
           }
         ]
@@ -85,7 +85,7 @@
       "passed": true,
       "status": "pass",
       "detail": {
-        "public_no": "EVABE924913970E875",
+        "public_no": "EVC1A8B29E28A91263",
         "status_confirmed": true
       }
     },
@@ -94,8 +94,8 @@
       "passed": true,
       "status": "pass",
       "detail": {
-        "public_no": "EVABE924913970E875",
-        "body": "‹\n我的报名\nQA-Q04-2D6AFBCB\n已确认\n报名编号\nEVABE924913970E875\n轮次\n#1\n联系人\nQ****** · 135****0001\n提交时间\n2026-10-20 02:06:49\n取消报名\n入场凭证\n查看变更\n\n报名已提交"
+        "public_no": "EVC1A8B29E28A91263",
+        "body": "‹\n我的报名\nQA-Q04-812BBAA1\n已确认\n报名编号\nEVC1A8B29E28A91263\n轮次\n#1\n联系人\nQ****** · 135****0001\n提交时间\n2026-10-20 11:03:06\n取消报名\n入场凭证\n查看变更\n\n报名已提交"
       }
     },
     {
@@ -222,8 +222,8 @@
       "detail": {
         "result": {
           "deleted": true,
-          "event_id": 10969,
-          "marker": "QA-Q04-2D6AFBCB",
+          "event_id": 13110,
+          "marker": "QA-Q04-812BBAA1",
           "tracks": 1,
           "teams": 1,
           "entries": 0,
@@ -246,12 +246,12 @@
   },
   "server_logs": [
     {
-      "out": "m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.31ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/app-C2Wq9G4i.css \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.16ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/logo-CXf-crI0.svg \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 1.90ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/app-Cq9kI4oM.js \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 3.67ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 02:07:11 /themes/admin/default/build/assets/bagisto-admin-BzOkv6lg.woff?jwnnow \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.16ms\u001b[39m\r\n",
+      "out": "m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.10ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 11:03:33 /themes/admin/default/build/assets/app-C2Wq9G4i.css \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.18ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 11:03:33 /themes/admin/default/build/assets/logo-CXf-crI0.svg \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 1.89ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 11:03:33 /themes/admin/default/build/assets/app-Cq9kI4oM.js \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 3.37ms\u001b[39m\r\n  \u001b[90m2026-10-20\u001b[39m 11:03:33 /themes/admin/default/build/assets/bagisto-admin-BzOkv6lg.woff?jwnnow \u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m\u001b[90m.\u001b[39m \u001b[90m~ 0.10ms\u001b[39m\r\n",
       "err": ""
     },
     {
       "out": "",
-      "err": "epted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49186 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49943 [200]: GET /assets/uni.2d7fd40d.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49943 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52988 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49186 [200]: GET /assets/index-Kd8wjbWM.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52988 [200]: GET /assets/index-cM8vzTIY.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52988 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:49186 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:57369 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:57369 [200]: GET /assets/pages-ecosystem-competition-team.MpGXnqi8.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:57369 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:55547 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:61377 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:58540 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:55547 [200]: GET /assets/StateView-B8dnDgqq.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:55547 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52867 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:60357 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:61377 [200]: GET /assets/StateView.C3AQG4Wd.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:58540 [200]: GET /assets/config.DrCcEAYU.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52867 [200]: GET /assets/competition-team-DrPP5cDh.css\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:60357 [200]: GET /assets/api.DqZuJYbz.js\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:61377 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:58540 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:52867 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:60357 Closing\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:65148 Accepted\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:65148 [200]: GET /favicon.ico\n[Tue Oct 20 02:06:58 2026] 127.0.0.1:65148 Closing\n[Tue Oct 20 02:07:01 2026] 127.0.0.1:61473 Accepted\n[Tue Oct 20 02:07:12 2026] 127.0.0.1:61473 Invalid request (远程主机强迫关闭了一个现有的连接。)\n[Tue Oct 20 02:07:12 2026] 127.0.0.1:61473 Closing\n"
+      "err": "epted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:49663 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:62788 [200]: GET /assets/uni.2d7fd40d.css\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:62788 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:56877 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:49663 [200]: GET /assets/index-qasBeNC-.js\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:56877 [200]: GET /assets/index-cM8vzTIY.css\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:49663 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:56877 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:62394 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:62394 [200]: GET /assets/pages-ecosystem-competition-team.FwXxK2uM.js\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:62394 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:60138 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:50362 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:65007 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:59141 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:50363 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:50362 [200]: GET /assets/StateView-B8dnDgqq.css\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:60138 [200]: GET /assets/StateView.CQHYwpQi.js\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:50362 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:60138 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:65007 [200]: GET /assets/competition-team-DrPP5cDh.css\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:59141 [200]: GET /assets/config.DrCcEAYU.js\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:65007 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:50363 [200]: GET /assets/api.N6JqQwOS.js\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:59141 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:50363 Closing\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:52944 Accepted\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:52944 [200]: GET /favicon.ico\n[Tue Oct 20 11:03:16 2026] 127.0.0.1:52944 Closing\n[Tue Oct 20 11:03:20 2026] 127.0.0.1:60499 Accepted\n[Tue Oct 20 11:03:33 2026] 127.0.0.1:60499 Invalid request (远程主机强迫关闭了一个现有的连接。)\n[Tue Oct 20 11:03:33 2026] 127.0.0.1:60499 Closing\n"
     }
   ]
 }
