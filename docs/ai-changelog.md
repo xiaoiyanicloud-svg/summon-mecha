@@ -22,6 +22,57 @@
 
 ## 变更记录
 
+### [AI召唤收口] 2026-10-20 · 跨设备历史 + 正式埋点 + 读屏闭环（用户批准一次性完成）
+- 范围：新增 additive 数据表、登录客户同步 API、公开埋点 API、CLI 报表与前端账号作用域隔离；未改既有业务表。
+- 跨设备历史：`ai_conversations` 按 `customer_id + client_id` 唯一；`client_updated_at` 裁决版本；90 天删除墓碑防旧设备复活。
+- 账号隐私：本地历史/墓碑/草稿按 `user_<customer_id>` 分库存储；首次登录可接管游客历史，后续切号不复制上一账号状态。
+- 正式埋点：`ai_analytics_events` 白名单、`event_id` 去重、匿名设备键 SHA-256、属性标量裁剪；不存提示词/回答正文。
+- 报表：`php artisan ai:analytics-report --days=7`，输出事件计数、每日计数和核心漏斗。
+- 读屏：历史抽屉改临时 dialog，打开聚焦搜索框、Esc 关闭、同步结果 `aria-live` 播报；核心控件补齐 ARIA 与键盘焦点态。
+- 迁移：独立测试库已执行；root 仅执行同一 additive 迁移（编号 47）。
+- 验证：后端/限流 `22 passed / 125 assertions`；契约与 preflight 通过；真实 Chrome 联合验收 `13/13`；H5 编译成功。
+- 真实上游：Docker/Coze 已修复并运行；真实流式首事件 1.4s、首正文 3.1s、5.7s 完成，真实非流式 10.8s 完成，页面级真实 AI 浏览器演练通过；证据见 `docs/ai-full-closeout-evidence.md`。
+- 回滚：`.claude/backup/ai-full-closeout-20261020/`，迁移回滚命令见收口证据。
+
+### [AI前端交互精修] 2026-10-20 · 历史、草稿与基础无障碍（用户批准下一轮）
+- 范围：只改 `pages/ai/index.vue` 前端交互与本地存储，不新增后端接口、数据库或生产依赖。
+- 历史对话：
+  - 抽屉增加本机存储说明、会话数量、关键词搜索和无结果态。
+  - 支持单条删除与清空全部，均带二次确认；删除当前会话时同步清空工作区。
+- 草稿与复制：
+  - 输入内容和快捷筛选自动保存到本机，刷新后恢复；草稿保留 7 天，发送或新建对话后清除。
+  - AI 回答新增“复制”按钮，并提供成功/失败反馈。
+- 无障碍与文案：
+  - 菜单、发送、语音、快捷标签、推荐问题、历史项和删除/清空等核心操作补齐可访问名称、焦点态与 Enter 键操作。
+  - 网络、超时、登录失效等异常统一转换为用户可理解的中文提示，不再直接暴露技术错误。
+- 验证：
+  - `D:\HBuilderX\cli.exe publish web --project D:\main`：编译成功。
+  - 真实 Chrome + 本地 mock SSE：13/13 通过；覆盖 ARIA、键盘 Enter、草稿刷新恢复、复制回答、历史搜索、单条删除、清空全部、320px 抽屉和页面横向溢出。
+  - `git diff --check`：通过。
+  - 截图：`.claude/backup/ai-full-closeout-20261020/evidence/ai-ui-round2-shots/`（按仓库约定不入库）。
+- 回滚：用 `.claude/backup/ai-ui-history-a11y-20261020/` 下原文件覆盖 `pages/ai/index.vue`、`docs/ai-changelog.md`。
+- 未做：跨设备历史同步、正式埋点、读屏全链路与真实 AI 上游回归；跨设备历史需要后端会话模型和接口，未擅自扩架构。
+
+### [AI前端交互硬化] 2026-10-20 · 小召 P0 闭环补齐（用户批准执行）
+- 范围：只改前端交互与既有方案定制承接，不碰后端接口、数据库、生态开关或生产数据。
+- `pages/ai/index.vue`：
+  - 用 `connecting / thinking / streaming / error` 状态机替代原有布尔态；思考/生成期间禁止并发提问和语音录入。
+  - 流式请求支持真实停止；中断后保留已生成内容，并提供“重新生成”。
+  - 错误回答增加“重试 / 交给方案专家”，无推荐结果时增加方案定制承接卡。
+  - 用户问题发送后立即写入本地历史，避免请求中断或退出后丢失。
+  - 推荐机型展示后端已有 `match_reason`。
+  - 首屏移除硬编码日期，示例问题改为真实业务场景；预算/任务从文本标签升级为可生成自然语言的快捷匹配器。
+  - 输入增加 2000 字上限、字符计数、空输入/生成中按钮态；用户上滑阅读时不再强制拉到底。
+- `utils/api.js`：`summonStream` 增加 H5 AbortController、小程序 `requestTask.abort()` 与 `onRequestReady/onClose` 回调。
+- `pages/robot/fangan.vue`：支持 `mode=custom&source=ai` 直接进入方案定制视图，并在 24 小时内读取 AI 需求草稿填入留资表单。
+- 验证：
+  - `D:\HBuilderX\cli.exe publish web --project D:\main`：编译成功。
+  - 真实 Chrome + 本地 mock API：12/12 通过；覆盖首屏、快捷筛选、流式推荐理由、停止生成、错误恢复、AI 草稿带入方案表单，以及 320 / 375 / 414 三档无横向溢出和无页面运行时异常。
+  - `node --check utils/api.js`、`git diff --check`：通过。
+  - 截图：`.claude/backup/ai-full-closeout-20261020/evidence/ai-ui-hardening-shots/`（按仓库约定不入库）。
+- 回滚：用 `.claude/backup/ai-ui-hardening-20261020/` 下原文件覆盖 `pages/ai/index.vue`、`utils/api.js`、`pages/robot/fangan.vue`、`docs/ai-changelog.md`。
+- 未做：跨设备历史、历史删除/清空、正式埋点、完整无障碍与键盘/读屏回归；这些留在下一轮，不把本轮标成“精细化全部完成”。
+
 ### [体检3] 2026-09-07 · 深度健康检查（夜班二期之后）
 - 工作区干净；be37f91 以来 37 文件 +1714/−735，全部符合夜班计划范围。
 - 语法：PHP×12 + JS/Vue×8 全过；前端符号无重复。

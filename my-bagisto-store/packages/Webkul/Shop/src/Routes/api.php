@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Webkul\Shop\Http\Controllers\API\AddressController;
+use Webkul\Shop\Http\Controllers\API\AiAnalyticsController;
+use Webkul\Shop\Http\Controllers\API\AiConversationController;
 use Webkul\Shop\Http\Controllers\API\AfterSaleController;
 use Webkul\Shop\Http\Controllers\API\AgentController;
 use Webkul\Shop\Http\Controllers\API\AgentPackageController;
@@ -131,6 +133,16 @@ Route::group(['prefix' => 'api'], function () {
     // 密钥未配置时返回 code=TTS_NOT_CONFIGURED;资源包用尽返回 TTS_FAILED,前端静默跳过。
     // ⚠ 前端可能把它指到**另一个后端进程**(见 utils/config.js 的 TTS_BASE_URL 注释)。
     Route::post('tts', [TtsController::class, 'synthesize'])->middleware('throttle:ai')->name('shop.api.tts');
+
+    // 小召跨设备会话：登录后按客户端更新时间合并；删除用墓碑同步，避免旧设备复活。
+    Route::post('ai/conversations/sync', [AiConversationController::class, 'sync'])
+        ->middleware(['customer', 'throttle:write'])
+        ->name('shop.api.ai.conversations.sync');
+
+    // 小召正式埋点：游客可用，登录时自动归属客户；只入库允许事件与受限属性。
+    Route::post('ai/events', [AiAnalyticsController::class, 'store'])
+        ->middleware(['api.customer', 'throttle:write'])
+        ->name('shop.api.ai.events.store');
 
     // 赛事(Event):生态中心「赛事活动」tab + 真实报名(平台级闭环)
     // G1-10：公开列表/详情只读 published revision；媒体走受控路由。

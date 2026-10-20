@@ -225,6 +225,19 @@ php artisan ops:alert-queue-backlog --dry-run
 - 数据库真实名称是 `root`，不是项目名
 - 后台配置（邮件、支付等）存在 `core_config` 表，恢复生产数据时会把配置一起带过去
 
+### 小召 AI 数据
+
+- `ai_conversations`：登录客户的跨设备会话；按 `customer_id + client_id` 唯一。
+- `ai_analytics_events`：小召事件漏斗；不存提示词或回答正文。
+- 埋点查看：
+
+```bash
+cd D:/main/my-bagisto-store
+php artisan ai:analytics-report --days=7
+```
+
+- 真实 AI 回答仍要求 `coze-studio` Docker 栈在 `localhost:8888` 正常启动；数据库迁移不会替代该外部依赖。
+
 ## 9. 常见故障
 
 | 症状 | 原因 | 处理 |

@@ -232,6 +232,7 @@ export default {
       showLeadSuccess: false,
       leadSchemeTitle: '',
       leadForm: { name: '', phone: '', demand: '' },
+      aiDraftDemand: '',
       // 场景租用多机合单:已选机器 + 全场统一租期(天)
       selectedMachines: [],
       rentDays: 1,
@@ -264,6 +265,16 @@ export default {
   },
   onLoad(options) {
     this.rentTitle = options.title || ''
+    this.activeMode = options.mode === 'custom' ? 'custom' : 'rent'
+    if (options.source === 'ai') {
+      try {
+        const draft = uni.getStorageSync('aiSummonCustomDraft')
+        // 只使用 24 小时内的 AI 草稿，避免用户下次从别处进入时带入过期需求。
+        if (draft && draft.demand && (!draft.at || Date.now() - draft.at < 24 * 60 * 60 * 1000)) {
+          this.aiDraftDemand = String(draft.demand)
+        }
+      } catch (e) { /* 草稿读取失败时保持空表单 */ }
+    }
     if (options.sceneId) {
       this.sceneId = options.sceneId
       this.currentCategory = options.category || ''
@@ -448,7 +459,7 @@ export default {
 
     onConsult() {
       this.leadSchemeTitle = this.scheme.title || this.sceneInfo.name || '专属'
-      this.leadForm = { name: '', phone: '', demand: '' }
+      this.leadForm = { name: '', phone: '', demand: this.aiDraftDemand || '' }
       this.showLeadForm = true
     },
     closeLeadForm() {

@@ -342,6 +342,24 @@ export const summonApi = {
   summon: (q, history) => http.post('/api/summon', { q, history }, { loading: false, timeout: 60000 }),
 }
 
+// 小召跨设备会话：登录后把本机 active + tombstone 一起同步，服务端按客户端更新时间合并。
+export const aiConversationApi = {
+  sync: (conversations) => http.post(
+    '/api/ai/conversations/sync',
+    { conversations },
+    { loading: false, timeout: 30000 },
+  ),
+}
+
+// 小召正式埋点：只提交事件元数据与受限属性，不提交提示词或回答正文。
+export const aiAnalyticsApi = {
+  ingest: (events) => http.post(
+    '/api/ai/events',
+    { events },
+    { loading: false, timeout: 10000 },
+  ),
+}
+
 /**
  * 小召·召唤「流式版」——边生成边回调。
  *
@@ -364,7 +382,7 @@ export const summonApi = {
  *   后端会限长(最近 10 条 / 3000 字),前端传全量即可。
  */
 export function summonStream(q, handlers = {}, history = []) {
-  const { onMeta, onThinking, onDelta, onDone, onError } = handlers
+  const { onMeta, onThinking, onDelta, onDone, onError, onRequestReady, onClose } = handlers
 
   let buffer = ''
   // 按 SSE 协议切块分发:块之间以空行分隔
@@ -398,6 +416,13 @@ export function summonStream(q, handlers = {}, history = []) {
   const token = uni.getStorageSync(TOKEN_KEY) || ''
 
   // #ifdef H5
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+  if (onRequestReady) {
+    onRequestReady(() => {
+      if (controller) controller.abort()
+    })
+  }
+
   return fetch(url, {
     method: 'POST',
     headers: {
@@ -405,6 +430,7 @@ export function summonStream(q, handlers = {}, history = []) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ q, history }),
+    ...(controller ? { signal: controller.signal } : {}),
   })
     .then((res) => {
       if (!res.ok || !res.body) throw new Error('HTTP ' + res.status)
@@ -412,17 +438,25 @@ export function summonStream(q, handlers = {}, history = []) {
       const decoder = new TextDecoder('utf-8')
       const pump = () =>
         reader.read().then(({ done, value }) => {
-          if (done) return
+          if (done) {
+            if (onClose) onClose()
+            return
+          }
           feed(decoder.decode(value, { stream: true }))
           return pump()
         })
       return pump()
     })
-    .catch((e) => { if (onError) onError((e && e.message) || '网络异常') })
+    .catch((e) => {
+      // 用户主动停止时不把 AbortError 当成业务失败弹给用户。
+      if (e && e.name === 'AbortError') return
+      if (onError) onError((e && e.message) || '网络异常')
+    })
   // #endif
 
   // #ifndef H5
   return new Promise((resolve) => {
+    let cancelled = false
     const task = uni.request({
       url,
       method: 'POST',
@@ -433,12 +467,26 @@ export function summonStream(q, handlers = {}, history = []) {
       },
       enableChunked: true,   // 微信小程序(基础库 2.20.2+)/App 支持
       timeout: 120000,
-      success: () => resolve(),
-      fail: (e) => { if (onError) onError((e && e.errMsg) || '网络异常'); resolve() },
+      success: () => {
+        if (!cancelled && onClose) onClose()
+        resolve()
+      },
+      fail: (e) => {
+        if (!cancelled && onError) onError((e && e.errMsg) || '网络异常')
+        resolve()
+      },
     })
+
+    if (onRequestReady) {
+      onRequestReady(() => {
+        cancelled = true
+        try { if (task && typeof task.abort === 'function') task.abort() } catch (e) { /* 静默 */ }
+      })
+    }
 
     if (task && typeof task.onChunkReceived === 'function') {
       task.onChunkReceived((res) => {
+        if (cancelled) return
         try {
           const bytes = new Uint8Array(res.data)
           let s = ''

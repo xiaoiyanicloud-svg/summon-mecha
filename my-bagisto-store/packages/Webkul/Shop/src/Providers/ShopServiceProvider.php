@@ -48,6 +48,7 @@ class ShopServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
+                \Webkul\Shop\Console\Commands\AiAnalyticsReport::class,
                 \Webkul\Shop\Console\Commands\BackfillVersionStatus::class,
                 \Webkul\Shop\Console\Commands\RedeliverSkills::class,
                 \Webkul\Shop\Console\Commands\ScanSkillDeliveryRetries::class,
