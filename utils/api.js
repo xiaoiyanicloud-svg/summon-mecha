@@ -5,6 +5,7 @@
  * 全部请求经过 utils/request.js 统一封装（自动带 Bearer token）
  */
 import { http } from './request'
+import { sceneId } from './scene-catalog'
 // 流式接口(summonStream)不走 request.js 的统一封装,需要自己拼 URL 和 token
 import { BASE_URL, TOKEN_KEY } from './config'
 
@@ -218,11 +219,30 @@ export const sceneApi = {
   getScenes: (params = {}) => http.get('/api/scenes', { data: params, loading: false }),
   getSceneDetail: (id) => {
     // 避免 sceneId 为 undefined/'undefined'（部分卡片无 id）时请求 /api/scenes/undefined → 500
-    if (!id || id === 'undefined') {
-      return Promise.resolve(null)
+    if (!sceneId(id)) {
+      return Promise.reject(new Error('场景不存在或已停用'))
     }
     return http.get(`/api/scenes/${id}`, { loading: false })
   },
+}
+
+// 场景业务凭证仅通过 header 传递，禁止放进分享 URL。
+const sceneHeaders = (access, key) => ({ header: {
+  ...(access ? { 'X-Scene-Access': access } : {}),
+  ...(key ? { 'Idempotency-Key': key } : {}),
+}, loading: false })
+export const sceneWorkflowApi = {
+  capabilities: () => http.get('/api/scene-workflow/capabilities'),
+  access: () => http.post('/api/scene-workflow/access'),
+  schema: category => http.get('/api/scene-workflow/schemas/' + encodeURIComponent(category)),
+  list: (access, beforeId) => http.get('/api/scene-requests', { ...sceneHeaders(access), data: beforeId ? { before_id: beforeId } : {} }),
+  create: (data, access, key) => http.post('/api/scene-requests', data, sceneHeaders(access, key)),
+  detail: (id, access) => http.get('/api/scene-requests/' + Number(id), sceneHeaders(access)),
+  supplement: (id, data, access, key) => http.post('/api/scene-requests/' + Number(id) + '/supplements', data, sceneHeaders(access, key)),
+  claim: (id, access) => http.post('/api/scene-requests/' + Number(id) + '/claim', {}, sceneHeaders(access)),
+  accept: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/accept', data, sceneHeaders(access, key)),
+  project: (id, access) => http.get('/api/scene-projects/' + Number(id), sceneHeaders(access)),
+  projectAction: (id, action, data, access, key) => http.post('/api/scene-projects/' + Number(id) + '/' + action, data, sceneHeaders(access, key)),
 }
 
 // ==================== 赛事(生态中心赛事活动 tab) ====================

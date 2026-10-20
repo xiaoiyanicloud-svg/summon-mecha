@@ -87,8 +87,8 @@ class OrderRepository extends Repository
 
             /* storing log for errors */
             Log::error(
-                'OrderRepository:createOrderIfNotThenRetry: '.$e->getMessage(),
-                ['data' => $data]
+                'OrderRepository:createOrderIfNotThenRetry',
+                ['exception' => get_class($e), 'attempt' => $retry + 1, 'order_type' => $data['order_type'] ?? null]
             );
 
             /* 重试有上限，避免任意建单异常导致无限递归刷日志/卡死(如 booking 类型商品曾触发) */

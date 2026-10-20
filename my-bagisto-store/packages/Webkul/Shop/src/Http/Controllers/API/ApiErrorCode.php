@@ -348,6 +348,10 @@ final class ApiErrorCode
     public const ASR_NOT_CONFIGURED = 'ASR_NOT_CONFIGURED';
     public const ASR_FAILED = 'ASR_FAILED';
 
+    public const SCENE_UNAVAILABLE = 'SCENE_UNAVAILABLE';
+    public const SCENE_REQUIRED = 'SCENE_REQUIRED';
+    public const SCENE_PRODUCT_UNAVAILABLE = 'SCENE_PRODUCT_UNAVAILABLE';
+
     /**
      * 全部已登记的码。
      *

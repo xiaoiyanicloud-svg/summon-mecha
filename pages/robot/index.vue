@@ -244,7 +244,8 @@
       <!-- 场景 -->
       <view class="product-area-wrapper" v-show="currentTab === 'scene'">
         <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
-          <view class="scene-list-wrapper">
+          <StateView :loading="scenesLoading" :error="scenesError" :empty="!filteredSceneList.length" empty-text="没有找到匹配的场景方案" @retry="refreshScenes" />
+          <view class="scene-list-wrapper" v-if="!scenesLoading && !scenesError">
             <view v-if="currentSceneCategory !== 'all'" class="scene-category-header">
               <text class="scene-category-title">{{ currentCategoryLabel }}</text>
             </view>
@@ -264,10 +265,6 @@
               <view class="scene-list-arrow">›</view>
             </view>
             <view class="scroll-bottom-placeholder" v-if="filteredSceneList.length > 0"></view>
-          </view>
-          <view class="empty-state" v-if="filteredSceneList.length === 0">
-            <text class="empty-icon">📭</text>
-            <text class="empty-text">没有找到匹配的场景方案</text>
           </view>
         </scroll-view>
       </view>
@@ -616,7 +613,8 @@ import Jineng from '@/components/jiqi/jineng.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import Peijian from '@/components/jiqi/peijian.vue'
 import StateView from '@/components/StateView.vue'
-import { cartApi, productApi, categoryApi, catalogApi, tobOrderApi } from '@/utils/api'
+import { cartApi, productApi, categoryApi, catalogApi } from '@/utils/api'
+import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing-data.js'
 import { BASE_URL } from '@/utils/config'
 
@@ -739,6 +737,7 @@ export default {
       currentSort: 'default',
       currentSceneCategory: 'all',
       sceneVersion: 0,
+      scenesLoading: true, scenesError: '', planSubmitting: false,
 
       showDetail: false,
       detailImgHeight: 777.6,
@@ -897,6 +896,12 @@ export default {
     }
   },
   methods: {
+    async refreshScenes() {
+      this.scenesLoading = true; this.scenesError = '';
+      try { await loadBackendScenes({ force: true }) }
+      catch (e) { this.scenesError = e.message || '场景加载失败，请重试' }
+      finally { this.sceneVersion++; this.scenesLoading = false }
+    },
     switchTab(tab) {
       this.currentTab = tab
       this.showTypePicker = false   // 切 Tab 收起类别展开面板
@@ -996,20 +1001,22 @@ export default {
     planTotal() {
       return Math.round(this.planPerDay() * this.planDays * 100) / 100
     },
-    submitCustomPlanOrder() {
-      if (!this.selectedPlanItems.length) return
-      const items = this.selectedPlanItems.map(m => ({
-        product_id: m.bagistoId || m.id,
-        name: m.name,
-        price: m.price,
-        bg: m.bg || '',
-        icon: m.icon || '🤖',
-        image: m.image || '',
-        qty: 1,
-      }))
-      const url = `/pages/order/checkout?type=rent&from=scene&scene=${encodeURIComponent('自定义方案')}&rent_days=${this.planDays}&rentPeriod=${this.planDays}天&startDate=${encodeURIComponent(this.planStartDate)}&endDate=${encodeURIComponent(this.planEndDate)}&items=${encodeURIComponent(JSON.stringify(items))}`
-      this.showCustomPlanModal = false
-      uni.navigateTo({ url })
+    async submitCustomPlanOrder() {
+      if (!this.selectedPlanItems.length || this.planSubmitting) return
+      this.planSubmitting = true
+      try {
+        await this.reloadCatalog()
+        const current = this.selectedPlanItems.map(item => item.bagistoId && this.rentCatalog.find(p => String(p.bagistoId) === String(item.bagistoId)))
+        if (this.catalogError || current.some(item => !item)) {
+          uni.showToast({ title: '部分机型已失效，请从当前租用目录重新选择', icon: 'none' })
+          return
+        }
+        this.selectedPlanItems = current
+        this.showCustomPlanModal = false
+        openSceneRequest(sceneDraftPayload({ source: 'robot', text: '意向机型：' + current.map(m => m.name).join('、') + '；意向服务 ' + this.planDays + ' 天。具体场地、任务和档期待评估。', contact: { name: '', phone: '' } }))
+      } catch (e) {
+        uni.showToast({ title: e.message || '目录刷新失败，请重试', icon: 'none' })
+      } finally { this.planSubmitting = false }
     },
     saveCustomPlan() {
       if (!this.selectedPlanItems.length) { uni.showToast({ title: '请先选择机型', icon: 'none' }); return }
@@ -1027,7 +1034,7 @@ export default {
       })
       uni.setStorageSync('customPlans', list)
       this.customPlanList = list
-      uni.showToast({ title: '方案已保存', icon: 'success' })
+      uni.showToast({ title: '草稿已保存到本机', icon: 'success' })
     },
     loadCustomPlans() {
       this.customPlanList = uni.getStorageSync('customPlans') || []
@@ -1347,61 +1354,11 @@ export default {
       this.showEnterpriseModal = false
     },
     async submitEnterprise() {
-      const { mode, identity, name, phone, company } = this.enterpriseForm
-      if (!mode) { uni.showToast({ title: '请选择意向类型', icon: 'none' }); return }
-      if (!identity) { uni.showToast({ title: '请选择您的身份', icon: 'none' }); return }
-      if (!name.trim()) { uni.showToast({ title: '请输入联系人姓名', icon: 'none' }); return }
-      if (!phone || phone.length < 11) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
+      const { name, phone, company, wechat, demand, identity } = this.enterpriseForm
+      if (!name.trim() || !/^\+?[0-9 -]{7,25}$/.test(phone)) { uni.showToast({ title: '请填写联系人及有效电话', icon: 'none' }); return }
       if (identity === 'enterprise' && !company.trim()) { uni.showToast({ title: '请输入公司名称', icon: 'none' }); return }
-
-      // 真实提交:线索走 tob-order(type=custom) → 后台订单列表可见;本地 storage 同步备份,接口失败也不丢线索
-      let submitted = true
-      let errText = '网络异常'
-      try {
-        const res = await tobOrderApi.create({
-          type: 'custom',
-          product_name: '企业部署咨询·' + (mode === 'rent' ? '租用' : '购买') + (identity === 'enterprise' ? '·企业' : '·个人'),
-          name: name.trim(),
-          phone,
-          wechat: this.enterpriseForm.wechat,
-          company,
-          demand: this.enterpriseForm.demand,
-          qty: 1,
-        })
-        if (!res || !res.success) throw new Error((res && res.message) || '提交失败')
-      } catch (e) {
-        // 透传后端真实原因
-        submitted = false
-        errText = (e && e.message) || '网络异常'
-      }
-
-      // 保存企业咨询线索（本地备份），供后台/商务跟进
-      const list = uni.getStorageSync('enterpriseConsultList') || []
-      list.unshift({
-        id: Date.now(),
-        mode,
-        identity,
-        name: this.enterpriseForm.name,
-        phone,
-        wechat: this.enterpriseForm.wechat,
-        company,
-        demand: this.enterpriseForm.demand,
-        synced: submitted,
-        time: new Date().toLocaleString('zh-CN', { hour12: false })
-      })
-      uni.setStorageSync('enterpriseConsultList', list)
-
-      uni.showToast({ title: submitted ? '已提交，企业顾问将尽快联系您' : (errText + '，已记录待跟进'), icon: submitted ? 'success' : 'none' })
+      openSceneRequest(sceneDraftPayload({ source: 'robot', text: demand, contact: { name: name.trim(), phone, company, wechat } }))
       this.closeEnterpriseModal()
-      this.enterpriseForm = {
-        mode: this.currentTab === 'rent' ? 'rent' : 'buy',
-        identity: 'enterprise',
-        name: '',
-        phone: '',
-        wechat: '',
-        company: '',
-        demand: ''
-      }
     },
     switchBottomTab(url) {
       if (this.currentPage === url) return
@@ -1562,7 +1519,7 @@ export default {
     this.openPendingAiProduct()
 
     // 拉取后台维护的场景列表,按 id 合并进 enterprise(TOB)卡片; 完成后刷新场景列表
-    loadBackendScenes().then(() => { this.sceneVersion++ })
+    this.refreshScenes()
 
     // 进入页面先展示一次滚动提示（2 秒后淡出）
     this.hintShow('product')

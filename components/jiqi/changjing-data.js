@@ -8,13 +8,13 @@ import { BASE_URL } from '@/utils/config'
 // 迁到 .js 后所有平台都能正确载入。changjing.vue 仅做转发(export ... from)保持兼容。
 // ================================================================
 
-// 后端图片 URL 可能是绝对(APP_URL/localhost)或相对路径，统一换成前端 BASE_URL 主机，真机/局域网可加载
-function normalizeImageUrl(url) {
-  if (!url) return ''
-  const m = String(url).match(/^https?:\/\/[^/]+(\/.*)$/)
-  const path = m ? m[1] : String(url)
-  return path.startsWith('/') ? BASE_URL + path : url
-}
+import { createSceneCatalog, normalizeSceneImage } from '@/utils/scene-catalog'
+
+const sceneCatalog = createSceneCatalog(() => sceneApi.getScenes(), {
+  imageUrl: url => normalizeSceneImage(url, BASE_URL)
+})
+export const sceneProducts = sceneCatalog.rows
+export const loadBackendScenes = options => sceneCatalog.load(options)
 
 // 分类：key → {label}（与机器页 robot/index.vue 一致）
 export const categoryMap = {
@@ -29,8 +29,8 @@ export const categoryMap = {
   home: { label: '家庭个人' }
 }
 
-// 本地兜底场景（后台 scenes 表有对应 id 时由 loadBackendScenes 覆盖增强）
-export const sceneProducts = [
+// 历史说明性示例，仅保留迁移参考；不用于公开列表、详情或交易。
+export const SCENE_EXAMPLES = [
   { id: 1, name: '展会品牌活动', icon: '🎪', bg: '#FEF3C7', desc: '品牌展示、产品推介、互动体验', category: 'business_event', tags: ['展会', '品牌', '互动'] },
   { id: 2, name: '商场门店引流', icon: '🛍️', bg: '#E8F0FE', desc: '商场引流、导购服务', category: 'business_event', tags: ['商场', '引流', '导购'] },
   { id: 3, name: '婚礼宴会演出', icon: '💒', bg: '#FCE4EC', desc: '婚礼表演、迎宾互动', category: 'business_event', tags: ['婚礼', '宴会', '演出'] },
@@ -60,51 +60,6 @@ export const sceneProducts = [
   { id: 27, name: '家庭陪伴交互', icon: '🏠', bg: '#F0F4FA', desc: '家庭陪伴、儿童教育', category: 'home', tags: ['家庭', '陪伴', '交互'] },
   { id: 28, name: '个人爱好者体验', icon: '🧑‍💻', bg: '#F0F4FA', desc: '爱好者体验、开发调试', category: 'home', tags: ['爱好者', '体验', '开发'] }
 ]
-
-// 拉后台 scenes 表，按 id 合并进场景卡片（说明/图取自后端；无则保持本地 mock）
-// 5 分钟 TTL:首页/机器页 onShow 高频调用,避免每次重拉;失败不计时,下次 onShow 重试
-let _scenesLoadedAt = 0
-const SCENES_TTL = 5 * 60 * 1000
-export async function loadBackendScenes() {
-  if (Date.now() - _scenesLoadedAt < SCENES_TTL) return
-  try {
-    const res = await sceneApi.getScenes()
-    _scenesLoadedAt = Date.now()
-    const list = (res && res.data) ? res.data : []
-    if (!Array.isArray(list) || !list.length) return
-    list.forEach(s => {
-      if (!s || s.id == null) return
-      const found = sceneProducts.find(x => Number(x.id) === Number(s.id))
-      if (found) {
-        if (s.name) found.name = s.name
-        if (s.description) found.desc = s.description
-        if (s.banner) found.banner = normalizeImageUrl(s.banner)
-        if (s.category) found.category = s.category
-        if (s.sort !== null && s.sort !== undefined) found.sort = s.sort
-        if (s.icon) found.icon = s.icon
-        if (s.bg_color) found.bg = s.bg_color
-        if (s.is_hot !== null && s.is_hot !== undefined) found.is_hot = !!s.is_hot
-        if (s.consult_count || s.consultCount) found.consultCount = s.consult_count ?? s.consultCount
-      } else {
-        sceneProducts.push({
-          id: Number(s.id),
-          name: s.name || '场景方案',
-          desc: s.description || '',
-          category: s.category || 'enterprise',
-          banner: s.banner ? normalizeImageUrl(s.banner) : '',
-          icon: s.icon || '🤖',
-          bg: s.bg_color || '#E8F0FE',
-          tags: [],
-          sort: s.sort ?? 0,
-          is_hot: !!s.is_hot,
-          consultCount: s.consult_count ?? s.consultCount ?? 0
-        })
-      }
-    })
-  } catch (e) {
-    // 接口失败保持本地 mock,不打扰
-  }
-}
 
 // 默认方案（方案定制视图的兜底内容）
 export const DEFAULT_SCHEME = {

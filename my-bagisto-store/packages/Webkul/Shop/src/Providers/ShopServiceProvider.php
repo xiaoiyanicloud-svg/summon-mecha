@@ -52,6 +52,7 @@ class ShopServiceProvider extends ServiceProvider
                 \Webkul\Shop\Console\Commands\RedeliverSkills::class,
                 \Webkul\Shop\Console\Commands\ScanSkillDeliveryRetries::class,
                 \Webkul\Shop\Console\Commands\AuditSkillDelivery::class,
+                \Webkul\Shop\Console\Commands\SceneOperations::class,
             ]);
         }
     }

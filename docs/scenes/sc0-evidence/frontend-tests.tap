@@ -1,0 +1,125 @@
+TAP version 13
+# Subtest: 服务端快照替换：删除、停用和真实空列表不能保留本地卡片
+ok 1 - 服务端快照替换：删除、停用和真实空列表不能保留本地卡片
+  ---
+  duration_ms: 2.2494
+  ...
+# Subtest: 0、null 和空文本覆盖旧内容，未经核验咨询数不会转成公开指标
+ok 2 - 0、null 和空文本覆盖旧内容，未经核验咨询数不会转成公开指标
+  ---
+  duration_ms: 0.385
+  ...
+# Subtest: 非法响应、重复 ID 和网络失败清空可操作卡片，立即重试不命中成功缓存
+ok 3 - 非法响应、重复 ID 和网络失败清空可操作卡片，立即重试不命中成功缓存
+  ---
+  duration_ms: 2.0993
+  ...
+# Subtest: TTL 只缓存有效响应，onShow 可强制重新验证，并发请求共享结果
+ok 4 - TTL 只缓存有效响应，onShow 可强制重新验证，并发请求共享结果
+  ---
+  duration_ms: 0.322
+  ...
+# Subtest: 失效后的旧成功或旧失败均不能覆盖最新快照
+ok 5 - 失效后的旧成功或旧失败均不能覆盖最新快照
+  ---
+  duration_ms: 1.0089
+  ...
+# Subtest: 合法 ID、分类顺序及图片地址处理
+ok 6 - 合法 ID、分类顺序及图片地址处理
+  ---
+  duration_ms: 0.6077
+  ...
+# Subtest: 无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品
+ok 7 - 无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品
+  ---
+  duration_ms: 0.2276
+  ...
+# Subtest: 详情仅在服务端成功后开放选择，导航保留 sceneId；失败清空选择并禁止交易
+ok 8 - 详情仅在服务端成功后开放选择，导航保留 sceneId；失败清空选择并禁止交易
+  ---
+  duration_ms: 2.0253
+  ...
+# Subtest: 详情乱序响应只保留最新，重新进入时刷新已选机型价格
+ok 9 - 详情乱序响应只保留最新，重新进入时刷新已选机型价格
+  ---
+  duration_ms: 1.5086
+  ...
+# Subtest: 详情缺产品协议与非法价格不进入交易；未配置方案保持空态
+ok 10 - 详情缺产品协议与非法价格不进入交易；未配置方案保持空态
+  ---
+  duration_ms: 2.0737
+  ...
+# Subtest: 真实留资带场景 ID，失败不显示成功；重复点击不重复发送
+ok 11 - 真实留资带场景 ID，失败不显示成功；重复点击不重复发送
+  ---
+  duration_ms: 2.2871
+  ...
+# Subtest: 首页从真实快照更新，接口失败不保留旧卡片或假咨询人数
+ok 12 - 首页从真实快照更新，接口失败不保留旧卡片或假咨询人数
+  ---
+  duration_ms: 5.0213
+  ...
+# Subtest: 结算失败或没有真实订单确认时，不写本地订单、不跳成功页，保留表单并透传场景身份
+ok 13 - 结算失败或没有真实订单确认时，不写本地订单、不跳成功页，保留表单并透传场景身份
+  ---
+  duration_ms: 4.2424
+  ...
+# Subtest: 自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交前使用当前商品名称和价格
+ok 14 - 自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交前使用当前商品名称和价格
+  ---
+  duration_ms: 4.4373
+  ...
+# Subtest: empty supply is successful empty state, request failure remains retryable
+ok 15 - empty supply is successful empty state, request failure remains retryable
+  ---
+  duration_ms: 2.4874
+  ...
+# Subtest: refresh clears previous cards, trimmed search and filter snapshot reach the server
+ok 16 - refresh clears previous cards, trimmed search and filter snapshot reach the server
+  ---
+  duration_ms: 0.4707
+  ...
+# Subtest: out of order search responses and failures cannot replace the latest results
+ok 17 - out of order search responses and failures cannot replace the latest results
+  ---
+  duration_ms: 0.4067
+  ...
+# Subtest: pagination deduplicates rows and stops at the last page
+ok 18 - pagination deduplicates rows and stops at the last page
+  ---
+  duration_ms: 0.3834
+  ...
+# Subtest: only one load-more runs at a time and refreshing invalidates pending pagination
+ok 19 - only one load-more runs at a time and refreshing invalidates pending pagination
+  ---
+  duration_ms: 0.6999
+  ...
+# Subtest: untrusted supply payloads and malformed pagination never become purchasable cards
+ok 20 - untrusted supply payloads and malformed pagination never become purchasable cards
+  ---
+  duration_ms: 0.5725
+  ...
+# Subtest: unmount or hidden panel invalidates requests
+ok 21 - unmount or hidden panel invalidates requests
+  ---
+  duration_ms: 0.1855
+  ...
+# Subtest: demo and invalid identities have no purchase navigation; real supply uses canonical detail
+ok 22 - demo and invalid identities have no purchase navigation; real supply uses canonical detail
+  ---
+  duration_ms: 0.2729
+  ...
+# Subtest: real zero price stays free, absent/invalid price never becomes free
+ok 23 - real zero price stays free, absent/invalid price never becomes free
+  ---
+  duration_ms: 0.2558
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 131.886

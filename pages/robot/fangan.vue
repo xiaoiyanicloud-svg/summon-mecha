@@ -11,10 +11,12 @@
     </view>
 
     <!-- 可滚动内容 -->
-    <scroll-view class="page-scroll" scroll-y="true" :show-scrollbar="false" @scrolltolower="loadMore">
+    <scroll-view class="page-scroll" scroll-y="true" :show-scrollbar="false">
+      <StateView :loading="loading" :error="loadError" @retry="reload" />
+      <view v-if="!loading && !loadError && sceneLoaded">
       <!-- 顶部Banner + 简介 -->
       <view class="banner-area">
-        <image class="banner-image" :src="sceneInfo.banner" mode="aspectFill"></image>
+        <image v-if="sceneInfo.banner" class="banner-image" :src="sceneInfo.banner" mode="aspectFill"></image>
         <view class="banner-text">
           <text class="scene-name">{{ sceneInfo.name }}</text>
           <text class="scene-desc">{{ sceneInfo.desc }}</text>
@@ -32,23 +34,14 @@
         <!-- 场景说明卡片 -->
         <view class="scene-intro-card">
           <text class="intro-title">📌 场景说明</text>
-          <text class="intro-content">{{ sceneInfo.intro || '该场景适用于多种机器人应用，提供专业解决方案。' }}</text>
-        </view>
-
-        <!-- 案例展示 -->
-        <view class="case-section">
-          <text class="section-title">案例展示</text>
-          <view class="case-grid">
-            <view class="case-item" v-for="(item, idx) in cases" :key="idx" @tap="viewCase(item)">
-              <image class="case-image" :src="item.image" mode="aspectFill"></image>
-              <text class="case-title">{{ item.title }}</text>
-            </view>
-          </view>
+          <text class="intro-content">{{ sceneInfo.intro || '具体服务条件请提交需求后确认。' }}</text>
         </view>
 
         <!-- 适用机型 -->
         <view class="product-section">
-          <text class="section-title">适用机型</text>
+          <text class="section-title">场景配置机型</text>
+          <view class="data-note">目录价格供参考，档期与现场服务条件需进一步确认。</view>
+          <StateView :empty="!filteredProducts.length" empty-text="当前未配置可租机型" empty-hint="可切换方案定制，提交您的具体需求" />
           <view class="product-grid">
             <view class="product-card" :class="{ selected: isMachineSelected(item) }" v-for="(item, idx) in filteredProducts" :key="idx" @tap="goProductDetail(item)">
               <view class="product-image" :style="{ backgroundColor: item.bg || '#F0F4FA' }">
@@ -69,18 +62,14 @@
               </view>
             </view>
           </view>
-          <view class="load-more" v-if="hasMore">
-            <text>加载更多...</text>
-          </view>
-          <view class="load-more" v-else>
-            <text>— 已加载全部 —</text>
-          </view>
+
         </view>
       </view>
 
       <!-- ===== 方案定制（痛点→方案 / 亮点 / 预期收益；不罗列机型） ===== -->
       <view v-else>
-        <view class="card">
+        <view v-if="!scheme.pains.length && !scheme.benefits.length && !scheme.scenes.length" class="data-note">具体服务范围、交付条件及报价需根据您的需求确认。</view>
+        <view class="card" v-if="scheme.pains.length">
           <view class="card-title-row">
             <text class="card-title">你的核心痛点</text>
             <text class="card-sub">遇到这些难题？我们这样解决</text>
@@ -99,7 +88,7 @@
           </view>
         </view>
 
-        <view class="card">
+        <view class="card" v-if="scheme.benefits.length">
           <view class="card-title-row">
             <text class="card-title">方案亮点</text>
           </view>
@@ -112,9 +101,9 @@
           </view>
         </view>
 
-        <view class="card">
+        <view class="card" v-if="scheme.scenes.length">
           <view class="card-title-row">
-            <text class="card-title">典型场景预期收益</text>
+            <text class="card-title">服务内容说明</text>
           </view>
           <scroll-view class="scene-scroll" scroll-x :show-scrollbar="false">
             <view class="scheme-scene" v-for="(scene, idx) in scheme.scenes" :key="idx">
@@ -122,27 +111,26 @@
                 <text class="scheme-scene-name">{{ scene.name }}</text>
               </view>
               <text class="scheme-scene-desc">{{ scene.desc }}</text>
-              <view class="scheme-scene-data">
-                <text class="scheme-scene-data-num">{{ scene.data }}</text>
-              </view>
+
             </view>
           </scroll-view>
-          <view class="data-note">*数据基于行业公开信息及实验室测试推算</view>
+
         </view>
 
       </view>
 
+      </view>
       <!-- 底部占位 -->
       <view style="height: 160rpx;"></view>
     </scroll-view>
 
     <!-- 免费定制 CTA（固定悬浮底部，仅方案定制模式） -->
-    <view class="custom-cta" v-if="activeMode === 'custom'" @tap="onConsult">
-      <text>免费定制方案</text>
+    <view class="custom-cta" v-if="sceneLoaded && !loading && activeMode === 'custom'" @tap="onConsult">
+      <text>提交场景需求</text>
     </view>
 
     <!-- ===== 多机合单底部结算栏 ===== -->
-    <view class="scene-cart-bar" v-if="selectedMachines.length > 0">
+    <view class="scene-cart-bar" v-if="sceneLoaded && !loading && activeMode === 'rent' && selectedMachines.length > 0">
       <view class="scene-cart-row">
         <text class="scene-cart-count">已选 {{ selectedMachines.length }} 台</text>
         <view class="scene-cart-days">
@@ -156,32 +144,29 @@
         </view>
         <text class="scene-cart-total">¥{{ sceneTotal() }}</text>
       </view>
-      <view class="scene-cart-submit" @tap="submitSceneOrder">立即下单</view>
+      <view class="scene-cart-submit" @tap="submitSceneOrder">提交选型意向 · 获取正式报价</view>
     </view>
 
     <!-- ===== 免费定制方案 · 留资弹窗 ===== -->
     <view class="lead-mask" v-if="showLeadForm" @tap="closeLeadForm">
       <view class="lead-modal" @tap.stop>
         <view class="lead-title">免费定制「{{ leadSchemeTitle }}」方案</view>
-        <view class="lead-sub">留下联系方式，方案专家将在 1 小时内联系您</view>
+        <view class="lead-sub">留下联系方式，工作人员将与您确认服务安排</view>
         <input class="lead-input" v-model="leadForm.name" placeholder="联系人姓名" />
         <input class="lead-input" v-model="leadForm.phone" type="number" maxlength="11" placeholder="手机号" />
         <textarea class="lead-textarea" v-model="leadForm.demand" placeholder="补充需求（选填）：时间 / 数量 / 城市" />
-        <view class="lead-submit" @tap="submitLead">提交</view>
+        <view class="lead-submit" @tap="submitLead">{{ leadSubmitting ? '提交中…' : '提交' }}</view>
       </view>
     </view>
 
-    <!-- ===== 提交成功页（含企微活码占位） ===== -->
+    <!-- 提交成功后显示真实受理提示 -->
     <view class="lead-mask" v-if="showLeadSuccess" @tap="closeLeadSuccess">
       <view class="lead-modal" @tap.stop>
         <view class="lead-success-icon">✅</view>
         <view class="lead-title-sm">已收到您的需求</view>
-        <view class="lead-sub">方案专家将在 1 小时内联系您</view>
-        <view class="lead-qr-box">
-          <!-- [WECOM_QR] 企微活码占位：上线前把活码图片放 static/ 并替换此块为 image 标签 -->
-          <text class="lead-qr-text">企微咨询码（占位）</text>
-        </view>
-        <view class="lead-qr-tip">想立刻聊？微信扫码添加方案专家</view>
+        <view class="lead-sub">工作人员将与您确认服务安排</view>
+
+
         <view class="lead-close" @tap="closeLeadSuccess">知道了</view>
       </view>
     </view>
@@ -190,297 +175,96 @@
 </template>
 
 <script>
-import { sceneApi, categoryApi, productApi, tobOrderApi } from '@/utils/api'
+
+import { sceneApi } from '@/utils/api'
+import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request'
 import { BASE_URL } from '@/utils/config'
-import { SCENE_SCHEMES, SCHEME_DB, DEFAULT_SCHEME, sceneProducts } from '@/components/jiqi/changjing-data.js'
+import StateView from '@/components/StateView.vue'
+import { sceneId, configuredSceneProducts, normalizeSceneImage } from '@/utils/scene-catalog'
 
 export default {
+  components: { StateView },
   data() {
     return {
-      // 场景信息（从路由参数获取）
-      sceneId: '',
-      // 当前场景分类(TOB=enterprise 时走去后端拉真实图+描述)
-      currentCategory: '',
-      // 内容模式：rent=场景租用(默认) / custom=方案定制
-      activeMode: 'rent',
-      // 方案标题（首页场景方案传入；机器页场景无则兜底）
-      rentTitle: '',
-      // 方案定制内容（切到定制 tab 时按 title 取 SCHEME_DB）
-      scheme: {},
-      sceneInfo: {
-        name: '商业活动',
-        banner: '/static/hero.jpg',
-        desc: '适用于展会、商场、品牌活动的机器人解决方案',
-        intro: '提供租赁、购买、定制化服务，满足各类商业活动需求，提升现场互动体验。'
-      },
-      // 机器人列表（模拟数据）
-      allProducts: [
-        { id: 1, name: '宇树Go2', scene: '巡检·安防', price: '1,200', unit: '/天', icon: '🐕', bg: '#F0F4FA', brand: '宇树', type: 'quadruped', distance: 2.5, rating: 4.8 },
-        { id: 2, name: '智元远征A1', scene: '工业·制造', price: '2,800', unit: '/天', icon: '🧑‍🤖', bg: '#E8F0FE', brand: '智元', type: 'humanoid', distance: 5.0, rating: 4.9 },
-        { id: 3, name: '优必选Walker', scene: '高端服务', price: '4,200', unit: '/天', icon: '🤖', bg: '#F0F4FA', brand: '优必选', type: 'humanoid', distance: 3.2, rating: 4.7 },
-        { id: 4, name: '小米CyberDog 2', scene: '家庭陪伴', price: '1,500', unit: '/天', icon: '📱', bg: '#F0F4FA', brand: '小米', type: 'quadruped', distance: 1.8, rating: 4.5 },
-        { id: 5, name: '大疆M300', scene: '工业巡检', price: '3,200', unit: '/天', icon: '✈️', bg: '#E8F0FE', brand: '大疆', type: 'inspection', distance: 6.0, rating: 4.6 },
-        { id: 6, name: '擎朗T5', scene: '医院物流', price: '950', unit: '/天', icon: '🏥', bg: '#E8F0FE', brand: '擎朗', type: 'delivery', distance: 4.0, rating: 4.4 },
-        { id: 7, name: '普渡欢乐送', scene: '酒店·餐饮', price: '800', unit: '/天', icon: '📦', bg: '#F0F4FA', brand: '普渡', type: 'delivery', distance: 2.0, rating: 4.3 },
-        { id: 8, name: '高仙商用', scene: '商场·办公', price: '600', unit: '/天', icon: '🧹', bg: '#E8F0FE', brand: '高仙', type: 'cleaning', distance: 3.5, rating: 4.2 },
-      ],
-      // 适用机器（后台配置的目录租用产品 id + 拉取的产品列表）
-      sceneRobots: [],
-      rentCatalog: [],
-      // 免费定制方案 · 留资弹窗/成功页
-      showLeadForm: false,
-      showLeadSuccess: false,
-      leadSchemeTitle: '',
-      leadForm: { name: '', phone: '', demand: '' },
-      // 场景租用多机合单:已选机器 + 全场统一租期(天)
-      selectedMachines: [],
-      rentDays: 1,
-      rentDayOptions: [1, 3, 7, 30],
-      // 分页加载
-      page: 1,
-      pageSize: 10,
-      hasMore: true,
-      // 案例展示
-      cases: [
-        { title: '上海车展机器人互动', image: '/static/zhanguanjd.jpg' },
-        { title: '商场导购机器人', image: '/static/jiudianfw.jpg' },
-        { title: '工厂产线自动化', image: '/static/dianlixj.jpg' }
-      ]
+      sceneId: '', activeMode: 'rent', loading: true, loadError: '', loadVersion: 0, sceneLoaded: false,
+      sceneInfo: { name: '', banner: '', desc: '', intro: '' },
+      scheme: { pains: [], benefits: [], scenes: [] }, sceneRobots: [], rentCatalog: [],
+      selectedMachines: [], rentDays: 1, rentDayOptions: [1, 3, 7, 30],
+      showLeadForm: false, showLeadSuccess: false, leadSchemeTitle: '', leadSubmitting: false,
+      leadForm: { name: '', phone: '', demand: '' }
     }
   },
   computed: {
-    filteredProducts() {
-      // 优先显示后台配置的适用机器（目录租用产品）；未配置/拉取失败回退本地 mock
-      if (this.sceneRobots.length && this.rentCatalog.length) {
-        const list = this.sceneRobots
-          .map(id => this.rentCatalog.find(r => String(r.bagistoId ?? r.id) === String(id)))
-          .filter(Boolean)
-          // booking 类型商品在 Bagisto 建单会抛错并无终止重试 → 从场景租用剔除，避免下单变「租赁意向」
-          .filter(r => r.type !== 'booking')
-        if (list.length) return list
-      }
-      return this.allProducts
-    }
+    filteredProducts() { return configuredSceneProducts(this.sceneRobots, this.rentCatalog) }
   },
-  onLoad(options) {
-    this.rentTitle = options.title || ''
-    if (options.sceneId) {
-      this.sceneId = options.sceneId
-      this.currentCategory = options.category || ''
-    }
-    // 用进入的场景填充顶部（避免默认"商业活动"）：优先本地 sceneProducts 匹配
-    const localScene = this.sceneId
-      ? sceneProducts.find(x => Number(x.id) === Number(this.sceneId))
-      : null
-    if (localScene) {
-      this.sceneInfo = {
-        ...this.sceneInfo,
-        name: localScene.name,
-        desc: localScene.desc,
-        intro: localScene.desc,
-        banner: this.normalizeImageUrl(localScene.banner) || this.sceneInfo.banner
-      }
-    }
-    // 带图方案（仓储分拣/电力巡检/酒店服务/展会接待）：用 SCHEME_DB 完整数据 + 图覆盖
-    if (this.rentTitle && SCHEME_DB[this.rentTitle]) {
-      const s = SCHEME_DB[this.rentTitle]
-      this.sceneInfo = {
-        ...this.sceneInfo,
-        name: this.rentTitle,
-        desc: s.desc,
-        intro: s.desc,
-        banner: options.image || this.sceneInfo.banner
-      }
-    }
-    if (this.sceneId) {
-      // 所有场景都尝试连后端(后台 scenes 表有该 id 才用,否则回退本地数据)
-      this.loadTobScene()
-    }
-    // 载入方案定制内容：优先 sceneId 专属方案，其次 title 完整方案
-    this.loadScheme(this.sceneId, this.rentTitle)
-    // 拉取目录租用产品（供场景租用机型显示）
-    this.loadRentProducts()
-  },
+  onLoad(options) { this.sceneId = sceneId(options.sceneId) || '' },
+  onShow() { this.reload() },
+  onUnload() { this.loadVersion++ },
   methods: {
-    // 方案定制：按 title 取 SCHEME_DB，无则用 DEFAULT_SCHEME 兜底
-    // 拉取目录「租用」分类产品，映射成机型卡片
-    async loadRentProducts() {
-      try {
-        const res = await categoryApi.getCategories({ limit: 200 })
-        const cats = Array.isArray(res) ? res : ((res && res.data) || [])
-        const rent = cats.find(c => c.slug === 'rent' || c.name === '租用')
-        if (!rent) return
-        const prods = await productApi.getProducts({ limit: 200, page: 1, category_id: rent.id })
-        this.rentCatalog = (prods && Array.isArray(prods.data)) ? prods.data.map(p => this.mapCatalogProduct(p)) : []
-      } catch (e) {
-        this.rentCatalog = []
-      }
-    },
-    mapCatalogProduct(p) {
-      const regular = (p.prices && p.prices.regular && p.prices.regular.price) || ''
-      const final = (p.prices && p.prices.final && p.prices.final.price) || ''
-      const minPrice = (typeof p.min_price === 'number' ? p.min_price : '0')
-      const effVal = final || regular || minPrice
-      const num = parseFloat(String(effVal).replace(/[^\d.]/g, ''))
-      const price = (isNaN(num) ? '' : String(num))
-      const img = (p.base_image && (p.base_image.medium_image_url || p.base_image.large_image_url || p.base_image.small_image_url)) || ''
-      return {
-        id: p.id,
-        name: p.name || '商品',
-        price,
-        icon: '🤖',
-        bg: '#F0F4FA',
-        scene: '',
-        unit: '/天',
-        image: img,
-        bagistoId: p.id,
-        bagistoPrice: price,
-        type: p.type || '',
-      }
-    },
-    loadScheme(sceneId, title) {
-      // 优先该 sceneId 的专属方案(SCENE_SCHEMES)，其次按方案 title(SCHEME_DB)完整数据，最后兜底
-      this.scheme = (sceneId && SCENE_SCHEMES[sceneId])
-        || (title && SCHEME_DB[title])
-        || DEFAULT_SCHEME
-    },
-    // 切换内容模式（场景租用 / 方案定制）
-    setActiveMode(mode) {
-      this.activeMode = mode
-      // 切到定制时确保方案内容已载入（scheme 无 title 字段，用键数判断）
-      if (mode === 'custom' && Object.keys(this.scheme).length === 0) {
-        this.loadScheme(this.sceneId, this.rentTitle)
-      }
-    },
-    // 场景详情:后台 scenes 表有该场景时才用后端描绘/图,否则保持本地
-    async loadTobScene() {
+    async reload() {
+      const version = ++this.loadVersion
+      this.loading = true; this.loadError = ''; this.sceneLoaded = false
       try {
         const res = await sceneApi.getSceneDetail(this.sceneId)
-        // 未匹配到后端(或接口失败) → 保持本地兜底,不改名
-        if (!res || !res.matched) return
-        if (res.description) {
-          this.sceneInfo.intro = res.description
-        }
-        if (res.name) {
-          this.sceneInfo.name = res.name
-        }
-        if (res.banner) {
-          this.sceneInfo.banner = this.normalizeImageUrl(res.banner)
-        }
-        // 后台「场景管理」配置的完整方案内容（说明/痛点/亮点/收益等）→ 覆盖本地兜底
-        if (res.scheme && typeof res.scheme === 'object') {
-          this.scheme = res.scheme
-        }
-        // 后台配置的适用机器（目录租用产品 id）
-        if (res.scheme && Array.isArray(res.scheme.robots)) {
-          this.sceneRobots = res.scheme.robots
-        }
+        if (version !== this.loadVersion) return
+        if (!res || !res.matched || !res.scheme || !Array.isArray(res.products)) throw new Error('场景数据已更新，请刷新或重新进入场景')
+        this.sceneInfo = { name: res.name, category: res.category, scene_revision_id: res.scene_revision_id, banner: normalizeSceneImage(res.banner, BASE_URL), desc: res.description || '', intro: res.description || '' }
+        if (['pains', 'benefits', 'scenes', 'robots'].some(key => res.scheme[key] != null && !Array.isArray(res.scheme[key]))) throw new Error('场景数据格式异常，请重试')
+        this.scheme = { pains: res.scheme.pains || [], benefits: res.scheme.benefits || [], scenes: res.scheme.scenes || [] }
+        this.sceneRobots = res.scheme.robots || []
+        this.rentCatalog = res.products.map(this.mapCatalogProduct).filter(Boolean)
+        this.selectedMachines = this.filteredProducts.filter(item => this.selectedMachines.some(old => old.id === item.id))
+        this.sceneLoaded = true
       } catch (e) {
-        // 接口失败保持本地现状,不打扰用户
-      }
+        if (version !== this.loadVersion) return
+        this.loadError = e.message || '场景加载失败，请重试'
+        this.sceneRobots = []; this.rentCatalog = []; this.selectedMachines = []
+      } finally { if (version === this.loadVersion) this.loading = false }
     },
-    // 后端图片 URL 可能是相对路径或以 APP_URL(localhost)开头的完整 URL,
-    // 统一换成前端 BASE_URL 的主机,保证真机用局域网 IP 时也能加载。
-    normalizeImageUrl(url) {
-      if (!url) return ''
-      const m = String(url).match(/^https?:\/\/[^/]+(\/.*)$/)
-      const path = m ? m[1] : String(url)
-      return path.startsWith('/') ? BASE_URL + path : url
+    mapCatalogProduct(p) {
+      const raw = p.prices && ((p.prices.final && p.prices.final.price) ?? (p.prices.regular && p.prices.regular.price))
+      const price = typeof raw === 'number' || (typeof raw === 'string' && /^\d+(\.\d+)?$/.test(raw.trim())) ? Number(raw) : NaN
+      if (!sceneId(p.id) || p.type !== 'simple' || !Number.isFinite(price) || price < 0) return null
+      return { id: Number(p.id), bagistoId: Number(p.id), name: p.name || '机器人', price: String(price), type: p.type,
+        icon: '🤖', bg: '#F0F4FA', unit: '/天', image: normalizeSceneImage(p.base_image && p.base_image.medium_image_url, BASE_URL) }
     },
-    goBack() {
-      uni.navigateBack()
-    },
-    openService() {
-      uni.showToast({ title: '客服功能', icon: 'none' })
-    },
-    loadMore() {
-      if (!this.hasMore) return
-      // 模拟加载更多
-      this.page++
-      // 模拟数据追加（实际请求接口）
-      // 这里简单演示，不再追加
-      this.hasMore = false
-      uni.showToast({ title: '已加载全部', icon: 'none' })
-    },
+    setActiveMode(mode) { this.activeMode = mode },
+    goBack() { uni.navigateBack() },
+    openService() { if (this.sceneLoaded && !this.loading) this.onConsult() },
     goProductDetail(item) {
-      // 修复：原跳不存在的 /pages/product/detail（坏路由）→ 改走统一结算（type=rent）
-      // from=scene：场景租用来源标记，后端把此类订单归类到「方案」(order_type=plan)
-      uni.navigateTo({
-        url: `/pages/order/checkout?productId=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.price}&icon=${encodeURIComponent(item.icon)}&bg=${encodeURIComponent(item.bg)}&scene=${encodeURIComponent(this.sceneInfo.name)}&type=rent&qty=1&from=scene`
-      })
+      if (!this.canSelect(item)) return
+      this.openRequest('意向机型：' + item.name + '。具体设备、任务能力和档期待评估。')
     },
-    viewCase(item) {
-      uni.showToast({ title: `查看案例：${item.title}`, icon: 'none' })
-    },
-    // ===== 场景租用多机合单 =====
-    isMachineSelected(item) {
-      const key = item.bagistoId || item.id
-      return this.selectedMachines.some(m => (m.bagistoId || m.id) === key)
-    },
+    canSelect(item) { return this.sceneLoaded && !this.loading && this.filteredProducts.some(p => p.id === item.id) },
+    isMachineSelected(item) { return this.selectedMachines.some(m => m.id === item.id) },
     toggleMachine(item) {
-      const key = item.bagistoId || item.id
-      const idx = this.selectedMachines.findIndex(m => (m.bagistoId || m.id) === key)
-      if (idx !== -1) {
-        this.selectedMachines.splice(idx, 1)
-      } else {
-        this.selectedMachines.push({ ...item })
-      }
+      if (!this.canSelect(item)) return
+      const index = this.selectedMachines.findIndex(m => m.id === item.id)
+      if (index >= 0) this.selectedMachines.splice(index, 1)
+      else this.selectedMachines.push({ ...item })
     },
-    sceneTotal() {
-      const perDay = this.selectedMachines.reduce((sum, m) => sum + (parseFloat(String(m.price).replace(/,/g, '')) || 0), 0)
-      return Math.round(perDay * this.rentDays * 100) / 100
-    },
+    sceneTotal() { return Math.round(this.selectedMachines.reduce((sum, m) => sum + Number(m.price), 0) * this.rentDays * 100) / 100 },
     submitSceneOrder() {
-      if (!this.selectedMachines.length) return
-      const items = this.selectedMachines.map(m => ({
-        product_id: m.bagistoId || m.id,
-        name: m.name,
-        price: m.price,
-        bg: m.bg || '',
-        icon: m.icon || '🤖',
-        image: m.image || '',
-        qty: 1,
-      }))
-      uni.navigateTo({
-        url: `/pages/order/checkout?type=rent&from=scene&scene=${encodeURIComponent(this.sceneInfo.name)}&rent_days=${this.rentDays}&rentPeriod=${this.rentDays}天&items=${encodeURIComponent(JSON.stringify(items))}`
-      })
+      if (!this.selectedMachines.length || !this.selectedMachines.every(this.canSelect)) return
+      this.openRequest('意向机型：' + this.selectedMachines.map(m => m.name).join('、') + '；意向服务 ' + this.rentDays + ' 天。目录金额仅供参考，以正式报价为准。')
     },
-
     onConsult() {
-      this.leadSchemeTitle = this.scheme.title || this.sceneInfo.name || '专属'
-      this.leadForm = { name: '', phone: '', demand: '' }
-      this.showLeadForm = true
+      if (!this.sceneLoaded || this.loading) return
+      this.openRequest('希望沟通「' + this.sceneInfo.name + '」的场景服务方案。')
     },
-    closeLeadForm() {
-      this.showLeadForm = false
+    openRequest(text) {
+      openSceneRequest(sceneDraftPayload({ source: 'scene', sceneId: this.sceneId, revisionId: this.sceneInfo.scene_revision_id, category: this.sceneInfo.category, text, contact: { name: '', phone: '' } }))
     },
-    closeLeadSuccess() {
-      this.showLeadSuccess = false
-    },
-    // 真实提交:线索走 tob-order(type=custom) → 后台订单列表可见;成功后展示企微码成功页
+    closeLeadForm() { if (!this.leadSubmitting) this.showLeadForm = false },
+    closeLeadSuccess() { this.showLeadSuccess = false },
     async submitLead() {
-      const { name, phone, demand } = this.leadForm
-      if (!name.trim()) { uni.showToast({ title: '请输入联系人姓名', icon: 'none' }); return }
-      if (!phone || phone.length < 11) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return }
-      try {
-        const res = await tobOrderApi.create({
-          type: 'custom',
-          product_name: '方案定制·' + this.leadSchemeTitle,
-          name: name.trim(),
-          phone,
-          demand,
-          qty: 1,
-        })
-        if (!res || !res.success) throw new Error((res && res.message) || '提交失败')
-      } catch (e) {
-        uni.showToast({ title: e.message || '网络异常，请稍后重试', icon: 'none' })
-        return
-      }
+      if (!this.sceneLoaded || this.loading) return
+      openSceneRequest(sceneDraftPayload({ source: 'scene', sceneId: this.sceneId, revisionId: this.sceneInfo.scene_revision_id, category: this.sceneInfo.category, text: this.leadForm.demand, contact: this.leadForm }))
       this.showLeadForm = false
-      this.showLeadSuccess = true
     }
   }
 }
+
 </script>
 
 <style scoped>
@@ -551,6 +335,7 @@ page {
   position: relative;
   width: 100%;
   height: 360rpx;
+  background: linear-gradient(135deg, #102F6E, #165DFF);
 }
 .banner-image {
   width: 100%;

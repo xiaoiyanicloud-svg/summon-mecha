@@ -21,7 +21,7 @@
 					<view class="ai-content-wrap">
 						<view class="ai-header">
 							<text class="ai-title"><text class="ai-mark">AI</text><text class="ai-rest">召唤</text></text>
-							<text class="badge">50+应用场景</text>
+							<text class="badge">描述需求 · 匹配服务</text>
 						</view>
 						<view class="ai-input-row">
 							<input class="input" type="text" v-model="need" placeholder="例如：我明天需要一台展会接待机器人" placeholder-class="input-ph-compact" />
@@ -47,8 +47,9 @@
 						<text class="square-more" @click="showMore">更多 ›</text>
 					</view>
 					<view class="square-content">
-						<swiper 
-							class="scheme-swiper" 
+						<StateView :loading="scenesLoading" :error="scenesError" :empty="!schemes.length" empty-text="暂无已发布场景" @retry="refreshScenes" />
+						<swiper v-if="!scenesLoading && !scenesError && schemes.length"
+							class="scheme-swiper"
 							circular="false"
 							:autoplay="autoplayEnabled"
 							:interval="3000"
@@ -65,9 +66,6 @@
 										</view>
 										<view class="scheme-card-text">
 											<text class="scheme-card-title">{{ item.name || item.title }}</text>
-										</view>
-										<view class="scheme-card-consult">
-											<text>{{ item.consultCount ? (item.consultCount + '咨询') : '100咨询' }}</text>
 										</view>
 									</view>
 								</view>
@@ -120,20 +118,17 @@
 		<!-- ===== 自定义底部导航栏 ===== -->
 		<CustomTabBar currentPage="/pages/home/index" />
 
-		<!-- ===== 提交成功 · 企微咨询码 ===== -->
+		<!-- 提交成功提示 -->
 		<view class="custom-modal-mask" v-if="showLeadSuccess" @tap="closeLeadSuccess">
 			<view class="custom-modal" @tap.stop>
 				<view class="modal-close" @tap="closeLeadSuccess">✕</view>
 				<view class="modal-header">
 					<text class="modal-icon">✅</text>
 					<text class="modal-title">已收到您的需求</text>
-					<text class="modal-subtitle">方案专家将在 1 小时内联系您</text>
+					<text class="modal-subtitle">您的需求已提交，请留意后续联系</text>
 				</view>
-				<view class="lead-qr-box">
-					<!-- [WECOM_QR] 企微活码占位：上线前把活码图片放 static/ 并替换为 image 标签 -->
-					<text class="lead-qr-text">企微咨询码（占位）</text>
-				</view>
-				<text class="lead-qr-tip">想立刻聊？微信扫码添加方案专家</text>
+
+
 				<view class="modal-footer">
 					<view class="btn-primary" @tap="closeLeadSuccess">知道了</view>
 				</view>
@@ -147,7 +142,7 @@
 				<view class="modal-header">
 					<text class="modal-icon">✨</text>
 					<text class="modal-title">定制专属机器人方案</text>
-					<text class="modal-subtitle">留下您的需求，专家1小时内为您定制</text>
+					<text class="modal-subtitle">留下您的需求，工作人员将与您确认服务安排</text>
 				</view>
 				<view class="modal-body">
 					<view class="form-item">
@@ -180,7 +175,7 @@
 				</view>
 				<view class="modal-footer">
 					<view class="btn-secondary" @tap="closeCustomModal">稍后再说</view>
-					<view class="btn-primary" @tap="submitCustom">立即提交</view>
+					<view class="btn-primary" @tap="submitCustom">完善服务需求</view>
 				</view>
 			</view>
 		</view>
@@ -191,12 +186,14 @@
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import EcoCenter from '@/components/EcoCenter.vue';
+import StateView from '@/components/StateView.vue';
 import { sceneProducts, loadBackendScenes } from '@/components/jiqi/changjing-data.js';
-import { tobOrderApi } from '@/utils/api';
+import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 
 	export default {
 		components: {
 			CustomTabBar,
+			StateView,
 			EcoCenter
 		},
 		data() {
@@ -216,8 +213,8 @@ import { tobOrderApi } from '@/utils/api';
 					company: '',
 					demand: ''
 				},
-				// 场景方案初始给一份本地场景兜底（避免首屏空）；onLoad/onShow 用后台热门覆盖
-				schemes: [...sceneProducts]
+				// 仅展示服务端成功返回的场景快照
+				schemes: [], scenesLoading: true, scenesError: '', customSubmitting: false
 			};
 		},
 		computed: {
@@ -241,10 +238,12 @@ import { tobOrderApi } from '@/utils/api';
 					uni.showToast({ title: '请先输入需求', icon: 'none' });
 					return;
 				}
-				uni.showToast({ title: `✅ 已生成「${this.need}」方案`, icon: 'success' });
+				uni.setStorageSync('aiPendingQuery', this.need.trim());
+				uni.switchTab({ url: '/pages/ai/index' });
 			},
 			showMore() {
-				uni.showToast({ title: '查看更多方案', icon: 'none' });
+				uni.setStorageSync('robotTab', 'scene');
+				uni.switchTab({ url: '/pages/robot/index' });
 			},
 			schemeDetail(item) {
 				const params = {
@@ -253,7 +252,6 @@ import { tobOrderApi } from '@/utils/api';
 					category: item.category || '',
 					image: item.image || '',
 					icon: item.icon,
-					consultCount: item.consultCount,
 					bgColor: item.bgColor
 				};
 				const queryString = Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
@@ -279,37 +277,13 @@ import { tobOrderApi } from '@/utils/api';
 			closeLeadSuccess() {
 				this.showLeadSuccess = false;
 			},
-			async submitCustom() {
-				const { identity, name, phone, company, wechat, demand } = this.customForm;
-				if (!identity) { uni.showToast({ title: '请选择您的身份', icon: 'none' }); return; }
-				if (!name.trim()) { uni.showToast({ title: '请输入联系人姓名', icon: 'none' }); return; }
-				if (!phone || phone.length < 11) { uni.showToast({ title: '请输入正确的手机号', icon: 'none' }); return; }
-				if (identity === 'enterprise' && !company.trim()) { uni.showToast({ title: '请输入公司名称', icon: 'none' }); return; }
-				// 真实提交:线索走 tob-order(type=custom),后台订单列表可见
-				let submitted = true;
-				let errText = '网络异常，请稍后重试';
-				try {
-					const res = await tobOrderApi.create({
-						type: 'custom',
-						product_name: '首页定制咨询·' + (identity === 'enterprise' ? '企业' : '个人'),
-						name: name.trim(), phone, wechat, company, demand,
-						qty: 1,
-					});
-					if (!res || !res.success) throw new Error((res && res.message) || '提交失败');
-				} catch (e) {
-					// 透传后端真实原因(如锚点商品缺失),不再笼统显示网络异常
-					submitted = false;
-					errText = (e && e.message) || '网络异常，请稍后重试';
-				}
-				if (submitted) {
-					this.closeCustomModal();
-					this.customForm = { identity: 'enterprise', name: '', phone: '', wechat: '', company: '', demand: '' };
-					// 提交成功后弹出「企微咨询码」窗口，方便用户快速联系官方（复用方案定制流程）
-					this.showLeadSuccess = true;
-				} else {
-					uni.showToast({ title: errText, icon: 'none' });
-				}
-			},
+            async submitCustom() {
+                const { identity, name, phone, company, wechat, demand } = this.customForm;
+                if (!identity || !name.trim() || !/^\+?[0-9 -]{7,25}$/.test(phone)) { uni.showToast({ title: '请填写身份、联系人及有效电话', icon: 'none' }); return; }
+                if (identity === 'enterprise' && !company.trim()) { uni.showToast({ title: '请输入公司名称', icon: 'none' }); return; }
+                openSceneRequest(sceneDraftPayload({ source: 'home', text: demand, contact: { name: name.trim(), phone, company, wechat } }));
+                this.closeCustomModal();
+            },
 			handleTouchStart() {
 				this.autoplayEnabled = false;
 				if (this.autoPlayTimer) { clearTimeout(this.autoPlayTimer); this.autoPlayTimer = null; }
@@ -322,16 +296,15 @@ import { tobOrderApi } from '@/utils/api';
 				this.currentIndex = e.detail.current;
 			},
 			async refreshScenes() {
-				try {
-					await loadBackendScenes()
-				} catch (e) {
-					// 后台场景拉不到 → 回退本地场景(页面不空屏是**有意**的降级);留 warn 不静默
-					console.warn('[home] 后台场景加载失败,回退本地场景', e)
-				}
-				// 首页「场景方案」= 后台设为热门的场景；无热门时回退全部场景（避免空屏）
-				const hot = sceneProducts.filter(s => s.is_hot);
-				this.schemes = hot.length ? hot : sceneProducts;
-			},
+                this.scenesLoading = true; this.scenesError = '';
+                try {
+                    await loadBackendScenes({ force: true });
+                    const hot = sceneProducts.filter(s => s.is_hot);
+                    this.schemes = [...(hot.length ? hot : sceneProducts)];
+                } catch (e) {
+                    this.schemes = []; this.scenesError = e.message || '场景加载失败，请重试';
+                } finally { this.scenesLoading = false; }
+            },
 			goHome() {
 				uni.showToast({ title: '回到首页', icon: 'none' });
 			}

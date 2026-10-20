@@ -1,0 +1,27 @@
+{
+  "environment": "Chrome headless + Vue 3.5.13，隔离 API 夹具；非 HBuilderX H5/小程序构建",
+  "compiledSfc": [
+    "pages/scene/request.vue",
+    "pages/scene/requests.vue",
+    "pages/scene/detail.vue",
+    "pages/scene/project.vue",
+    "pages/home/index.vue",
+    "pages/robot/index.vue",
+    "pages/robot/fangan.vue",
+    "pages/home/rmfangan.vue",
+    "pages/order/checkout.vue",
+    "pages/ai/index.vue",
+    "pages/mine/index.vue",
+    "components/StateView.vue"
+  ],
+  "checks": [
+    "真实 Vue 挂载需求动态表单",
+    "未确认联系授权禁止提交",
+    "提交超时保留草稿且无伪成功",
+    "重试使用同一幂等键并凭真实回执进入详情",
+    "需求号、原文、现场信息与真实空报价显示",
+    "需求列表成功空态",
+    "冻结验收标准和项目款项状态分离"
+  ],
+  "pageErrors": []
+}

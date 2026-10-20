@@ -26,6 +26,7 @@ use Webkul\Admin\Http\Controllers\Catalog\SkillTagController;
  * Catalog routes.
  */
 Route::prefix('catalog')->group(function () {
+    require __DIR__.'/scene-workflow-routes.php';
     /**
      * Attributes routes.
      */
@@ -92,7 +93,7 @@ Route::prefix('catalog')->group(function () {
     /**
      * Scenes routes.
      */
-    Route::controller(SceneController::class)->prefix('scenes')->group(function () {
+    Route::controller(SceneController::class)->prefix('scenes')->middleware(\Webkul\Admin\Http\Middleware\AuthorizeSceneAction::class)->group(function () {
         Route::get('', 'index')->name('admin.catalog.scenes.index');
 
         Route::get('create', 'create')->name('admin.catalog.scenes.create');

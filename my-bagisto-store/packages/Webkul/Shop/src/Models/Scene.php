@@ -15,6 +15,24 @@ use Illuminate\Support\Facades\Storage;
  */
 class Scene extends Model
 {
+    public const CATEGORIES = [
+        'business_event' => '商业活动', 'enterprise' => '企业商用',
+        'culture_tourism' => '文旅景区', 'education' => '科普教育',
+        'security' => '安全巡检', 'warehouse_logistics' => '仓储物流',
+        'industry' => '工业现场', 'medical' => '医疗康养', 'home' => '家庭个人',
+    ];
+
+    public function scopeEnabled($query)
+    {
+        $query->where('status', 1);
+        if (config('scenes.publication_v2', false)) {
+            $query->whereExists(fn ($q) => $q->selectRaw('1')->from('scene_revisions as sr')
+                ->whereColumn('sr.id', 'scenes.active_revision_id')->whereColumn('sr.scene_id', 'scenes.id')->where('sr.state', 'published'));
+        }
+
+        return $query;
+    }
+
     /**
      * The table associated with the model.
      */
@@ -46,16 +64,16 @@ class Scene extends Model
      * The attributes that should be cast.
      */
     protected $casts = [
-        'status'         => 'boolean',
-        'consult_count'  => 'integer',
-        'tags'           => 'array',
-        'stats'          => 'array',
-        'pains'          => 'array',
-        'benefits'       => 'array',
-        'scheme_scenes'  => 'array',
-        'robots'         => 'array',
-        'sort'           => 'integer',
-        'is_hot'         => 'boolean',
+        'status' => 'boolean',
+        'consult_count' => 'integer',
+        'tags' => 'array',
+        'stats' => 'array',
+        'pains' => 'array',
+        'benefits' => 'array',
+        'scheme_scenes' => 'array',
+        'robots' => 'array',
+        'sort' => 'integer',
+        'is_hot' => 'boolean',
     ];
 
     /**
@@ -77,16 +95,16 @@ class Scene extends Model
     public function getSchemeAttribute()
     {
         return [
-            'desc'         => $this->description,
-            'icon'         => $this->icon,
-            'bgColor'      => $this->bg_color,
+            'desc' => $this->description,
+            'icon' => $this->icon,
+            'bgColor' => $this->bg_color,
             'consultCount' => $this->consult_count,
-            'tags'         => $this->tags,
-            'stats'        => $this->stats,
-            'pains'        => $this->pains,
-            'benefits'     => $this->benefits,
-            'scenes'       => $this->scheme_scenes,
-            'robots'       => $this->robots,
+            'tags' => $this->tags,
+            'stats' => $this->stats,
+            'pains' => $this->pains,
+            'benefits' => $this->benefits,
+            'scenes' => $this->scheme_scenes,
+            'robots' => $this->robots,
         ];
     }
 }

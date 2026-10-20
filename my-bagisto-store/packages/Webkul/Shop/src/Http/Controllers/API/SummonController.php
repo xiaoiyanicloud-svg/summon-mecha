@@ -4,7 +4,6 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shop\Models\Scene;
 
@@ -31,21 +30,21 @@ class SummonController extends APIController
     private function synonyms(): array
     {
         return [
-            '展会'    => ['展会', '展台', '展览', '展厅', '迎宾', '讲解', '引流'],
-            '活动'    => ['活动', '演出', '表演', '婚', '年会', '节庆'],
-            '酒店'    => ['酒店', '客房', '配送', '迎宾'],
-            '餐饮'    => ['餐饮', '餐厅', '传菜', '送餐', '火锅'],
-            '商场'    => ['商场', '门店', '引流', '导购'],
-            '巡检'    => ['巡检', '巡逻', '安防', '园区', '矿区', '机房'],
-            '仓储'    => ['仓储', '仓库', '分拣', '搬运', '码垛'],
-            '仓库'    => ['仓储', '仓库', '分拣', '搬运', '码垛'],
-            '工厂'    => ['工厂', '产线', '装配', '焊接', '工业'],
-            '医院'    => ['医院', '导诊', '药房', '康养', '养老'],
-            '教育'    => ['教育', '科教', '研学', '学校', '编程'],
-            '农业'    => ['农业', '大棚', '果园', '农田'],
-            '家用'    => ['家庭', '陪伴', '扫地', '家用', '儿童'],
-            '人形'    => ['人形', '仿生', 'Walker'],
-            '机器狗'  => ['四足', '机器狗', 'Go2', 'CyberDog'],
+            '展会' => ['展会', '展台', '展览', '展厅', '迎宾', '讲解', '引流'],
+            '活动' => ['活动', '演出', '表演', '婚', '年会', '节庆'],
+            '酒店' => ['酒店', '客房', '配送', '迎宾'],
+            '餐饮' => ['餐饮', '餐厅', '传菜', '送餐', '火锅'],
+            '商场' => ['商场', '门店', '引流', '导购'],
+            '巡检' => ['巡检', '巡逻', '安防', '园区', '矿区', '机房'],
+            '仓储' => ['仓储', '仓库', '分拣', '搬运', '码垛'],
+            '仓库' => ['仓储', '仓库', '分拣', '搬运', '码垛'],
+            '工厂' => ['工厂', '产线', '装配', '焊接', '工业'],
+            '医院' => ['医院', '导诊', '药房', '康养', '养老'],
+            '教育' => ['教育', '科教', '研学', '学校', '编程'],
+            '农业' => ['农业', '大棚', '果园', '农田'],
+            '家用' => ['家庭', '陪伴', '扫地', '家用', '儿童'],
+            '人形' => ['人形', '仿生', 'Walker'],
+            '机器狗' => ['四足', '机器狗', 'Go2', 'CyberDog'],
             '配送机器人' => ['配送', '送餐', '传菜'],
         ];
     }
@@ -74,7 +73,7 @@ class SummonController extends APIController
         $words = $words->unique()->values()->all();
 
         // 2. 场景打分
-        $scenes = Scene::where('status', 1)->get()
+        $scenes = Scene::enabled()->get()
             ->map(function ($scene) use ($words, $q) {
                 $haystack = $scene->name.' '.$scene->description;
                 $score = 0;
@@ -104,11 +103,11 @@ class SummonController extends APIController
             $machines = app(ProductRepository::class)
                 ->setSearchEngine('database')
                 ->getAll([
-                    'category_id'          => $rentCategoryId,
-                    'limit'                => 200,
-                    'page'                 => 1,
-                    'channel_id'           => core()->getCurrentChannel()->id,
-                    'status'               => 1,
+                    'category_id' => $rentCategoryId,
+                    'limit' => 200,
+                    'page' => 1,
+                    'channel_id' => core()->getCurrentChannel()->id,
+                    'status' => 1,
                     'visible_individually' => 1,
                 ])
                 ->map(function ($product) use ($words) {
@@ -134,13 +133,13 @@ class SummonController extends APIController
 
         return response()->json([
             'success' => true,
-            'q'       => $q,
-            'scene'   => $topScene ? $this->formatScene($topScene['scene']) : null,
+            'q' => $q,
+            'scene' => $topScene ? $this->formatScene($topScene['scene']) : null,
             'machines' => $machines->values(),
             'alternatives' => $scenes->skip(1)->take(3)->values()->map(fn ($r) => [
-                'id'    => $r['scene']->id,
-                'name'  => $r['scene']->name,
-                'desc'  => $r['scene']->description,
+                'id' => $r['scene']->id,
+                'name' => $r['scene']->name,
+                'desc' => $r['scene']->description,
             ]),
             'engine' => 'rule-v1',
         ]);
@@ -151,17 +150,7 @@ class SummonController extends APIController
      */
     private function formatScene($scene): array
     {
-        return [
-            'id'            => $scene->id,
-            'name'          => $scene->name,
-            'category'      => $scene->category,
-            'description'   => $scene->description,
-            'banner'        => $scene->banner_url,
-            'icon'          => $scene->icon,
-            'bg_color'      => $scene->bg_color,
-            'is_hot'        => (bool) $scene->is_hot,
-            'consult_count' => $scene->consult_count,
-            'scheme'        => $scene->scheme,
-        ];
+        return app(\Webkul\Shop\Services\Scenes\SceneCatalogService::class)
+            ->detail($scene, (int) core()->getCurrentChannel()->id);
     }
 }

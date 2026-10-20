@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-10-20T12:45:41.601Z",
+  "work_packages": 55,
+  "acceptance_groups": 68,
+  "unmapped_acceptance_groups": [],
+  "source_hashes_unchanged": true,
+  "reproduced_defects": 9,
+  "reproduction_matches_saved_evidence": true,
+  "broken_links_or_tables": [],
+  "scope": "仅文档一致性与源码行为复现，未作业务功能验收",
+  "runtime": {
+    "php_default": "缺少 pdo_mysql",
+    "php_with_temporary_extensions": "MySQL 连接拒绝",
+    "database": "未核验",
+    "http": "未核验",
+    "browser_and_mini_program": "未核验",
+    "physical_robot": "未核验"
+  },
+  "production_code_changed": false
+}

@@ -56,6 +56,16 @@
                         <x-admin::form.control-group.error control-name="name" />
                     </x-admin::form.control-group>
 
+                    <x-admin::form.control-group class="mt-4">
+                        <x-admin::form.control-group.label>场景分类</x-admin::form.control-group.label>
+                        <select name="category" class="w-full rounded border p-2 dark:bg-gray-900">
+                            @foreach (\Webkul\Shop\Models\Scene::CATEGORIES as $key => $label)
+                                <option value="{{ $key }}" @selected(old('category', 'enterprise') === $key)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <x-admin::form.control-group.error control-name="category" />
+                    </x-admin::form.control-group>
+
                     <!-- Description -->
                     <x-admin::form.control-group class="mt-4">
                         <x-admin::form.control-group.label>
@@ -83,6 +93,7 @@
                         <x-admin::form.control-group.error control-name="sort" />
                     </x-admin::form.control-group>
 
+                    <x-admin::form.control-group.error control-name="banner_path" />
                     <!-- Banner -->
                     <div class="flex pt-4">
                         <div class="flex w-full flex-col gap-2">
@@ -109,6 +120,7 @@
 
                     <div class="border-t border-gray-200 my-4"></div>
 
+                    <input type="hidden" name="robots_present" value="1" />
                     <!-- ===== 方案内容 ===== -->
                     <p class="mb-4 text-base font-semibold text-gray-800 dark:text-white">
                         @lang('admin::app.catalog.scenes.create.scheme-panel')
@@ -120,6 +132,7 @@
                                 @lang('admin::app.catalog.scenes.create.icon')
                             </x-admin::form.control-group.label>
                             <x-admin::form.control-group.control type="text" id="icon" name="icon" :value="old('icon')" :placeholder="'例如 📦'" />
+                        <x-admin::form.control-group.error control-name="icon" />
                         </x-admin::form.control-group>
 
                         <x-admin::form.control-group>
@@ -127,13 +140,15 @@
                                 @lang('admin::app.catalog.scenes.create.bg-color')
                             </x-admin::form.control-group.label>
                             <x-admin::form.control-group.control type="text" id="bg_color" name="bg_color" :value="old('bg_color')" :placeholder="'例如 #E8F0FE'" />
+                        <x-admin::form.control-group.error control-name="bg_color" />
                         </x-admin::form.control-group>
 
                         <x-admin::form.control-group>
                             <x-admin::form.control-group.label>
-                                @lang('admin::app.catalog.scenes.create.consult-count')
+                                历史咨询数（未核验，不对外展示）
                             </x-admin::form.control-group.label>
                             <x-admin::form.control-group.control type="number" id="consult_count" name="consult_count" :value="old('consult_count')" :placeholder="'0'" />
+                        <x-admin::form.control-group.error control-name="consult_count" />
                         </x-admin::form.control-group>
                     </div>
 
@@ -141,39 +156,47 @@
                         <x-admin::form.control-group>
                             <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.stats-amp')</x-admin::form.control-group.label>
                             <x-admin::form.control-group.control type="text" id="stats_amp" name="stats_amp" :value="old('stats_amp')" :placeholder="'例如 +300%'" />
+                        <x-admin::form.control-group.error control-name="stats_amp" />
                         </x-admin::form.control-group>
                         <x-admin::form.control-group>
                             <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.stats-roi')</x-admin::form.control-group.label>
                             <x-admin::form.control-group.control type="text" id="stats_roi" name="stats_roi" :value="old('stats_roi')" :placeholder="'例如 8个月'" />
+                        <x-admin::form.control-group.error control-name="stats_roi" />
                         </x-admin::form.control-group>
                         <x-admin::form.control-group>
                             <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.stats-scene')</x-admin::form.control-group.label>
                             <x-admin::form.control-group.control type="text" id="stats_scene" name="stats_scene" :value="old('stats_scene')" :placeholder="'例如 50+'" />
+                        <x-admin::form.control-group.error control-name="stats_scene" />
                         </x-admin::form.control-group>
                     </div>
 
                     <x-admin::form.control-group class="mt-4">
                         <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.tags')</x-admin::form.control-group.label>
                         <x-admin::form.control-group.control type="textarea" id="tags" name="tags" :value="old('tags')" :placeholder="'官方正品'" />
+                        <x-admin::form.control-group.error control-name="tags" />
                     </x-admin::form.control-group>
 
                     <x-admin::form.control-group class="mt-4">
                         <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.pains')</x-admin::form.control-group.label>
                         <x-admin::form.control-group.control type="textarea" id="pains" name="pains" :value="old('pains')" :placeholder="'💸|人工搬运成本高|机器人替代搬运'" />
+                        <x-admin::form.control-group.error control-name="pains" />
                     </x-admin::form.control-group>
 
                     <x-admin::form.control-group class="mt-4">
                         <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.benefits')</x-admin::form.control-group.label>
                         <x-admin::form.control-group.control type="textarea" id="benefits" name="benefits" :value="old('benefits')" :placeholder="'⏱️|无人分拣|夜间照样作业'" />
+                        <x-admin::form.control-group.error control-name="benefits" />
                     </x-admin::form.control-group>
 
                     <x-admin::form.control-group class="mt-4">
                         <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.scheme-scenes')</x-admin::form.control-group.label>
                         <x-admin::form.control-group.control type="textarea" id="scheme_scenes" name="scheme_scenes" :value="old('scheme_scenes')" :placeholder="'电商仓配|订单波次自动分拣|效率 +300%'" />
+                        <x-admin::form.control-group.error control-name="scheme_scenes" />
                     </x-admin::form.control-group>
 
                     <x-admin::form.control-group class="mt-4">
                         <x-admin::form.control-group.label>@lang('admin::app.catalog.scenes.create.robots')</x-admin::form.control-group.label>
+                        <x-admin::form.control-group.error control-name="robots" />
 
                         @forelse($rentProducts as $p)
                             <label class="mr-3 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
