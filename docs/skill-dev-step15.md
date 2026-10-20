@@ -2,6 +2,8 @@
 
 日期：2026-10-20。基线：`546a6a0`，分支 `codex/scene-workflow-sc0-sc5`。状态：**本批代码及隔离验证完成，SC1–SC5 仍部分完成，未部署。** 承接[第 14 步](skill-dev-step14.md)，目标要求仍为[55 个工作包、68 组验收](scenes/Scene-Backlog-Acceptance.md)。
 
+后续修正：[第 16 步](skill-dev-step16.md)发现本批 `SceneWorkflowController::reject` 与真实父类辅助方法签名冲突，已改名 `rejectQuote`，公开 URI 不变，并新增 15 项真实控制器装载/Router 分发检查。下文测试是当时的隔离证据，不能证明该缺陷版本具备完整应用 HTTP 可用性。
+
 ## 1 本批解决的问题
 
 | 阶段/工作包 | 实际改动 | 验证边界 |

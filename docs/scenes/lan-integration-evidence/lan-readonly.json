@@ -1,0 +1,182 @@
+{
+  "checked_at": "2026-10-20T23:12:41.5668906+08:00",
+  "base_url": "http://192.168.3.97:8010",
+  "source": "192.168.3.96",
+  "interface": "WLAN",
+  "tcp_8010": true,
+  "repository_remote_branch": "codex/ecosystem-g2-free-registration",
+  "repository_remote_head": "260999217fa8bd1ad376e12ad73b1fa9a441c665",
+  "remote_head_verified_from_http": false,
+  "remote_includes_first_batch": "546a6a076d4bfda316bcc6b0bf2cf985dbcb9a64",
+  "remote_includes_second_batch": false,
+  "runtime_database_identity_verified": false,
+  "initial_http_checks": [
+    {
+      "status": 200,
+      "path": "/up",
+      "curl_exit": 0
+    },
+    {
+      "status": 200,
+      "path": "/api/scene-workflow/capabilities",
+      "data": {
+        "quotes": false,
+        "projects": false,
+        "order_conversion": false,
+        "requests": false,
+        "attachments": false,
+        "publication_v2": false
+      },
+      "curl_exit": 0
+    },
+    {
+      "status": 200,
+      "path": "/api/events?per_page=1",
+      "data": [],
+      "curl_exit": 0
+    },
+    {
+      "status": 200,
+      "path": "/api/scenes",
+      "data": [],
+      "curl_exit": 0
+    }
+  ],
+  "read_checks": [
+    {
+      "method": "GET",
+      "path": "/api/scene-workflow/schemas/enterprise",
+      "credential": "none",
+      "expected": 200,
+      "status": 404,
+      "curl_exit": 0,
+      "passed": false,
+      "body": "{\"code\":\"NOT_FOUND\",\"message\":\"\\u8bf7\\u6c42\\u7684\\u8d44\\u6e90\\u4e0d\\u5b58\\u5728\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-workflow/schemas/not-a-category",
+      "credential": "none",
+      "expected": 422,
+      "status": 404,
+      "curl_exit": 0,
+      "passed": false,
+      "body": "{\"code\":\"NOT_FOUND\",\"message\":\"\\u8bf7\\u6c42\\u7684\\u8d44\\u6e90\\u4e0d\\u5b58\\u5728\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-requests",
+      "credential": "none",
+      "expected": 401,
+      "status": 401,
+      "curl_exit": 0,
+      "passed": true,
+      "body": "{\"code\":\"SCENE_ACCESS_REQUIRED\",\"message\":\"\\u8bf7\\u767b\\u5f55\\u6216\\u4f7f\\u7528\\u672c\\u673a\\u4fdd\\u5b58\\u7684\\u9700\\u6c42\\u8bbf\\u95ee\\u51ed\\u8bc1\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-requests/1",
+      "credential": "none",
+      "expected": 401,
+      "status": 401,
+      "curl_exit": 0,
+      "passed": true,
+      "body": "{\"code\":\"SCENE_ACCESS_REQUIRED\",\"message\":\"\\u8bf7\\u767b\\u5f55\\u6216\\u4f7f\\u7528\\u672c\\u673a\\u4fdd\\u5b58\\u7684\\u9700\\u6c42\\u8bbf\\u95ee\\u51ed\\u8bc1\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-projects/1",
+      "credential": "none",
+      "expected": 401,
+      "status": 401,
+      "curl_exit": 0,
+      "passed": true,
+      "body": "{\"code\":\"SCENE_ACCESS_REQUIRED\",\"message\":\"\\u8bf7\\u767b\\u5f55\\u6216\\u4f7f\\u7528\\u672c\\u673a\\u4fdd\\u5b58\\u7684\\u9700\\u6c42\\u8bbf\\u95ee\\u51ed\\u8bc1\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-requests/1/attachments/1",
+      "credential": "none",
+      "expected": 401,
+      "status": 401,
+      "curl_exit": 0,
+      "passed": true,
+      "body": "{\"code\":\"SCENE_ACCESS_REQUIRED\",\"message\":\"\\u8bf7\\u767b\\u5f55\\u6216\\u4f7f\\u7528\\u672c\\u673a\\u4fdd\\u5b58\\u7684\\u9700\\u6c42\\u8bbf\\u95ee\\u51ed\\u8bc1\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-requests/0",
+      "credential": "none",
+      "expected": 404,
+      "status": 404,
+      "curl_exit": 0,
+      "passed": true,
+      "body": "{\"code\":\"NOT_FOUND\",\"message\":\"\\u8bf7\\u6c42\\u7684\\u8d44\\u6e90\\u4e0d\\u5b58\\u5728\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-requests/9999999999999999",
+      "credential": "none",
+      "expected": 404,
+      "status": 404,
+      "curl_exit": 0,
+      "passed": true,
+      "body": "{\"code\":\"NOT_FOUND\",\"message\":\"\\u8bf7\\u6c42\\u7684\\u8d44\\u6e90\\u4e0d\\u5b58\\u5728\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-requests/1/quote-comparison?left_id=1&right_id=2",
+      "credential": "none",
+      "expected": 401,
+      "status": 404,
+      "curl_exit": 0,
+      "passed": false,
+      "body": "{\"code\":\"NOT_FOUND\",\"message\":\"\\u8bf7\\u6c42\\u7684\\u8d44\\u6e90\\u4e0d\\u5b58\\u5728\\u3002\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scene-requests",
+      "credential": "synthetic_unissued_token",
+      "expected": 401,
+      "status": 500,
+      "curl_exit": 0,
+      "passed": false,
+      "body": "{\"code\":\"SERVER_ERROR\",\"message\":\"\\u670d\\u52a1\\u5668\\u5185\\u90e8\\u9519\\u8bef,\\u8bf7\\u7a0d\\u540e\\u91cd\\u8bd5\\u3002\"}"
+    }
+  ],
+  "read_checks_passed": 6,
+  "read_checks_total": 10,
+  "business_write_requests": 0,
+  "network_settings_changed": false,
+  "failures_interpretation": {
+    "schema_404": "Published Git route exists; actual runtime route/cache/checkout difference requires remote confirmation.",
+    "comparison_404": "Comparison route is absent from the remote 2609992 tree; second batch is not merged.",
+    "unissued_token_500": "Expected stable 401, actual SERVER_ERROR. Check runtime test database identity, scene migrations and sanitized server exception class; no root cause asserted."
+  },
+  "local_controller_failure_detected": {
+    "fixed_by": "Rename handler to rejectQuote while preserving POST /api/scene-quotes/{id}/reject",
+    "baseline": "6097d01a81d8cb47a766f3fed9773037811d1671",
+    "remote_deployment_verified": false,
+    "code": "INCOMPATIBLE_API_PARENT_REJECT_SIGNATURE",
+    "exit_code": 255
+  },
+  "direct_database_commands_executed": false,
+  "http_initial_server_dates_utc": [
+    "2026-10-20T15:11:18Z",
+    "2026-10-20T15:11:20Z"
+  ],
+  "fixed_sources": [
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneWorkflowController.php",
+      "sha256": "47f5b2f7884d5b77eb3ac567f2407e3907717dbcd401c260f3838d4b484f7545"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Routes/scene-workflow.php",
+      "sha256": "92b0750ecb6248c02ed6f5ed6c5a2bfa58329ee1fc1daf26337a86d7e5b45088"
+    },
+    {
+      "file": "tools/tests/scene-controller-runtime.php",
+      "sha256": "194355da55e3f246b296d695f64809493b15e191417dfcec343500dcc2738695"
+    }
+  ]
+}

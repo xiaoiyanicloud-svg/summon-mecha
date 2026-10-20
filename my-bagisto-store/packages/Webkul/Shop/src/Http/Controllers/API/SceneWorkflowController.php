@@ -94,7 +94,7 @@ class SceneWorkflowController extends APIController
         $service->convert();
     }
 
-    public function reject(Request $request, int $id, SceneProposalService $service)
+    public function rejectQuote(Request $request, int $id, SceneProposalService $service)
     {
         return response()->json(['data' => $service->reject(ScenePrincipal::fromRequest($request), $id,
             (string) $request->header('Idempotency-Key'), $request->all())])->header('Cache-Control', 'no-store');

@@ -2,6 +2,8 @@
 
 此目录不包含密码，不提供通过 HTTP 执行脚本的入口，不会自动迁移、建库、清库或创建业务夹具。
 
+合并后先在仓库根目录执行 `php tools/tests/scene-controller-runtime.php`（15 项、无业务 bootstrap/数据库），确认真实控制器父子类可装载及表单路由可分发。它已捕获并修复第二批 `reject` 方法与基类同名签名冲突；必须使用 handler 已改为 `rejectQuote` 的最新版本。该检查不替代下面的真实环境预检。
+
 先在另一台电脑的隔离 checkout 合并 `codex/scene-workflow-sc0-sc5` 与实际生态分支，核对共享 outbox/幂等和迁移冲突。准备专用 `summon_mecha_scenes_test`，不要占用已有 `summon_mecha_step10_test`，不要使用业务库 `root`。
 
 在该机 Laravel 项目目录执行：
