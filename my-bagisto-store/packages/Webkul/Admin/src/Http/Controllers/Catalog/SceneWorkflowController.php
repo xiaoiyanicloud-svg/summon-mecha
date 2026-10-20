@@ -22,7 +22,7 @@ class SceneWorkflowController extends Controller
     {
         $requests = DB::table('scene_requests')->orderByDesc('id')->paginate(30);
         $todos = DB::table('scene_operation_todos')->where('state', 'open')->orderBy('id')->limit(100)->get();
-        $failures = DB::table('business_outbox')->whereNull('processed_at')->where('attempts', '>', 0)->orderBy('id')->limit(50)->get(['id', 'event_type', 'attempts', 'last_error_code', 'available_at']);
+        $failures = DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->where('attempts', '>', 0)->orderBy('id')->limit(50)->get(['id', 'event_type', 'attempts', 'last_error_code', 'available_at']);
         $scenes = DB::table('scenes')->orderBy('id')->get(['id', 'name', 'status', 'active_revision_id']);
         $revisions = DB::table('scene_revisions')->orderByDesc('id')->limit(100)->get(['id', 'scene_id', 'revision_no', 'state', 'row_version']);
         $prices = DB::table('scene_price_items')->whereNull('revoked_at')->orderByDesc('id')->limit(200)->get();
@@ -41,6 +41,7 @@ class SceneWorkflowController extends Controller
         $activities = DB::table('scene_activities')->where('request_id', $id)->orderByDesc('id')->limit(100)->get();
         $assessments = DB::table('scene_assessments')->where('request_id', $id)->orderByDesc('id')->get();
         $quotes = DB::table('scene_quotes')->where('request_id', $id)->orderByDesc('version')->get();
+        $decisions = DB::table('scene_quote_decisions')->whereIn('quote_id', $quotes->pluck('id'))->orderByDesc('id')->get();
         $prices = DB::table('scene_price_items')->whereNull('revoked_at')->where('valid_until', '>', now())->orderBy('code')->get();
         $resources = DB::table('scene_resources')->where('state', 'ready')->orderBy('id')->get();
         $projects = DB::table('scene_projects')->where('request_id', $id)->get();
@@ -50,7 +51,7 @@ class SceneWorkflowController extends Controller
         $attachments = DB::table('scene_attachments')->where('request_id', $id)->where('state', 'clean')->get(['id', 'mime', 'size']);
         $admins = DB::table('admins')->where('status', 1)->get(['id', 'name']);
 
-        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets'));
+        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets'));
     }
 
     public function contact(int $id)
@@ -103,7 +104,9 @@ class SceneWorkflowController extends Controller
     {
         $r->validate(['row_version' => 'required|integer|min:1']);
 
-        return $this->result($r, $s->transition($id, $r->integer('row_version'), $action, $this->actor(), $this->channel()));
+        $r->validate(['reason' => 'nullable|string|max:2000']);
+
+        return $this->result($r, $s->transition($id, $r->integer('row_version'), $action, $this->actor(), $this->channel(), $r->input('reason')));
     }
 
     public function publication(Request $r, int $id, string $action, ScenePublicationService $s)

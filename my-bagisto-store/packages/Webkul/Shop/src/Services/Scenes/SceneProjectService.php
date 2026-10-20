@@ -139,6 +139,13 @@ class SceneProjectService
                 if ($item['result'] === 'fail') {
                     DB::table('scene_operation_todos')->insertOrIgnore(['dedupe_key' => 'rectify:'.$projectId.':'.$item['key'].':'.$attempt,
                         'request_id'                                                 => $project->request_id, 'kind' => 'acceptance_rectification', 'state' => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+                } else {
+                    // 按具体初验记录关闭投影，原 fail 记录与整改历史保留，不能按模糊前缀误关其他项。
+                    $keys = DB::table('scene_acceptance_records')->where('project_id', $projectId)->where('item_key', $item['key'])->where('result', 'fail')->pluck('attempt')
+                        ->map(fn ($number) => 'rectify:'.$projectId.':'.$item['key'].':'.$number)->all();
+                    DB::table('scene_operation_todos')->whereIn('dedupe_key', $keys)->where('state', 'open')->update([
+                        'state' => 'resolved', 'resolution_code' => 'customer_retest_passed', 'updated_at' => now('UTC'),
+                    ]);
                 }
             }
             $passed = true;

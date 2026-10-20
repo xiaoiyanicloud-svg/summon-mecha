@@ -91,7 +91,7 @@ export async function submitSceneRequest(payload, slot = 'form') {
     throw error
   }
   const receipt = response && response.data
-  if (!response || response.success !== true || !receipt || !Number.isSafeInteger(receipt.id) || !receipt.request_no) {
+  if (!response || response.success !== true || !receipt || !Number.isSafeInteger(receipt.id) || receipt.id < 1 || !receipt.request_no) {
     throw new Error('未收到有效需求回执，内容已保留在本机，请重试')
   }
   const latest = sceneLocalState()
@@ -99,6 +99,40 @@ export async function submitSceneRequest(payload, slot = 'form') {
   delete latest.pending[slot]
   save(latest, scope)
   return receipt
+}
+
+// 补充、报价决策和项目动作同样保留“已发送但回执未知”的原载荷及幂等键。
+export async function submitSceneCommand(slot, payload, sender) {
+  const scope = sceneAccountScope(), draft = saveSceneDraft(slot, payload)
+  const waiting = sceneLocalState()
+  waiting.pending[slot].state = 'awaiting_receipt'
+  save(waiting, scope)
+  let response
+  try { response = await sender(draft.payload, waiting.access, draft.key) }
+  catch (error) {
+    if (scope === sceneAccountScope() && error.statusCode >= 400 && error.statusCode < 500) {
+      const rejected = sceneLocalState()
+      if (rejected.pending[slot] && rejected.pending[slot].key === draft.key) {
+        rejected.pending[slot].state = 'rejected'; save(rejected, scope)
+      }
+    }
+    throw error
+  }
+  if (scope !== sceneAccountScope()) throw new Error('登录状态已变化，请重新打开详情确认回执')
+  const result = response && response.data
+  if (!result || !Number.isSafeInteger(result.id) || result.id < 1 || typeof result.state !== 'string' || !result.state) {
+    throw new Error('未收到有效操作回执，原内容已保留，请按原内容重试')
+  }
+  const latest = sceneLocalState()
+  if (!latest.pending[slot] || latest.pending[slot].key !== draft.key) throw new Error('本机操作状态已变化，请刷新确认')
+  delete latest.pending[slot]; save(latest, scope)
+  return result
+}
+
+export function scenePendingCommands(prefix) {
+  return Object.entries(sceneLocalState().pending)
+    .filter(([slot, draft]) => slot.startsWith(prefix) && draft.state === 'awaiting_receipt')
+    .map(([slot, draft]) => ({ slot, payload: draft.payload }))
 }
 export function sceneDraftPayload({ source, sceneId, revisionId, category, text, facts = {}, contact }) {
   return { source, scene_id: sceneId || null, scene_revision_id: revisionId || null, category: category || 'enterprise',
@@ -108,7 +142,7 @@ export function sceneDraftPayload({ source, sceneId, revisionId, category, text,
 }
 export function sceneStatusLabel(state) {
   return ({ submitted: '待受理', triaged: '已分派', assessing: '评估中', feasible: '评估通过', accepted: '报价已接受',
-    converted: '已建立项目', closed: '已关闭', cancelled: '已取消', sent: '待确认', voided: '已失效',
+    converted: '已建立项目', closed: '已关闭', cancelled: '已取消', sent: '待确认', voided: '已失效', rejected: '客户已拒绝', returned: '已退回重编',
     unpaid: '未确认收款', offline_verified: '线下收款已复核', offline_partial: '部分线下收款已复核',
     confirmed_offline: '线下商务已确认', unconfirmed: '待商务确认', preparing: '交付准备',
     delivering: '交付中', servicing: '服务中', awaiting_acceptance: '待验收', rectification: '整改中' })[state] || state

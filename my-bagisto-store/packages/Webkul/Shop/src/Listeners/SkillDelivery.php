@@ -24,12 +24,12 @@ use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
  *
  * ⚠⚠ 这个监听器跑在**建单事务内部**,有两个必须守住的边界:
  *
- *   1. **绝不能抛异常。** OrderRepository::createOrderIfNotThenRetry() 在 DB::commit()
- *      *之前* dispatch 本事件,而它的 catch (\Exception) 会回滚并**重试建单最多 2 次**
- *      (OrderRepository.php:83 vs :102)。监听器抛异常 → 用户看到重复建单尝试。
- *      所以两个入口方法都整体 try/catch + report()。
+ *   1. **保持既有失败补偿语义。** 本事件仍在建单事务提交前派发；仓储已改用
+ *      Laravel 事务，普通异常/Throwable 直接回滚并传播，仅顶层数据库并发错误
+ *      最多重试三次。本监听仍按既有约定整体 try/catch + report()，由补偿流程
+ *      处理失败，不把它视为已成功交付。
  *
- *   2. **必须幂等。** 上面那个重试会让本方法被调用多次。靠 skill_entitlements 上
+ *   2. **必须幂等。** 数据库并发重试或补偿可能多次调用。靠 skill_entitlements 上
  *      order_item_id 的唯一键兜底(firstOrCreate),以及 DeliveryChannel::deliver()
  *      自身的幂等。
  */
@@ -195,17 +195,17 @@ class SkillDelivery
         $entitlement = SkillEntitlement::firstOrCreate(
             ['order_item_id' => $item->id],
             [
-                'customer_id'       => $order->customer_id,
-                'order_id'          => $order->id,
-                'product_id'        => $item->product_id,
-                'skill_version_id'  => $version?->id,
-                'device_id'         => $deviceId,
-                'seller_id'         => $product?->seller_id,
-                'status'            => SkillEntitlement::STATUS_PENDING_BIND,
-                'license_key'       => SkillEntitlement::newLicenseKey(),
-                'delivery_channel'  => (string) config('skill_delivery.default'),
-                'max_activations'   => $version?->max_activations,
-                'expires_at'        => $version?->valid_days
+                'customer_id'      => $order->customer_id,
+                'order_id'         => $order->id,
+                'product_id'       => $item->product_id,
+                'skill_version_id' => $version?->id,
+                'device_id'        => $deviceId,
+                'seller_id'        => $product?->seller_id,
+                'status'           => SkillEntitlement::STATUS_PENDING_BIND,
+                'license_key'      => SkillEntitlement::newLicenseKey(),
+                'delivery_channel' => (string) config('skill_delivery.default'),
+                'max_activations'  => $version?->max_activations,
+                'expires_at'       => $version?->valid_days
                     ? now()->addDays($version->valid_days)
                     : null,
             ]

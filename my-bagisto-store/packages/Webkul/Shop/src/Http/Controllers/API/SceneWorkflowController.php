@@ -94,6 +94,20 @@ class SceneWorkflowController extends APIController
         $service->convert();
     }
 
+    public function rejectQuote(Request $request, int $id, SceneProposalService $service)
+    {
+        return response()->json(['data' => $service->reject(ScenePrincipal::fromRequest($request), $id,
+            (string) $request->header('Idempotency-Key'), $request->all())])->header('Cache-Control', 'no-store');
+    }
+
+    public function compare(Request $request, int $id, SceneProposalService $service)
+    {
+        $request->validate(['left_id' => 'required|integer|min:1|max:999999999999999', 'right_id' => 'required|integer|min:1|max:999999999999999']);
+
+        return response()->json(['data' => $service->compare(ScenePrincipal::fromRequest($request), $id,
+            $request->integer('left_id'), $request->integer('right_id'))])->header('Cache-Control', 'no-store');
+    }
+
     public function upload(Request $request, int $id, SceneAttachmentService $service)
     {
         $request->validate(['file' => 'required|file|max:8192']);

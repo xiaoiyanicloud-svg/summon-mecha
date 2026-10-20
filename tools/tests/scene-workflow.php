@@ -156,6 +156,12 @@ function test(string $name, callable $fn): void
         $tests[] = ['name'=>$name, 'pass'=>false, 'error'=>$e->getMessage(), 'line'=>$e->getFile().':'.$e->getLine()];
     }
 }
+function sceneSandbox(callable $fn): void
+{
+    $level = DB::transactionLevel();
+    DB::beginTransaction();
+    try { $fn(); } finally { DB::rollBack($level); }
+}
 $publicId = 0;
 $requestId = 0;
 $quoteId = 0;
@@ -249,6 +255,146 @@ test('具体设备证据通过后评估与服务端定点报价；客户端价�
     // 10001 - 1000 + 540 + 2000 - 200 +108 = 11449，逐行半入。
     same(11449, (int) $row->total_minor);
 });
+function quoteFixtureInput(int $assessmentId, array $overrides = []): array
+{
+    global $facts;
+    return array_replace(['assessment_id'=>$assessmentId,
+        'items'=>[['price_item_id'=>1, 'quantity'=>1, 'billing_units'=>1], ['price_item_id'=>2, 'quantity'=>1, 'billing_units'=>1]],
+        'discount_bps'=>1000, 'expires_at'=>'2026-10-30 00:00:00',
+        'schedule'=>array_intersect_key($facts, array_flip(['starts_at', 'ends_at', 'timezone'])) + ['buffer_before_minutes'=>60, 'buffer_after_minutes'=>60]], $overrides);
+}
+function sendFixtureQuote(int $id): void
+{
+    $s = app(SceneProposalService::class);
+    $s->transition($id, 1, 'review', 1, 1);
+    $s->transition($id, 2, 'approve', 2, 1);
+    $s->transition($id, 3, 'send', 1, 1);
+}
+test('未发送草稿即使失效也不能进入客户历史或比较接口', function () use ($requests, $owner, $proposals, $quoteId, $requestId) {
+    sceneSandbox(function () use ($requests, $owner, $proposals, $quoteId, $requestId) {
+        same([], $requests->detail($owner, $requestId)['quotes']);
+        app(Webkul\Shop\Services\Scenes\SceneQuoteLifecycleService::class)->invalidate($requestId, ['draft'], 'test', 'admin', 1);
+        same('voided', DB::table('scene_quotes')->find($quoteId)->state);
+        same([], $requests->detail($owner, $requestId)['quotes']);
+        error('SCENE_OBJECT_NOT_FOUND', fn () => $proposals->customerDto(DB::table('scene_quotes')->find($quoteId)));
+        error('SCENE_OBJECT_NOT_FOUND', fn () => $proposals->compare($owner, $requestId, $quoteId, 999));
+    });
+});
+test('独立审批人可有理由退回；不可自退或重审原版，须创建新版', function () use ($proposals, $quoteId, $requestId, $assessmentId) {
+    sceneSandbox(function () use ($proposals, $quoteId, $requestId, $assessmentId) {
+        $proposals->transition($quoteId, 1, 'review', 1, 1);
+        error('SCENE_SELF_APPROVAL', fn () => $proposals->transition($quoteId, 2, 'return', 1, 1, '待调整服务范围'));
+        $hash = DB::table('scene_quotes')->find($quoteId)->content_hash;
+        same('returned', $proposals->transition($quoteId, 2, 'return', 2, 1, '需要补足运输说明')['state']);
+        same($hash, DB::table('scene_quotes')->find($quoteId)->content_hash);
+        error('SCENE_STATE_CONFLICT', fn () => $proposals->transition($quoteId, 3, 'review', 1, 1));
+        same(1, DB::table('scene_quote_decisions')->where('quote_id', $quoteId)->count());
+        $new = $proposals->draft($requestId, (int) DB::table('scene_requests')->find($requestId)->row_version, quoteFixtureInput($assessmentId), 1, 1);
+        same(2, (int) DB::table('scene_quotes')->find($new['id'])->version);
+        same(false, str_contains(DB::table('business_outbox')->where('event_type', 'scene.quote.return')->value('payload'), '运输说明'));
+    });
+});
+test('退回审计失败整体回滚报价、决策和 outbox', function () use ($proposals, $quoteId) {
+    sceneSandbox(function () use ($proposals, $quoteId) {
+        $proposals->transition($quoteId, 1, 'review', 1, 1);
+        DB::unprepared("CREATE TRIGGER fail_quote_return BEFORE INSERT ON operation_log WHEN NEW.action = 'scene.quote.return' BEGIN SELECT RAISE(ABORT, 'TEST_AUDIT_FAILURE'); END");
+        try {
+            try { $proposals->transition($quoteId, 2, 'return', 2, 1, '需修改条款'); throw new RuntimeException('审计失败未回滚'); }
+            catch (Illuminate\Database\QueryException) {}
+            same('in_review', DB::table('scene_quotes')->find($quoteId)->state);
+            same(0, DB::table('scene_quote_decisions')->where('quote_id', $quoteId)->count());
+            same(0, DB::table('business_outbox')->where('event_type', 'scene.quote.return')->count());
+        } finally { DB::unprepared('DROP TRIGGER fail_quote_return'); }
+    });
+});
+test('客户拒绝核验对象、版本和指纹；幂等一次，释放 held 而不伪造接受', function () use ($proposals, $supply, $owner, $other, $quoteId) {
+    sceneSandbox(function () use ($proposals, $supply, $owner, $other, $quoteId) {
+        sendFixtureQuote($quoteId);
+        $q = DB::table('scene_quotes')->find($quoteId);
+        $r = $supply->resource(['resource_no'=>'TEST-REJECT-ROBOT', 'kind'=>'robot', 'product_id'=>11, 'binding_id'=>10, 'external_reference'=>'隔离夹具', 'city'=>'上海', 'timezone'=>'Asia/Shanghai', 'verification_expires_at'=>'2026-12-31 00:00:00'], 2);
+        app(SceneReservationService::class)->hold($quoteId, ['resource_ids'=>[$r['id']]], 'reject-hold-00001', 1, 1);
+        $data = ['row_version'=>4, 'reason'=>'服务内容需要调整', 'terms_hash'=>$q->terms_hash, 'content_hash'=>$q->content_hash];
+        error('SCENE_OBJECT_NOT_FOUND', fn () => $proposals->reject($other, $quoteId, 'quote-reject-0001', $data));
+        error('SCENE_VERSION_CONFLICT', fn () => $proposals->reject($owner, $quoteId, 'quote-reject-old1', ['row_version'=>1] + $data));
+        error('SCENE_TERMS_CHANGED', fn () => $proposals->reject($owner, $quoteId, 'quote-reject-hash', ['content_hash'=>str_repeat('a',64)] + $data));
+        $result = $proposals->reject($owner, $quoteId, 'quote-reject-0001', $data);
+        same($result, $proposals->reject($owner, $quoteId, 'quote-reject-0001', $data));
+        same(1, DB::table('scene_quote_decisions')->where('quote_id', $quoteId)->where('kind','customer_rejected')->count());
+        same('released', DB::table('scene_reservations')->where('quote_id', $quoteId)->value('state'));
+        same(0, DB::table('scene_quote_acceptances')->where('quote_id', $quoteId)->count());
+        error('SCENE_QUOTE_UNAVAILABLE', fn () => $proposals->accept($owner, $quoteId, 'rejected-accept01', $q->terms_hash, $q->content_hash, 1));
+    });
+});
+test('新版发送同事务释放旧 hold、递增旧版本并保留公开历史；比较无内部政策和审核意见', function () use ($proposals, $supply, $owner, $other, $quoteId, $requestId, $assessmentId) {
+    sceneSandbox(function () use ($proposals, $supply, $owner, $other, $quoteId, $requestId, $assessmentId) {
+        sendFixtureQuote($quoteId);
+        $r = $supply->resource(['resource_no'=>'TEST-SUPERSEDE-ROBOT', 'kind'=>'robot', 'product_id'=>11, 'binding_id'=>10, 'external_reference'=>'隔离夹具', 'city'=>'上海', 'timezone'=>'Asia/Shanghai', 'verification_expires_at'=>'2026-12-31 00:00:00'], 2);
+        app(SceneReservationService::class)->hold($quoteId, ['resource_ids'=>[$r['id']]], 'supersede-hold01', 1, 1);
+        $new = $proposals->draft($requestId, (int) DB::table('scene_requests')->find($requestId)->row_version, quoteFixtureInput($assessmentId, ['discount_bps'=>0]), 1, 1);
+        sendFixtureQuote($new['id']);
+        $old = DB::table('scene_quotes')->find($quoteId);
+        same('voided', $old->state); same(5, (int) $old->row_version); same(true, (bool) $old->customer_visible);
+        same('released', DB::table('scene_reservations')->where('quote_id', $quoteId)->value('state'));
+        $terms = Webkul\Shop\Services\Scenes\SceneWorkflow::unpack($old->terms_snapshot);
+        $terms['terms']['internal_notes'] = 'PRIVATE_NOTE'; $terms['policy']['cost_minor'] = 'PRIVATE_COST';
+        DB::table('scene_quotes')->where('id', $quoteId)->update(['terms_snapshot'=>json_encode($terms)]);
+        $result = $proposals->compare($owner, $requestId, $quoteId, $new['id']);
+        same(1272, $result['amount_deltas']['total_minor']);
+        same(0, $result['amount_deltas']['deposit_minor']); same(true, $result['changes']['items']);
+        same(false, str_contains(json_encode($result), 'PRIVATE_'));
+        error('SCENE_OBJECT_NOT_FOUND', fn () => $proposals->compare($other, $requestId, $quoteId, $new['id']));
+        error('SCENE_COMPARE_DISTINCT', fn () => $proposals->compare($owner, $requestId, $quoteId, $quoteId));
+    });
+});
+test('新版发送审计失败同时恢复旧报价、原 hold 与新报价审批状态', function () use ($proposals, $supply, $quoteId, $requestId, $assessmentId) {
+    sceneSandbox(function () use ($proposals, $supply, $quoteId, $requestId, $assessmentId) {
+        sendFixtureQuote($quoteId);
+        $r = $supply->resource(['resource_no'=>'TEST-SEND-ROLLBACK', 'kind'=>'robot', 'product_id'=>11, 'binding_id'=>10, 'external_reference'=>'隔离夹具', 'city'=>'上海', 'timezone'=>'Asia/Shanghai', 'verification_expires_at'=>'2026-12-31 00:00:00'], 2);
+        app(SceneReservationService::class)->hold($quoteId, ['resource_ids'=>[$r['id']]], 'rollback-hold001', 1, 1);
+        $new = $proposals->draft($requestId, (int) DB::table('scene_requests')->find($requestId)->row_version, quoteFixtureInput($assessmentId), 1, 1);
+        $proposals->transition($new['id'], 1, 'review', 1, 1); $proposals->transition($new['id'], 2, 'approve', 2, 1);
+        DB::unprepared("CREATE TRIGGER fail_quote_send BEFORE INSERT ON operation_log WHEN NEW.action = 'scene.quote.send' BEGIN SELECT RAISE(ABORT, 'TEST_AUDIT_FAILURE'); END");
+        try {
+            try { $proposals->transition($new['id'], 3, 'send', 1, 1); throw new RuntimeException('发送失败未回滚'); } catch (Illuminate\Database\QueryException) {}
+            same('sent', DB::table('scene_quotes')->find($quoteId)->state);
+            same(4, (int) DB::table('scene_quotes')->find($quoteId)->row_version);
+            same('held', DB::table('scene_reservations')->where('quote_id',$quoteId)->value('state'));
+            same('approved', DB::table('scene_quotes')->find($new['id'])->state);
+            same(false, (bool) DB::table('scene_quotes')->find($new['id'])->customer_visible);
+        } finally { DB::unprepared('DROP TRIGGER fail_quote_send'); }
+    });
+});
+test('拒绝产生可处理重编待办，新版发送后扫描关闭；旧事件不重新打开', function () use ($proposals, $owner, $quoteId, $requestId, $assessmentId) {
+    sceneSandbox(function () use ($proposals, $owner, $quoteId, $requestId, $assessmentId) {
+        sendFixtureQuote($quoteId);
+        $q = DB::table('scene_quotes')->find($quoteId);
+        $proposals->reject($owner, $quoteId, 'todo-reject-00001', ['row_version'=>4, 'reason'=>'请调整服务范围', 'terms_hash'=>$q->terms_hash, 'content_hash'=>$q->content_hash]);
+        $ops = app(SceneOperationsService::class);
+        for ($i=0; $i<100 && $ops->consumeOne()['state'] !== 'idle'; $i++) {}
+        $todoKey = 'quote-rework:'.$quoteId;
+        same('open', DB::table('scene_operation_todos')->where('dedupe_key', $todoKey)->value('state'));
+        $new = $proposals->draft($requestId, (int) DB::table('scene_requests')->find($requestId)->row_version, quoteFixtureInput($assessmentId), 1, 1);
+        sendFixtureQuote($new['id']); $ops->sweep();
+        same('resolved', DB::table('scene_operation_todos')->where('dedupe_key', $todoKey)->value('state'));
+        $event = DB::table('business_outbox')->where('event_type','scene.quote.rejected')->where('aggregate_id',$quoteId)->first();
+        DB::table('business_outbox')->where('id',$event->id)->update(['processed_at'=>null]);
+        for ($i=0; $i<100 && $ops->consumeOne()['state'] !== 'idle'; $i++) {}
+        same('resolved', DB::table('scene_operation_todos')->where('dedupe_key', $todoKey)->value('state'));
+    });
+});
+test('有 confirmed 预留的需求修订必须走变更；不能清掉已承诺资源', function () use ($requests, $owner, $requestId, $quoteId, $facts, $supply) {
+    sceneSandbox(function () use ($requests, $owner, $requestId, $quoteId, $facts, $supply) {
+        sendFixtureQuote($quoteId);
+        $r = $supply->resource(['resource_no'=>'TEST-CONFIRMED-ROBOT', 'kind'=>'robot', 'product_id'=>11, 'binding_id'=>10, 'external_reference'=>'隔离夹具', 'city'=>'上海', 'timezone'=>'Asia/Shanghai', 'verification_expires_at'=>'2026-12-31 00:00:00'], 2);
+        app(SceneReservationService::class)->hold($quoteId, ['resource_ids'=>[$r['id']]], 'confirmed-hold01', 1, 1);
+        DB::table('scene_reservations')->where('quote_id', $quoteId)->update(['state'=>'confirmed']);
+        $row = DB::table('scene_requests')->find($requestId);
+        error('SCENE_CHANGE_REQUIRED', fn () => $requests->supplement($owner, $requestId, (int) $row->row_version, 'confirmed-supp01', ['original_text'=>'不得直接改期', 'facts'=>$facts]));
+        same((int) $row->revision_no, (int) DB::table('scene_requests')->find($requestId)->revision_no);
+        same('confirmed', DB::table('scene_reservations')->where('quote_id', $quoteId)->value('state'));
+        same('sent', DB::table('scene_quotes')->find($quoteId)->state);
+    });
+});
 test('自审拒绝；审批与发送后客户确认 hash；重试不重复接受', function () use ($proposals, &$quoteId, $owner, $other) {
     $proposals->transition($quoteId, 1, 'review', 1, 1);
     error('SCENE_SELF_APPROVAL', fn () =>$proposals->transition($quoteId, 2, 'approve', 1, 1));
@@ -261,6 +407,14 @@ test('自审拒绝；审批与发送后客户确认 hash；重试不重复接受
     same('awaiting_confirmation', $a['delivery_status']);
     same($a, $proposals->accept($owner, $quoteId, 'accept-key-000001', $row->terms_hash, $row->content_hash, 1));
     same(1, DB::table('scene_quote_acceptances')->where('quote_id', $quoteId)->count());
+});
+test('已接受报价不能改走拒绝入口，客户决定和需求状态保持原事实', function () use ($proposals, $owner, $quoteId, $requestId) {
+    $q = DB::table('scene_quotes')->find($quoteId);
+    error('SCENE_STATE_CONFLICT', fn () => $proposals->reject($owner, $quoteId, 'accepted-reject01', ['row_version'=>(int) $q->row_version, 'reason'=>'不能直接撤销接受', 'terms_hash'=>$q->terms_hash, 'content_hash'=>$q->content_hash]));
+    same('accepted', DB::table('scene_quotes')->find($quoteId)->state);
+    same('accepted', DB::table('scene_requests')->find($requestId)->state);
+    same(1, DB::table('scene_quote_acceptances')->where('quote_id',$quoteId)->count());
+    same(0, DB::table('scene_quote_decisions')->where('quote_id',$quoteId)->count());
 });
 test('半开区间、缓冲、时区与 DST 非法时间明确拒绝', function () {
     $s = SceneTime::schedule(['starts_at'=>'2026-11-01T10:00:00+08:00', 'ends_at'=>'2026-11-01T11:00:00+08:00', 'timezone'=>'Asia/Shanghai', 'buffer_before_minutes'=>60, 'buffer_after_minutes'=>30]);
@@ -300,6 +454,14 @@ test('交付夹具独立于订单转换；冻结模板生成依赖任务一次',
     });
     same(5, DB::table('scene_project_tasks')->where('project_id', $projectId)->count());
 });
+test('已有项目即使旧需求状态不一致，也不能直接补充或关闭并覆盖原承诺', function () use ($requests, $owner, $requestId, $facts) {
+    $row = DB::table('scene_requests')->find($requestId);
+    $before = DB::table('scene_request_revisions')->where('request_id', $requestId)->count();
+    error('SCENE_CHANGE_REQUIRED', fn () => $requests->supplement($owner, $requestId, (int) $row->row_version, 'project-supp-0001', ['original_text'=>'已有项目不可直接重编', 'facts'=>$facts]));
+    error('SCENE_CHANGE_REQUIRED', fn () => $requests->operate($requestId, (int) $row->row_version, 'close', ['note'=>'已有项目不可直接关闭'], 1));
+    same($before, DB::table('scene_request_revisions')->where('request_id', $requestId)->count());
+    same((int) $row->row_version, (int) DB::table('scene_requests')->find($requestId)->row_version);
+});
 test('交付任务不能跳过前置、漏检查或使用跨对象证据；保留实际时间与人工来源', function () use ($projectId, $attachmentId) {
     $s = app(SceneProjectService::class);
     $tasks = DB::table('scene_project_tasks')->where('project_id', $projectId)->orderBy('id')->get();
@@ -325,6 +487,7 @@ test('客户逐项验收失败进入整改，复验追加记录；另一客户�
     same('accepted', $s->acceptance($owner, $projectId, (int) $row->row_version, 'project-accept-p1', ['items'=>[['key'=>'greeting', 'result'=>'pass', 'evidence_ids'=>[]]]])['state']);
     same(['fail', 'pass'], DB::table('scene_acceptance_records')->where('project_id', $projectId)->orderBy('id')->pluck('result')->all());
     same(false, (bool) DB::table('scene_projects')->where('id', $projectId)->value('returned'));
+    same(0, DB::table('scene_operation_todos')->where('kind', 'acceptance_rectification')->where('state', 'open')->count());
 });
 test('线下凭证录入不等于收款；独立复核及退款上限逐项约束', function () use ($projectId, $attachmentId) {
     $s = app(SceneProjectService::class);
@@ -428,7 +591,7 @@ test('outbox 消费故障释放租约、保留失败原因和重试，不伪造�
             break;
         }
     }
-    DB::table('business_outbox')->insert(['event_id'=>'00000000-0000-4000-8000-000000000099', 'aggregate_type'=>'scene_request', 'aggregate_id'=>1, 'aggregate_seq'=>1, 'event_type'=>'unknown.consumer', 'schema_version'=>1, 'payload'=>'{}', 'available_at'=>now(), 'created_at'=>now(), 'updated_at'=>now()]);
+    DB::table('business_outbox')->insert(['event_id'=>'00000000-0000-4000-8000-000000000099', 'aggregate_type'=>'scene_request', 'aggregate_id'=>1, 'aggregate_seq'=>1, 'event_type'=>'scene.unknown.consumer', 'schema_version'=>1, 'payload'=>'{}', 'available_at'=>now(), 'created_at'=>now(), 'updated_at'=>now()]);
     $result = app(SceneOperationsService::class)->consumeOne();
     same('failed', $result['state']);
     $row = DB::table('business_outbox')->where('id', $result['id'])->first();
@@ -436,6 +599,33 @@ test('outbox 消费故障释放租约、保留失败原因和重试，不伪造�
     same(null, $row->lease_token);
     same('OUTBOX_CONSUMER_UNSUPPORTED', $row->last_error_code);
     same(0, DB::table('business_event_receipts')->where('event_id', $row->event_id)->count());
+});
+test('场景 worker 不租赁、计数或重放其他业务事件', function () {
+    $id = DB::table('business_outbox')->insertGetId(['event_id'=>'00000000-0000-4000-8000-000000000101', 'aggregate_type'=>'ecosystem_event', 'aggregate_id'=>1, 'aggregate_seq'=>1, 'event_type'=>'ecosystem.registration.created', 'schema_version'=>1, 'payload'=>'{}', 'available_at'=>now(), 'created_at'=>now(), 'updated_at'=>now()]);
+    $before = (array) DB::table('business_outbox')->find($id);
+    $ops = app(SceneOperationsService::class);
+    same('idle', $ops->consumeOne()['state']);
+    error('OUTBOX_SCOPE_FORBIDDEN', fn () => $ops->replay($id, 1));
+    same($before, (array) DB::table('business_outbox')->find($id));
+    same(DB::table('business_outbox')->whereNull('processed_at')->where('event_type','like','scene.%')->count(), $ops->metrics()['outbox_pending']);
+});
+test('场景事件版本或对象指纹异常进入可重试失败，不签发 receipt', function () use ($requestId) {
+    $id = DB::table('business_outbox')->insertGetId(['event_id'=>'00000000-0000-4000-8000-000000000102', 'aggregate_type'=>'scene_request', 'aggregate_id'=>$requestId, 'aggregate_seq'=>1, 'event_type'=>'scene.request.submitted', 'schema_version'=>99, 'payload'=>json_encode(['id'=>$requestId,'version'=>1]), 'available_at'=>now(), 'created_at'=>now(), 'updated_at'=>now()]);
+    $ops = app(SceneOperationsService::class); same('failed', $ops->consumeOne()['state']);
+    $row = DB::table('business_outbox')->find($id);
+    same(null, $row->processed_at); same(null, $row->lease_token);
+    same('OUTBOX_SCHEMA_UNSUPPORTED', $row->last_error_code);
+    same(0, DB::table('business_event_receipts')->where('event_id',$row->event_id)->count());
+});
+test('崩溃租约到期后重领并处理一次；重放已处理投影不重复建待办', function () use ($requestId) {
+    $id = DB::table('business_outbox')->insertGetId(['event_id'=>'00000000-0000-4000-8000-000000000103', 'aggregate_type'=>'scene_request', 'aggregate_id'=>$requestId, 'aggregate_seq'=>1, 'event_type'=>'scene.request.submitted', 'schema_version'=>1, 'payload'=>json_encode(['id'=>$requestId,'version'=>1]), 'attempts'=>1, 'lease_token'=>'crashed-worker', 'lease_until'=>now()->subSeconds(10), 'available_at'=>now(), 'created_at'=>now(), 'updated_at'=>now()]);
+    $ops = app(SceneOperationsService::class); same('processed', $ops->consumeOne()['state']);
+    same(2, (int) DB::table('business_outbox')->find($id)->attempts);
+    $count = DB::table('scene_operation_todos')->count();
+    DB::table('business_outbox')->where('id',$id)->update(['processed_at'=>null]);
+    same('processed', $ops->consumeOne()['state']);
+    same($count, DB::table('scene_operation_todos')->count());
+    same(1, DB::table('business_event_receipts')->where('event_id','00000000-0000-4000-8000-000000000103')->count());
 });
 test('真实注册路由均有显式鉴权/安全中间件，Admin 动作映射完整', function () use ($base, $app) {
     $router = new Illuminate\Routing\Router(new Illuminate\Events\Dispatcher($app), $app);
@@ -490,6 +680,14 @@ test('仅查看不能直接批准；报价编制和批准分权；未知 Admin �
     $bouncer->allowed = ['catalog.scene-workflow.approve'];
     same(true, bouncer()->hasPermission('catalog.scene-workflow.approve'));
     same(true, $guard->handle($request, fn () =>true));
+    $returnedRequest = Illuminate\Http\Request::create('/quotes/1/return', 'POST');
+    $returnedRoute = new Illuminate\Routing\Route('POST', 'quotes/{id}/{action}', ['uses'=>$controller, 'controller'=>$controller]);
+    $returnedRoute->bind($returnedRequest); $returnedRequest->setRouteResolver(fn () => $returnedRoute);
+    $bouncer->allowed = ['catalog.scene-workflow.quote'];
+    try { $guard->handle($returnedRequest, fn () =>true); throw new RuntimeException('报价编制角色可越权审核退回'); }
+    catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { same(403, $e->getStatusCode()); }
+    $bouncer->allowed = ['catalog.scene-workflow.approve'];
+    same(true, $guard->handle($returnedRequest, fn () =>true));
     $unknown = new Illuminate\Routing\Route('POST', 'unknown', ['uses'=>$controller, 'controller'=>'Unknown@unmapped']);
     $request->setRouteResolver(fn () =>$unknown);
     try {

@@ -1,0 +1,156 @@
+{
+    "environment": "isolated SQLite :memory:",
+    "production_method": "OrderRepository::create",
+    "collaborators": "SQL fixtures, not production inventory\/listeners",
+    "tests": [
+        {
+            "name": "exception:before 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:probe_orders 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:payment 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:shipping 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:billing 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:item_one 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:item_two 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:child 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:inventory 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:options 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:downloads 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:item_listener 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "exception:order_listener 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":3}"
+        },
+        {
+            "name": "error:before 回滚所有 SQL 且不重试业务异常",
+            "pass": true
+        },
+        {
+            "name": "error:probe_orders 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:payment 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:shipping 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:billing 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:item_one 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:item_two 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:child 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:inventory 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:options 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:downloads 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:item_listener 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "error:order_listener 回滚所有 SQL 且不重试业务异常",
+            "pass": false,
+            "error": "{\"expected\":0,\"actual\":1}"
+        },
+        {
+            "name": "嵌套失败不提交调用方事务，外层可继续写入并完整回滚",
+            "pass": false,
+            "error": "{\"expected\":1,\"actual\":0}"
+        },
+        {
+            "name": "嵌套成功仍由外层决定提交，afterCommit 不提前触发",
+            "pass": true
+        },
+        {
+            "name": "顶层并发错误最多三次；重试重新执行全部 SQL，不留半单",
+            "pass": true
+        },
+        {
+            "name": "并发错误超过重试上限向外抛出且无残留",
+            "pass": true
+        }
+    ],
+    "passed": 4,
+    "failed": 26,
+    "mysql_verified": false
+}

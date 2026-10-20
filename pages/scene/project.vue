@@ -1,6 +1,7 @@
 <template>
   <view class="scene-page"><view class="scene-nav"><text @tap="back">‹ 返回</text><text class="title">服务项目</text><text></text></view>
     <StateView v-if="loading || error" :loading="loading" :error="error" @retry="load" />
+    <view v-if="pendingCommands.length" class="body"><view class="card"><text class="section">操作回执待确认</text><text class="muted">原验收或申请内容已保留。重试使用原提交标识，不会按当前页面重新编写结果。</text><button v-for="pending in pendingCommands" :key="pending.slot" class="secondary divider" :disabled="busy" @tap="retryPending(pending)">按原内容重试{{ pendingLabel(pending.slot) }}</button></view></view>
     <view v-if="project && !loading && !error" class="body"><view class="hero"><text class="heading">{{ status(project.state) }}</text><text>{{ project.project_no }}</text><text>商务 {{ status(project.commercial_state) }} · 款项 {{ status(project.payment_state) }}</text></view>
       <view class="card"><text class="section">交付进度</text><view v-for="task in project.tasks" :key="task.id" class="row"><text>{{ task.name }}</text><text>{{ task.state === 'done' ? '已记录完成' : '待处理' }} {{ task.occurred_at || '' }}</text></view></view>
       <view v-if="['awaiting_acceptance','rectification'].includes(project.state)" class="card"><text class="section">按冻结标准逐项验收</text><view v-for="item in project.acceptance_template" :key="item.key" class="divider"><text>{{ item.label }}{{ item.required ? '（必需）' : '' }}</text><picker :range="['请选择','通过','未通过']" :value="acceptance[item.key] || 0" @change="acceptance[item.key] = Number($event.detail.value)"><view class="picker">{{ ['请选择','通过','未通过'][acceptance[item.key] || 0] }} ›</view></picker></view><button class="primary divider" :disabled="busy" @tap="submitAcceptance">提交本次验收</button><text class="muted">未回复不会默认通过。未通过项进入整改，原始验收记录保留。</text></view>
@@ -13,10 +14,10 @@
 <script>
 import StateView from '@/components/StateView.vue'
 import { sceneWorkflowApi } from '@/utils/api'
-import { sceneAccountScope, sceneLocalState, saveSceneDraft, clearSceneDraft, sceneStatusLabel } from '@/utils/scene-request'
+import { sceneAccountScope, sceneLocalState, submitSceneCommand, scenePendingCommands, sceneStatusLabel } from '@/utils/scene-request'
 export default {
   components: { StateView },
-  data() { return { id: 0, project: null, loading: false, error: '', busy: false, scope: '', generation: 0, acceptance: {}, actionLabels: ['变更服务内容或改期','申请取消','服务售后'], actionIndex: 0, reason: '' } },
+  data() { return { id: 0, project: null, loading: false, error: '', busy: false, scope: '', generation: 0, acceptance: {}, pendingCommands: [], actionLabels: ['变更服务内容或改期','申请取消','服务售后'], actionIndex: 0, reason: '' } },
   onLoad(options) { this.id = Number(options.id) },
   onShow() { if (this.scope !== sceneAccountScope()) { this.project = null; this.acceptance = {}; this.reason = '' }; this.scope = sceneAccountScope(); this.load() },
   onUnload() { this.generation++ },
@@ -25,6 +26,7 @@ export default {
     async load() {
       const generation = ++this.generation, scope = sceneAccountScope()
       this.loading = true; this.error = ''
+      this.pendingCommands = scenePendingCommands('project:' + this.id + ':')
       try {
         if (!Number.isSafeInteger(this.id) || this.id < 1) throw new Error('项目编号无效')
         const response = await sceneWorkflowApi.project(this.id, sceneLocalState().access)
@@ -34,16 +36,19 @@ export default {
       } catch (e) { if (generation === this.generation && scope === sceneAccountScope()) { this.project = null; this.error = e.message || '加载失败' } }
       finally { if (generation === this.generation && scope === sceneAccountScope()) this.loading = false }
     },
-    async send(action, data) {
+    pendingLabel(slot) { return ({ acceptance: '项目验收', change: '服务变更', cancel: '取消申请', after_sale: '服务售后' })[slot.split(':').pop()] || '项目操作' },
+    retryPending(pending) { this.send(pending.slot.split(':').pop(), null, pending) },
+    async send(action, data, pending = null) {
       if (this.busy) return
-      this.busy = true; const scope = sceneAccountScope(), slot = action + ':project:' + this.id
-      const payload = { ...data, row_version: this.project.row_version }, draft = saveSceneDraft(slot, payload)
+      if (!pending && this.pendingCommands.length) { uni.showToast({ title: '请先按原内容确认上一条操作回执', icon: 'none' }); return }
+      this.busy = true; const scope = sceneAccountScope(), slot = 'project:' + this.id + ':' + action
       try {
-        await sceneWorkflowApi.projectAction(this.id, action, payload, sceneLocalState().access, draft.key)
+        const payload = pending ? pending.payload : { ...data, row_version: this.project.row_version }
+        await submitSceneCommand(slot, payload, (body, access, key) => sceneWorkflowApi.projectAction(this.id, action, body, access, key))
         if (scope !== sceneAccountScope()) return
-        clearSceneDraft(slot); this.reason = ''; this.acceptance = {}; await this.load()
+        this.reason = ''; this.acceptance = {}; await this.load()
       } catch (e) { if (scope === sceneAccountScope()) uni.showToast({ title: e.message || '提交失败，请重试', icon: 'none' }) }
-      finally { this.busy = false }
+      finally { if (scope === sceneAccountScope()) this.pendingCommands = scenePendingCommands('project:' + this.id + ':'); this.busy = false }
     },
     submitAcceptance() {
       const items = this.project.acceptance_template.filter(item => this.acceptance[item.key]).map(item => ({ key: item.key, result: this.acceptance[item.key] === 1 ? 'pass' : 'fail', evidence_ids: [] }))

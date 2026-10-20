@@ -7,6 +7,18 @@ use Illuminate\Support\Str;
 
 class SceneOperationsService
 {
+    private const EVENTS = [
+        'scene'                => ['scene.revision.review', 'scene.revision.approve', 'scene.revision.publish', 'scene.revision.withdraw', 'scene.availability.changed'],
+        'scene_revision'       => ['scene.revision.drafted'],
+        'scene_request'        => ['scene.request.submitted', 'scene.request.supplemented', 'scene.request.claimed', 'scene.request.assign', 'scene.request.contact', 'scene.request.close', 'scene.assessment.created', 'scene.attachment.added'],
+        'scene_quote'          => ['scene.quote.drafted', 'scene.quote.review', 'scene.quote.approve', 'scene.quote.return', 'scene.quote.send', 'scene.quote.void', 'scene.quote.accepted', 'scene.quote.rejected', 'scene.quote.invalidated', 'scene.resources.held'],
+        'scene_price'          => ['scene.price.created', 'scene.price.revoked'],
+        'scene_evidence'       => ['scene.evidence.recorded', 'scene.evidence.revoked'],
+        'scene_resource'       => ['scene.resource.verified', 'scene.resource.paused'],
+        'scene_project'        => ['scene.project.tasks.initialized', 'scene.project.task.completed', 'scene.project.acceptance.recorded', 'scene.project.change.requested', 'scene.project.cancel.requested', 'scene.project.after_sale.requested', 'scene.commercial.recorded', 'scene.commercial.reviewed', 'scene.project.returned'],
+        'scene_service_ticket' => ['scene.service-ticket.resolved'],
+    ];
+
     public function __construct(protected SceneWorkflow $flow) {}
 
     /** 租约只保护投递；业务投影、receipt 与 processed 标记在同一事务提交。 */
@@ -14,7 +26,7 @@ class SceneOperationsService
     {
         $this->flow->enabled('operations_enabled');
         $lease = DB::transaction(function () {
-            $row = DB::table('business_outbox')->whereNull('processed_at')->where('attempts', '<', 8)->where('available_at', '<=', now('UTC'))
+            $row = DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->where('attempts', '<', 8)->where('available_at', '<=', now('UTC'))
                 ->where(fn ($q) => $q->whereNull('lease_until')->orWhere('lease_until', '<=', now('UTC')))->orderBy('id')->lockForUpdate()->first();
             if (! $row) {
                 return null;
@@ -33,8 +45,13 @@ class SceneOperationsService
                 if (! $row || $row->lease_until <= now('UTC')) {
                     return ['state' => 'lease_lost'];
                 }
-                if (! str_starts_with($row->event_type, 'scene.')) {
+                if (! in_array($row->event_type, self::EVENTS[$row->aggregate_type] ?? [], true)) {
                     throw new SceneWorkflowException('OUTBOX_CONSUMER_UNSUPPORTED', '未配置此事件的消费者。');
+                }
+                $payload = SceneWorkflow::unpack($row->payload);
+                if ((int) $row->schema_version !== 1 || ! is_array($payload)
+                    || ($payload['id'] ?? null) !== (int) $row->aggregate_id || ($payload['version'] ?? null) !== (int) $row->aggregate_seq) {
+                    throw new SceneWorkflowException('OUTBOX_SCHEMA_UNSUPPORTED', '事件版本或对象引用不符合当前契约。');
                 }
                 $receipt = ['consumer' => 'scene.operations.v1', 'event_id' => $row->event_id];
                 if (! DB::table('business_event_receipts')->where($receipt)->exists()) {
@@ -43,6 +60,12 @@ class SceneOperationsService
                         $request = DB::table('scene_requests')->where('id', $row->aggregate_id)->first();
                         if ($request && ! $request->assignee_id && ! in_array($request->state, ['closed', 'cancelled', 'converted'], true)) {
                             $this->todo('unassigned:'.$request->id, (int) $request->id, 'unassigned_request');
+                        }
+                    }
+                    if ($row->aggregate_type === 'scene_quote') {
+                        $quote = DB::table('scene_quotes')->where('id', $row->aggregate_id)->first();
+                        if ($quote) {
+                            $this->quoteTodo($quote);
                         }
                     }
                     DB::table('business_event_receipts')->insert($receipt + ['created_at' => now('UTC')]);
@@ -84,6 +107,11 @@ class SceneOperationsService
                 }
             }
         });
+        DB::table('scene_quotes')->whereIn('state', ['returned', 'rejected'])->orderBy('id')->chunkById(100, function ($quotes) {
+            foreach ($quotes as $quote) {
+                $this->quoteTodo($quote);
+            }
+        });
 
         return ['expired_holds' => $expired, 'open_todos' => DB::table('scene_operation_todos')->where('state', 'open')->count()];
     }
@@ -94,6 +122,9 @@ class SceneOperationsService
 
         return DB::transaction(function () use ($id, $actor) {
             $row = SceneWorkflow::requireRow('business_outbox', $id);
+            if (! str_starts_with($row->event_type, 'scene.')) {
+                throw new SceneWorkflowException('OUTBOX_SCOPE_FORBIDDEN', '场景工作台不能重放其他业务的事件。', 403);
+            }
             if ($row->processed_at || ($row->lease_until && $row->lease_until > now('UTC'))) {
                 throw new SceneWorkflowException('OUTBOX_REPLAY_CONFLICT', '事件已完成或正被处理。', 409);
             }
@@ -114,8 +145,8 @@ class SceneOperationsService
             'accepted_quotes'    => DB::table('scene_quote_acceptances')->whereIn('quote_id', DB::table('scene_quotes')->whereIn('request_id', clone $ids)->select('id'))->count(),
             'confirmed_projects' => DB::table('scene_projects')->whereIn('request_id', clone $ids)->whereNotIn('state', ['cancelled'])->count(),
             'open_todos'         => DB::table('scene_operation_todos')->where('state', 'open')->count(),
-            'outbox_pending'     => DB::table('business_outbox')->whereNull('processed_at')->count(),
-            'outbox_failed'      => DB::table('business_outbox')->whereNull('processed_at')->where('attempts', '>=', 8)->count(),
+            'outbox_pending'     => DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->count(),
+            'outbox_failed'      => DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->where('attempts', '>=', 8)->count(),
             'definitions'        => ['requests' => '非测试且非旧线索适配的独立需求数', 'accepted_quotes' => '客户接受事实，非订单成交或收款', 'confirmed_projects' => '已建立项目，非验收或收款'],
             'worker_status'      => 'requires_process_verification', 'sla_status' => 'calendar_not_configured',
         ];
@@ -125,5 +156,23 @@ class SceneOperationsService
     {
         DB::table('scene_operation_todos')->insertOrIgnore(['dedupe_key' => $key, 'request_id' => $requestId, 'kind' => $kind,
             'state'                                                      => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+    }
+
+    private function quoteTodo(object $quote): void
+    {
+        if (! in_array($quote->state, ['rejected', 'returned'], true)) {
+            return;
+        }
+        $request = DB::table('scene_requests')->where('id', $quote->request_id)->first();
+        $key = 'quote-rework:'.$quote->id;
+        $done = ! $request || in_array($request->state, ['closed', 'cancelled', 'converted'], true)
+            || (int) $request->revision_no !== (int) $quote->request_revision_no
+            || DB::table('scene_quotes')->where('request_id', $quote->request_id)->where('version', '>', $quote->version)->where('customer_visible', true)->exists();
+        if ($done) {
+            DB::table('scene_operation_todos')->where('dedupe_key', $key)->where('state', 'open')
+                ->update(['state' => 'resolved', 'resolution_code' => 'new_quote_or_request_changed', 'updated_at' => now('UTC')]);
+        } else {
+            $this->todo($key, (int) $quote->request_id, 'quote_revision_requested');
+        }
     }
 }

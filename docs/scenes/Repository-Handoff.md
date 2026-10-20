@@ -7,12 +7,16 @@
 - 交接分支：`codex/scene-workflow-sc0-sc5`。
 - 代码基线：`3fd8753c1299fc33062bbc2d275c44cc8d31f280`。
 - 范围：SC0 真实性修复、SC1–SC5 首批代码、测试和实施文档；全部阶段的剩余项见[第 14 步](../skill-dev-step14.md)。这不是生产上线或全部阶段签收。
+- 后续第二批代码/验证和剩余项见[第 15 步](../skill-dev-step15.md)，包含共享订单事务修复、报价退回/拒绝/对比、客户可见性、原载荷回执恢复、事件范围隔离及只读预检。始终 fetch 本分支最新 HEAD，不只取首批提交。
+- 最新跨机复测和控制器继承签名修复见[第 16 步](../skill-dev-step16.md)。已取得生态分支合并提交 `2609992`，它只合入至首批 `546a6a0`；capabilities 已 200，但 schemas 404、未签发凭证 500 尚待运行环境核对。第二批必须包含后续 `rejectQuote` 修复及 15 项真实控制器装载/Router 检查。
 - 不包含 `.env`、本机备份、截图、打包 ZIP 或临时 Git index。`docs/scenes/handoff/` 是本机生成的补丁交接目录，不纳入本次提交。
 - `sc0-evidence`、`sc1-sc5-evidence` 中的 JSON/TAP 是生成时的验证快照。其中 `git_commit_created=false`、`pushed=false` 等字段记录验证发生时的状态，不代表仓库提交后的状态。
 
 ## 另一台电脑的合并约定
 
 远端电脑经用户转交的当前 HEAD 为 `4afe73c8bf7c8f4eb1640a54e1e32599078c275a`，分支 `codex/ecosystem-g2-free-registration`。该提交不在本机对象库中，因此本次分支没有声称完成对它的合并或重放。
+
+更新：Git fetch 后已取得该分支及 `4afe73c` 对象，最新观察到 `2609992`（父提交 `4afe73c`、`546a6a0`）。上段保留首批交接时的事实。本机尚未将整条生态分支合入当前工作分支，也未通过 HTTP 核验 8010 的实际 HEAD。请按第 16 步核对最新合并和测试环境。
 
 在另一台电脑先读取分支并审查差异：
 
@@ -32,6 +36,8 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 4. 三份新增迁移尚未在实际 MySQL 环境执行。建议独立 `summon_mecha_scenes_test`，不要与其他测试并发使用同一库，不对 `root` 运行迁移、清库或种子。
 5. 新开关默认关闭；正式条款、必需费用或扫描器缺失时相关写入保持阻断。订单转换未实现，不能通过开关开放。
 
+第二批另新增 `2026_10_20_100004_add_scene_quote_decisions.php`，应接在前三份之后；仍未在实际 MySQL 执行。迁移仅按已明确的旧状态标记客户可见性，不猜旧 voided 历史。共享 `OrderRepository` 修复应作为独立变更审查，[复现证据及边界](Order-Transaction-Review.md)说明了本机 SQL 夹具与真实 MySQL 的区别。
+
 ## 新接口核对
 
 `GET /api/scene-workflow/capabilities` 定义在 `Shop/src/Routes/scene-workflow.php`，由 `/api` 组加载；不要求登录或 CSRF，不受 `SCENE_*` 开关限制，也不查询新业务表。代码成功合并并注册路由后，即便所有开关为 false，也应返回 HTTP 200 与关闭的能力值。
@@ -40,7 +46,7 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 
 ## 给另一台电脑 AI 的最新联调交接
 
-场景代码已推送至本页所列分支，代码提交为 `5f500a9290ef9758e352a7a9cc1c586b59a05f18`，本机已核对 GitHub 分支提交与本地一致。提交不等于已合并到 `D:\main` 或已部署到 8010。本文是仓库内交接，未通过远程 shell 或另一台电脑的 AI 会话投递消息，也未收到对方读取确认。
+首批场景代码已推送至本页所列分支，首批代码提交为 `5f500a9290ef9758e352a7a9cc1c586b59a05f18`，推送时已核对 GitHub 分支提交与本地一致。后续批次见本页开头，不以首批提交代替最新 HEAD。提交不等于已合并到 `D:\main` 或已部署到 8010。本文是仓库内交接，未通过远程 shell 或另一台电脑的 AI 会话投递消息，也未收到对方读取确认。
 
 2026-10-20 北京时间 22:32:53–22:32:55 再次只读实测：源地址 `192.168.3.96`，WLAN，`TcpTestSucceeded=True`；`GET /up`、`GET /api/events?per_page=1`、`GET /api/scenes` 均为 200，后两项为空数据；`GET /api/scene-workflow/capabilities` 仍为 404，响应为 `{"code":"NOT_FOUND","message":"请求的资源不存在。"}`。四次 curl 返回码均为 0，404 是实际 HTTP 状态。详见[复测记录](sc1-sc5-evidence/lan-smoke-recheck.json)。
 
@@ -54,6 +60,8 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 6. 订单转换仍未实现且硬阻断，不能通过开关开放。项目交付测试只能先使用明确标记的测试夹具，不能据此宣称真实订单到项目全流程完成。
 
 请一次回传：合并后的分支/HEAD、实际运行项目路径、APP_ENV/数据库名、迁移状态、新路由表、开关值、capabilities 完整响应（脱敏 Cookie/token），以及使用的夹具编号、实际测试命令/退出码/失败信息和清理结果。若合并或迁移受阻，先回传具体差异或错误，不对共享测试库试错。
+
+第二批已提供[只读预检脚本说明](../../my-bagisto-store/qa/scenes/README.md)。在实际 Laravel 隔离 checkout、正确测试库环境下执行 `php qa/scenes/preflight.php` 并回传 JSON；不要用 `--check-env-only` 冒充已核验数据库。该机 MySQL 正向执行、真实业务夹具和完整订单/并发故障注入仍待完成，不能据本机新通过的 40+30 项隔离测试开放转换。
 
 ## 已执行验证的边界
 
