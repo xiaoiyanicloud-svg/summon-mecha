@@ -8,7 +8,7 @@ use Webkul\Shop\Http\Middleware\SceneWorkflowSafety;
 Route::controller(SceneWorkflowController::class)->middleware([SceneWorkflowSafety::class])->group(function () {
     Route::get('scene-workflow/capabilities', 'capabilities')->name('shop.api.scene-workflow.capabilities');
     Route::post('scene-workflow/access', 'access')->middleware('throttle:write')->name('shop.api.scene-workflow.access');
-    Route::get('scene-workflow/schemas/{category}', 'schema')->name('shop.api.scene-workflow.schema');
+    Route::get('scene-workflow/schemas/{sceneCategory}', 'schema')->name('shop.api.scene-workflow.schema');
     Route::get('scene-requests', 'index')->name('shop.api.scene-requests.index');
     Route::post('scene-requests', 'store')->middleware('throttle:write')->name('shop.api.scene-requests.store');
     Route::get('scene-requests/{id}', 'show')->where('id', '[1-9][0-9]{0,14}')->name('shop.api.scene-requests.show');

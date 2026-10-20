@@ -36,9 +36,9 @@ class SceneWorkflowController extends APIController
         return response()->json(['token' => $token])->header('Cache-Control', 'no-store');
     }
 
-    public function schema(string $category, SceneSchemaRegistry $schemas)
+    public function schema(string $sceneCategory, SceneSchemaRegistry $schemas)
     {
-        return response()->json(['data' => $schemas->schema($category)]);
+        return response()->json(['data' => $schemas->schema($sceneCategory)]);
     }
 
     public function index(Request $request, SceneRequestService $service)

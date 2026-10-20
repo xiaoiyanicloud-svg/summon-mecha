@@ -68,3 +68,6 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 新增流程 PHP 27/27、SC0 后端回归 11/11、前端 28/28、12 个 Vue SFC、7 个新流程及 5 个目录浏览器夹具检查通过；PHP 语法 51 文件通过。源文件哈希与[验证快照](sc1-sc5-evidence/verification.json)一致。
 
 这些证据不替代真实 MySQL 行锁/订单事务、Admin 角色 HTTP、HBuilderX H5/小程序、真机、扫描器或 worker/scheduler 常驻验收。
+## 2026-10-21 schema 路由绑定修复
+
+`GET /api/scene-workflow/schemas/{category}` 的 404 根因是 Bagisto 全局 `category` 路由模型绑定：`SubstituteBindings` 会把 `business_event` 当作 `Webkul\Category\Models\Category` 查询。现已把路由参数改名为 `{sceneCategory}`、控制器参数同步改名，公开 URL 不变。`8010` 实测 `GET /api/scene-workflow/schemas/business_event` 返回 `200 application/json`，控制器运行态测试新增参数名回归检查。

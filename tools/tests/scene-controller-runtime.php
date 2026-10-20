@@ -73,6 +73,17 @@ runtimeCase('真实控制器能力接口可执行；订单转换始终关闭', f
     runtimeExpect(false, $data['order_conversion']);
     runtimeExpect('scene-contact-v1', $data['consent_version']);
 });
+runtimeCase('schema 路由参数避开全局 category 模型绑定', function () use ($router) {
+    $route = null;
+    foreach ($router->getRoutes() as $candidate) {
+        if ($candidate->uri() === 'api/scene-workflow/schemas/{sceneCategory}') {
+            $route = $candidate;
+            break;
+        }
+    }
+    runtimeExpect(true, $route !== null);
+    runtimeExpect(['sceneCategory'], $route->parameterNames());
+});
 foreach (array_keys(Scene::CATEGORIES) as $category) {
     runtimeCase('真实 Router 分发表单 '.$category.'，无数据库访问', function () use ($category) {
         $response = dispatchRead('/api/scene-workflow/schemas/'.$category);
