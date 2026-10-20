@@ -18,7 +18,7 @@ Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->mid
     Route::post('requests/{id}/{action}', 'requestAction')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['assign', 'contact', 'close'])->name('admin.catalog.scene-workflow.request');
     Route::post('requests/{id}/assessments/create', 'assess')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.assess');
     Route::post('requests/{id}/quotes/create', 'quote')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.quote');
-    Route::post('quotes/{id}/{action}', 'quoteAction')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['review', 'approve', 'send', 'void'])->name('admin.catalog.scene-workflow.quote-action');
+    Route::post('quotes/{id}/{action}', 'quoteAction')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['review', 'approve', 'return', 'send', 'void'])->name('admin.catalog.scene-workflow.quote-action');
     Route::post('scenes/{id}/{action}', 'publication')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['draft', 'review', 'approve', 'publish', 'withdraw'])->name('admin.catalog.scene-workflow.publication');
     Route::post('supply/{kind}', 'supply')->whereIn('kind', ['prices', 'evidence', 'resources'])->name('admin.catalog.scene-workflow.supply');
     Route::post('quotes/{id}/reservations/hold', 'hold')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.hold');

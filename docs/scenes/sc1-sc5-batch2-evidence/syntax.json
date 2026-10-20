@@ -1,0 +1,87 @@
+[
+  {
+    "file": "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/AuthorizeSceneWorkflow.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/AuthorizeSceneWorkflow.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Sales/src/Repositories/OrderRepository.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Sales/src/Repositories/OrderRepository.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneWorkflowController.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneWorkflowController.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Listeners/SkillDelivery.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Listeners/SkillDelivery.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Routes/scene-workflow.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Routes/scene-workflow.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneRequestService.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneRequestService.php"
+  },
+  {
+    "file": "tools/tests/scene-workflow.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in tools/tests/scene-workflow.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_100004_add_scene_quote_decisions.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_100004_add_scene_quote_decisions.php"
+  },
+  {
+    "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneQuoteLifecycleService.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneQuoteLifecycleService.php"
+  },
+  {
+    "file": "my-bagisto-store/qa/scenes/preflight.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in my-bagisto-store/qa/scenes/preflight.php"
+  },
+  {
+    "file": "tools/tests/order-transaction.php",
+    "exit_code": 0,
+    "output": "No syntax errors detected in tools/tests/order-transaction.php"
+  }
+]

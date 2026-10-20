@@ -73,8 +73,8 @@ class SceneRequestService
             $next = (int) $row->revision_no + 1;
             $this->writeRevision($id, $next, $data['original_text'], $facts, $schema);
             DB::table('scene_requests')->where('id', $id)->update(['revision_no' => $next, 'row_version' => $expected + 1, 'state' => 'submitted', 'updated_at' => now('UTC')]);
-            DB::table('scene_quotes')->where('request_id', $id)->whereNotIn('state', ['voided', 'rejected'])->update(['state' => 'voided', 'updated_at' => now('UTC')]);
-            DB::table('scene_reservations')->whereIn('quote_id', DB::table('scene_quotes')->where('request_id', $id)->select('id'))->where('state', 'held')->update(['state' => 'released', 'updated_at' => now('UTC')]);
+            app(SceneQuoteLifecycleService::class)->invalidate($id, ['draft', 'in_review', 'approved', 'sent', 'accepted', 'returned'],
+                'request_revised', $owner->customerId ? 'customer' : 'guest', $owner->customerId);
             $this->activity($id, 'supplemented', 'customer', $owner->customerId, null, 'customer');
             $this->flow->record($owner->customerId ? 'customer' : 'guest', $owner->customerId, 'scene_request', $id, $expected + 1, 'scene.request.supplemented');
 
@@ -134,7 +134,7 @@ class SceneRequestService
                     throw new SceneWorkflowException('SCENE_ACCEPTED_QUOTE_EXISTS', '已有接受的报价，需先处理商务撤销。', 409);
                 }
                 $patch['state'] = 'closed';
-                DB::table('scene_quotes')->where('request_id', $id)->update(['state' => 'voided', 'updated_at' => now('UTC')]);
+                app(SceneQuoteLifecycleService::class)->invalidate($id, ['draft', 'in_review', 'approved', 'sent', 'returned'], 'request_closed', 'admin', $actor);
             } else {
                 throw new SceneWorkflowException('SCENE_OPERATION_INVALID', '操作或必填资料无效。');
             }
@@ -150,7 +150,7 @@ class SceneRequestService
     {
         $row = $owner->request($id);
         $revision = DB::table('scene_request_revisions')->where('request_id', $id)->where('revision_no', $row->revision_no)->first();
-        $quotes = DB::table('scene_quotes')->where('request_id', $id)->whereIn('state', ['sent', 'accepted', 'rejected', 'voided'])->orderByDesc('version')->get();
+        $quotes = DB::table('scene_quotes')->where('request_id', $id)->where('customer_visible', true)->orderByDesc('version')->get();
         $projects = DB::table('scene_projects')->where('request_id', $id)->get(['id', 'project_no', 'state', 'commercial_state', 'payment_state']);
 
         return $this->summary($row) + [

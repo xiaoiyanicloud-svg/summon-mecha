@@ -1,0 +1,157 @@
+{
+  "checked_at": "2026-10-20T23:05:56.5313143+08:00",
+  "baseline_commit": "546a6a076d4bfda316bcc6b0bf2cf985dbcb9a64",
+  "scope": "SC1-SC5 batch 2, partial implementation",
+  "workflow_php": {
+    "failed": 0,
+    "passed": 40,
+    "environment": "SQLite :memory:"
+  },
+  "order_php": {
+    "failed": 0,
+    "passed": 30,
+    "mysql_verified": false,
+    "collaborators": "SQL fixtures; not production inventory/listeners"
+  },
+  "order_baseline": {
+    "failed": 26,
+    "passed": 4
+  },
+  "sc0_backend": {
+    "failed": 0,
+    "groups": 11
+  },
+  "node": {
+    "failed": 0,
+    "passed": 35
+  },
+  "browser": {
+    "page_errors": 0,
+    "hbuilderx_build_verified": false,
+    "mini_program_verified": false,
+    "environment": "Chrome headless + real Vue components + isolated API fixtures",
+    "compiled_sfc": 12,
+    "checks": 12
+  },
+  "blade": {
+    "real_layout_verified": false,
+    "syntax_passed": 2,
+    "compiled": 2
+  },
+  "php_syntax": {
+    "failed": 0,
+    "files": 17
+  },
+  "preflight": {
+    "real_mysql_positive_run": false,
+    "environment_guard_tests_passed": 3
+  },
+  "order_conversion_available": false,
+  "business_database_accessed": false,
+  "remote_business_writes": false,
+  "worker_process_deployed": false,
+  "source_sha256": [
+    {
+      "file": "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php",
+      "sha256": "60685a2f673dae7a22862772ae3dcb8dd3d1e5c81016d38d8cb389ca459b894c"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/AuthorizeSceneWorkflow.php",
+      "sha256": "329edcd9aa9053b0036a5c329b1973347fef5cb8c4f32c5cb2b1483ebb0caa78"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php",
+      "sha256": "798b7aebadd93b644bf0d3813b629249313ac1d6683938dcbe5afdc0a2f9c813"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php",
+      "sha256": "ac17874c20712042ff9976c71f991046e8640dcf0d4d0ca07ad5c5bf8bd31bf3"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Sales/src/Repositories/OrderRepository.php",
+      "sha256": "3437d99145508d434a8a7af5f3d5695daa020d7f3b1db96eceae9bad0e0c71db"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneWorkflowController.php",
+      "sha256": "3e3e0d9a597a5dc4488910ca6bc3c119dfe5453b7dae89b0d15068f25b234187"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Listeners/SkillDelivery.php",
+      "sha256": "7d675dcac1a264165780f70307ad8cbb4e8873119544789d7aa48e0f9840f793"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Routes/scene-workflow.php",
+      "sha256": "c232dd71169868ec11bbead7594131a2998b35d63064f0b9a087f1b81729a9d5"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php",
+      "sha256": "fa4d97632e5d707cab8c2073ac922fc58d45a803bfcf8ac5eb0bdc9ac7d992db"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php",
+      "sha256": "73a98175d283b030cba817d434575a0c02893bca1e7407e8481eb81f984b76f5"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php",
+      "sha256": "32386ca57bdf13d75918e68d3f5abf914ad1bee41c9ee67b206cfe5fb4f2a2d5"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneRequestService.php",
+      "sha256": "e8e078449d794a86ff2b82a9ed1a527cff7978a17f64103cc438ffa0f38dbc4c"
+    },
+    {
+      "file": "pages/scene/detail.vue",
+      "sha256": "4ed022f6b80a6fdaa13a1b3417e5e3364e6d7703e4985a198ce5a6b06101808b"
+    },
+    {
+      "file": "pages/scene/project.vue",
+      "sha256": "b4e51a858f5c28ef16f0ddff7613ddb702aaecb45d0f0b39dc4ee355f8bdc776"
+    },
+    {
+      "file": "tools/tests/scene-request.test.mjs",
+      "sha256": "8a0cb53b26a1de5502758b3cabe3fc3b663d7b3b28271df3ffbfccaa16b58bc9"
+    },
+    {
+      "file": "tools/tests/scene-workflow-ui.mjs",
+      "sha256": "7efcf7474834c31648bf7734d32ffe2804e29175acd64f10a7a7b7f155bfe96f"
+    },
+    {
+      "file": "tools/tests/scene-workflow.php",
+      "sha256": "0912798715d5e4073d81f23227036a4a2be901bc0253819d85b4d2661de5eeae"
+    },
+    {
+      "file": "utils/api.js",
+      "sha256": "5ebb87a09bbe1471d9e4713fe5db65c6fd2434ff72eb52befcd6bb0c12efca06"
+    },
+    {
+      "file": "utils/scene-request.js",
+      "sha256": "5d245cf8f858d8bc2a9e370dfc3ee2bee9c2122e46178cfe7e982a156755c3d1"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_100004_add_scene_quote_decisions.php",
+      "sha256": "b336814fd5ef025e2e3d02df9ab4eee88c13e1c37e816e96d37d2d80586b6da0"
+    },
+    {
+      "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneQuoteLifecycleService.php",
+      "sha256": "924be63b0bc42531542b511fde7acee9117d5f61e2282ace23bac2d060296e16"
+    },
+    {
+      "file": "my-bagisto-store/qa/scenes/preflight.php",
+      "sha256": "2b1adfeb42c315705355a027ceac61b189dff35aac135df95914592fed8a1ea1"
+    },
+    {
+      "file": "tools/tests/order-transaction.php",
+      "sha256": "f0bdfb1eecf999364cb549c9a9068c9d500dbd70ca6ac45543d1d2ff9a9e98a7"
+    },
+    {
+      "file": "tools/tests/scene-preflight.test.mjs",
+      "sha256": "2ac6ef9c1f824d9b163d3b5ac967cd171f9706a04b8f64d47a671a9f55ae97d6"
+    }
+  ],
+  "order_fix_commit": "e53970bb3d986ffe16728b67a1c84c5eff7299c3",
+  "formatting": {
+    "passed": true,
+    "pint_config": "my-bagisto-store/pint.json",
+    "files": 14
+  }
+}

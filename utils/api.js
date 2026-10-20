@@ -241,6 +241,8 @@ export const sceneWorkflowApi = {
   supplement: (id, data, access, key) => http.post('/api/scene-requests/' + Number(id) + '/supplements', data, sceneHeaders(access, key)),
   claim: (id, access) => http.post('/api/scene-requests/' + Number(id) + '/claim', {}, sceneHeaders(access)),
   accept: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/accept', data, sceneHeaders(access, key)),
+  reject: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/reject', data, sceneHeaders(access, key)),
+  compareQuotes: (id, leftId, rightId, access) => http.get('/api/scene-requests/' + Number(id) + '/quote-comparison', { ...sceneHeaders(access), data: { left_id: leftId, right_id: rightId } }),
   project: (id, access) => http.get('/api/scene-projects/' + Number(id), sceneHeaders(access)),
   projectAction: (id, action, data, access, key) => http.post('/api/scene-projects/' + Number(id) + '/' + action, data, sceneHeaders(access, key)),
 }

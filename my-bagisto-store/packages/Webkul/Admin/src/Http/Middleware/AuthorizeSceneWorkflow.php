@@ -19,7 +19,7 @@ class AuthorizeSceneWorkflow
     {
         $method = $request->route()->getActionMethod();
         $permission = self::ACTIONS[$method] ?? null;
-        if ($method === 'quoteAction' && $request->route('action') === 'approve') {
+        if ($method === 'quoteAction' && in_array($request->route('action'), ['approve', 'return'], true)) {
             $permission = 'approve';
         }
         if ($method === 'publication') {

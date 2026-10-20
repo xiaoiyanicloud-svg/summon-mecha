@@ -7,7 +7,7 @@ const require=createRequire(path.join(qaDir,'package.json'))
 const {parse,compileTemplate}=require('@vue/compiler-sfc')
 const {parse:parseScript}=require('@babel/parser')
 const {chromium}=require('playwright-core')
-const out=path.resolve('docs/scenes/sc1-sc5-evidence');fs.mkdirSync(out,{recursive:true})
+const out=path.resolve(process.env.SCENE_EVIDENCE_DIR||'docs/scenes/sc1-sc5-batch2-evidence');fs.mkdirSync(out,{recursive:true})
 const files=['pages/scene/request.vue','pages/scene/requests.vue','pages/scene/detail.vue','pages/scene/project.vue','pages/home/index.vue','pages/robot/index.vue','pages/robot/fangan.vue','pages/home/rmfangan.vue','pages/order/checkout.vue','pages/ai/index.vue','pages/mine/index.vue','components/StateView.vue']
 const customTags=['view','text','image','scroll-view','swiper','swiper-item','input','textarea','button','picker','video','label']
 function stripImports(source){const ast=parseScript(source,{sourceType:'module'});for(const n of [...ast.program.body].reverse()){if(n.type==='ImportDeclaration')source=source.slice(0,n.start)+source.slice(n.end)}return source}
@@ -41,7 +41,8 @@ try{
       detail:async()=>({data:{id:12,request_no:'SR-QA-12',state:'submitted',row_version:1,revision_no:1,original_text:'展会迎宾互动，现场需人工核实。',facts:{city:'上海',timezone:'Asia/Shanghai'},schema,updated_at:'2026-10-20 10:00:00',quotes:[],projects:[],activities:[{id:1,kind:'submitted',occurred_at:'2026-10-20 10:00:00'}],attachments:[]}}),
       project:async()=>({data:{id:2,project_no:'SP-QA-2',request_id:12,state:'awaiting_acceptance',row_version:1,commercial_state:'confirmed_offline',payment_state:'unpaid',tasks:[{id:1,name:'现场服务',state:'done',occurred_at:'2026-10-20 10:00:00'}],acceptance_template:[{key:'greeting',label:'按冻结脚本完成迎宾',required:true}],acceptances:[],changes:[],tickets:[]}}),
       projectAction:async()=>{throw new Error('网络中断，请重试')},supplement:async()=>({data:{}}),accept:async()=>({data:{state:'accepted'}})}
-    const helpers=new Function('sceneWorkflowApi','TOKEN_KEY','CUSTOMER_KEY',helper+'\nreturn {sceneAccountScope,sceneLocalState,sceneGuestAccess,sceneGuestReceipts,saveSceneDraft,clearSceneDraft,sceneDraftPayload,submitSceneRequest,sceneStatusLabel}') (api,'token','customer')
+    window.sceneApiFixture=api
+    const helpers=new Function('sceneWorkflowApi','TOKEN_KEY','CUSTOMER_KEY',helper+'\nreturn {sceneAccountScope,sceneLocalState,sceneGuestAccess,sceneGuestReceipts,saveSceneDraft,clearSceneDraft,sceneDraftPayload,submitSceneRequest,submitSceneCommand,scenePendingCommands,sceneStatusLabel}') (api,'token','customer')
     const state=sources['components/StateView.vue'];const StateView=new Function(state.script.replace('export default','return'))();StateView.render=new Function('Vue',state.render)(Vue)
     window.mountScene=(file,options={})=>{
       if(window.sceneApp)window.sceneApp.unmount()
@@ -71,6 +72,66 @@ try{
   await page.evaluate(()=>window.mountScene('pages/scene/requests.vue'));await page.waitForFunction(()=>window.sceneVm.loading===false);await page.getByText('暂无已提交需求',{exact:true}).waitFor();checks.push('需求列表成功空态')
   await page.evaluate(()=>window.mountScene('pages/scene/project.vue',{id:'2'}));await page.waitForFunction(()=>window.sceneVm.loading===false)
   await page.getByText('按冻结脚本完成迎宾（必需）',{exact:false}).waitFor();await page.screenshot({path:path.join(out,'project-acceptance.png'),fullPage:true});checks.push('冻结验收标准和项目款项状态分离')
+  await page.evaluate(async()=>{
+    window.projectData=(await window.sceneApiFixture.project()).data
+    window.sceneApiFixture.project=async()=>({data:window.projectData})
+    window.projectCalls=[]
+    window.sceneApiFixture.projectAction=async(id,action,payload,access,key)=>{
+      window.projectCalls.push({id,action,payload:structuredClone(payload),key})
+      window.projectData.state='accepted';window.projectData.row_version=2
+      if(window.projectCalls.length===1)throw new Error('响应丢失，验收回执待确认')
+      return {data:{id,state:'accepted',row_version:2}}
+    }
+    window.sceneVm.acceptance.greeting=1;await window.sceneVm.submitAcceptance()
+  })
+  await page.getByText('操作回执待确认',{exact:true}).waitFor()
+  await page.evaluate(()=>window.sceneVm.load())
+  if(!await page.evaluate(()=>window.sceneVm.project.state==='accepted'&&window.sceneVm.pendingCommands.length===1))throw new Error('刷新后丢失验收待确认回执')
+  await page.evaluate(()=>window.sceneVm.retryPending(window.sceneVm.pendingCommands[0]))
+  await page.waitForFunction(()=>window.sceneVm.busy===false&&window.sceneVm.pendingCommands.length===0)
+  if(!await page.evaluate(()=>window.projectCalls.length===2&&window.projectCalls[0].key===window.projectCalls[1].key&&window.projectCalls[1].payload.row_version===1))throw new Error('验收重试没有恢复原版本和幂等键')
+  checks.push('验收提交成功但丢响应，刷新后按原载荷和原键恢复回执')
+  await page.evaluate(async()=>{
+    const record=(await window.sceneApiFixture.detail()).data
+    const quote={id:31,version:2,row_version:4,request_revision_no:1,state:'sent',currency:'CNY',total_minor:12721,deposit_minor:10000,discount_minor:0,tax_minor:720,expires_at:'2026-11-01 00:00:00',is_expired:false,terms_hash:'a'.repeat(64),content_hash:'b'.repeat(64),terms:{terms:{version:'test-v1',text:'隔离测试正式服务条款'}},schedule:{starts_at:'2026-11-02T10:00:00+08:00',ends_at:'2026-11-02T18:00:00+08:00',timezone:'Asia/Shanghai'},items:[{name:'人工现场服务',quantity:1,billing_units:1,unit:'day',line_minor:12721}]}
+    const old={...quote,id:30,version:1,state:'voided',total_minor:11449,discount_minor:1200,tax_minor:648,items:[{...quote.items[0],line_minor:11449}]}
+    window.quoteData={...record,quotes:[quote,old]};window.sceneApiFixture.detail=async()=>({data:window.quoteData})
+    window.comparisonFixture={left:old,right:quote,same_currency:true,amount_deltas:{total_minor:1272,deposit_minor:0},changes:{terms:false,request_revision:false,schedule:false,items:true}}
+    window.sceneApiFixture.compareQuotes=async()=>({data:window.comparisonFixture})
+    window.rejectCalls=[]
+    window.sceneApiFixture.reject=async(id,payload,access,key)=>{
+      window.rejectCalls.push({id,payload:structuredClone(payload),key})
+      if(window.rejectCalls.length===1)throw new Error('拒绝响应超时')
+      quote.state='rejected';quote.row_version=5;quote.customer_rejection={reason:payload.reason}
+      return {data:{id,state:'rejected',row_version:5}}
+    }
+    window.mountScene('pages/scene/detail.vue',{id:'12'})
+  })
+  await page.waitForFunction(()=>window.sceneVm.loading===false)
+  await page.evaluate(()=>window.sceneVm.compareQuotes());await page.getByText('服务总额变化 +12.72 CNY；押金变化 0.00',{exact:false}).waitFor()
+  checks.push('已发送报价对比展示金额变化、条款/范围/时间差异且保留历史')
+  await page.screenshot({path:path.join(out,'quote-comparison.png'),fullPage:true})
+  await page.evaluate(async()=>{
+    window.sceneApiFixture.compareQuotes=()=>new Promise(resolve=>{window.resolveComparison=resolve})
+    window.pendingComparison=window.sceneVm.compareQuotes()
+    window.sceneVm.selectCompare('leftIndex',{detail:{value:0}});window.sceneVm.selectCompare('rightIndex',{detail:{value:1}})
+    window.resolveComparison({data:window.comparisonFixture});await window.pendingComparison
+  })
+  if(!await page.evaluate(()=>window.sceneVm.comparison===null))throw new Error('旧比较响应覆盖新选择')
+  checks.push('比较过程中切换版本，旧响应不覆盖当前选择')
+  await page.evaluate(()=>{window.sceneVm.rejectionReasons[31]='需要调整服务安排';return window.sceneVm.reject(window.sceneVm.record.quotes[0])})
+  await page.waitForFunction(()=>window.sceneVm.busy===false&&window.sceneVm.pendingCommands.length===1)
+  if(!await page.getByText('接受本版报价',{exact:true}).isDisabled())throw new Error('拒绝结果未知时仍可发送冲突的接受操作')
+  await page.screenshot({path:path.join(out,'quote-rejection-pending.png'),fullPage:true})
+  await page.evaluate(()=>window.sceneVm.retryPending(window.sceneVm.pendingCommands[0]))
+  await page.waitForFunction(()=>window.sceneVm.busy===false&&window.sceneVm.pendingCommands.length===0)
+  await page.getByText('客户已拒绝',{exact:true}).waitFor()
+  if(!await page.evaluate(()=>window.rejectCalls.length===2&&window.rejectCalls[0].key===window.rejectCalls[1].key))throw new Error('报价拒绝重试未保留幂等键')
+  checks.push('客户拒绝丢响应后原键重试，显示真实拒绝状态与原因')
+  await page.evaluate(()=>{window.sceneApiFixture.compareQuotes=async()=>{throw new Error('比较服务暂时不可用')};return window.sceneVm.compareQuotes()})
+  await page.getByText('比较服务暂时不可用',{exact:true}).waitFor()
+  if(!await page.evaluate(()=>window.sceneVm.comparison===null))throw new Error('比较失败仍保留旧成功结果')
+  checks.push('报价比较失败明确展示错误，不沿用旧结果')
   if(pageErrors.length)throw new Error(pageErrors.join('\n'))
   fs.writeFileSync(path.join(out,'ui-verification.json'),JSON.stringify({environment:'Chrome headless + Vue 3.5.13，隔离 API 夹具；非 HBuilderX H5/小程序构建',compiledSfc:files,checks,pageErrors},null,2))
   process.stdout.write(JSON.stringify({compiledSfc:files.length,checks:checks.length,pageErrors},null,2)+'\n')
