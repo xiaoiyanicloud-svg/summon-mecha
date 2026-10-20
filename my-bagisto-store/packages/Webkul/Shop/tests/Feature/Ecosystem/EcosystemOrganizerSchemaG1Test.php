@@ -261,7 +261,7 @@ it('G1-03 · 旧 organizer 自由文本不会自动填成来源三字段', funct
         ->and($fresh->organizer_id)->toBeNull();
 });
 
-it('G1-03 · event_registrations 结构与 G0 收口时完全一致', function () {
+it('G1-03 · event_registrations 保留 G0 旧列，并追加 G2 身份/轮次列', function () {
     $expected = [
         'id',
         'event_id',
@@ -272,6 +272,15 @@ it('G1-03 · event_registrations 结构与 G0 收口时完全一致', function (
         'note',
         'created_at',
         'updated_at',
+        // G2-02 expand：旧列不删，只追加。
+        'scope_id',
+        // G3-03：队伍报名归属；历史个人报名为 NULL。
+        'team_id',
+        'subject_key',
+        'public_no',
+        'current_attempt_id',
+        'identity_kind',
+        'row_version',
     ];
 
     $actual = Schema::getColumnListing('event_registrations');

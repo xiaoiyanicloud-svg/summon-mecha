@@ -12,11 +12,15 @@ use Webkul\Shop\Http\Resources\Ecosystem\ContentPublicResource;
 use Webkul\Shop\Http\Resources\Ecosystem\MediaPublicResource;
 use Webkul\Shop\Models\ContentPost;
 use Webkul\Shop\Models\ContentRevision;
+use Webkul\Shop\Services\Ecosystem\ContentViewRecorder;
+use Webkul\Shop\Services\Ecosystem\FavoriteService;
 use Webkul\Shop\Services\Ecosystem\PublicBodyRenderer;
 use Webkul\Shop\Services\Ecosystem\PublicContentQuery;
+use Webkul\Shop\Services\Ecosystem\PublicCursorException;
 use Webkul\Shop\Services\Ecosystem\PublicMediaResolver;
 use Webkul\Shop\Services\Ecosystem\PublicReadGate;
 use Webkul\Shop\Services\Ecosystem\PublicReadUnavailableException;
+use Webkul\Shop\Services\Ecosystem\RelationService;
 
 /**
  * 公开资讯 API（ADR-0001 G1-D08 / 规划 §6 / G1-10）。
@@ -38,6 +42,9 @@ class ContentController extends APIController
         private readonly PublicContentQuery $contents,
         private readonly PublicMediaResolver $media,
         private readonly PublicBodyRenderer $renderer,
+        private readonly FavoriteService $favorites,
+        private readonly RelationService $relations,
+        private readonly ContentViewRecorder $views,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -60,18 +67,79 @@ class ContentController extends APIController
             );
         }
 
-        $filters = $this->filters($validator->validated());
+        $validated = $validator->validated();
+
+        if (isset($validated['q']) && ! (bool) config('ecosystem_g4.search.enabled', false)) {
+            return $this->reject(
+                ApiErrorCode::VALIDATION_ERROR,
+                '搜索暂未启用。',
+                ['errors' => ['search' => ['该能力尚未开放。']], 'reason' => 'search_disabled'],
+            );
+        }
+
+        $mode = (string) ($validated['mode'] ?? (isset($validated['cursor']) ? 'cursor' : 'page'));
+
+        if ($mode === 'page' && isset($validated['cursor'])) {
+            return $this->reject(
+                ApiErrorCode::VALIDATION_ERROR,
+                '筛选参数不合法。',
+                ['errors' => ['cursor' => ['page 与 cursor 不能同时使用。']]],
+            );
+        }
+
+        $filters = $this->filters($validated);
+
+        if (isset($filters['q']) && trim((string) $filters['q']) === '') {
+            return $this->reject(
+                ApiErrorCode::VALIDATION_ERROR,
+                '筛选参数不合法。',
+                ['errors' => ['q' => ['关键词不能为空。']]],
+            );
+        }
 
         if ($rangeError = $this->assertDateRange($filters)) {
             return $rangeError;
         }
 
-        $page = (int) ($filters['page'] ?? 1);
-        $perPage = (int) ($filters['per_page'] ?? PublicContentQuery::DEFAULT_PER_PAGE);
+        $perPage = (int) ($validated['per_page'] ?? PublicContentQuery::DEFAULT_PER_PAGE);
 
-        unset($filters['page'], $filters['per_page']);
+        if ($mode === 'cursor') {
+            try {
+                $cursorResult = $this->contents->cursorPaginate(
+                    $filters,
+                    isset($validated['cursor']) ? (string) $validated['cursor'] : null,
+                    $perPage,
+                );
+            } catch (PublicCursorException $exception) {
+                return $this->reject(
+                    ApiErrorCode::VALIDATION_ERROR,
+                    $exception->getMessage(),
+                    ['errors' => ['cursor' => [$exception->getMessage()]], 'reason' => $exception->reason()],
+                );
+            }
 
-        $paginator = $this->contents->paginate($filters, $page, $perPage);
+            $collection = $cursorResult['items'];
+            $meta = [
+                'mode'        => 'cursor',
+                'per_page'    => $perPage,
+                'has_more'    => $cursorResult['has_more'],
+                'next_cursor' => $cursorResult['next_cursor'],
+                'total'       => null,
+                'filters'     => $filters,
+            ];
+        } else {
+            $paginator = $this->contents->paginate($filters, (int) ($validated['page'] ?? 1), $perPage);
+            $collection = $paginator->getCollection();
+
+            $meta = [
+                'mode'         => 'page',
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
+                'filters'      => $filters,
+            ];
+        }
 
         $stale = $this->contents->countIncompatibleSanitizer($filters);
 
@@ -82,7 +150,7 @@ class ContentController extends APIController
             ]);
         }
 
-        $revisionIds = $paginator->getCollection()
+        $revisionIds = $collection
             ->pluck('published_revision_id')
             ->filter()
             ->map(static fn (mixed $id): int => (int) $id)
@@ -90,9 +158,19 @@ class ContentController extends APIController
 
         $refsByRevision = $this->media->approvedRefsByRevision('content_revision', $revisionIds);
 
+        $customerId = auth()->guard('customer')->id();
+
+        $favoriteFlags = $customerId !== null
+            ? $this->favorites->flagsFor(
+                (int) $customerId,
+                FavoriteService::TYPE_CONTENT,
+                $collection->pluck('slug')->all(),
+            )
+            : [];
+
         $data = [];
 
-        foreach ($paginator->items() as $post) {
+        foreach ($collection as $post) {
             /** @var ContentPost $post */
             $revision = $post->publishedRevision;
 
@@ -100,17 +178,17 @@ class ContentController extends APIController
                 continue;
             }
 
-            $data[] = $this->toDto($post, $revision, $refsByRevision[(int) $revision->id] ?? []);
+            $data[] = $this->toDto(
+                $post,
+                $revision,
+                $refsByRevision[(int) $revision->id] ?? [],
+                isset($favoriteFlags[(string) $post->slug]),
+            );
         }
 
         return response()->json([
             'data' => $data,
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
-            ],
+            'meta' => $meta,
         ]);
     }
 
@@ -150,9 +228,19 @@ class ContentController extends APIController
         }
 
         $refs = $this->media->approvedRefsByRevision('content_revision', [(int) $revision->id]);
+        $customerId = auth()->guard('customer')->id();
+
+        $this->views->record(ContentViewRecorder::TARGET_CONTENT, (string) $post->slug, $customerId !== null ? (int) $customerId : null);
 
         return response()->json([
-            'data' => $this->toDto($post, $revision, $refs[(int) $revision->id] ?? []),
+            'data' => $this->toDto(
+                $post,
+                $revision,
+                $refs[(int) $revision->id] ?? [],
+                $customerId !== null
+                    && $this->favorites->isFavorited((int) $customerId, FavoriteService::TYPE_CONTENT, (string) $post->slug),
+                $this->relations->forSource(RelationService::SOURCE_CONTENT, (int) $post->id),
+            ),
         ]);
     }
 
@@ -160,8 +248,13 @@ class ContentController extends APIController
      * @param  array<int, \Webkul\Shop\Models\EcosystemMediaRef>  $refs
      * @return array<string, mixed>
      */
-    private function toDto(ContentPost $post, ContentRevision $revision, array $refs): array
-    {
+    private function toDto(
+        ContentPost $post,
+        ContentRevision $revision,
+        array $refs,
+        bool $favorited = false,
+        array $related = [],
+    ): array {
         $media = MediaPublicResource::forContent((string) $post->slug, $refs);
 
         $allowedMediaIds = array_map(
@@ -187,6 +280,8 @@ class ContentController extends APIController
             ContentPublicResource::sources($revision->sources, $timezone),
             $bodyHtml,
             $media,
+            $favorited,
+            $related,
         ))->toArray();
     }
 
@@ -195,9 +290,15 @@ class ContentController extends APIController
      */
     private function indexRules(): array
     {
+        $keywordMax = max(1, (int) config('ecosystem_g4.search.keyword_max_length', 50));
+        $maxPage = max(1, (int) config('ecosystem_g4.search.max_page', 200));
+
         return [
-            'page'           => ['sometimes', 'integer', 'min:1'],
+            'mode'           => ['sometimes', 'string', Rule::in(['page', 'cursor'])],
+            'page'           => ['sometimes', 'integer', 'min:1', 'max:'.$maxPage],
+            'cursor'         => ['sometimes', 'string', 'max:512'],
             'per_page'       => ['sometimes', 'integer', 'min:1', 'max:'.PublicContentQuery::MAX_PER_PAGE],
+            'q'              => ['sometimes', 'string', 'max:'.$keywordMax],
             'type'           => ['sometimes', 'string', Rule::in((array) config('ecosystem_content.content_types', []))],
             'category'       => ['sometimes', 'string', 'max:64'],
             'published_from' => ['sometimes', 'date'],
@@ -211,6 +312,8 @@ class ContentController extends APIController
      */
     private function filters(array $validated): array
     {
+        unset($validated['mode'], $validated['page'], $validated['cursor'], $validated['per_page']);
+
         return array_filter(
             $validated,
             static fn (mixed $value): bool => $value !== null && $value !== '',

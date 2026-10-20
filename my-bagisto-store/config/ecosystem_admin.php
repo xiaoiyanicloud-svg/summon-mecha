@@ -77,5 +77,87 @@ return [
         'admin.catalog.ecosystem.media.approve'                => 'ecosystem.media.review',
         'admin.catalog.ecosystem.media.reject'                 => 'ecosystem.media.review',
         'admin.catalog.ecosystem.media.quarantine'             => 'ecosystem.media.review',
+
+        // G2 报名运营（scope / 人员范围）。审核、PII、导出、签到在后续批次登记。
+        'admin.catalog.ecosystem.registrations.scope'          => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.scope.store'    => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.scope.update'   => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.scope.activate' => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.scope.close'    => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.scope.reopen'   => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.scope.capacity' => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.staff'          => 'ecosystem.registrations.staff',
+        'admin.catalog.ecosystem.registrations.staff.grant'    => 'ecosystem.registrations.staff',
+        'admin.catalog.ecosystem.registrations.staff.revoke'   => 'ecosystem.registrations.staff',
+
+        'admin.catalog.ecosystem.registrations.index'          => 'ecosystem.registrations.view',
+        'admin.catalog.ecosystem.registrations.show'           => 'ecosystem.registrations.view',
+        'admin.catalog.ecosystem.registrations.approve'        => 'ecosystem.registrations.review',
+        'admin.catalog.ecosystem.registrations.reject'         => 'ecosystem.registrations.review',
+        'admin.catalog.ecosystem.registrations.cancel'         => 'ecosystem.registrations.cancel',
+        'admin.catalog.ecosystem.registrations.checkin'        => 'ecosystem.registrations.checkin',
+        'admin.catalog.ecosystem.registrations.checkin.store'  => 'ecosystem.registrations.checkin',
+        'admin.catalog.ecosystem.registrations.changes.cancel' => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.changes.reschedule' => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.registrations.export'         => 'ecosystem.registrations.export',
+        'admin.catalog.ecosystem.registrations.export.download'=> 'ecosystem.registrations.export',
+
+        // G4-03 关联维护（活动/资讯分别沿用各自的编辑权限）
+        'admin.catalog.ecosystem.relations.events.index'       => 'ecosystem.events.edit',
+        'admin.catalog.ecosystem.relations.events.store'       => 'ecosystem.events.edit',
+        'admin.catalog.ecosystem.relations.events.destroy'     => 'ecosystem.events.edit',
+        'admin.catalog.ecosystem.relations.content.index'      => 'ecosystem.content.edit',
+        'admin.catalog.ecosystem.relations.content.store'      => 'ecosystem.content.edit',
+        'admin.catalog.ecosystem.relations.content.destroy'    => 'ecosystem.content.edit',
+
+        // G4-06 / G4-07 运营指标与工作台
+        'admin.catalog.ecosystem.metrics.index'                => 'ecosystem.metrics.view',
+        'admin.catalog.ecosystem.ops.index'                    => 'ecosystem.ops.view',
+        'admin.catalog.ecosystem.ops.outbox.retry'             => 'ecosystem.ops.retry',
+
+        // G3 赛务（系列/届次/赛项/规则/赛程导入）
+        'admin.catalog.ecosystem.competition.index'            => 'ecosystem.competition.view',
+        'admin.catalog.ecosystem.competition.series.store'     => 'ecosystem.competition.settings',
+        'admin.catalog.ecosystem.competition.editions.store'   => 'ecosystem.competition.settings',
+        'admin.catalog.ecosystem.competition.tracks.store'     => 'ecosystem.competition.settings',
+        'admin.catalog.ecosystem.competition.tracks.rules'     => 'ecosystem.competition.settings',
+        'admin.catalog.ecosystem.competition.tracks.activate'  => 'ecosystem.competition.settings',
+        'admin.catalog.ecosystem.competition.tracks.close'     => 'ecosystem.competition.settings',
+        'admin.catalog.ecosystem.competition.tracks.scope.activate' => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.competition.tracks.scope.close'    => 'ecosystem.registrations.settings',
+        'admin.catalog.ecosystem.competition.schedule'         => 'ecosystem.competition.view',
+        'admin.catalog.ecosystem.competition.schedule.preview' => 'ecosystem.competition.schedule',
+        'admin.catalog.ecosystem.competition.schedule.import'  => 'ecosystem.competition.schedule',
+        'admin.catalog.ecosystem.competition.stages.publish'   => 'ecosystem.competition.publish',
+
+        // G3-08 成绩（录分 / 复核发布分权）
+        'admin.catalog.ecosystem.competition.results'          => 'ecosystem.competition.view',
+        'admin.catalog.ecosystem.competition.results.draft'    => 'ecosystem.competition.scoring',
+        'admin.catalog.ecosystem.competition.results.submit'   => 'ecosystem.competition.scoring',
+        'admin.catalog.ecosystem.competition.results.preview_ranking' => 'ecosystem.competition.results',
+        'admin.catalog.ecosystem.competition.results.ranking'  => 'ecosystem.competition.results',
+        'admin.catalog.ecosystem.competition.results.publish'  => 'ecosystem.competition.results',
+        'admin.catalog.ecosystem.competition.results.finalize' => 'ecosystem.competition.results',
+        'admin.catalog.ecosystem.competition.results.revise'   => 'ecosystem.competition.results',
+
+        // G3-09 申诉
+        'admin.catalog.ecosystem.competition.appeals'          => 'ecosystem.competition.view',
+        'admin.catalog.ecosystem.competition.appeals.accept'   => 'ecosystem.competition.appeal',
+        'admin.catalog.ecosystem.competition.appeals.decide'   => 'ecosystem.competition.appeal',
+        'admin.catalog.ecosystem.competition.appeal_attachments.download' => 'ecosystem.competition.appeal',
+
+        // G3-10 奖项
+        'admin.catalog.ecosystem.competition.awards'           => 'ecosystem.competition.view',
+        'admin.catalog.ecosystem.competition.awards.version'   => 'ecosystem.competition.awards',
+        'admin.catalog.ecosystem.competition.awards.publish'   => 'ecosystem.competition.awards',
+        'admin.catalog.ecosystem.competition.awards.revoke'    => 'ecosystem.competition.awards',
+
+        // G3-11 作品展示
+        'admin.catalog.ecosystem.competition.showcases'        => 'ecosystem.competition.view',
+        'admin.catalog.ecosystem.competition.showcases.store'  => 'ecosystem.competition.showcase',
+        'admin.catalog.ecosystem.competition.showcases.review' => 'ecosystem.competition.showcase',
+        'admin.catalog.ecosystem.competition.showcases.publish'=> 'ecosystem.competition.showcase',
+        'admin.catalog.ecosystem.competition.showcases.reject' => 'ecosystem.competition.showcase',
+        'admin.catalog.ecosystem.competition.showcases.withdraw' => 'ecosystem.competition.showcase',
     ],
 ];

@@ -227,7 +227,7 @@ it('G1-04 · FK 阻止删除被 working 指针引用的 revision', function () {
         ->and((int) Event::query()->findOrFail($event->id)->working_revision_id)->toBe($revisionId);
 });
 
-it('G1-04 · event_registrations 结构与 G0 收口时完全一致', function () {
+it('G1-04 · event_registrations 保留 G0 旧列，并追加 G2 身份/轮次列', function () {
     $expected = [
         'id',
         'event_id',
@@ -238,6 +238,15 @@ it('G1-04 · event_registrations 结构与 G0 收口时完全一致', function (
         'note',
         'created_at',
         'updated_at',
+        // G2-02 expand：旧列不删，只追加。
+        'scope_id',
+        // G3-03：队伍报名归属；历史个人报名为 NULL。
+        'team_id',
+        'subject_key',
+        'public_no',
+        'current_attempt_id',
+        'identity_kind',
+        'row_version',
     ];
 
     $actual = Schema::getColumnListing('event_registrations');

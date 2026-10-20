@@ -22,6 +22,7 @@ final class ContentPublicResource
     /**
      * @param  array<int, array{name: string, url: string|null, verified_at: string|null, rights_basis: string, rights_scope: string|null}>  $sources
      * @param  array<int, array{id: int, role: string, alt_text: string|null, url: string}>  $media
+     * @param  array<string, array<int, array<string, mixed>>>  $related
      */
     public function __construct(
         private readonly ContentPost $post,
@@ -29,6 +30,8 @@ final class ContentPublicResource
         private readonly array $sources,
         private readonly ?string $bodyHtml,
         private readonly array $media,
+        private readonly bool $favorited = false,
+        private readonly array $related = [],
     ) {}
 
     /**
@@ -54,6 +57,14 @@ final class ContentPublicResource
             'correction_note'    => $this->nullableString($this->revision->correction_note),
             'body_html'          => $this->bodyHtml,
             'media'              => $this->media,
+            'favorited'          => $this->favorited,
+            'related'            => [
+                'events'        => array_values($this->related['events'] ?? []),
+                'contents'      => array_values($this->related['contents'] ?? []),
+                'device_models' => array_values($this->related['device_models'] ?? []),
+                'skills'        => array_values($this->related['skills'] ?? []),
+                'scenes'        => array_values($this->related['scenes'] ?? []),
+            ],
         ];
     }
 

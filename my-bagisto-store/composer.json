@@ -116,6 +116,12 @@
         "post-create-project-cmd": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate --ansi"
+        ],
+        "ecosystem:contract-check": [
+            "@php artisan ecosystem:contract-check"
+        ],
+        "ecosystem:data-preflight": [
+            "@php artisan ecosystem:data-preflight"
         ]
     },
     "extra": {

@@ -89,6 +89,14 @@
 						<text class="func-icon">✨</text>
 						<text class="func-label">我的技能</text>
 					</view>
+					<view class="func-item" @click="goMyRegistrations">
+						<text class="func-icon">🎟️</text>
+						<text class="func-label">我的报名</text>
+					</view>
+					<view class="func-item" @click="goMyFavorites">
+						<text class="func-icon">⭐</text>
+						<text class="func-label">我的收藏</text>
+					</view>
 					<view class="func-item" @click="goAfterSales">
 						<text class="func-icon">🧾</text>
 						<text class="func-label">售后记录</text>
@@ -945,6 +953,10 @@
 			goDevices() { uni.navigateTo({ url: '/pages/mine/devices' }); },
 			// 我的技能:技能下单后的「开通/绑定/下载」都在这里,是技能那条链路的落点
 			goSkills() { uni.navigateTo({ url: '/pages/mine/skills' }); },
+			// G2:赛事/活动报名与入场凭证
+			goMyRegistrations() { uni.navigateTo({ url: '/pages/ecosystem/my-registrations' }); },
+			// G4-02:活动/资讯收藏（跨设备持久）
+			goMyFavorites() { uni.navigateTo({ url: '/pages/ecosystem/my-favorites' }); },
 			// B-8:售后单列表只有入口才有意义 —— 此前 skillApi.afterSales() 封装好了却零消费方
 			goAfterSales() { uni.navigateTo({ url: '/pages/mine/after-sales' }); },
 			// 消息通知:审核/下发/试用到期/退款 都落这里(v3.4)

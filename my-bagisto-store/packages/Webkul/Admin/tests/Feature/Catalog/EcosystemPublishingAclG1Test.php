@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -129,6 +130,84 @@ function ecoAclFixtures(): array
 
     DB::table('events')->where('id', $eventId)->update(['working_revision_id' => $eventRevisionId]);
 
+    // G2：给授权夹具补一个 draft scope，让报名运营 GET 页面可打开、
+    // 空表单写动作走正常校验（302），而不是因“尚未配置”404。
+    DB::table('event_registration_scopes')->insert([
+        'event_id'               => $eventId,
+        'scope_key'              => 'default',
+        'unit'                   => 'person',
+        'capacity'               => 10,
+        'capacity_confirmed_at'  => '2026-10-19 04:00:00',
+        'confirmed_count'        => 0,
+        'review_mode'            => 'auto',
+        'registration_opens_at'  => '2026-10-18 04:00:00',
+        'registration_closes_at' => '2026-10-25 04:00:00',
+        'review_closes_at'       => null,
+        'cancel_policy'          => 'before_close',
+        'reapply_policy'         => 'allowed',
+        'max_attempts'           => 3,
+        'change_ack_required'    => 0,
+        'decline_releases_seat'  => 0,
+        'no_response_action'     => 'none',
+        'form_version'           => 1,
+        'form_schema'            => json_encode(['fields' => ['name', 'phone'], 'required' => ['name', 'phone']]),
+        'privacy_version'        => '2026-10-19',
+        'privacy_summary'        => '测试同意摘要',
+        'rule_version_id'        => null,
+        'status'                 => 'draft',
+        'policy_confirmed_at'    => null,
+        'policy_confirmed_by'    => null,
+        'row_version'            => 0,
+        'created_at'             => $now,
+        'updated_at'             => $now,
+    ]);
+
+    $scopeId = (int) DB::table('event_registration_scopes')
+        ->where('event_id', $eventId)
+        ->value('id');
+
+    $registrationId = (int) DB::table('event_registrations')->insertGetId([
+        'event_id'      => $eventId,
+        'scope_id'      => $scopeId,
+        'subject_key'   => 'c:9001',
+        'public_no'     => 'EVACL'.strtoupper(bin2hex(random_bytes(4))),
+        'customer_id'   => 9001,
+        'identity_kind' => 'customer',
+        'name'          => '',
+        'phone'         => '',
+        'row_version'   => 0,
+        'created_at'    => $now,
+        'updated_at'    => $now,
+    ]);
+
+    $attemptId = (int) DB::table('event_registration_attempts')->insertGetId([
+        'registration_id'    => $registrationId,
+        'event_id'           => $eventId,
+        'scope_id'           => $scopeId,
+        'owner_customer_id'  => 9001,
+        'attempt_no'         => 1,
+        'status'             => 'submitted',
+        'review_mode'        => 'auto',
+        'form_version'       => 1,
+        'form_snapshot'      => json_encode(['definition' => [], 'values' => []]),
+        'rules_version_id'   => null,
+        'rules_fingerprint'  => null,
+        'privacy_version'    => '2026-10-19',
+        'privacy_fingerprint'=> str_repeat('c', 64),
+        'consent_accepted_at'=> $now,
+        'contact_name_enc'   => Crypt::encryptString('张三'),
+        'contact_phone_enc'  => Crypt::encryptString('13800000001'),
+        'contact_phone_hash' => str_repeat('d', 64),
+        'contact_phone_last4'=> '0001',
+        'contact_city'       => '上海',
+        'note_enc'           => null,
+        'request_key'        => 'acl-request-key',
+        'submitted_at'       => $now,
+        'row_version'        => 0,
+        'created_at'         => $now,
+        'updated_at'         => $now,
+    ]);
+
     $postId = (int) DB::table('content_posts')->insertGetId([
         'type'           => 'news',
         'slug'           => 'g1-admin-acl-post',
@@ -228,6 +307,57 @@ function ecoAclFixtures(): array
         'created_at'    => $now,
     ]);
 
+    // G3 赛务：仅用于覆盖后台赛程页面的路由参数（GET 必须 200）。
+    $competitionSeriesId = (int) DB::table('competition_series')->insertGetId([
+        'organizer_id'   => null,
+        'organizer_name' => '授权测试主办方',
+        'name'           => 'G3 ACL 系列',
+        'name_key'       => 'g3 acl series',
+        'slug'           => 'g3-acl-series',
+        'description'    => null,
+        'status'         => 'active',
+        'row_version'    => 0,
+        'created_at'     => $now,
+        'updated_at'     => $now,
+    ]);
+
+    $competitionEditionId = (int) DB::table('competition_editions')->insertGetId([
+        'series_id'   => $competitionSeriesId,
+        'event_id'    => $eventId,
+        'edition_no'  => 1,
+        'name'        => 'G3 ACL 届次',
+        'starts_at'   => null,
+        'ends_at'     => null,
+        'timezone'    => 'Asia/Shanghai',
+        'status'      => 'published',
+        'row_version' => 0,
+        'created_at'  => $now,
+        'updated_at'  => $now,
+    ]);
+
+    $competitionTrackId = (int) DB::table('competition_tracks')->insertGetId([
+        'edition_id'            => $competitionEditionId,
+        'track_key'             => 'acl-track',
+        'name'                  => 'G3 ACL 赛项',
+        'discipline'            => null,
+        'summary'               => null,
+        'registration_scope_id' => null,
+        'rules_version_id'      => null,
+        'status'                => 'draft',
+        'rules_profile'         => null,
+        'rules_fingerprint'     => null,
+        'rules_confirmed_at'    => null,
+        'rules_confirmed_by'    => null,
+        'min_team_size'         => null,
+        'max_team_size'         => null,
+        'allow_multi_team'      => false,
+        'submission_deadline_at'=> null,
+        'allow_correction'      => true,
+        'row_version'           => 0,
+        'created_at'            => $now,
+        'updated_at'            => $now,
+    ]);
+
     return [
         'event'            => $eventId,
         'event_revision'   => $eventRevisionId,
@@ -238,6 +368,9 @@ function ecoAclFixtures(): array
         'media_pending'    => $mediaPending,
         'event_ref'        => $eventRef,
         'content_ref'      => $contentRef,
+        'registration'     => $registrationId,
+        'attempt'          => $attemptId,
+        'track'            => $competitionTrackId,
     ];
 }
 
@@ -299,6 +432,79 @@ function ecoAclRouteParams(array $ids): array
         'admin.catalog.ecosystem.media.approve'             => ['id' => $ids['media_pending']],
         'admin.catalog.ecosystem.media.reject'              => ['id' => $ids['media_pending']],
         'admin.catalog.ecosystem.media.quarantine'          => ['id' => $ids['media_approved']],
+
+        // G2 报名运营（G2-01 / G2-14）
+        'admin.catalog.ecosystem.registrations.scope'          => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.scope.store'    => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.scope.update'   => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.scope.activate' => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.scope.close'    => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.scope.reopen'   => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.scope.capacity' => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.staff'          => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.staff.grant'    => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.staff.revoke'   => ['id' => $ids['event'], 'adminId' => 1],
+        'admin.catalog.ecosystem.registrations.index'          => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.show'           => ['id' => $ids['event'], 'attemptId' => $ids['attempt']],
+        'admin.catalog.ecosystem.registrations.approve'        => ['id' => $ids['event'], 'attemptId' => $ids['attempt']],
+        'admin.catalog.ecosystem.registrations.reject'         => ['id' => $ids['event'], 'attemptId' => $ids['attempt']],
+        'admin.catalog.ecosystem.registrations.cancel'         => ['id' => $ids['event'], 'attemptId' => $ids['attempt']],
+        'admin.catalog.ecosystem.registrations.checkin'        => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.checkin.store'  => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.changes.cancel' => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.changes.reschedule' => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.export'         => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.registrations.export.download'=> ['token' => str_repeat('a', 32)],
+
+        // G3 赛务
+        'admin.catalog.ecosystem.competition.index'            => [],
+        'admin.catalog.ecosystem.competition.series.store'     => [],
+        'admin.catalog.ecosystem.competition.editions.store'   => [],
+        'admin.catalog.ecosystem.competition.tracks.store'     => [],
+        'admin.catalog.ecosystem.competition.tracks.rules'     => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.tracks.activate'  => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.tracks.close'     => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.tracks.scope.activate' => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.tracks.scope.close'    => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.schedule'         => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.schedule.preview' => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.schedule.import'  => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.stages.publish'   => ['id' => 1],
+
+        // G3-08 成绩 / G3-09 申诉 / G3-10 奖项 / G3-11 展示
+        'admin.catalog.ecosystem.competition.results'          => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.results.draft'    => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.results.submit'   => ['id' => 1],
+        'admin.catalog.ecosystem.competition.results.preview_ranking' => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.results.ranking'  => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.results.publish'  => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.results.finalize' => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.results.revise'   => ['id' => 1],
+        'admin.catalog.ecosystem.competition.appeals'          => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.appeals.accept'   => ['id' => 1],
+        'admin.catalog.ecosystem.competition.appeals.decide'   => ['id' => 1],
+        'admin.catalog.ecosystem.competition.appeal_attachments.download' => ['id' => 1],
+        'admin.catalog.ecosystem.competition.awards'           => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.awards.version'   => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.awards.publish'   => ['id' => 1],
+        'admin.catalog.ecosystem.competition.awards.revoke'    => ['id' => 1],
+        'admin.catalog.ecosystem.competition.showcases'        => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.showcases.store'  => ['id' => $ids['track']],
+        'admin.catalog.ecosystem.competition.showcases.review' => ['id' => 1],
+        'admin.catalog.ecosystem.competition.showcases.reject' => ['id' => 1],
+        'admin.catalog.ecosystem.competition.showcases.publish'=> ['id' => 1],
+        'admin.catalog.ecosystem.competition.showcases.withdraw' => ['id' => 1],
+
+        // G4-03 关联 / G4-06 指标 / G4-07 运营台
+        'admin.catalog.ecosystem.relations.events.index'       => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.relations.events.store'       => ['id' => $ids['event']],
+        'admin.catalog.ecosystem.relations.events.destroy'     => ['id' => $ids['event'], 'relationId' => 1],
+        'admin.catalog.ecosystem.relations.content.index'      => ['id' => $ids['post']],
+        'admin.catalog.ecosystem.relations.content.store'      => ['id' => $ids['post']],
+        'admin.catalog.ecosystem.relations.content.destroy'    => ['id' => $ids['post'], 'relationId' => 1],
+        'admin.catalog.ecosystem.metrics.index'                => [],
+        'admin.catalog.ecosystem.ops.index'                    => [],
+        'admin.catalog.ecosystem.ops.outbox.retry'             => ['id' => 1],
     ];
 }
 
@@ -428,8 +634,16 @@ it('超级管理员访问全部页面与预览不会触发授权层拦截', func
             $response = $this->call($method, route($name, $params[$name]));
 
             // GET 页面必须是 200；写动作在空表单下是 302（校验失败回表单），
-            // 但绝不能是 403 / 500。
-            if ($method === 'GET') {
+            // 但绝不能是 403 / 500。导出下载是带 token 的 GET：无效 token 合法返回 410；
+            // 申诉证据下载对不存在的附件合法返回 404。
+            if ($name === 'admin.catalog.ecosystem.registrations.export.download') {
+                expect($response->getStatusCode())->toBeIn([200, 410], sprintf('GET %s 状态异常', $name));
+            } elseif ($name === 'admin.catalog.ecosystem.competition.appeal_attachments.download') {
+                expect($response->getStatusCode())->toBeIn([200, 404], sprintf('GET %s 状态异常', $name));
+            } elseif (str_starts_with($name, 'admin.catalog.ecosystem.relations.') && str_ends_with($name, '.destroy')) {
+                // 不存在的关联 ID 合法返回 404；有权限时不能是 403/500。
+                expect($response->getStatusCode())->toBeIn([302, 404], sprintf('%s %s 状态异常', $method, $name));
+            } elseif ($method === 'GET') {
                 expect($response->getStatusCode())->toBe(200, sprintf('GET %s 不是 200', $name));
             } else {
                 expect($response->getStatusCode())->toBe(302, sprintf('%s %s 不是 302', $method, $name));

@@ -7,6 +7,49 @@
     </view>
 
     <view class="filter-wrap">
+      <view class="search-row">
+        <input
+          v-model="filters.q"
+          class="search-input"
+          type="text"
+          confirm-type="search"
+          maxlength="50"
+          placeholder="搜索标题 / 摘要"
+          @confirm="applyFilters"
+        />
+        <input
+          v-model="filters.category"
+          class="search-input category-input"
+          type="text"
+          confirm-type="search"
+          maxlength="64"
+          placeholder="分类"
+          @confirm="applyFilters"
+        />
+        <text class="search-btn" role="button" tabindex="0" @click="applyFilters">搜索</text>
+      </view>
+
+      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
+        <view class="chip-row">
+          <text
+            class="chip"
+            :class="{ on: datePreset === '' }"
+            role="button"
+            tabindex="0"
+            @click="chooseDatePreset('')"
+          >全部时间</text>
+          <text
+            v-for="option in datePresetOptions"
+            :key="option.value"
+            class="chip"
+            :class="{ on: datePreset === option.value }"
+            role="button"
+            tabindex="0"
+            @click="chooseDatePreset(option.value)"
+          >{{ option.label }}</text>
+        </view>
+      </scroll-view>
+
       <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
         <view class="chip-row">
           <text
@@ -89,12 +132,28 @@ import {
 
 const PER_PAGE = 10
 
+function isoDate(date) {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function daysAgo(days) {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return isoDate(date)
+}
+
 export default {
   name: 'EcosystemContent',
   components: { StateView },
   data() {
     return {
-      filters: { type: '' },
+      filters: { q: '', type: '', category: '', published_from: '', published_to: '' },
+      datePreset: '',
+      datePresetOptions: [
+        { value: '7d', label: '近7天' },
+        { value: '30d', label: '近30天' },
+      ],
       typeOptions: [
         { value: 'news', label: '资讯' },
         { value: 'announcement', label: '公告' },
@@ -106,8 +165,7 @@ export default {
       loadingMore: false,
       errorMessage: '',
       errorInfo: null,
-      page: 1,
-      lastPage: 1,
+      nextCursor: null,
       hasMore: false,
       requestSeq: 0,
     }
@@ -133,11 +191,31 @@ export default {
       this.filters.type = value
       this.reload()
     },
-    reload() {
-      this.page = 1
-      return this.fetchPage(1, false)
+    applyFilters() {
+      this.filters.q = String(this.filters.q || '').trim()
+      this.filters.category = String(this.filters.category || '').trim()
+      this.reload()
     },
-    async fetchPage(targetPage, append) {
+    chooseDatePreset(value) {
+      if (this.datePreset === value) return
+      this.datePreset = value
+
+      if (value === '7d' || value === '30d') {
+        const days = value === '7d' ? 7 : 30
+        this.filters.published_from = daysAgo(days)
+        this.filters.published_to = isoDate(new Date())
+      } else {
+        this.filters.published_from = ''
+        this.filters.published_to = ''
+      }
+
+      this.reload()
+    },
+    reload() {
+      this.nextCursor = null
+      return this.fetchPage(false)
+    },
+    async fetchPage(append) {
       const seq = ++this.requestSeq
 
       if (append) {
@@ -148,18 +226,22 @@ export default {
         this.errorInfo = null
       }
 
-      const params = { page: targetPage, per_page: PER_PAGE }
+      const params = { mode: 'cursor', per_page: PER_PAGE }
+      if (this.filters.q) params.q = this.filters.q
       if (this.filters.type) params.type = this.filters.type
+      if (this.filters.category) params.category = this.filters.category
+      if (this.filters.published_from) params.published_from = this.filters.published_from
+      if (this.filters.published_to) params.published_to = this.filters.published_to
+      if (append && this.nextCursor) params.cursor = this.nextCursor
 
       try {
         const response = await contentApi.getPosts(params)
         if (seq !== this.requestSeq) return
 
-        const page = normalizeContentPage(response, targetPage)
+        const page = normalizeContentPage(response, 1)
 
         this.posts = append ? appendUnique(this.posts, page.items, 'slug') : page.items
-        this.page = page.page
-        this.lastPage = page.lastPage
+        this.nextCursor = page.nextCursor
         this.hasMore = page.hasMore
       } catch (error) {
         if (seq !== this.requestSeq) return
@@ -172,6 +254,7 @@ export default {
           this.errorMessage = info.message
           this.errorInfo = info
           this.hasMore = false
+          this.nextCursor = null
         }
       } finally {
         if (seq === this.requestSeq) {
@@ -181,8 +264,8 @@ export default {
       }
     },
     loadMore() {
-      if (!this.hasMore || this.loading || this.loadingMore) return
-      this.fetchPage(this.page + 1, true)
+      if (!this.hasMore || !this.nextCursor || this.loading || this.loadingMore) return
+      this.fetchPage(true)
     },
     openDetail(item) {
       const path = buildSharePath('content', item.slug)
@@ -239,6 +322,37 @@ export default {
   padding: 20rpx 0 8rpx;
   background: #FFFFFF;
   border-bottom: 1rpx solid #E5EAF3;
+}
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 24rpx 14rpx;
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 64rpx;
+  padding: 0 20rpx;
+  border-radius: 32rpx;
+  background: #F5F7FB;
+  border: 1rpx solid #D7DFEE;
+  font-size: 24rpx;
+  color: #1F2937;
+}
+.category-input {
+  flex: 0 0 160rpx;
+}
+.search-btn {
+  flex: 0 0 auto;
+  padding: 0 22rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  border-radius: 32rpx;
+  background: #165DFF;
+  color: #FFFFFF;
+  font-size: 24rpx;
+  font-weight: 600;
 }
 .chip-scroll {
   width: 100%;

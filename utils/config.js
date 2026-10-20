@@ -6,7 +6,18 @@
  *  - 真机 / 小程序：需改为局域网 IP 或已部署的服务器域名（如 http://192.168.1.100:8000）
  *  - 微信小程序注意：需在后台配置 request 合法域名
  */
-export const BASE_URL = 'http://127.0.0.1:8008'
+export const BASE_URL = 'http://127.0.0.1:8000'
+
+/**
+ * 公开 SSR 站点根（G4-04/G4-05）。
+ *
+ * 作用只有一个：H5 详情页写 canonical / OG 时，指向 Laravel 服务端渲染的正式地址，
+ * 而不是当前 H5 的 hash 地址（`/#/pages/...` 不适合作为 canonical）。
+ *
+ * ⚠ 生产必须改成与 `ECOSYSTEM_PUBLIC_SITE_URL` **完全一致**的域名（含 scheme，不带尾斜杠）；
+ *   两者不一致会出现“H5 声明的 canonical 与 SSR 页面自报的 canonical 不同”。
+ */
+export const SSR_BASE_URL = 'http://127.0.0.1:8000'
 
 /**
  * 朗读（TTS）专用的后端地址。留空则回退到 BASE_URL。

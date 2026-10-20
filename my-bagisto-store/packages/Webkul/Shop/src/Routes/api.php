@@ -15,8 +15,15 @@ use Webkul\Shop\Http\Controllers\API\CartController;
 use Webkul\Shop\Http\Controllers\API\CategoryController;
 use Webkul\Shop\Http\Controllers\API\CmsPageController;
 use Webkul\Shop\Http\Controllers\API\ContentController;
+use Webkul\Shop\Http\Controllers\API\CompetitionPublicController;
+use Webkul\Shop\Http\Controllers\API\CompetitionAppealController;
+use Webkul\Shop\Http\Controllers\API\CompetitionShowcaseController;
+use Webkul\Shop\Http\Controllers\API\CompetitionSubmissionController;
+use Webkul\Shop\Http\Controllers\API\CompetitionTeamController;
 use Webkul\Shop\Http\Controllers\API\EventController;
+use Webkul\Shop\Http\Controllers\API\EventRegistrationController;
 use Webkul\Shop\Http\Controllers\API\EcosystemMediaController;
+use Webkul\Shop\Http\Controllers\API\FavoriteController;
 use Webkul\Shop\Http\Controllers\API\CompareController;
 use Webkul\Shop\Http\Controllers\API\CoreController;
 use Webkul\Shop\Http\Controllers\API\CustomerController;
@@ -128,8 +135,10 @@ Route::group(['prefix' => 'api'], function () {
     // 赛事(Event):生态中心「赛事活动」tab + 真实报名(平台级闭环)
     // G1-10：公开列表/详情只读 published revision；媒体走受控路由。
     Route::controller(EventController::class)->prefix('events')->group(function () {
-        Route::get('', 'index')->name('shop.api.events.index');
-        Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.events.show');
+        // api.customer 是“可选鉴权”：带 token 时把客户绑定到 customer guard，
+        // 公开 DTO 才能按本人状态返回 requires_login / already_registered。
+        Route::get('', 'index')->middleware(['api.customer'])->name('shop.api.events.index');
+        Route::get('{id}', 'show')->whereNumber('id')->middleware(['api.customer'])->name('shop.api.events.show');
         Route::get('{id}/media/{mediaId}', [EcosystemMediaController::class, 'event'])
             ->whereNumber('id')
             ->whereNumber('mediaId')
@@ -137,14 +146,116 @@ Route::group(['prefix' => 'api'], function () {
         Route::post('{id}/register', 'register')->whereNumber('id')->name('shop.api.events.register')->middleware(['api.customer']);
     });
 
+    // G3 赛务公开读取：活动必须已发布；赛程另有独立开关。
+    Route::controller(CompetitionPublicController::class)->prefix('events')->group(function () {
+        Route::get('{id}/competition', 'show')
+            ->whereNumber('id')
+            ->middleware(['api.customer'])
+            ->name('shop.api.events.competition.show');
+        Route::get('{id}/competition/schedule', 'schedule')
+            ->whereNumber('id')
+            ->middleware(['api.customer'])
+            ->name('shop.api.events.competition.schedule');
+        Route::get('{id}/competition/results', 'results')
+            ->whereNumber('id')
+            ->middleware(['api.customer'])
+            ->name('shop.api.events.competition.results');
+        Route::get('{id}/competition/showcases', 'showcases')
+            ->whereNumber('id')
+            ->middleware(['api.customer'])
+            ->name('shop.api.events.competition.showcases');
+    });
+
+    // G3 队伍与作品（必须登录；队伍归属逐一重检）。
+    Route::prefix('customer/competition')->middleware(['customer'])->group(function () {
+        Route::controller(CompetitionTeamController::class)->prefix('teams')->group(function () {
+            Route::get('', 'index')->name('shop.api.customer.competition.teams.index');
+            Route::post('', 'store')->name('shop.api.customer.competition.teams.store');
+            Route::post('join', 'join')->name('shop.api.customer.competition.teams.join');
+            Route::post('decline', 'decline')->name('shop.api.customer.competition.teams.decline');
+            Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.customer.competition.teams.show');
+            Route::post('{id}/invites', 'invite')->whereNumber('id')->name('shop.api.customer.competition.teams.invites.store');
+            Route::post('{id}/leave', 'leave')->whereNumber('id')->name('shop.api.customer.competition.teams.leave');
+            Route::post('{id}/transfer', 'transfer')->whereNumber('id')->name('shop.api.customer.competition.teams.transfer');
+            Route::post('{id}/register', 'register')->whereNumber('id')->name('shop.api.customer.competition.teams.register');
+        });
+
+        Route::controller(CompetitionSubmissionController::class)->prefix('teams/{teamId}/submission')->group(function () {
+            Route::get('', 'workspace')->whereNumber('teamId')->name('shop.api.customer.competition.submission.workspace');
+            Route::post('draft', 'saveDraft')->whereNumber('teamId')->name('shop.api.customer.competition.submission.draft');
+            Route::post('submit', 'submit')->whereNumber('teamId')->name('shop.api.customer.competition.submission.submit');
+            Route::post('attachments', 'uploadAttachment')->whereNumber('teamId')->name('shop.api.customer.competition.submission.attachments.store');
+        });
+
+        Route::get('attachments/{attachmentId}', [CompetitionSubmissionController::class, 'downloadAttachment'])
+            ->whereNumber('attachmentId')
+            ->name('shop.api.customer.competition.attachments.show');
+
+        // G3-09 申诉：本人提交/查看/撤回/证据；规则限定队长。
+        Route::controller(CompetitionAppealController::class)->prefix('appeals')->group(function () {
+            Route::get('', 'index')->name('shop.api.customer.competition.appeals.index');
+            Route::post('', 'store')->name('shop.api.customer.competition.appeals.store');
+            Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.customer.competition.appeals.show');
+            Route::post('{id}/withdraw', 'withdraw')->whereNumber('id')->name('shop.api.customer.competition.appeals.withdraw');
+            Route::post('{id}/attachments', 'uploadEvidence')->whereNumber('id')->name('shop.api.customer.competition.appeals.attachments.store');
+        });
+
+        Route::get('appeal-attachments/{attachmentId}', [CompetitionAppealController::class, 'downloadEvidence'])
+            ->whereNumber('attachmentId')
+            ->name('shop.api.customer.competition.appeals.attachments.show');
+
+        // G3-11 展示授权与技能提审交接（当前队长）。
+        Route::controller(CompetitionShowcaseController::class)->prefix('showcases')->group(function () {
+            Route::get('', 'index')->name('shop.api.customer.competition.showcases.index');
+            Route::post('{id}/consent', 'consent')->whereNumber('id')->name('shop.api.customer.competition.showcases.consent');
+            Route::post('{id}/skill-review', 'requestSkillReview')->whereNumber('id')->name('shop.api.customer.competition.showcases.skill_review');
+        });
+    });
+
+    // 本人报名（G2-05 / G2-07 / G2-10）：必须登录，public_no 不是授权凭证。
+    Route::controller(EventRegistrationController::class)
+        ->prefix('customer/event-registrations')
+        ->middleware(['customer'])
+        ->group(function () {
+            Route::get('', 'index')->name('shop.api.customer.event-registrations.index');
+            Route::get('{publicNo}', 'show')->name('shop.api.customer.event-registrations.show');
+            Route::post('{publicNo}/cancel', 'cancel')->name('shop.api.customer.event-registrations.cancel');
+            Route::post('{publicNo}/reapply', 'reapply')->name('shop.api.customer.event-registrations.reapply');
+            Route::post('{publicNo}/credential', 'credential')->name('shop.api.customer.event-registrations.credential');
+            Route::get('{publicNo}/changes', 'changes')->name('shop.api.customer.event-registrations.changes');
+            Route::post('{publicNo}/changes/{changeId}/ack', 'ackChange')
+                ->whereNumber('changeId')
+                ->name('shop.api.customer.event-registrations.changes.ack');
+        });
+
+    Route::get('customer/registration-requests/{requestKey}', [EventRegistrationController::class, 'requestStatus'])
+        ->where('requestKey', '[A-Za-z0-9._~-]{1,100}')
+        ->middleware(['customer'])
+        ->name('shop.api.customer.registration-requests.show');
+
     // 资讯(Content)：G1-10 公开只读域；不借用 CMS 静态页。
-    Route::controller(ContentController::class)->prefix('content/posts')->group(function () {
+    // G4：api.customer 可选鉴权，用于返回本人 favorited 标记（不影响匿名读取）。
+    Route::controller(ContentController::class)->prefix('content/posts')->middleware(['api.customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.content.posts.index');
         Route::get('{slug}', 'show')->name('shop.api.content.posts.show');
         Route::get('{slug}/media/{mediaId}', [EcosystemMediaController::class, 'content'])
             ->whereNumber('mediaId')
             ->name('shop.api.content.posts.media');
     });
+
+    // G4-02 我的收藏：必须登录；目标是活动 ID 或资讯 slug。
+    Route::controller(FavoriteController::class)
+        ->prefix('customer/favorites')
+        ->middleware(['customer'])
+        ->group(function () {
+            Route::get('', 'index')->name('shop.api.customer.favorites.index');
+            Route::post('', 'store')->middleware('throttle:write')->name('shop.api.customer.favorites.store');
+            Route::delete('{type}/{key}', 'destroy')
+                ->where('type', 'event|content')
+                ->where('key', '[A-Za-z0-9_-]{1,191}')
+                ->middleware('throttle:write')
+                ->name('shop.api.customer.favorites.destroy');
+        });
 
     // 场景(Scene):机器页「场景」Tab 卡片列表 + TOB 场景详情(后台维护图 + 描述)
     Route::controller(SceneController::class)->prefix('scenes')->group(function () {

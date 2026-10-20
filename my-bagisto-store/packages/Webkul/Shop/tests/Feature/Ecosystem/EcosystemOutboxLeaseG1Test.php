@@ -12,7 +12,7 @@ use Webkul\Shop\Services\Ecosystem\OutboxLeaseService;
  *   · 两个 worker：同一行只被一个拿到；
  *   · 过期租约恢复：回 pending、清 lease、**不**重复加 attempts；
  *   · 旧 worker 结算/失败回报：0 行 → LeaseLost，不覆盖新租约；
- *   · 失败重试 backoff、达到上限 dead、不可重试直接 dead；
+ *   · 失败重试 backoff、达到上限 failed（可人工补偿）、不可重试直接 dead；
  *   · batch_size 上限 20（MySQL 5.7 无 SKIP LOCKED）。
  *
  * 运行必须指向独立库 summon_mecha_step10_test。
@@ -190,7 +190,7 @@ it('可重试失败回 pending 并按 backoff 推迟 available_at', function () 
     expect($availableAt->between($now->copy()->addSeconds(29), $now->copy()->addSeconds(35)))->toBeTrue();
 });
 
-it('达到最大尝试次数后标记 dead', function () {
+it('达到最大尝试次数后标记 failed（可人工补偿，不自动复活）', function () {
     $id = g9LeaseInsertOutbox();
     config([
         'ecosystem_outbox.max_attempts'          => 2,
@@ -210,13 +210,14 @@ it('达到最大尝试次数后标记 dead', function () {
     $second = $leases->claim(10)[0];
     expect((int) $second->attempts)->toBe(2);
 
+    // 可重试但已耗尽自动重试：进入 failed（运营可重排），而不是 dead（永不复活的终态）。
     expect($leases->fail($id, (string) $second->lease_owner, (int) $second->attempts, 'transient', true))
-        ->toBe('dead');
+        ->toBe('failed');
 
     $stored = g9LeaseRow($id);
-    expect($stored['status'])->toBe('dead')
+    expect($stored['status'])->toBe('failed')
         ->and($stored['lease_owner'])->toBeNull()
-        ->and((string) $stored['last_error'])->toStartWith('dead:transient');
+        ->and((string) $stored['last_error'])->toStartWith('failed:transient');
 });
 
 it('不可重试失败即使 attempts 很小也直接 dead', function () {

@@ -30,6 +30,7 @@ final class EventPublicResource
     /**
      * @param  array{can_register: bool, registration_reason: string, allowed_actions: array<int, string>}  $registration
      * @param  array<int, array{id: int, role: string, alt_text: string|null, url: string}>  $media
+     * @param  array<string, array<int, array<string, mixed>>>  $related
      */
     public function __construct(
         private readonly Event $event,
@@ -37,6 +38,8 @@ final class EventPublicResource
         private readonly array $registration,
         private readonly ?string $bodyHtml,
         private readonly array $media,
+        private readonly bool $favorited = false,
+        private readonly array $related = [],
     ) {}
 
     /**
@@ -74,8 +77,25 @@ final class EventPublicResource
                 'can_register'        => (bool) $this->registration['can_register'],
                 'registration_reason' => (string) $this->registration['registration_reason'],
                 'allowed_actions'     => array_values($this->registration['allowed_actions']),
+                // G2 公开报名表元数据；未配置 scope 时为 null，前端不猜版本。
+                'form_version'        => isset($this->registration['form_version'])
+                    ? (int) $this->registration['form_version']
+                    : null,
+                'privacy_version'     => $this->registration['privacy_version'] ?? null,
+                'privacy_summary'     => $this->registration['privacy_summary'] ?? null,
+                'rules_version_id'    => isset($this->registration['rules_version_id'])
+                    ? (int) $this->registration['rules_version_id']
+                    : null,
             ],
             'media'                => $this->media,
+            'favorited'            => $this->favorited,
+            'related'              => [
+                'events'        => array_values($this->related['events'] ?? []),
+                'contents'      => array_values($this->related['contents'] ?? []),
+                'device_models' => array_values($this->related['device_models'] ?? []),
+                'skills'        => array_values($this->related['skills'] ?? []),
+                'scenes'        => array_values($this->related['scenes'] ?? []),
+            ],
         ];
 
         $externalUrl = $this->externalRegistrationUrl();

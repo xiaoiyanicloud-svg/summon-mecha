@@ -134,6 +134,27 @@ return [
         'sort'       => 5,
         'icon'       => '',
     ], [
+        // G3 人工赛务。规则确认、激活、赛程导入/发布分权。
+        'key'        => 'ecosystem.competition',
+        'name'       => '人工赛务',
+        'route'      => 'admin.catalog.ecosystem.competition.index',
+        'sort'       => 6,
+        'icon'       => '',
+    ], [
+        // G4-07 运营工作台：待审/即将截止/通知失败/来源复核/撤稿。
+        'key'        => 'ecosystem.ops',
+        'name'       => '运营工作台',
+        'route'      => 'admin.catalog.ecosystem.ops.index',
+        'sort'       => 7,
+        'icon'       => '',
+    ], [
+        // G4-06 运营指标：口径与数字同页，只读。
+        'key'        => 'ecosystem.metrics',
+        'name'       => '运营指标',
+        'route'      => 'admin.catalog.ecosystem.metrics.index',
+        'sort'       => 8,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.skills',
         'name'       => '技能管理',
         'route'      => 'admin.catalog.skills.index',

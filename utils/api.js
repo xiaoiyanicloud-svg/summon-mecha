@@ -233,12 +233,101 @@ export const eventApi = {
   getEvents: (params = {}) => http.get('/api/events', { data: params, loading: false }),
   // 独立详情必须按 ID 重新取，不能只依赖列表内存对象
   getEvent: (id) => http.get(`/api/events/${id}`, { loading: false }),
+  // G2 报名：必须登录；request_key 由调用方生成并在重试时沿用。
+  register: (id, data) => http.post(`/api/events/${id}/register`, data, { loading: true, loadingText: '提交中...' }),
+}
+
+// ==================== G3 人工赛务（队伍 / 作品 / 赛程） ====================
+export const competitionApi = {
+  // 活动公开赛务信息：active 赛项 + 我的队伍 + 已发布赛程
+  getByEvent: (eventId) => http.get(`/api/events/${eventId}/competition`, { loading: false }),
+  getSchedule: (eventId) => http.get(`/api/events/${eventId}/competition/schedule`, { loading: false }),
+  // G3-08 / G3-11：公开成绩/奖项与公开展示（独立开关，关闭时 404）
+  getResults: (eventId) => http.get(`/api/events/${eventId}/competition/results`, { loading: false }),
+  getShowcases: (eventId) => http.get(`/api/events/${eventId}/competition/showcases`, { loading: false }),
+}
+
+export const competitionTeamApi = {
+  mine: () => http.get('/api/customer/competition/teams', { loading: false }),
+  get: (id) => http.get(`/api/customer/competition/teams/${id}`, { loading: false }),
+  create: (data) => http.post('/api/customer/competition/teams', data, { loading: true, loadingText: '创建中...' }),
+  invite: (id, data) => http.post(`/api/customer/competition/teams/${id}/invites`, data, { loading: true, loadingText: '生成邀请码...' }),
+  join: (data) => http.post('/api/customer/competition/teams/join', data, { loading: true, loadingText: '加入中...' }),
+  decline: (data) => http.post('/api/customer/competition/teams/decline', data, { loading: true, loadingText: '处理中...' }),
+  leave: (id, data) => http.post(`/api/customer/competition/teams/${id}/leave`, data, { loading: true, loadingText: '退出中...' }),
+  transfer: (id, data) => http.post(`/api/customer/competition/teams/${id}/transfer`, data, { loading: true, loadingText: '移交中...' }),
+  register: (id, data) => http.post(`/api/customer/competition/teams/${id}/register`, data, { loading: true, loadingText: '提交报名...' }),
+}
+
+export const competitionSubmissionApi = {
+  workspace: (teamId) => http.get(`/api/customer/competition/teams/${teamId}/submission`, { loading: false }),
+  saveDraft: (teamId, data) => http.post(`/api/customer/competition/teams/${teamId}/submission/draft`, data, { loading: true, loadingText: '保存中...' }),
+  submit: (teamId, data = {}) => http.post(`/api/customer/competition/teams/${teamId}/submission/submit`, data, { loading: true, loadingText: '提交中...' }),
+  uploadAttachment: (teamId, filePath, versionId) => http.upload(
+    `/api/customer/competition/teams/${teamId}/submission/attachments`,
+    filePath,
+    { version_id: versionId },
+    { loading: true, loadingText: '上传中...' },
+  ),
+}
+
+// G3-09 申诉：本人；规则限定队长。
+export const competitionAppealApi = {
+  mine: () => http.get('/api/customer/competition/appeals', { loading: false }),
+  get: (id) => http.get(`/api/customer/competition/appeals/${id}`, { loading: false }),
+  create: (data) => http.post('/api/customer/competition/appeals', data, { loading: true, loadingText: '提交申诉...' }),
+  withdraw: (id, data) => http.post(`/api/customer/competition/appeals/${id}/withdraw`, data, { loading: true, loadingText: '撤回中...' }),
+  uploadEvidence: (id, filePath) => http.upload(
+    `/api/customer/competition/appeals/${id}/attachments`,
+    filePath,
+    {},
+    { loading: true, loadingText: '上传证据...' },
+  ),
+}
+
+// G3-11 作品展示：队长授权与技能提审交接。
+export const competitionShowcaseApi = {
+  mine: () => http.get('/api/customer/competition/showcases', { loading: false }),
+  consent: (id, data) => http.post(`/api/customer/competition/showcases/${id}/consent`, data, { loading: true, loadingText: '提交授权...' }),
+  requestSkillReview: (id, data) => http.post(`/api/customer/competition/showcases/${id}/skill-review`, data, { loading: true, loadingText: '提交提审...' }),
+}
+
+// ==================== 本人报名(G2) ====================
+export const eventRegistrationApi = {
+  // params: { page, per_page }
+  mine: (params = {}) => http.get('/api/customer/event-registrations', { data: params, loading: false }),
+  get: (publicNo) => http.get(`/api/customer/event-registrations/${encodeURIComponent(publicNo)}`, { loading: false }),
+  cancel: (publicNo, data) => http.post(`/api/customer/event-registrations/${encodeURIComponent(publicNo)}/cancel`, data, { loading: true, loadingText: '取消中...' }),
+  reapply: (publicNo, data) => http.post(`/api/customer/event-registrations/${encodeURIComponent(publicNo)}/reapply`, data, { loading: true, loadingText: '重报中...' }),
+  credential: (publicNo) => http.post(`/api/customer/event-registrations/${encodeURIComponent(publicNo)}/credential`, {}, { loading: true, loadingText: '签发中...' }),
+  changes: (publicNo) => http.get(`/api/customer/event-registrations/${encodeURIComponent(publicNo)}/changes`, { loading: false }),
+  ackChange: (publicNo, changeId, data) => http.post(`/api/customer/event-registrations/${encodeURIComponent(publicNo)}/changes/${changeId}/ack`, data, { loading: true, loadingText: '确认中...' }),
+  // 超时查回：action=submit|reapply|cancel
+  requestStatus: (requestKey, action = 'submit') => http.get(`/api/customer/registration-requests/${encodeURIComponent(requestKey)}`, { data: { action }, loading: false }),
 }
 
 export const contentApi = {
-  // params: { page, per_page, type, category, published_from, published_to }
+  // params: { mode, cursor, per_page, q, type, category, published_from, published_to }
   getPosts: (params = {}) => http.get('/api/content/posts', { data: params, loading: false }),
   getPost: (slug) => http.get(`/api/content/posts/${encodeURIComponent(slug)}`, { loading: false }),
+}
+
+// ==================== G4-02 我的收藏 ====================
+export const favoriteApi = {
+  // type: 'event' | 'content'；返回只含当前仍公开的目标。
+  list: (type, { cursor = '', perPage = 20 } = {}) => http.get('/api/customer/favorites', {
+    data: { type, per_page: perPage, ...(cursor ? { cursor } : {}) },
+    loading: false,
+  }),
+  add: (type, key) => http.post('/api/customer/favorites', { type, key }, {
+    loading: true,
+    loadingText: '收藏中...',
+  }),
+  remove: (type, key) => http.delete(
+    `/api/customer/favorites/${encodeURIComponent(type)}/${encodeURIComponent(key)}`,
+    {},
+    { loading: true, loadingText: '取消中...' },
+  ),
 }
 
 // ==================== 小召·召唤引擎(意图→场景→机型) ====================

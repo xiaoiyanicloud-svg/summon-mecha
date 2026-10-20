@@ -393,6 +393,130 @@ return [
         'route' => 'admin.catalog.ecosystem.media.approve',
         'sort'  => 3,
     ], [
+        // ── G2 报名运营 ───────────────────────────────────────────────
+        // 全局能力只是第一层；能否作用于某活动还由 event_staff_assignments 决定。
+        // 审核、取消、PII、导出、签到刻意分权：能审核不等于能看完整联系人。
+        'key'   => 'ecosystem.registrations',
+        'name'  => '报名运营',
+        'route' => 'admin.catalog.ecosystem.registrations.index',
+        'sort'  => 5,
+    ], [
+        'key'   => 'ecosystem.registrations.view',
+        'name'  => '查看报名',
+        'route' => 'admin.catalog.ecosystem.registrations.index',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.registrations.review',
+        'name'  => '审核报名',
+        'route' => 'admin.catalog.ecosystem.registrations.approve',
+        'sort'  => 2,
+    ], [
+        'key'   => 'ecosystem.registrations.cancel',
+        'name'  => '取消 / 纠正报名',
+        'route' => 'admin.catalog.ecosystem.registrations.cancel',
+        'sort'  => 3,
+    ], [
+        'key'   => 'ecosystem.registrations.pii',
+        'name'  => '查看完整联系人',
+        'route' => 'admin.catalog.ecosystem.registrations.show',
+        'sort'  => 4,
+    ], [
+        'key'   => 'ecosystem.registrations.export',
+        'name'  => '导出报名',
+        'route' => 'admin.catalog.ecosystem.registrations.export',
+        'sort'  => 5,
+    ], [        'key'   => 'ecosystem.registrations.checkin',
+        'name'  => '签到',
+        'route' => 'admin.catalog.ecosystem.registrations.checkin',
+        'sort'  => 6,
+    ], [        'key'   => 'ecosystem.registrations.settings',
+        'name'  => '报名范围配置',
+        'route' => 'admin.catalog.ecosystem.registrations.scope',
+        'sort'  => 7,
+    ], [
+        'key'   => 'ecosystem.registrations.staff',
+        'name'  => '活动人员范围',
+        'route' => 'admin.catalog.ecosystem.registrations.staff',
+        'sort'  => 8,
+    ], [
+        // G3 赛务：系列/届次/赛项/规则与赛程。
+        'key'   => 'ecosystem.competition',
+        'name'  => '人工赛务',
+        'route' => 'admin.catalog.ecosystem.competition.index',
+        'sort'  => 9,
+    ], [
+        'key'   => 'ecosystem.competition.view',
+        'name'  => '查看赛务',
+        'route' => 'admin.catalog.ecosystem.competition.index',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.competition.settings',
+        'name'  => '系列/届次/赛项/规则',
+        'route' => 'admin.catalog.ecosystem.competition.tracks.store',
+        'sort'  => 2,
+    ], [
+        'key'   => 'ecosystem.competition.schedule',
+        'name'  => '赛程导入',
+        'route' => 'admin.catalog.ecosystem.competition.schedule.import',
+        'sort'  => 3,
+    ], [
+        'key'   => 'ecosystem.competition.publish',
+        'name'  => '发布赛程',
+        'route' => 'admin.catalog.ecosystem.competition.stages.publish',
+        'sort'  => 4,
+    ], [
+        'key'   => 'ecosystem.competition.scoring',
+        'name'  => '成绩录入/提交复核',
+        'route' => 'admin.catalog.ecosystem.competition.results.submit',
+        'sort'  => 5,
+    ], [
+        'key'   => 'ecosystem.competition.results',
+        'name'  => '成绩复核/发布/终审/修订',
+        'route' => 'admin.catalog.ecosystem.competition.results.publish',
+        'sort'  => 6,
+    ], [
+        'key'   => 'ecosystem.competition.appeal',
+        'name'  => '申诉受理/裁决',
+        'route' => 'admin.catalog.ecosystem.competition.appeals.decide',
+        'sort'  => 7,
+    ], [
+        'key'   => 'ecosystem.competition.awards',
+        'name'  => '奖项版本/发布',
+        'route' => 'admin.catalog.ecosystem.competition.awards.publish',
+        'sort'  => 8,
+    ], [
+        'key'   => 'ecosystem.competition.showcase',
+        'name'  => '作品展示审核/发布',
+        'route' => 'admin.catalog.ecosystem.competition.showcases.publish',
+        'sort'  => 9,
+    ], [
+        // G4-06 运营指标：只读，口径与数字同页输出。
+        'key'   => 'ecosystem.metrics',
+        'name'  => '运营指标',
+        'route' => 'admin.catalog.ecosystem.metrics.index',
+        'sort'  => 10,
+    ], [
+        'key'   => 'ecosystem.metrics.view',
+        'name'  => '查看运营指标',
+        'route' => 'admin.catalog.ecosystem.metrics.index',
+        'sort'  => 1,
+    ], [
+        // G4-07 运营工作台：分区展示待办与失败事实。
+        'key'   => 'ecosystem.ops',
+        'name'  => '运营工作台',
+        'route' => 'admin.catalog.ecosystem.ops.index',
+        'sort'  => 11,
+    ], [
+        'key'   => 'ecosystem.ops.view',
+        'name'  => '查看运营工作台',
+        'route' => 'admin.catalog.ecosystem.ops.index',
+        'sort'  => 1,
+    ], [
+        'key'   => 'ecosystem.ops.retry',
+        'name'  => '重排失败通知',
+        'route' => 'admin.catalog.ecosystem.ops.outbox.retry',
+        'sort'  => 2,
+    ], [
         // 技能管理:技能包的版本 / 交付物 / 安装指引
         'key'   => 'catalog.skills',
         'name'  => '技能管理',

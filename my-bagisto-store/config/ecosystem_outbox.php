@@ -14,14 +14,21 @@
 |     `*.restored` 是 G1-08B 的 ADR A-03 落地项：暂缓后的恢复必须可被消费方
 |     识别为独立事实，不能复用 `*.published`。
 |
-| ⚠ 报名相关事件（registration.*）属于 G2-12，**不得**在此提前登记 ——
-|   登记等于允许写入，而消费侧尚未准备。
+| G2 扩展（G2-12）：
+|   - 聚合新增 registration（报名主体）；
+|   - 事件覆盖提交/确认/拒绝/取消/重报/变更/活动取消/提醒。
+|     消费侧在 `EcosystemOutboxProcessor` 内按 registration 分支核验并生成站内信；
+|     未接短信/微信/支付，`sent` 只代表事实已消费，不代表用户已收到。
 |
 */
 return [
     'aggregate_types' => [
         'event',
         'content',
+        'registration',
+        // G3-08 / G3-09：成绩与申诉只做事实核验 + 站内信，不接短信/邮件。
+        'competition_result',
+        'competition_appeal',
     ],
 
     'event_types' => [
@@ -33,6 +40,22 @@ return [
         'content.withheld',
         'content.restored',
         'content.retracted',
+        'registration.submitted',
+        'registration.confirmed',
+        'registration.rejected',
+        'registration.canceled',
+        'registration.reapplied',
+        'registration.change_requested',
+        'registration.change_acknowledged',
+        'registration.change_expired',
+        'registration.checked_in',
+        'registration.event_canceled',
+        'registration.reminder',
+        'competition_result.provisional',
+        'competition_result.final',
+        'competition_appeal.accepted',
+        'competition_appeal.decided',
+        'competition_appeal.withdrawn',
     ],
 
     /*

@@ -4,11 +4,13 @@ use Illuminate\Support\Facades\Route;
 use Webkul\Shop\Http\Controllers\AgentSetupController;
 use Webkul\Shop\Http\Controllers\BookingProductController;
 use Webkul\Shop\Http\Controllers\CompareController;
+use Webkul\Shop\Http\Controllers\EcosystemSsrController;
 use Webkul\Shop\Http\Controllers\HomeController;
 use Webkul\Shop\Http\Controllers\PageController;
 use Webkul\Shop\Http\Controllers\ProductController;
 use Webkul\Shop\Http\Controllers\ProductsCategoriesProxyController;
 use Webkul\Shop\Http\Controllers\SearchController;
+use Webkul\Shop\Http\Controllers\SitemapController;
 use Webkul\Shop\Http\Controllers\SubscriptionController;
 
 /**
@@ -33,6 +35,23 @@ Route::controller(AgentSetupController::class)->prefix('agent')->group(function 
 Route::get('page/{slug}', [PageController::class, 'view'])
     ->name('shop.cms.page')
     ->middleware('cache.response');
+
+/**
+ * G4-04 公开 SSR：与 uni-app 同 Laravel 服务。
+ *
+ * 开关在 config/ecosystem_g4.php，默认关闭；关闭时控制器返回 404。
+ * 这些路由必须放在 fallback 之前，否则会被商品/分类兜底吞掉。
+ */
+Route::controller(EcosystemSsrController::class)->group(function () {
+    Route::get('events', 'events')->name('shop.ecosystem.events.index');
+    Route::get('events/{id}', 'event')->whereNumber('id')->name('shop.ecosystem.events.show');
+    Route::get('content', 'contents')->name('shop.ecosystem.content.index');
+    Route::get('content/{slug}', 'content')
+        ->where('slug', '[A-Za-z0-9_-]{1,191}')
+        ->name('shop.ecosystem.content.show');
+});
+
+Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('shop.ecosystem.sitemap');
 
 /**
  * Fallback route.

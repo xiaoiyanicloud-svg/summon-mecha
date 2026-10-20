@@ -82,6 +82,15 @@
                             @if (bouncer()->hasPermission('ecosystem.events.view'))
                                 <a href="{{ route('admin.catalog.ecosystem.events.show', $event->id) }}" class="text-blue-600 hover:underline">工作页</a>
                             @endif
+                            @if (bouncer()->hasPermission('ecosystem.events.edit'))
+                                <a href="{{ route('admin.catalog.ecosystem.relations.events.index', $event->id) }}" class="ml-2 text-blue-600 hover:underline">关联</a>
+                            @endif
+                            @if (bouncer()->hasPermission('ecosystem.registrations.settings'))
+                                <a href="{{ route('admin.catalog.ecosystem.registrations.scope', $event->id) }}" class="ml-2 text-blue-600 hover:underline">报名设置</a>
+                            @endif
+                            @if (bouncer()->hasPermission('ecosystem.registrations.staff'))
+                                <a href="{{ route('admin.catalog.ecosystem.registrations.staff', $event->id) }}" class="ml-2 text-blue-600 hover:underline">人员范围</a>
+                            @endif
                         </td>
                     </tr>
                 @empty
@@ -129,6 +138,9 @@
                         <td class="px-4 py-3 text-right">
                             @if (bouncer()->hasPermission('ecosystem.content.view'))
                                 <a href="{{ route('admin.catalog.ecosystem.content.show', $post->id) }}" class="text-blue-600 hover:underline">工作页</a>
+                            @endif
+                            @if (bouncer()->hasPermission('ecosystem.content.edit'))
+                                <a href="{{ route('admin.catalog.ecosystem.relations.content.index', $post->id) }}" class="ml-2 text-blue-600 hover:underline">关联</a>
                             @endif
                         </td>
                     </tr>

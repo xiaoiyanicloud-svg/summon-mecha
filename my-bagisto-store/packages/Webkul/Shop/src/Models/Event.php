@@ -81,6 +81,30 @@ class Event extends Model
     }
 
     /**
+     * 报名范围（G2）。首期一个活动一个 `default` scope。
+     */
+    public function registrationScopes()
+    {
+        return $this->hasMany(EventRegistrationScope::class, 'event_id');
+    }
+
+    /**
+     * 活动人员授权（G2-14）。全局 ACL 之外的活动范围。
+     */
+    public function staffAssignments()
+    {
+        return $this->hasMany(EventStaffAssignment::class, 'event_id');
+    }
+
+    /**
+     * 活动变更事实（G2-08）。
+     */
+    public function changes()
+    {
+        return $this->hasMany(EventChange::class, 'event_id');
+    }
+
+    /**
      * 主办/承办主体（ADR-0001 G1-D01）。
      *
      * 只认 `organizer_id`，不得由商品 seller 或旧 `organizer` 自由文本推定。

@@ -55,6 +55,24 @@ class ShopServiceProvider extends ServiceProvider
                 // G1-09 生态 outbox worker / 到期发布扫描
                 \Webkul\Shop\Console\Commands\ProcessEcosystemOutbox::class,
                 \Webkul\Shop\Console\Commands\PublishScheduledEcosystem::class,
+                // G2-06 审核到期扫描
+                \Webkul\Shop\Console\Commands\ExpireRegistrationReviews::class,
+                // G2-08 变更确认到期扫描
+                \Webkul\Shop\Console\Commands\ExpireRegistrationChangeAcks::class,
+                // G2-11 留存 dry-run（只统计，不删除）
+                \Webkul\Shop\Console\Commands\RegistrationRetentionDryRun::class,
+                // G2-02 名额计数对账（默认 dry-run）
+                \Webkul\Shop\Console\Commands\ReconcileRegistrationScopes::class,
+                // G2-11 联系人密文密钥轮换（默认 dry-run）
+                \Webkul\Shop\Console\Commands\RotateRegistrationContact::class,
+                // G4-08 独立测试库基准（不是生产压测）
+                \Webkul\Shop\Console\Commands\EcosystemG4Benchmark::class,
+                // G4-09 只读上线状态
+                \Webkul\Shop\Console\Commands\EcosystemG4Status::class,
+                // Q-01 契约门禁（路由 / ACL / 错误码 / 状态 / OpenAPI）
+                \Webkul\Shop\Console\Commands\EcosystemContractCheck::class,
+                // Q-05 存量数据 preflight（只读）
+                \Webkul\Shop\Console\Commands\EcosystemDataPreflight::class,
             ]);
         }
     }

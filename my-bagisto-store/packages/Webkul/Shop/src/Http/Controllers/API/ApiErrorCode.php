@@ -243,6 +243,45 @@ final class ApiErrorCode
     /** 赛事存在但当前不在 registering 阶段(upcoming/ongoing),写入口必须拒绝。 */
     public const EVENT_NOT_REGISTERING = 'EVENT_NOT_REGISTERING';
     public const EVENT_ALREADY_REGISTERED = 'EVENT_ALREADY_REGISTERED';
+
+    // ── G2 报名（稳定错误码，前端据此分支）────────────────────────────
+    /** 站内报名未开放 / 全局双闸或 scope 未激活。 */
+    public const REGISTRATION_DISABLED = 'REGISTRATION_DISABLED';
+    /** 报名尚未开始。 */
+    public const REGISTRATION_NOT_OPEN = 'REGISTRATION_NOT_OPEN';
+    /** 报名已截止 / scope 已关闭。 */
+    public const REGISTRATION_CLOSED = 'REGISTRATION_CLOSED';
+    /** 容量已满（含 capacity=0）。 */
+    public const REGISTRATION_FULL = 'REGISTRATION_FULL';
+    /** 当前身份已有有效轮次，不能重复提交。 */
+    public const REGISTRATION_ALREADY_ACTIVE = 'REGISTRATION_ALREADY_ACTIVE';
+    /** 同 request_key 不同载荷，或同 key 被用于不同目标。 */
+    public const REGISTRATION_REQUEST_CONFLICT = 'REGISTRATION_REQUEST_CONFLICT';
+    /** 乐观并发 / 轮次已变化。 */
+    public const REGISTRATION_VERSION_STALE = 'REGISTRATION_VERSION_STALE';
+    /** 当前状态不允许该动作（已取消、已签到、旧轮次等）。 */
+    public const REGISTRATION_TRANSITION_INVALID = 'REGISTRATION_TRANSITION_INVALID';
+    /** 人工审核已截止，不能再批准。 */
+    public const REGISTRATION_REVIEW_CLOSED = 'REGISTRATION_REVIEW_CLOSED';
+    /** 达到最大报名次数。 */
+    public const REGISTRATION_ATTEMPT_LIMIT = 'REGISTRATION_ATTEMPT_LIMIT';
+    /** 报名不存在或不属于当前客户。 */
+    public const REGISTRATION_NOT_FOUND = 'REGISTRATION_NOT_FOUND';
+    /** 无活动范围/能力。 */
+    public const REGISTRATION_FORBIDDEN = 'REGISTRATION_FORBIDDEN';
+    /** 报名参数/政策配置不合法。 */
+    public const REGISTRATION_VALIDATION_ERROR = 'REGISTRATION_VALIDATION_ERROR';
+
+    /** 签到 token 无效/过期/已吊销/轮次不匹配。 */
+    public const CHECKIN_TOKEN_INVALID = 'CHECKIN_TOKEN_INVALID';
+    /** 当前活动/轮次不允许签到。 */
+    public const CHECKIN_NOT_ALLOWED = 'CHECKIN_NOT_ALLOWED';
+    /** 变更确认已截止。 */
+    public const CHANGE_ACK_CLOSED = 'CHANGE_ACK_CLOSED';
+    /** 导出文件已过期/被撤销。 */
+    public const EXPORT_EXPIRED = 'EXPORT_EXPIRED';
+    /** 无导出权限或活动范围。 */
+    public const EXPORT_FORBIDDEN = 'EXPORT_FORBIDDEN';
     /** G0:旧站内报名写入口默认关闭，客户端应展示原因而不是重试创建。 */
     public const EVENT_REGISTRATION_DISABLED = 'EVENT_REGISTRATION_DISABLED';
     /**
@@ -331,6 +370,37 @@ final class ApiErrorCode
      * 客户端展示中性撤稿说明并停止重试；不回显旧标题/正文/摘要/来源/媒体。
      */
     public const CONTENT_UNAVAILABLE = 'CONTENT_UNAVAILABLE';
+
+    // ── 分发与收藏（G4-02）────────────────────────────────────────────────
+
+    /**
+     * G4-02：收藏能力关闭。
+     *
+     * GET 收藏列表在关闭时返回空列表（不报错，页面可正常空态）；
+     * POST/DELETE 明确 403，避免客户端以为写入成功。
+     */
+    public const ECOSYSTEM_FAVORITES_DISABLED = 'ECOSYSTEM_FAVORITES_DISABLED';
+
+    /**
+     * G4-02：收藏目标当前不可公开访问。
+     *
+     * 未发布 / 草稿 / 撤稿 / 不存在统一用该码与同一文案，不泄露存在性或旧标题。
+     */
+    public const FAVORITE_TARGET_NOT_FOUND = 'FAVORITE_TARGET_NOT_FOUND';
+
+    /** G4-02：单用户收藏数达到上限。 */
+    public const FAVORITE_LIMIT_REACHED = 'FAVORITE_LIMIT_REACHED';
+
+    /** G4-02：target_type 不在 event/content 白名单。 */
+    public const FAVORITE_TYPE_INVALID = 'FAVORITE_TYPE_INVALID';
+
+    // ── 关联（G4-03）──────────────────────────────────────────────────────
+
+    /** G4-03：关联能力关闭（详情不返回 related，Admin 仍可维护配置）。 */
+    public const ECOSYSTEM_RELATIONS_DISABLED = 'ECOSYSTEM_RELATIONS_DISABLED';
+
+    /** G4-03：关联目标不存在或当前不可展示。 */
+    public const RELATION_TARGET_INVALID = 'RELATION_TARGET_INVALID';
 
     // ── 媒体（G1-06）──────────────────────────────────────────────────────
 
@@ -464,6 +534,95 @@ final class ApiErrorCode
     public const UNSUPPORTED_FORMAT = 'UNSUPPORTED_FORMAT';
     public const ASR_NOT_CONFIGURED = 'ASR_NOT_CONFIGURED';
     public const ASR_FAILED = 'ASR_FAILED';
+
+    // ── G3 人工赛务（稳定错误码，前端/后台据此分支）──────────────────
+
+    /** 赛务写能力总闸关闭（`ecosystem_competition.write_enabled=false`）。 */
+    public const COMPETITION_DISABLED = 'COMPETITION_DISABLED';
+    /** 赛项/届次/系列不存在或未公开。 */
+    public const COMPETITION_NOT_FOUND = 'COMPETITION_NOT_FOUND';
+    /** 赛项（track）不存在。与 NOT_FOUND 分开：前端可提示“赛项已关闭/删除”，不是整个赛务不可用。 */
+    public const COMPETITION_TRACK_NOT_FOUND = 'COMPETITION_TRACK_NOT_FOUND';
+    /** 赛项存在但当前不是 active。 */
+    public const COMPETITION_TRACK_NOT_ACTIVE = 'COMPETITION_TRACK_NOT_ACTIVE';
+    /** 规则契约不完整/未确认；不得由代码补默认策略。 */
+    public const COMPETITION_RULES_UNCONFIRMED = 'COMPETITION_RULES_UNCONFIRMED';
+    /** 当届成员/资格/机器人声明不满足已冻结规则。 */
+    public const COMPETITION_ELIGIBILITY_FAILED = 'COMPETITION_ELIGIBILITY_FAILED';
+    /** 队伍不存在或不属于当前客户可见范围。 */
+    public const COMPETITION_TEAM_NOT_FOUND = 'COMPETITION_TEAM_NOT_FOUND';
+    /** 当前客户不是队长/有效成员，无权执行该动作。 */
+    public const COMPETITION_TEAM_FORBIDDEN = 'COMPETITION_TEAM_FORBIDDEN';
+    /** 赛项内队伍名已存在。 */
+    public const COMPETITION_TEAM_NAME_TAKEN = 'COMPETITION_TEAM_NAME_TAKEN';
+    /** 队伍人数已达规则上限。 */
+    public const COMPETITION_TEAM_FULL = 'COMPETITION_TEAM_FULL';
+    /** 成员状态不允许该动作（重复接受、已离开等）。 */
+    public const COMPETITION_TEAM_MEMBER_STATE = 'COMPETITION_TEAM_MEMBER_STATE';
+    /** 邀请码无效/已使用/已撤销。 */
+    public const COMPETITION_INVITE_INVALID = 'COMPETITION_INVITE_INVALID';
+    /** 邀请码已过期。 */
+    public const COMPETITION_INVITE_EXPIRED = 'COMPETITION_INVITE_EXPIRED';
+    /** 规则不允许一人多队。 */
+    public const COMPETITION_MULTI_TEAM_NOT_ALLOWED = 'COMPETITION_MULTI_TEAM_NOT_ALLOWED';
+    /** 参赛条目不存在/不属于当前队伍。 */
+    public const COMPETITION_ENTRY_NOT_FOUND = 'COMPETITION_ENTRY_NOT_FOUND';
+    /** 参赛条目尚未确认/已撤回，不能提交作品。 */
+    public const COMPETITION_ENTRY_NOT_ACTIVE = 'COMPETITION_ENTRY_NOT_ACTIVE';
+    /** 参赛快照已冻结，不能直接改写。 */
+    public const COMPETITION_ENTRY_FROZEN = 'COMPETITION_ENTRY_FROZEN';
+    /** 作品不存在或不属于当前队伍。 */
+    public const COMPETITION_SUBMISSION_NOT_FOUND = 'COMPETITION_SUBMISSION_NOT_FOUND';
+    /** 作品提交已截止/未配置截止。 */
+    public const COMPETITION_SUBMISSION_CLOSED = 'COMPETITION_SUBMISSION_CLOSED';
+    /** 作品版本冲突（expected_row_version 不一致）。 */
+    public const COMPETITION_SUBMISSION_VERSION_STALE = 'COMPETITION_SUBMISSION_VERSION_STALE';
+    /** 已提交版本不可修改。 */
+    public const COMPETITION_SUBMISSION_IMMUTABLE = 'COMPETITION_SUBMISSION_IMMUTABLE';
+    /** 附件类型/大小/数量/路径不合法。 */
+    public const COMPETITION_ATTACHMENT_INVALID = 'COMPETITION_ATTACHMENT_INVALID';
+    /** 附件不存在或无权读取。 */
+    public const COMPETITION_ATTACHMENT_NOT_FOUND = 'COMPETITION_ATTACHMENT_NOT_FOUND';
+    /** 赛程导入行不合法；extra 带逐行错误。 */
+    public const COMPETITION_SCHEDULE_INVALID = 'COMPETITION_SCHEDULE_INVALID';
+    /** 已发布阶段/场次不允许被导入覆盖。 */
+    public const COMPETITION_SCHEDULE_PUBLISHED = 'COMPETITION_SCHEDULE_PUBLISHED';
+    /** 通用乐观并发失败。 */
+    public const COMPETITION_VERSION_STALE = 'COMPETITION_VERSION_STALE';
+    /** 赛务参数/配置不合法。 */
+    public const COMPETITION_VALIDATION_ERROR = 'COMPETITION_VALIDATION_ERROR';
+    /** 个人报名入口不能用于 team 计量单位的 scope。 */
+    public const COMPETITION_UNIT_MISMATCH = 'COMPETITION_UNIT_MISMATCH';
+    /** 成绩记录不存在。 */
+    public const COMPETITION_RESULT_NOT_FOUND = 'COMPETITION_RESULT_NOT_FOUND';
+    /** 当前成绩状态不允许该操作。 */
+    public const COMPETITION_RESULT_STATE = 'COMPETITION_RESULT_STATE';
+    /** 录分人与复核发布人未分离。 */
+    public const COMPETITION_DUTY_SEPARATION = 'COMPETITION_DUTY_SEPARATION';
+    /** 存在未确定名次，不能发布。 */
+    public const COMPETITION_RANKING_REQUIRED = 'COMPETITION_RANKING_REQUIRED';
+    /** 排名数据不合法。 */
+    public const COMPETITION_RANKING_INVALID = 'COMPETITION_RANKING_INVALID';
+    /** 申诉不存在。 */
+    public const COMPETITION_APPEAL_NOT_FOUND = 'COMPETITION_APPEAL_NOT_FOUND';
+    /** 无权提交/查看该申诉。 */
+    public const COMPETITION_APPEAL_FORBIDDEN = 'COMPETITION_APPEAL_FORBIDDEN';
+    /** 申诉已过期或状态不允许。 */
+    public const COMPETITION_APPEAL_CLOSED = 'COMPETITION_APPEAL_CLOSED';
+    /** 申诉证据类型/大小不合法。 */
+    public const COMPETITION_APPEAL_EVIDENCE_INVALID = 'COMPETITION_APPEAL_EVIDENCE_INVALID';
+    /** 成绩版本已变化，需重新裁决。 */
+    public const COMPETITION_APPEAL_RESULT_CHANGED = 'COMPETITION_APPEAL_RESULT_CHANGED';
+    /** 奖项不存在。 */
+    public const COMPETITION_AWARD_NOT_FOUND = 'COMPETITION_AWARD_NOT_FOUND';
+    /** 奖项状态不允许该操作。 */
+    public const COMPETITION_AWARD_STATE = 'COMPETITION_AWARD_STATE';
+    /** 展示内容不存在。 */
+    public const COMPETITION_SHOWCASE_NOT_FOUND = 'COMPETITION_SHOWCASE_NOT_FOUND';
+    /** 展示状态不允许该操作。 */
+    public const COMPETITION_SHOWCASE_STATE = 'COMPETITION_SHOWCASE_STATE';
+    /** 队长尚未授权当前作品版本公开展示。 */
+    public const COMPETITION_CONSENT_REQUIRED = 'COMPETITION_CONSENT_REQUIRED';
 
     /**
      * 全部已登记的码。

@@ -154,9 +154,102 @@ function request({ url, method = 'GET', data = {}, header = {}, loading = false,
   })
 }
 
+/**
+ * 文件上传（multipart）。与 request 共用 BASE_URL / token / 错误语义。
+ *
+ * 只用于确实需要上传字节的接口（G3 作品附件）。业务 JSON 仍走 request，
+ * 避免页面私接另一套未认证客户端。
+ */
+function upload({
+  url,
+  filePath,
+  name = 'file',
+  formData = {},
+  loading = false,
+  loadingText = '上传中...',
+  timeout = REQUEST_TIMEOUT,
+}) {
+  const headers = {
+    Accept: 'application/json',
+  }
+
+  const token = getToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  headers['X-Guest-Key'] = getGuestKey()
+
+  if (loading) {
+    uni.showLoading({ title: loadingText, mask: true })
+  }
+
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: BASE_URL + url,
+      filePath,
+      name,
+      formData,
+      header: headers,
+      timeout,
+      success: (res) => {
+        let body = res.data
+
+        if (typeof body === 'string') {
+          try {
+            body = JSON.parse(body)
+          } catch (e) {
+            body = { message: body }
+          }
+        }
+
+        if (res.statusCode === 401) {
+          uni.removeStorageSync(TOKEN_KEY)
+          uni.removeStorageSync(CUSTOMER_KEY)
+          uni.showToast({ title: '登录已失效，请重新登录', icon: 'none' })
+          reject({
+            statusCode: 401,
+            message: (body && body.message) || '登录已失效',
+            authExpired: !!token,
+          })
+          return
+        }
+
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(body)
+          return
+        }
+
+        reject({
+          ...res,
+          statusCode: res.statusCode,
+          code: body && body.code,
+          errors: body && body.errors,
+          message: extractErrorMessage(body || {}, res.statusCode),
+        })
+      },
+      fail: (err) => {
+        const raw = (err && err.errMsg) || ''
+        const isTimeout = /timeout/i.test(raw)
+        reject({
+          ...err,
+          isTimeout,
+          message: isTimeout ? '上传超时，请稍后重试' : '上传失败，请检查网络',
+        })
+      },
+      complete: () => {
+        if (loading) {
+          uni.hideLoading()
+        }
+      },
+    })
+  })
+}
+
 export const http = {
   get: (url, opts = {}) => request({ ...opts, url, method: 'GET' }),
   post: (url, data = {}, opts = {}) => request({ ...opts, url, data, method: 'POST' }),
+  upload: (url, filePath, formData = {}, opts = {}) => upload({ ...opts, url, filePath, formData }),
   put: (url, data = {}, opts = {}) => request({ ...opts, url, data, method: 'PUT' }),
   delete: (url, data = {}, opts = {}) => request({ ...opts, url, data, method: 'DELETE' }),
 }

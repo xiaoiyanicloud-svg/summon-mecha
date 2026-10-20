@@ -8,6 +8,70 @@
     </view>
 
     <view class="filter-wrap">
+      <view class="search-row">
+        <input
+          v-model="filters.q"
+          class="search-input"
+          type="text"
+          confirm-type="search"
+          maxlength="50"
+          placeholder="搜索活动 / 城市 / 地点"
+          @confirm="applyFilters"
+        />
+        <input
+          v-model="filters.city"
+          class="search-input city-input"
+          type="text"
+          confirm-type="search"
+          maxlength="100"
+          placeholder="城市"
+          @confirm="applyFilters"
+        />
+        <text class="search-btn" role="button" tabindex="0" @click="applyFilters">搜索</text>
+      </view>
+
+      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
+        <view class="chip-row">
+          <text
+            class="chip"
+            :class="{ on: datePreset === '' }"
+            role="button"
+            tabindex="0"
+            @click="chooseDatePreset('')"
+          >全部时间</text>
+          <text
+            v-for="option in datePresetOptions"
+            :key="option.value"
+            class="chip"
+            :class="{ on: datePreset === option.value }"
+            role="button"
+            tabindex="0"
+            @click="chooseDatePreset(option.value)"
+          >{{ option.label }}</text>
+        </view>
+      </scroll-view>
+
+      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
+        <view class="chip-row">
+          <text
+            class="chip"
+            :class="{ on: filters.registration_state === '' }"
+            role="button"
+            tabindex="0"
+            @click="chooseFilter('registration_state', '')"
+          >全部报名状态</text>
+          <text
+            v-for="option in registrationStateOptions"
+            :key="option.value"
+            class="chip"
+            :class="{ on: filters.registration_state === option.value }"
+            role="button"
+            tabindex="0"
+            @click="chooseFilter('registration_state', option.value)"
+          >{{ option.label }}</text>
+        </view>
+      </scroll-view>
+
       <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
         <view class="chip-row">
           <text
@@ -120,12 +184,35 @@ import {
 
 const PER_PAGE = 10
 
+function isoDate(date) {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function addDays(days) {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return isoDate(date)
+}
+
+function monthRange() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return [isoDate(start), isoDate(end)]
+}
+
 export default {
   name: 'EcosystemEvents',
   components: { StateView },
   data() {
     return {
-      filters: { kind: '', hosting_status: '' },
+      filters: { q: '', kind: '', hosting_status: '', city: '', registration_state: '', starts_from: '', starts_to: '' },
+      datePreset: '',
+      datePresetOptions: [
+        { value: 'upcoming', label: '未来30天' },
+        { value: 'month', label: '本月' },
+      ],
       kindOptions: [
         { value: 'competition', label: '竞赛' },
         { value: 'salon', label: '沙龙' },
@@ -140,13 +227,21 @@ export default {
         { value: 'completed', label: '已结束' },
         { value: 'canceled', label: '已取消' },
       ],
+      registrationStateOptions: [
+        { value: 'open', label: '报名中' },
+        { value: 'upcoming', label: '未开始' },
+        { value: 'full', label: '已满' },
+        { value: 'closed', label: '已截止' },
+        { value: 'ended', label: '已结束' },
+        { value: 'external', label: '外部报名' },
+        { value: 'unavailable', label: '暂无报名' },
+      ],
       events: [],
       loading: false,
       loadingMore: false,
       errorMessage: '',
       errorInfo: null,
-      page: 1,
-      lastPage: 1,
+      nextCursor: null,
       hasMore: false,
       requestSeq: 0,
     }
@@ -172,11 +267,34 @@ export default {
       this.filters[group] = value
       this.reload()
     },
-    reload() {
-      this.page = 1
-      return this.fetchPage(1, false)
+    applyFilters() {
+      this.filters.q = String(this.filters.q || '').trim()
+      this.filters.city = String(this.filters.city || '').trim()
+      this.reload()
     },
-    async fetchPage(targetPage, append) {
+    chooseDatePreset(value) {
+      if (this.datePreset === value) return
+      this.datePreset = value
+
+      if (value === 'upcoming') {
+        this.filters.starts_from = isoDate(new Date())
+        this.filters.starts_to = addDays(30)
+      } else if (value === 'month') {
+        const [from, to] = monthRange()
+        this.filters.starts_from = from
+        this.filters.starts_to = to
+      } else {
+        this.filters.starts_from = ''
+        this.filters.starts_to = ''
+      }
+
+      this.reload()
+    },
+    reload() {
+      this.nextCursor = null
+      return this.fetchPage(false)
+    },
+    async fetchPage(append) {
       const seq = ++this.requestSeq
 
       if (append) {
@@ -187,19 +305,24 @@ export default {
         this.errorInfo = null
       }
 
-      const params = { page: targetPage, per_page: PER_PAGE }
+      const params = { mode: 'cursor', per_page: PER_PAGE }
+      if (this.filters.q) params.q = this.filters.q
       if (this.filters.kind) params.kind = this.filters.kind
       if (this.filters.hosting_status) params.hosting_status = this.filters.hosting_status
+      if (this.filters.city) params.city = this.filters.city
+      if (this.filters.registration_state) params.registration_state = this.filters.registration_state
+      if (this.filters.starts_from) params.starts_from = this.filters.starts_from
+      if (this.filters.starts_to) params.starts_to = this.filters.starts_to
+      if (append && this.nextCursor) params.cursor = this.nextCursor
 
       try {
         const response = await eventApi.getEvents(params)
         if (seq !== this.requestSeq) return
 
-        const page = normalizeEventPage(response, targetPage)
+        const page = normalizeEventPage(response, 1)
 
         this.events = append ? appendUnique(this.events, page.items, 'id') : page.items
-        this.page = page.page
-        this.lastPage = page.lastPage
+        this.nextCursor = page.nextCursor
         this.hasMore = page.hasMore
       } catch (error) {
         if (seq !== this.requestSeq) return
@@ -213,6 +336,7 @@ export default {
           this.errorMessage = info.message
           this.errorInfo = info
           this.hasMore = false
+          this.nextCursor = null
         }
       } finally {
         if (seq === this.requestSeq) {
@@ -222,8 +346,8 @@ export default {
       }
     },
     loadMore() {
-      if (!this.hasMore || this.loading || this.loadingMore) return
-      this.fetchPage(this.page + 1, true)
+      if (!this.hasMore || !this.nextCursor || this.loading || this.loadingMore) return
+      this.fetchPage(true)
     },
     openDetail(item) {
       const path = buildSharePath('event', item.id)
@@ -289,6 +413,37 @@ export default {
   padding: 20rpx 0 8rpx;
   background: #FFFFFF;
   border-bottom: 1rpx solid #E5EAF3;
+}
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 24rpx 14rpx;
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 64rpx;
+  padding: 0 20rpx;
+  border-radius: 32rpx;
+  background: #F5F7FB;
+  border: 1rpx solid #D7DFEE;
+  font-size: 24rpx;
+  color: #1F2937;
+}
+.city-input {
+  flex: 0 0 160rpx;
+}
+.search-btn {
+  flex: 0 0 auto;
+  padding: 0 22rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  border-radius: 32rpx;
+  background: #165DFF;
+  color: #FFFFFF;
+  font-size: 24rpx;
+  font-weight: 600;
 }
 .chip-scroll {
   width: 100%;

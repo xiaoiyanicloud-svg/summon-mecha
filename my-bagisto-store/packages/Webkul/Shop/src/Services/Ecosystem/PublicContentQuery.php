@@ -4,18 +4,19 @@ namespace Webkul\Shop\Services\Ecosystem;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Webkul\Shop\Models\ContentPost;
 use Webkul\Shop\Models\ContentRevision;
 
 /**
- * 公开资讯查询（ADR-0001 G1-D08 / 规划 §6.4 / G1-10）。
+ * 公开资讯查询（ADR-0001 G1-D08 / 规划 §6.4 / G1-10；G4-01 扩展）。
  *
  * 可见性：`publish_status=published` + `disposition=normal`
  * + `published_revision_id` 指向**同一文章**的 `review_state=approved` revision。
  *
  * 排序：`first_published_at DESC, id DESC`（id 决胜，保证跨页稳定）。
- * 不做全文搜索 / LIKE / ES —— 搜索留 G4-01。
+ * G4-01：`q` 只搜索标题/摘要（LIKE 转义）；新增游标分页；不引入 ES。
  */
 class PublicContentQuery
 {
@@ -36,6 +37,69 @@ class PublicContentQuery
             ->paginate($perPage, ['content_posts.*'], 'page', max(1, $page));
     }
 
+    /**
+     * G4-01 游标分页。
+     *
+     * @param  array<string, mixed>  $filters
+     * @return array{items: Collection<int, ContentPost>, has_more: bool, next_cursor: string|null}
+     *
+     * @throws PublicCursorException
+     */
+    public function cursorPaginate(array $filters, ?string $cursor, int $perPage = self::DEFAULT_PER_PAGE): array
+    {
+        $perPage = max(1, min(self::MAX_PER_PAGE, $perPage));
+
+        $hashFilters = self::filterHashInput($filters);
+
+        $query = $this->applyFilters($this->visibleBase(), $filters);
+
+        if ($cursor !== null && trim($cursor) !== '') {
+            $position = PublicListCursor::decode($cursor, $hashFilters);
+            $this->applyCursor($query, $position['sort'], $position['id']);
+        }
+
+        $rows = $query
+            ->orderByDesc('content_posts.first_published_at')
+            ->orderByDesc('content_posts.id')
+            ->limit($perPage + 1)
+            ->get();
+
+        $hasMore = $rows->count() > $perPage;
+        $items = $rows->slice(0, $perPage)->values();
+
+        $nextCursor = null;
+
+        if ($hasMore && $items->isNotEmpty()) {
+            /** @var ContentPost $last */
+            $last = $items->last();
+            $nextCursor = PublicListCursor::encode(
+                $this->sortValue($last->first_published_at),
+                (int) $last->getKey(),
+                $hashFilters,
+            );
+        }
+
+        return [
+            'items'       => $items,
+            'has_more'    => $hasMore,
+            'next_cursor' => $nextCursor,
+        ];
+    }
+
+    /**
+     * Sitemap 专用：只取公开文章的 slug 与首次公开时间。
+     *
+     * @return Collection<int, ContentPost>
+     */
+    public function sitemapRows(int $limit): Collection
+    {
+        return $this->visibleBase()
+            ->orderByDesc('content_posts.first_published_at')
+            ->orderByDesc('content_posts.id')
+            ->limit(max(1, $limit))
+            ->get(['content_posts.slug', 'content_posts.published_at', 'content_posts.first_published_at']);
+    }
+
     public function findPublishedBySlug(string $slug): ?ContentPost
     {
         if ($slug === '') {
@@ -45,6 +109,37 @@ class PublicContentQuery
         return $this->publicationBase()
             ->where('content_posts.slug', $slug)
             ->first();
+    }
+
+    public function findPublishedById(int $id): ?ContentPost
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        return $this->publicationBase()
+            ->where('content_posts.id', $id)
+            ->first();
+    }
+
+    /**
+     * 批量读取当前公开文章（G4-02 收藏列表 / G4-03 关联解析）。
+     *
+     * @param  array<int, mixed>  $slugs
+     * @return Collection<int, ContentPost>
+     */
+    public function publishedBySlugs(array $slugs): Collection
+    {
+        $slugs = array_values(array_unique(array_filter(
+            array_map(static fn (mixed $slug): string => trim((string) $slug), $slugs),
+            static fn (string $slug): bool => $slug !== '',
+        )));
+
+        if ($slugs === []) {
+            return new Collection();
+        }
+
+        return $this->visibleBase()->whereIn('content_posts.slug', $slugs)->get();
     }
 
     /**
@@ -135,7 +230,58 @@ class PublicContentQuery
             $query->where('content_posts.first_published_at', '<=', $this->utc($filters['published_to']));
         }
 
+        if (isset($filters['q'])) {
+            $keyword = trim((string) $filters['q']);
+
+            if ($keyword !== '') {
+                $like = '%'.addcslashes($keyword, '\\%_').'%';
+
+                $query->where(function (Builder $inner) use ($like): void {
+                    $inner->where('public_revision.title', 'like', $like)
+                        ->orWhere('public_revision.summary', 'like', $like);
+                });
+            }
+        }
+
         return $query;
+    }
+
+    /**
+     * 无时间排序值的行在 MySQL DESC 中排在最后；游标要显式区分“时间值”和 NULL。
+     */
+    private function applyCursor(Builder $query, ?string $sort, int $id): void
+    {
+        if ($sort === null) {
+            $query->whereNull('content_posts.first_published_at')
+                ->where('content_posts.id', '<', $id);
+
+            return;
+        }
+
+        $query->where(function (Builder $inner) use ($sort, $id): void {
+            $inner->where('content_posts.first_published_at', '<', $sort)
+                ->orWhere(function (Builder $sameTime) use ($sort, $id): void {
+                    $sameTime->where('content_posts.first_published_at', $sort)
+                        ->where('content_posts.id', '<', $id);
+                })
+                ->orWhereNull('content_posts.first_published_at');
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    private static function filterHashInput(array $filters): array
+    {
+        unset($filters['page'], $filters['per_page'], $filters['cursor'], $filters['mode']);
+
+        return $filters;
+    }
+
+    private function sortValue(mixed $value): ?string
+    {
+        return $value instanceof Carbon ? $value->copy()->utc()->format('Y-m-d H:i:s') : null;
     }
 
     private function utc(mixed $value): string

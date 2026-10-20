@@ -128,9 +128,15 @@ class OutboxLeaseService
     }
 
     /**
-     * 失败回报：可重试 -> pending + backoff；不可重试或达到上限 -> dead。
+     * 失败回报：可重试且未达上限 -> pending + backoff；
+     * 可重试但已达上限 -> failed（人工补偿：Ops 工作台可重排）；
+     * 不可重试 -> dead（终态：superseded / 事实不符 / 未知类型，绝不复活）。
      *
-     * @return 'pending'|'dead' 写入后的状态
+     * `failed` 与 `dead` 必须分开：前者是“通道或数据库暂时不行，值得人看一眼再重排”，
+     * 后者是“这条事实永远不能再投递”。把两者混成一个状态，
+     * 运营要么看不到可补偿的失败，要么能重排出已被撤稿覆盖的旧事实。
+     *
+     * @return 'pending'|'failed'|'dead' 写入后的状态
      *
      * @throws OutboxLeaseLostException 租约已失效 / 已过期
      */
@@ -143,15 +149,19 @@ class OutboxLeaseService
     ): string {
         $lastError = $this->normalizeError($lastError);
         $maxAttempts = $this->maxAttempts();
-        $target = $retryable && $attempts < $maxAttempts ? 'pending' : 'dead';
+        $target = match (true) {
+            $retryable && $attempts < $maxAttempts => 'pending',
+            $retryable => 'failed',
+            default    => 'dead',
+        };
 
         $attributes = [
             'status'      => $target,
             'lease_owner' => null,
             'lease_until' => null,
-            'last_error'  => $target === 'dead'
-                ? 'dead:'.$lastError
-                : $lastError,
+            'last_error'  => $target === 'pending'
+                ? $lastError
+                : $target.':'.$lastError,
             'updated_at'  => now(),
         ];
 

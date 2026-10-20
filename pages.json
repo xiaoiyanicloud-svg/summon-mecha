@@ -201,6 +201,65 @@
         "enableShareAppMessage": true,
         "backgroundColor": "#F5F7FB"
       }
+    },
+    {
+      "path": "pages/ecosystem/event-register",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "活动报名",
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/my-registrations",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的报名",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/my-favorites",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的收藏",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/competition-team",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "组队参赛",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/competition-submission",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "作品提交",
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/competition-results",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "成绩与展示",
+        "backgroundColor": "#F5F7FB"
+      }
+    },
+    {
+      "path": "pages/ecosystem/competition-showcase",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "作品展示授权",
+        "backgroundColor": "#F5F7FB"
+      }
     }
   ],
   "globalStyle": {

@@ -25,6 +25,7 @@ class Notification extends Model
         'title',
         'content',
         'payload',
+        'dedupe_key',
         'channel',
         'read_at',
         'sent_at',

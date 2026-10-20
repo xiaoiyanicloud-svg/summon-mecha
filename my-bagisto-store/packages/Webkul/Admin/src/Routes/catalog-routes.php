@@ -4,9 +4,18 @@ use Illuminate\Support\Facades\Route;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeController;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeFamilyController;
 use Webkul\Admin\Http\Controllers\Catalog\CategoryController;
+use Webkul\Admin\Http\Controllers\Catalog\CompetitionAdminController;
+use Webkul\Admin\Http\Controllers\Catalog\CompetitionAppealAdminController;
+use Webkul\Admin\Http\Controllers\Catalog\CompetitionAwardAdminController;
+use Webkul\Admin\Http\Controllers\Catalog\CompetitionResultAdminController;
+use Webkul\Admin\Http\Controllers\Catalog\CompetitionShowcaseAdminController;
 use Webkul\Admin\Http\Controllers\Catalog\ContentSecurityController;
 use Webkul\Admin\Http\Controllers\Catalog\DeviceModelController;
+use Webkul\Admin\Http\Controllers\Catalog\Ecosystem\EcosystemMetricsAdminController;
+use Webkul\Admin\Http\Controllers\Catalog\Ecosystem\EcosystemOpsAdminController;
 use Webkul\Admin\Http\Controllers\Catalog\Ecosystem\PublishingController;
+use Webkul\Admin\Http\Controllers\Catalog\Ecosystem\RegistrationAdminController;
+use Webkul\Admin\Http\Controllers\Catalog\Ecosystem\RelationAdminController;
 use Webkul\Admin\Http\Controllers\Catalog\EventController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\BundleController;
 use Webkul\Admin\Http\Controllers\Catalog\Product\ConfigurableController;
@@ -241,6 +250,168 @@ Route::prefix('catalog')->group(function () {
         Route::post('media/{id}/approve', 'approveMedia')->whereNumber('id')->name('admin.catalog.ecosystem.media.approve');
         Route::post('media/{id}/reject', 'rejectMedia')->whereNumber('id')->name('admin.catalog.ecosystem.media.reject');
         Route::post('media/{id}/quarantine', 'quarantineMedia')->whereNumber('id')->name('admin.catalog.ecosystem.media.quarantine');
+    });
+
+    /**
+     * G2 报名运营工作台（G2-01 / G2-14）。
+     *
+     * 与 G1 发布工作台同一权限模式：路由 → 权限登记在
+     * `config/ecosystem_admin.php`；控制器入口显式授权；活动范围另由
+     * `event_staff_assignments` 校验。
+     */
+    Route::controller(RegistrationAdminController::class)->prefix('ecosystem-publishing')->group(function () {
+        Route::get('events/{id}/registration-scope', 'scope')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.scope');
+        Route::post('events/{id}/registration-scope', 'storeScope')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.scope.store');
+        Route::post('events/{id}/registration-scope/update', 'updateScope')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.scope.update');
+        Route::post('events/{id}/registration-scope/activate', 'activateScope')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.scope.activate');
+        Route::post('events/{id}/registration-scope/close', 'closeScope')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.scope.close');
+        Route::post('events/{id}/registration-scope/reopen', 'reopenScope')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.scope.reopen');
+        Route::post('events/{id}/registration-scope/capacity', 'capacity')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.scope.capacity');
+
+        Route::get('events/{id}/staff', 'staff')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.staff');
+        Route::post('events/{id}/staff', 'grantStaff')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.staff.grant');
+        Route::post('events/{id}/staff/{adminId}/revoke', 'revokeStaff')
+            ->whereNumber('id')->whereNumber('adminId')->name('admin.catalog.ecosystem.registrations.staff.revoke');
+
+        // 报名工作台：列表 / 详情 / 审核 / 取消。全部按活动范围校验。
+        Route::get('events/{id}/registrations', 'registrations')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.index');
+        Route::get('events/{id}/registrations/{attemptId}', 'showRegistration')
+            ->whereNumber('id')->whereNumber('attemptId')->name('admin.catalog.ecosystem.registrations.show');
+        Route::post('events/{id}/registrations/{attemptId}/approve', 'approveRegistration')
+            ->whereNumber('id')->whereNumber('attemptId')->name('admin.catalog.ecosystem.registrations.approve');
+        Route::post('events/{id}/registrations/{attemptId}/reject', 'rejectRegistration')
+            ->whereNumber('id')->whereNumber('attemptId')->name('admin.catalog.ecosystem.registrations.reject');
+        Route::post('events/{id}/registrations/{attemptId}/cancel', 'cancelRegistration')
+            ->whereNumber('id')->whereNumber('attemptId')->name('admin.catalog.ecosystem.registrations.cancel');
+
+        Route::get('events/{id}/checkin', 'checkinForm')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.checkin');
+        Route::post('events/{id}/checkin', 'checkin')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.checkin.store');
+
+        Route::post('events/{id}/registration-changes/cancel', 'cancelEvent')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.changes.cancel');
+        Route::post('events/{id}/registration-changes/reschedule', 'recordReschedule')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.changes.reschedule');
+
+        Route::post('events/{id}/registrations/export', 'export')
+            ->whereNumber('id')->name('admin.catalog.ecosystem.registrations.export');
+        Route::get('registrations/exports/{token}', 'downloadExport')
+            ->where('token', '[A-Za-z0-9_-]{20,100}')
+            ->name('admin.catalog.ecosystem.registrations.export.download');
+    });
+
+    /**
+     * G4-03 关联维护。目标只允许真实存在的活动/资讯/机型/技能/场景；
+     * 公开端解析时再逐项复核，失效目标不输出。
+     */
+    Route::controller(RelationAdminController::class)->prefix('ecosystem-relations')->group(function () {
+        Route::get('events/{id}', 'eventRelations')->whereNumber('id')
+            ->name('admin.catalog.ecosystem.relations.events.index');
+        Route::post('events/{id}', 'storeEventRelation')->whereNumber('id')
+            ->name('admin.catalog.ecosystem.relations.events.store');
+        Route::post('events/{id}/{relationId}/delete', 'destroyEventRelation')
+            ->whereNumber('id')->whereNumber('relationId')
+            ->name('admin.catalog.ecosystem.relations.events.destroy');
+
+        Route::get('content/{id}', 'contentRelations')->whereNumber('id')
+            ->name('admin.catalog.ecosystem.relations.content.index');
+        Route::post('content/{id}', 'storeContentRelation')->whereNumber('id')
+            ->name('admin.catalog.ecosystem.relations.content.store');
+        Route::post('content/{id}/{relationId}/delete', 'destroyContentRelation')
+            ->whereNumber('id')->whereNumber('relationId')
+            ->name('admin.catalog.ecosystem.relations.content.destroy');
+    });
+
+    /**
+     * G4-06 / G4-07 运营指标与运营工作台。
+     */
+    Route::get('ecosystem-metrics', [EcosystemMetricsAdminController::class, 'index'])
+        ->name('admin.catalog.ecosystem.metrics.index');
+
+    Route::controller(EcosystemOpsAdminController::class)->prefix('ecosystem-ops')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.ecosystem.ops.index');
+        Route::post('outbox/{id}/retry', 'retryOutbox')
+            ->whereNumber('id')
+            ->name('admin.catalog.ecosystem.ops.outbox.retry');
+    });
+
+    /**
+     * G3 赛务后台（G3-02 / G3-04 / G3-06）。
+     *
+     * 所有写入口仍受 `ecosystem_competition.write_enabled` 控制；
+     * 路由 → 权限登记在 `config/ecosystem_admin.php`。
+     */
+    Route::controller(CompetitionAdminController::class)->prefix('ecosystem-competition')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.ecosystem.competition.index');
+        Route::post('series', 'storeSeries')->name('admin.catalog.ecosystem.competition.series.store');
+        Route::post('editions', 'storeEdition')->name('admin.catalog.ecosystem.competition.editions.store');
+        Route::post('tracks', 'storeTrack')->name('admin.catalog.ecosystem.competition.tracks.store');
+        Route::post('tracks/{id}/rules', 'confirmRules')->whereNumber('id')->name('admin.catalog.ecosystem.competition.tracks.rules');
+        Route::post('tracks/{id}/activate', 'activateTrack')->whereNumber('id')->name('admin.catalog.ecosystem.competition.tracks.activate');
+        Route::post('tracks/{id}/close', 'closeTrack')->whereNumber('id')->name('admin.catalog.ecosystem.competition.tracks.close');
+        Route::post('tracks/{id}/scope/activate', 'activateScope')->whereNumber('id')->name('admin.catalog.ecosystem.competition.tracks.scope.activate');
+        Route::post('tracks/{id}/scope/close', 'closeScope')->whereNumber('id')->name('admin.catalog.ecosystem.competition.tracks.scope.close');
+        Route::get('tracks/{id}/schedule', 'schedule')->whereNumber('id')->name('admin.catalog.ecosystem.competition.schedule');
+        Route::post('tracks/{id}/schedule/preview', 'previewImport')->whereNumber('id')->name('admin.catalog.ecosystem.competition.schedule.preview');
+        Route::post('tracks/{id}/schedule/import', 'importSchedule')->whereNumber('id')->name('admin.catalog.ecosystem.competition.schedule.import');
+        Route::post('stages/{id}/publish', 'publishStage')->whereNumber('id')->name('admin.catalog.ecosystem.competition.stages.publish');
+    });
+
+    /**
+     * G3-08 成绩后台（录入 / 复核 / 发布分权）。
+     */
+    Route::controller(CompetitionResultAdminController::class)->prefix('ecosystem-competition')->group(function () {
+        Route::get('tracks/{id}/results', 'index')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results');
+        Route::post('tracks/{id}/results/draft', 'saveDraft')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results.draft');
+        Route::post('results/{id}/submit', 'submit')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results.submit');
+        Route::get('tracks/{id}/results/ranking-preview', 'previewRanking')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results.preview_ranking');
+        Route::post('tracks/{id}/results/ranking', 'applyRanking')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results.ranking');
+        Route::post('tracks/{id}/results/publish', 'publishProvisional')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results.publish');
+        Route::post('tracks/{id}/results/finalize', 'finalize')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results.finalize');
+        Route::post('results/{id}/revise', 'revise')->whereNumber('id')->name('admin.catalog.ecosystem.competition.results.revise');
+    });
+
+    /**
+     * G3-09 申诉后台（受理/调查/裁决）。
+     */
+    Route::controller(CompetitionAppealAdminController::class)->prefix('ecosystem-competition')->group(function () {
+        Route::get('tracks/{id}/appeals', 'index')->whereNumber('id')->name('admin.catalog.ecosystem.competition.appeals');
+        Route::post('appeals/{id}/accept', 'accept')->whereNumber('id')->name('admin.catalog.ecosystem.competition.appeals.accept');
+        Route::post('appeals/{id}/decide', 'decide')->whereNumber('id')->name('admin.catalog.ecosystem.competition.appeals.decide');
+        Route::get('appeal-attachments/{id}', 'downloadAttachment')->whereNumber('id')->name('admin.catalog.ecosystem.competition.appeal_attachments.download');
+    });
+
+    /**
+     * G3-10 奖项后台（版本/发布/撤销）。
+     */
+    Route::controller(CompetitionAwardAdminController::class)->prefix('ecosystem-competition')->group(function () {
+        Route::get('tracks/{id}/awards', 'index')->whereNumber('id')->name('admin.catalog.ecosystem.competition.awards');
+        Route::post('tracks/{id}/awards/versions', 'storeVersion')->whereNumber('id')->name('admin.catalog.ecosystem.competition.awards.version');
+        Route::post('awards/{id}/publish', 'publish')->whereNumber('id')->name('admin.catalog.ecosystem.competition.awards.publish');
+        Route::post('awards/{id}/revoke', 'revoke')->whereNumber('id')->name('admin.catalog.ecosystem.competition.awards.revoke');
+    });
+
+    /**
+     * G3-11 作品展示后台（创建/审核/发布/撤回）。
+     */
+    Route::controller(CompetitionShowcaseAdminController::class)->prefix('ecosystem-competition')->group(function () {
+        Route::get('tracks/{id}/showcases', 'index')->whereNumber('id')->name('admin.catalog.ecosystem.competition.showcases');
+        Route::post('tracks/{id}/showcases', 'store')->whereNumber('id')->name('admin.catalog.ecosystem.competition.showcases.store');
+        Route::post('showcases/{id}/approve', 'approve')->whereNumber('id')->name('admin.catalog.ecosystem.competition.showcases.review');
+        Route::post('showcases/{id}/reject', 'reject')->whereNumber('id')->name('admin.catalog.ecosystem.competition.showcases.reject');
+        Route::post('showcases/{id}/publish', 'publish')->whereNumber('id')->name('admin.catalog.ecosystem.competition.showcases.publish');
+        Route::post('showcases/{id}/withdraw', 'withdraw')->whereNumber('id')->name('admin.catalog.ecosystem.competition.showcases.withdraw');
     });
 
     /**

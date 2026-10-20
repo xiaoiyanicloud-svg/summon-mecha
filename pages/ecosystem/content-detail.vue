@@ -3,12 +3,19 @@
     <view class="eco-nav">
       <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
       <text class="nav-title">资讯详情</text>
-      <!-- #ifdef H5 -->
-      <view class="nav-share" role="button" tabindex="0" @click="copyLink">复制链接</view>
-      <!-- #endif -->
-      <!-- #ifndef H5 -->
-      <view class="nav-side"></view>
-      <!-- #endif -->
+      <view class="nav-actions">
+        <view
+          v-if="post"
+          class="nav-fav"
+          :class="{ on: post.favorited }"
+          role="button"
+          tabindex="0"
+          @click="toggleFavorite"
+        >{{ post.favorited ? '已收藏' : '收藏' }}</view>
+        <!-- #ifdef H5 -->
+        <view class="nav-share" role="button" tabindex="0" @click="copyLink">复制链接</view>
+        <!-- #endif -->
+      </view>
     </view>
 
     <state-view
@@ -61,6 +68,24 @@
             </view>
           </view>
 
+          <view v-if="relatedGroups.length" class="section">
+            <text class="section-title">相关内容</text>
+            <view v-for="group in relatedGroups" :key="group.key" class="related-group">
+              <text class="related-label">{{ group.label }}</text>
+              <view class="related-items">
+                <view
+                  v-for="item in group.items"
+                  :key="group.key + '-' + (item.id || item.slug || item.productId)"
+                  class="related-item"
+                  :class="{ linkable: group.key === 'events' || group.key === 'contents' }"
+                  role="button"
+                  tabindex="0"
+                  @click="openRelated(group.key, item)"
+                >{{ relatedTitle(group.key, item) }}</view>
+              </view>
+            </view>
+          </view>
+
           <view class="publish-line">
             <text>公开时间：{{ publishedText }}</text>
             <text v-if="firstPublishedText && firstPublishedText !== publishedText">首次公开：{{ firstPublishedText }}</text>
@@ -73,8 +98,9 @@
 
 <script>
 import StateView from '@/components/StateView.vue'
-import { contentApi } from '@/utils/api'
-import { BASE_URL } from '@/utils/config'
+import { contentApi, favoriteApi } from '@/utils/api'
+import { BASE_URL, SSR_BASE_URL } from '@/utils/config'
+import { buildSeo, applySeoToDocument } from '@/utils/ecosystem-seo'
 import {
   normalizeContent,
   errorState,
@@ -150,6 +176,21 @@ export default {
     sharePath() {
       return this.post ? buildSharePath('content', this.post.slug) : ''
     },
+    relatedGroups() {
+      if (!this.post || !this.post.related) return []
+
+      const labels = {
+        events: '相关活动',
+        contents: '相关资讯',
+        device_models: '相关机型',
+        skills: '相关技能',
+        scenes: '相关场景',
+      }
+
+      return Object.keys(labels)
+        .map((key) => ({ key, label: labels[key], items: this.post.related[key] || [] }))
+        .filter((group) => group.items.length > 0)
+    },
   },
   onLoad(query) {
     const slug = typeof (query && query.slug) === 'string' ? query.slug.trim() : ''
@@ -184,6 +225,58 @@ export default {
       this.loading = false
       this.errorMessage = info.message
       this.errorInfo = info
+      // #ifdef H5
+      applySeoToDocument(buildSeo({ type: 'content', entity: {}, baseUrl: SSR_BASE_URL }), document)
+      // #endif
+    },
+    applySeo(post) {
+      // #ifdef H5
+      const cover = pickCover(post.media)
+      const image = cover ? resolveMediaUrl(cover.url, BASE_URL) : undefined
+      applySeoToDocument(
+        buildSeo({ type: 'content', entity: post, baseUrl: SSR_BASE_URL, image }),
+        document,
+      )
+      // #endif
+    },
+    async toggleFavorite() {
+      if (!this.post) return
+
+      const post = this.post
+
+      try {
+        if (post.favorited) {
+          const response = await favoriteApi.remove('content', post.slug)
+          post.favorited = false
+          uni.showToast({
+            title: response && response.data && response.data.removed === false ? '原本就不在收藏中' : '已取消收藏',
+            icon: 'none',
+          })
+        } else {
+          const response = await favoriteApi.add('content', post.slug)
+          post.favorited = true
+          uni.showToast({
+            title: response && response.data && response.data.created === false ? '已在收藏中' : '已收藏',
+            icon: response && response.data && response.data.created === false ? 'none' : 'success',
+          })
+        }
+      } catch (error) {
+        const message = errorState(error).message || '操作失败，请稍后重试'
+        uni.showToast({ title: message, icon: 'none' })
+      }
+    },
+    relatedTitle(key, item) {
+      if (key === 'events') return item.name || '活动'
+      if (key === 'contents') return item.title || '资讯'
+      if (key === 'device_models') return [item.brand, item.name].filter(Boolean).join(' ') || '机型'
+      return item.name || '相关内容'
+    },
+    openRelated(key, item) {
+      if (key === 'events' && item.id) {
+        uni.navigateTo({ url: `/pages/ecosystem/event-detail?id=${item.id}` })
+      } else if (key === 'contents' && item.slug) {
+        uni.navigateTo({ url: `/pages/ecosystem/content-detail?slug=${encodeURIComponent(item.slug)}` })
+      }
     },
     async load() {
       if (!this.slug) return
@@ -202,6 +295,7 @@ export default {
         if (!post) throw new Error('资讯详情格式异常')
 
         this.post = post
+        this.applySeo(post)
       } catch (error) {
         if (seq !== this.requestSeq) return
         this.applyError(error)
@@ -249,8 +343,28 @@ export default {
   font-size: 48rpx;
   font-weight: 300;
 }
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  min-width: 96rpx;
+  justify-content: flex-end;
+}
+.nav-fav {
+  padding: 6rpx 18rpx;
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.55);
+  color: #FFFFFF;
+  font-size: 22rpx;
+}
+.nav-fav.on {
+  background: #FFFFFF;
+  color: #102F6E;
+  font-weight: 600;
+}
 .nav-back:focus-visible,
-.nav-share:focus-visible {
+.nav-share:focus-visible,
+.nav-fav:focus-visible {
   outline: 3rpx solid #FFFFFF;
   border-radius: 8rpx;
 }
@@ -262,7 +376,7 @@ export default {
   letter-spacing: 2rpx;
 }
 .nav-share {
-  width: 96rpx;
+  width: auto;
   text-align: right;
   font-size: 24rpx;
   color: #FFFFFF;
@@ -352,6 +466,35 @@ export default {
   line-height: 1.8;
   color: #334155;
   word-break: break-word;
+}
+.related-group {
+  margin-bottom: 16rpx;
+}
+.related-label {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 23rpx;
+  font-weight: 600;
+  color: #475569;
+}
+.related-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+.related-item {
+  padding: 8rpx 18rpx;
+  border-radius: 24rpx;
+  background: #F1F5FD;
+  border: 1rpx solid #DCE5F5;
+  font-size: 23rpx;
+  color: #334155;
+}
+.related-item.linkable {
+  color: #165DFF;
+}
+.related-item.linkable:focus-visible {
+  outline: 3rpx solid #165DFF;
 }
 .source-item {
   display: flex;

@@ -188,6 +188,11 @@ it('G1-10 · G1 报名状态恒为 false，reason 按优先级且 allowed_action
         'can_register'        => false,
         'registration_reason' => 'registration_disabled',
         'allowed_actions'     => ['view_detail'],
+        // G2 公开报名表元数据；该夹具没有 scope，因此全部为 null。
+        'form_version'        => null,
+        'privacy_version'     => null,
+        'privacy_summary'     => null,
+        'rules_version_id'    => null,
     ]);
 
     $external = Fixtures::event(

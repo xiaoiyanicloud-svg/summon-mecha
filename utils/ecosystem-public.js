@@ -89,6 +89,43 @@ function normalizeExternalUrl(value) {
   return /^https?:\/\/[^\s]+$/i.test(trimmed) ? trimmed : ''
 }
 
+function normalizeRelated(raw) {
+  const groups = {
+    events: [],
+    contents: [],
+    device_models: [],
+    skills: [],
+    scenes: [],
+  }
+
+  if (!raw || typeof raw !== 'object') return groups
+
+  for (const key of Object.keys(groups)) {
+    if (!Array.isArray(raw[key])) continue
+
+    groups[key] = raw[key]
+      .filter((item) => item && typeof item === 'object')
+      .map((item) => ({
+        type: typeof item.type === 'string' ? item.type : key,
+        id: positiveInt(item.id),
+        slug: nullableString(item.slug),
+        name: nullableString(item.name),
+        title: nullableString(item.title),
+        summary: nullableString(item.summary),
+        startsAt: nullableString(item.starts_at),
+        endsAt: nullableString(item.ends_at),
+        city: nullableString(item.city),
+        brand: nullableString(item.brand),
+        availability: nullableString(item.availability),
+        productId: positiveInt(item.product_id),
+        icon: nullableString(item.icon),
+        category: nullableString(item.category),
+      }))
+  }
+
+  return groups
+}
+
 // ==================== 归一化 ====================
 
 /**
@@ -141,10 +178,16 @@ export function normalizeEvent(raw) {
       allowedActions: Array.isArray(registration.allowed_actions)
         ? registration.allowed_actions.filter((action) => typeof action === 'string')
         : [],
+      formVersion: positiveInt(registration.form_version),
+      privacyVersion: nullableString(registration.privacy_version),
+      privacySummary: nullableString(registration.privacy_summary),
+      rulesVersionId: positiveInt(registration.rules_version_id),
     },
     // G1-10 DTO 目前不返回该字段；保留读取位，未来 DTO 增加后才可能显示外部报名按钮。
     externalRegistrationUrl: normalizeExternalUrl(raw.external_registration_url),
     media: normalizeMediaList(raw.media),
+    favorited: raw.favorited === true,
+    related: normalizeRelated(raw.related),
   }
 }
 
@@ -190,6 +233,8 @@ export function normalizeContent(raw) {
     correctionNote: nullableString(raw.correction_note),
     bodyHtml: typeof raw.body_html === 'string' ? raw.body_html : '',
     media: normalizeMediaList(raw.media),
+    favorited: raw.favorited === true,
+    related: normalizeRelated(raw.related),
   }
 }
 
@@ -217,12 +262,41 @@ export function normalizePage(payload, fallbackPage = 1) {
       perPage: rows.length,
       total: rows.length,
       hasMore: false,
+      nextCursor: null,
+      mode: 'page',
       rows,
     }
   }
 
   if (typeof meta !== 'object') {
     throw formatError('列表分页格式异常')
+  }
+
+  // G4-01 游标模式：没有 total / last_page，只有 has_more 与 next_cursor。
+  if (meta.mode === 'cursor') {
+    const perPage = positiveInt(meta.per_page)
+    if (!perPage || typeof meta.has_more !== 'boolean') {
+      throw formatError('列表分页格式异常')
+    }
+
+    const nextCursor = meta.next_cursor === null || meta.next_cursor === undefined
+      ? null
+      : (isNonEmptyString(meta.next_cursor) ? meta.next_cursor : null)
+
+    if (meta.has_more && !nextCursor) {
+      throw formatError('列表分页格式异常')
+    }
+
+    return {
+      page: 1,
+      lastPage: null,
+      perPage,
+      total: null,
+      hasMore: meta.has_more,
+      nextCursor,
+      mode: 'cursor',
+      rows,
+    }
   }
 
   const page = positiveInt(meta.current_page)
@@ -240,6 +314,8 @@ export function normalizePage(payload, fallbackPage = 1) {
     perPage,
     total,
     hasMore: page < lastPage,
+    nextCursor: null,
+    mode: 'page',
     rows,
   }
 }
@@ -327,6 +403,11 @@ const REGISTRATION_REASON_LABELS = {
   canceled: '活动已取消。',
   ended: '活动已结束。',
   registration_disabled: '站内报名暂未开放。',
+  not_open: '报名尚未开始。',
+  closed: '报名已截止。',
+  requires_login: '请先登录后再报名。',
+  already_registered: '你已报名，可在「我的报名」查看当前状态。',
+  full: '名额已满。',
 }
 
 export function eventKindLabel(kind) {
@@ -507,8 +588,18 @@ export function errorState(error) {
     }
   }
 
-  if (status === 404) {
+  if (status === 401) {
     return {
+      kind: 'unauthorized',
+      icon: '🔐',
+      title: '请先登录',
+      message: '登录后才能查看或操作该内容。',
+      retryable: false,
+      status,
+    }
+  }
+
+  if (status === 404) {    return {
       kind: 'not_found',
       icon: "🔍",
       title: '内容不存在或未公开',
@@ -722,6 +813,26 @@ export function registrationView(event) {
 
   if (registration.canRegister === true) {
     return { mode: 'register', url: '', reason: '', actions }
+  }
+
+  // G2：匿名用户只要服务端返回 requires_login，就允许进入报名页先登录；
+  // 页面本身不会自动提交，登录后必须重新拉取详情与版本。
+  if (registration.registrationReason === 'requires_login' || actions.includes('login')) {
+    return {
+      mode: 'login',
+      url: '',
+      reason: registrationReasonLabel(registration.registrationReason || 'requires_login'),
+      actions,
+    }
+  }
+
+  if (registration.registrationReason === 'already_registered' || actions.includes('view_my_registration')) {
+    return {
+      mode: 'mine',
+      url: '',
+      reason: registrationReasonLabel(registration.registrationReason || 'already_registered'),
+      actions,
+    }
   }
 
   const externalUrl = normalizeExternalUrl(event && event.externalRegistrationUrl)

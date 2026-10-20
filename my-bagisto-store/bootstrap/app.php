@@ -158,6 +158,19 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyMinute()
             ->withoutOverlapping()
             ->when(fn () => (bool) config('ecosystem_publishing.scheduler_enabled', false));
+
+        // G2-06：审核到期扫描。只处理 review_closes_at 已过的 submitted，
+        // 不释放不存在的席位；通知走 outbox。默认开启，但只有调度器常驻才真正执行。
+        $schedule->command('ecosystem:expire-registration-reviews')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->when(fn () => (bool) config('ecosystem_registration.review_expiry.enabled', true));
+
+        // G2-08：变更确认到期扫描。未响应永不视为同意；释放席位由变更政策决定。
+        $schedule->command('ecosystem:expire-registration-change-acks')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->when(fn () => (bool) config('ecosystem_registration.enabled', false));
     })
     ->withExceptions(function (Exceptions $exceptions) {
         /**

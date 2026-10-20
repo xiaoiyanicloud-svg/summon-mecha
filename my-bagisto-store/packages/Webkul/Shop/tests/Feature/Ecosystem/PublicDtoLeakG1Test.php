@@ -59,7 +59,7 @@ it('G1-10 · 活动 DTO 顶层字段精确等于冻结白名单', function () {
         'id', 'kind', 'name', 'summary', 'organizer', 'source', 'participation_mode',
         'city', 'location_text', 'timezone', 'starts_at', 'ends_at', 'published_at',
         'first_published_at', 'revision_no', 'hosting_status', 'body_html',
-        'registration', 'media',
+        'registration', 'media', 'favorited', 'related',
     ];
 
     expect(array_keys($data))->toEqualCanonicalizing($expected);
@@ -67,6 +67,7 @@ it('G1-10 · 活动 DTO 顶层字段精确等于冻结白名单', function () {
     expect(array_keys($data['source']))->toEqualCanonicalizing(['name', 'url']);
     expect(array_keys($data['registration']))->toEqualCanonicalizing([
         'can_register', 'registration_reason', 'allowed_actions',
+        'form_version', 'privacy_version', 'privacy_summary', 'rules_version_id',
     ]);
 });
 
@@ -79,6 +80,7 @@ it('G1-10 · 资讯 DTO 顶层字段精确等于冻结白名单', function () {
     $expected = [
         'slug', 'type', 'title', 'summary', 'author', 'sources', 'published_at',
         'first_published_at', 'revision_no', 'correction_note', 'body_html', 'media',
+        'favorited', 'related',
     ];
 
     expect(array_keys($data))->toEqualCanonicalizing($expected);

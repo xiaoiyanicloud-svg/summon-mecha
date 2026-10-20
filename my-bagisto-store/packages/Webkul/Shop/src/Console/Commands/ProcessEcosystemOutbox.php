@@ -57,15 +57,20 @@ class ProcessEcosystemOutbox extends Command
         }
 
         $this->info(sprintf(
-            '恢复过期租约 %d；领取 %d；sent %d / retried %d / dead %d / lease_lost %d / errors %d。',
+            '恢复过期租约 %d；领取 %d；sent %d / retried %d / failed %d / dead %d / lease_lost %d / errors %d。',
             $summary['recovered'],
             $summary['claimed'],
             $summary['sent'],
             $summary['retried'],
+            $summary['failed'],
             $summary['dead'],
             $summary['lease_lost'],
             $summary['errors'],
         ));
+
+        if ($summary['failed'] > 0) {
+            $this->warn('存在达到重试上限的失败记录（failed）；需在运营工作台确认原因后人工重排，不会自动复活。');
+        }
 
         if ($summary['lease_lost'] > 0) {
             $this->warn('存在旧 worker 回报被拒绝（lease_lost）；结果已丢弃，请检查是否有进程执行超过 lease_seconds。');

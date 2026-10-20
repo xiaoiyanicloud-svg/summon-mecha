@@ -308,6 +308,61 @@ test('external registration only appears with both allowed action and real URL',
   assert.equal(unsafe.url, '')
 })
 
+test('G2 registration modes: requires_login / already_registered', () => {
+  const login = registrationView(normalizeEvent(eventDto({
+    registration: {
+      can_register: false,
+      registration_reason: 'requires_login',
+      allowed_actions: ['view_detail', 'login'],
+    },
+  })))
+  assert.equal(login.mode, 'login')
+  assert.match(login.reason, /登录/)
+
+  const mine = registrationView(normalizeEvent(eventDto({
+    registration: {
+      can_register: false,
+      registration_reason: 'already_registered',
+      allowed_actions: ['view_detail', 'view_my_registration'],
+    },
+  })))
+  assert.equal(mine.mode, 'mine')
+  assert.match(mine.reason, /我的报名/)
+
+  const full = registrationView(normalizeEvent(eventDto({
+    registration: {
+      can_register: false,
+      registration_reason: 'full',
+      allowed_actions: ['view_detail'],
+    },
+  })))
+  assert.equal(full.mode, 'none')
+  assert.match(full.reason, /名额已满/)
+})
+
+test('G2 form metadata is exposed without inventing defaults', () => {
+  const event = normalizeEvent(eventDto({
+    registration: {
+      can_register: true,
+      registration_reason: 'ok',
+      allowed_actions: ['view_detail', 'register'],
+      form_version: 3,
+      privacy_version: '2026-10-19',
+      privacy_summary: '摘要',
+      rules_version_id: 7,
+    },
+  }))
+
+  assert.equal(event.registration.formVersion, 3)
+  assert.equal(event.registration.privacyVersion, '2026-10-19')
+  assert.equal(event.registration.privacySummary, '摘要')
+  assert.equal(event.registration.rulesVersionId, 7)
+
+  const missing = normalizeEvent(eventDto())
+  assert.equal(missing.registration.formVersion, null)
+  assert.equal(missing.registration.privacyVersion, null)
+})
+
 // ==================== 分享 ====================
 
 test('share paths use real detail routes and reject invalid identity', () => {

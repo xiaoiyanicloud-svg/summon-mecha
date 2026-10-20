@@ -13,12 +13,18 @@ use Webkul\Shop\Http\Resources\Ecosystem\MediaPublicResource;
 use Webkul\Shop\Models\Event;
 use Webkul\Shop\Models\EventRegistration;
 use Webkul\Shop\Models\EventRevision;
+use Webkul\Shop\Services\Ecosystem\ContentViewRecorder;
+use Webkul\Shop\Services\Ecosystem\FavoriteService;
 use Webkul\Shop\Services\Ecosystem\PublicBodyRenderer;
+use Webkul\Shop\Services\Ecosystem\PublicCursorException;
 use Webkul\Shop\Services\Ecosystem\PublicEventQuery;
 use Webkul\Shop\Services\Ecosystem\PublicMediaResolver;
 use Webkul\Shop\Services\Ecosystem\PublicReadGate;
 use Webkul\Shop\Services\Ecosystem\PublicReadUnavailableException;
 use Webkul\Shop\Services\Ecosystem\PublicRegistrationState;
+use Webkul\Shop\Services\Ecosystem\RegistrationException;
+use Webkul\Shop\Services\Ecosystem\RegistrationSubmissionService;
+use Webkul\Shop\Services\Ecosystem\RelationService;
 
 /**
  * 公开活动 API（ADR-0001 G1-D08 / 规划 §6 / G1-10）。
@@ -40,10 +46,17 @@ class EventController extends APIController
         private readonly PublicMediaResolver $media,
         private readonly PublicRegistrationState $registration,
         private readonly PublicBodyRenderer $renderer,
+        private readonly RegistrationSubmissionService $submissions,
+        private readonly FavoriteService $favorites,
+        private readonly RelationService $relations,
+        private readonly ContentViewRecorder $views,
     ) {}
 
     /**
      * 活动列表。
+     *
+     * G4-01：在原有 page 模式之外增加 cursor 模式；`q` 与 `registration_state`
+     * 受 `ecosystem_g4.search.enabled` 控制，关闭时明确 400，不静默忽略。
      */
     public function index(Request $request): JsonResponse
     {
@@ -66,18 +79,75 @@ class EventController extends APIController
             );
         }
 
-        $filters = $this->filters($validator->validated());
+        $validated = $validator->validated();
+
+        if ($searchError = $this->assertSearchEnabled($validated)) {
+            return $searchError;
+        }
+
+        $mode = (string) ($validated['mode'] ?? (isset($validated['cursor']) ? 'cursor' : 'page'));
+
+        if ($mode === 'page' && isset($validated['cursor'])) {
+            return $this->reject(
+                ApiErrorCode::VALIDATION_ERROR,
+                '筛选参数不合法。',
+                ['errors' => ['cursor' => ['page 与 cursor 不能同时使用。']]],
+            );
+        }
+
+        $filters = $this->filters($validated);
+
+        if (isset($filters['q']) && trim((string) $filters['q']) === '') {
+            return $this->reject(
+                ApiErrorCode::VALIDATION_ERROR,
+                '筛选参数不合法。',
+                ['errors' => ['q' => ['关键词不能为空。']]],
+            );
+        }
 
         if ($rangeError = $this->assertDateRange($filters, 'starts_from', 'starts_to')) {
             return $rangeError;
         }
 
-        $page = (int) ($filters['page'] ?? 1);
-        $perPage = (int) ($filters['per_page'] ?? PublicEventQuery::DEFAULT_PER_PAGE);
+        $perPage = (int) ($validated['per_page'] ?? PublicEventQuery::DEFAULT_PER_PAGE);
 
-        unset($filters['page'], $filters['per_page']);
+        if ($mode === 'cursor') {
+            try {
+                $cursorResult = $this->events->cursorPaginate(
+                    $filters,
+                    isset($validated['cursor']) ? (string) $validated['cursor'] : null,
+                    $perPage,
+                );
+            } catch (PublicCursorException $exception) {
+                return $this->reject(
+                    ApiErrorCode::VALIDATION_ERROR,
+                    $exception->getMessage(),
+                    ['errors' => ['cursor' => [$exception->getMessage()]], 'reason' => $exception->reason()],
+                );
+            }
 
-        $paginator = $this->events->paginate($filters, $page, $perPage);
+            $collection = $cursorResult['items'];
+            $meta = [
+                'mode'        => 'cursor',
+                'per_page'    => $perPage,
+                'has_more'    => $cursorResult['has_more'],
+                'next_cursor' => $cursorResult['next_cursor'],
+                'total'       => null,
+                'filters'     => $this->echoFilters($filters),
+            ];
+        } else {
+            $paginator = $this->events->paginate($filters, (int) ($validated['page'] ?? 1), $perPage);
+            $collection = $paginator->getCollection();
+
+            $meta = [
+                'mode'         => 'page',
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
+                'filters'      => $this->echoFilters($filters),
+            ];
+        }
 
         $stale = $this->events->countIncompatibleSanitizer($filters);
 
@@ -88,17 +158,22 @@ class EventController extends APIController
             ]);
         }
 
-        $revisionIds = $paginator->getCollection()
+        $revisionIds = $collection
             ->pluck('published_revision_id')
             ->filter()
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
 
         $refsByRevision = $this->media->approvedRefsByRevision('event_revision', $revisionIds);
+        $customerId = auth()->guard('customer')->id();
+
+        $favoriteFlags = $customerId !== null
+            ? $this->favorites->flagsFor((int) $customerId, FavoriteService::TYPE_EVENT, $collection->pluck('id')->all())
+            : [];
 
         $data = [];
 
-        foreach ($paginator->items() as $event) {
+        foreach ($collection as $event) {
             /** @var Event $event */
             $revision = $event->publishedRevision;
 
@@ -106,17 +181,18 @@ class EventController extends APIController
                 continue;
             }
 
-            $data[] = $this->toDto($event, $revision, $refsByRevision[(int) $revision->id] ?? []);
+            $data[] = $this->toDto(
+                $event,
+                $revision,
+                $refsByRevision[(int) $revision->id] ?? [],
+                $customerId,
+                isset($favoriteFlags[(string) $event->id]),
+            );
         }
 
         return response()->json([
             'data' => $data,
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
-            ],
+            'meta' => $meta,
         ]);
     }
 
@@ -160,16 +236,29 @@ class EventController extends APIController
         }
 
         $refs = $this->media->approvedRefsByRevision('event_revision', [(int) $revision->id]);
+        $customerId = auth()->guard('customer')->id();
+
+        $this->views->record(ContentViewRecorder::TARGET_EVENT, (string) $event->id, $customerId !== null ? (int) $customerId : null);
 
         return response()->json([
-            'data' => $this->toDto($event, $revision, $refs[(int) $revision->id] ?? []),
+            'data' => $this->toDto(
+                $event,
+                $revision,
+                $refs[(int) $revision->id] ?? [],
+                $customerId,
+                $customerId !== null
+                    && $this->favorites->isFavorited((int) $customerId, FavoriteService::TYPE_EVENT, (string) $event->id),
+                $this->relations->forSource(RelationService::SOURCE_EVENT, (int) $event->id),
+            ),
         ]);
     }
 
     /**
-     * 赛事报名（G0 停写语义，本批不改）。
+     * 赛事报名（G2-04）。
      *
      * 停写检查必须放在最前面 —— 在任何赛事查询/参数校验/写库之前返回。
+     * 双重闸打开后，旧“姓名+手机号”直写不再可用：必须登录、带 request_key
+     * 与表单/规则/隐私版本；否则明确要求客户端刷新，而不是伪造成功。
      */
     public function register(Request $request, int $id): JsonResponse
     {
@@ -181,60 +270,99 @@ class EventController extends APIController
             );
         }
 
-        $event = Event::find($id);
+        $validator = Validator::make($request->all(), [
+            'request_key'       => ['required', 'string', 'max:100'],
+            'form_version'      => ['required', 'integer', 'min:1'],
+            'privacy_version'   => ['required', 'string', 'max:50'],
+            'rules_version_id'  => ['nullable', 'integer', 'min:1'],
+            'consent'           => ['required', 'accepted'],
+            'name'              => ['required', 'string', 'max:50'],
+            'phone'             => ['required', 'string', 'max:20'],
+            'city'              => ['nullable', 'string', 'max:100'],
+            'note'              => ['nullable', 'string', 'max:500'],
+            'expected_attempt_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->reject(
+                ApiErrorCode::VALIDATION_ERROR,
+                '报名参数不合法。',
+                ['errors' => $validator->errors()->toArray()],
+            );
+        }
+
+        $customer = auth()->guard('customer')->user();
+
+        if ($customer === null) {
+            return $this->fail(ApiErrorCode::UNAUTHENTICATED, '请先登录后再报名。', 401);
+        }
+
+        $event = Event::query()->find($id);
 
         if (! $event) {
             return $this->fail(ApiErrorCode::EVENT_NOT_FOUND, '赛事不存在。', 404);
         }
 
-        if ($event->status === 'ended') {
-            return $this->fail(ApiErrorCode::EVENT_ENDED, '该赛事已结束报名。', 422);
+        try {
+            $result = $this->submissions->submit($event, $customer, $validator->validated());
+        } catch (RegistrationException $exception) {
+            return $this->fail(
+                $exception->errorCode(),
+                $exception->getMessage(),
+                $exception->httpStatus(),
+            );
         }
 
-        if ($event->status !== 'registering') {
-            return $this->fail(ApiErrorCode::EVENT_NOT_REGISTERING, '当前不在报名阶段。', 422);
-        }
+        return $this->ok(
+            $this->registrationPayload($result['registration'], $result['attempt']),
+            $result['replayed'] ? '已返回原报名结果。' : '报名已提交。',
+            ['replayed' => (bool) $result['replayed']],
+        );
+    }
 
-        $request->validate([
-            'name'  => 'required|string',
-            'phone' => 'required|string',
-            'city'  => 'nullable|string',
-            'note'  => 'nullable|string',
-        ]);
+    /**
+     * @return array<string, mixed>
+     */
+    private function registrationPayload(
+        \Webkul\Shop\Models\EventRegistration $registration,
+        \Webkul\Shop\Models\EventRegistrationAttempt $attempt,
+    ): array {
+        $timezone = (string) config('app.timezone', 'Asia/Shanghai');
+        $iso = static fn (mixed $value): ?string => $value instanceof Carbon
+            ? $value->copy()->timezone($timezone)->toIso8601String()
+            : null;
 
-        $customer = auth()->guard('customer')->user();
-
-        // 同一人同一赛事只报一次
-        $exists = EventRegistration::where('event_id', $id)
-            ->where('phone', $request->input('phone'))
-            ->exists();
-
-        if ($exists) {
-            return $this->fail(ApiErrorCode::EVENT_ALREADY_REGISTERED, '该手机号已报名过此赛事。', 422);
-        }
-
-        $registration = EventRegistration::create([
-            'event_id'    => $id,
-            'customer_id' => $customer?->id,
-            'name'        => $request->input('name'),
-            'phone'       => $request->input('phone'),
-            'city'        => $request->input('city', ''),
-            'note'        => $request->input('note', ''),
-        ]);
-
-        return response()->json([
-            'success'      => true,
-            'message'      => '报名成功',
-            'registration' => ['id' => $registration->id, 'event' => $event->name],
-        ]);
+        return [
+            'public_no'   => (string) $registration->public_no,
+            'event_id'    => (int) $registration->event_id,
+            'status'      => (string) $attempt->status,
+            'attempt_no'  => (int) $attempt->attempt_no,
+            'attempt_id'  => (int) $attempt->getKey(),
+            'form_version'=> (int) $attempt->form_version,
+            'privacy_version' => (string) $attempt->privacy_version,
+            'submitted_at'=> $iso($attempt->submitted_at),
+            'decided_at'  => $iso($attempt->decided_at),
+            'canceled_at' => $iso($attempt->canceled_at),
+            'decision_reason_code' => $attempt->decision_reason_code,
+            'can_reapply' => in_array((string) $attempt->status, [
+                \Webkul\Shop\Models\EventRegistrationAttempt::STATUS_CANCELED,
+                \Webkul\Shop\Models\EventRegistrationAttempt::STATUS_REJECTED,
+            ], true),
+        ];
     }
 
     /**
      * @param  array<int, \Webkul\Shop\Models\EcosystemMediaRef>  $refs
      * @return array<string, mixed>
      */
-    private function toDto(Event $event, EventRevision $revision, array $refs): array
-    {
+    private function toDto(
+        Event $event,
+        EventRevision $revision,
+        array $refs,
+        ?int $customerId = null,
+        bool $favorited = false,
+        array $related = [],
+    ): array {
         $media = MediaPublicResource::forEvent((int) $event->id, $refs);
 
         $allowedMediaIds = array_map(
@@ -255,9 +383,11 @@ class EventController extends APIController
         return (new EventPublicResource(
             $event,
             $revision,
-            $this->registration->forEvent($event, $revision),
+            $this->registration->forEvent($event, $revision, $customerId),
             $bodyHtml,
             $media,
+            $favorited,
+            $related,
         ))->toArray();
     }
 
@@ -266,16 +396,45 @@ class EventController extends APIController
      */
     private function indexRules(): array
     {
+        $keywordMax = max(1, (int) config('ecosystem_g4.search.keyword_max_length', 50));
+        $maxPage = max(1, (int) config('ecosystem_g4.search.max_page', 200));
+
         return [
-            'page'               => ['sometimes', 'integer', 'min:1'],
+            'mode'               => ['sometimes', 'string', Rule::in(['page', 'cursor'])],
+            'page'               => ['sometimes', 'integer', 'min:1', 'max:'.$maxPage],
+            'cursor'             => ['sometimes', 'string', 'max:512'],
             'per_page'           => ['sometimes', 'integer', 'min:1', 'max:'.PublicEventQuery::MAX_PER_PAGE],
+            'q'                  => ['sometimes', 'string', 'max:'.$keywordMax],
             'kind'               => ['sometimes', 'string', Rule::in((array) config('ecosystem_publishing.event_kinds', []))],
             'participation_mode' => ['sometimes', 'string', Rule::in(PublicEventQuery::PARTICIPATION_MODES)],
             'city'               => ['sometimes', 'string', 'max:100'],
             'hosting_status'     => ['sometimes', 'string', Rule::in((array) config('ecosystem_publishing.event_hosting_statuses', []))],
+            'registration_state' => ['sometimes', 'string', Rule::in(PublicEventQuery::REGISTRATION_STATES)],
             'starts_from'        => ['sometimes', 'date'],
             'starts_to'          => ['sometimes', 'date'],
         ];
+    }
+
+    /**
+     * 搜索能力关闭时，带搜索参数必须明确拒绝；静默忽略会让调用方以为筛选生效。
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function assertSearchEnabled(array $validated): ?JsonResponse
+    {
+        if (! isset($validated['q']) && ! isset($validated['registration_state'])) {
+            return null;
+        }
+
+        if ((bool) config('ecosystem_g4.search.enabled', false)) {
+            return null;
+        }
+
+        return $this->reject(
+            ApiErrorCode::VALIDATION_ERROR,
+            '搜索与报名状态筛选暂未启用。',
+            ['errors' => ['search' => ['该能力尚未开放。']], 'reason' => 'search_disabled'],
+        );
     }
 
     /**
@@ -284,10 +443,23 @@ class EventController extends APIController
      */
     private function filters(array $validated): array
     {
+        unset($validated['mode'], $validated['page'], $validated['cursor'], $validated['per_page']);
+
         return array_filter(
             $validated,
             static fn (mixed $value): bool => $value !== null && $value !== '',
         );
+    }
+
+    /**
+     * 筛选条件原样回显，供客户端重建可回放请求。
+     *
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    private function echoFilters(array $filters): array
+    {
+        return $filters;
     }
 
     /**
