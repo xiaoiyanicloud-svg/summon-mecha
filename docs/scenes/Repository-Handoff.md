@@ -84,3 +84,17 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 4. 运行新版本 MySQL 多连接、完整 Admin 会话和 HBuilderX H5/小程序验收并回传脱敏结果；本机 91 后端、16 控制器、32 Node、14 SFC/17 交互不替代这些步骤。原件清理需显式单 ID 和批准政策版本，默认只读。
 
 回传实际运行 HEAD/路径、APP_ENV/数据库身份、迁移/preflight JSON、角色与夹具标识、命令/退出码、失败信息和精确清理结果。SC3 转换仍硬阻断，SC4 变更/取消未自动生效，不因本轮条款草案而开放。本页是已写入仓库的交接，未声称对方已经读取、部署或完成新批次验收。
+
+## 2026-10-21：SC1 / SC2 代码提交已推送并复核
+
+本批代码提交为 [`41db1b2ef17fa8a12ea4a216baee1595b2e5483c`](https://github.com/xiaoiyanicloud-svg/summon-mecha/commit/41db1b2ef17fa8a12ea4a216baee1595b2e5483c)，包含 82 个文件的代码、测试、契约、进度和交接。已用 `git ls-remote` 再次核对 GitHub 同名分支指向该提交；本次补充说明前无未提交的已跟踪代码。之后的文档同步提交继续保留在同一分支，合并时取该分支最新 HEAD。
+
+```powershell
+git fetch origin codex/scene-workflow-sc0-sc5
+git show --stat 41db1b2ef17fa8a12ea4a216baee1595b2e5483c
+git log --oneline 78b0629..origin/codex/scene-workflow-sc0-sc5
+```
+
+早期 [13/14 只读探测](lan-integration-evidence/2026-10-21-api-probe.json)一并归档，它记录当时未签发凭证请求得到 500 的真实失败及 GitHub 暂时不可达；后续 [20 项通过的只读复测](sc1-sc2-closeout-evidence/remote-readonly.json)已经记录恢复。早期文件不是当前运行状态，也未证明新版本业务写入或实际数据库身份。
+
+给另一端的执行顺序及待回传清单仍按上一节。尚无对方合并 `41db1b2`、执行 100005–100007 或完成新批次验收的回执；不据“已上仓库”推定这些动作完成。本次仅更新文档和归档历史记录，没有变更业务代码或重新运行已通过的代码测试。原验证快照保留其生成时的源文件哈希，后续文档补充不冒充原测试的重跑结果。

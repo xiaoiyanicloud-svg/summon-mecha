@@ -71,3 +71,9 @@ git revert <本批提交 SHA>
 ```
 
 在实际部署配置中关闭相应 SCENE_* 写开关后清缓存并按原服务方式重启；不更改其他业务的 worker。禁止 migrate:rollback/down、truncate、migrate:fresh 或以备份覆盖另一端工作区。已物理删除的到期文件不能靠代码 revert 恢复；应依授权备份和已留存审计处理，不能伪称文件删除支持事务回滚。
+
+## 仓库同步回执
+
+代码、测试及本步骤进度已随 [`41db1b2ef17fa8a12ea4a216baee1595b2e5483c`](https://github.com/xiaoiyanicloud-svg/summon-mecha/commit/41db1b2ef17fa8a12ea4a216baee1595b2e5483c) 推送至 `codex/scene-workflow-sc0-sc5`。2026-10-21 按用户“所有代码修改和进度推进仓库”的要求再次核验：GitHub 分支 SHA 与该本地提交一致，73 项原验证源文件哈希全部匹配，无遗漏的已跟踪代码变更。
+
+后续同步补充[执行账本](scenes/SC1-SC2-Closeout-20261021.md)、[仓库交接](scenes/Repository-Handoff.md)及开工时 13/14 的历史 API JSON；保留后续 20 项通过的独立记录。文档同步不改写已有测试结果，不重复运行未变更代码的测试；实际 MySQL、新版服务部署及运营签收仍待另一端回执。截图、备份、旧补丁及 ZIP 留本地。

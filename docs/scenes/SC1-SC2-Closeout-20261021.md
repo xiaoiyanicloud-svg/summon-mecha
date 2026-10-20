@@ -18,3 +18,11 @@
 开工时只读实测 13/14、GitHub 暂遇 SSL_ERROR_SYSCALL。后续网络恢复，已 fetch 另一端 8c7d660 及交接，包含 schema 全局 category 绑定修复与专用库切换记录。最新 GET only 为 20 通过、目录空导致详情跳过；未签发凭证现为正确 401。没有执行其业务写入、迁移或 MySQL 并发。
 
 本轮 91 后端、16 控制器/Router、32 Node、14 SFC/17 交互、8 Blade 模板与 PHP 语法证据，见[第 18 步](../skill-dev-step18.md)及 `sc1-sc2-closeout-evidence/`。全部 SC1/SC2 工作包的开发增量已列入该交付，整阶段验收仍保持未关闭；不能用测试夹具替代真实主体、授权或真机签收。
+
+## 仓库提交与进度同步
+
+SC1/SC2 本批代码、测试及进度文档已提交并推送：[`41db1b2ef17fa8a12ea4a216baee1595b2e5483c`](https://github.com/xiaoiyanicloud-svg/summon-mecha/commit/41db1b2ef17fa8a12ea4a216baee1595b2e5483c)，分支 `codex/scene-workflow-sc0-sc5`。2026-10-21 再次通过 `git ls-remote origin refs/heads/codex/scene-workflow-sc0-sc5` 确认远端与本地该提交一致；同步前无未提交的已跟踪代码变更。
+
+本次进度同步仅补提交定位、交接说明及[开工时历史只读探测](lan-integration-evidence/2026-10-21-api-probe.json)。该记录为 13 通过、1 失败、0 业务写入；后续[只读复测](sc1-sc2-closeout-evidence/remote-readonly.json)为 20 通过，目录为空的详情检查跳过。两份记录保留各自发生时的结果，不互相覆盖。原验证快照的 73 项源文件哈希在本次文档更新前全部匹配；快照继续对应代码提交时的字节，不改写历史哈希。
+
+下一验收仍是另一端合并新版本、专用测试库迁移 100005–100007、MySQL 并发和真实 Admin/客户端/扫描器/运营复核。仓库已推送不代表另一端已部署或 SC1/SC2 整阶段签收。截图、备份及旧补丁/ZIP 交接包按已有约定留在本机，不纳入代码提交。
