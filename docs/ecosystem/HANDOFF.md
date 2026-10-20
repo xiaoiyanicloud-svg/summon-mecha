@@ -9,7 +9,7 @@
 | 分支 | `codex/ecosystem-g2-free-registration` |
 | 范围 | G0（停写去伪）→ G1（可信发布）→ G2（免费活动报名）→ G3（人工赛务）→ G4（分发与运营）→ Q-01~Q-05（横向质量）→ **浏览器 e2e + Admin 赛务演练收尾** |
 | 结论 | 代码、独立测试库验证、root additive 迁移完成；**G4 新开关全部关闭**；Q、e2e 与 Admin 演练证据已落地；无真实运营数据 |
-| Git | G2~Q 与收尾改动均已提交（`b36798c`、`a09d8b6`、`3759291`）；分支**未配置 upstream，未 push** |
+| Git | G2~Q 与收尾改动均已提交（`b36798c`、`a09d8b6`、`a634c2c`）；分支**未配置 upstream，未 push** |
 
 ## 1. 一句话状态
 
@@ -43,10 +43,10 @@ Chrome profile）。证据见 [admin-g3-result.json](./admin-g3-result.json) 与
 - **G2 + G3 + G4 + Q 改动已 commit**（2026-10-20）：
   - `b36798c` 代码 / 测试 / QA 脚本；
   - `a09d8b6` 文档 / 证据 / OpenAPI / 结果 JSON；
-  - `3759291` 收尾：G3 Admin 录分/发布演练、G2/G3/G4 e2e、门禁与 CI workflow、文档更新。
+  - `a634c2c` 收尾：G3 Admin 录分/发布演练、G2/G3/G4 e2e、门禁与 CI workflow、文档更新。
   分支 `codex/ecosystem-g2-free-registration` **未配置 upstream，也未 push**；
   其他机器要看到，需要先 push 或手工带走这三个提交。
-- **本次收尾改动已提交**（`3759291`），包含 `qa/ecosystem/e2e/**`、
+- **本次收尾改动已提交**（`a634c2c`），包含 `qa/ecosystem/e2e/**`、
   `qa/ecosystem/admin-g3/**`、`tools/ecosystem-gate.sh`、
   `.github/workflows/ecosystem-gate.yml`、`utils/api.js`、`q04/driver.mjs`、
   `G3-G4-browser-e2e-evidence.md`、`g3g4-e2e-result.json`、`admin-g3-result.json`
@@ -252,7 +252,7 @@ G2/G3/G4 浏览器 e2e **39/39 通过**（含 1 项 observed）；G3 Admin 录�
 
 ## 7. 下一步建议（按优先级）
 
-1. **提交收尾改动**：已完成（`3759291`，含 e2e、Admin 演练、门禁与 CI workflow）。
+1. **提交收尾改动**：已完成（`a634c2c`，含 e2e、Admin 演练、门禁与 CI workflow）。
    分支仍未 push；需要其他机器可见时先 push，再按 GitHub Actions 结果确认 CI。
    后续提交仍按路径 `git add`（禁止 `git add -A`），先处理
    `my-bagisto-store2 备份/` 的 git 红线；截图目录按既有约定不入库。

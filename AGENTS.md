@@ -18,5 +18,5 @@
 - 报名写闸、赛务写闸、公开赛程/成绩/展示仍关闭；首场赛规未签署。
 - root 已做 additive 迁移；备份见 HANDOFF §4。
 - 验证必须指向独立库 `summon_mecha_step10_test`；禁止对 root 执行 `migrate:fresh` / `truncate` / `seed`。
-- **Git 状态**：G2~Q 与收尾改动已提交（`b36798c`、`a09d8b6`、`3759291`）；分支未 push。
+- **Git 状态**：G2~Q 与收尾改动已提交（`b36798c`、`a09d8b6`、`a634c2c`）；分支未 push。
 - **Git 红线**：`my-bagisto-store2 备份/` 会让 git 认为 2739 个已跟踪文件被删除。禁止 `git add -A`，只按路径 `git add`。
