@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-20T22:15:26+08:00",
+  "source": "192.168.3.96",
+  "base_url": "http://192.168.3.97:8010",
+  "route": {"interface": "WLAN", "index": 17, "prefix": "192.168.3.0/24", "next_hop": "0.0.0.0"},
+  "tcp_8010": true,
+  "ping": false,
+  "proxy_bypass": "curl.exe --noproxy *",
+  "checks": [
+    {"path": "/up", "status": 200, "database_identity_in_response": false},
+    {"path": "/api/events?per_page=1", "status": 200, "content_type": "application/json", "data": [], "total": 0},
+    {"path": "/api/scenes", "status": 200, "content_type": "application/json", "data": []},
+    {"path": "/api/scene-workflow/capabilities", "status": 404, "code": "NOT_FOUND"}
+  ],
+  "database_identity_verified": false,
+  "database_identity_reported_via_user": {"app_env":"testing","database":"summon_mecha_step10_test","mysql_host":"127.0.0.1","mysql_port":3306,"mysql_version":"5.7.26"},
+  "remote_head_reported_via_user": "4afe73c8bf7c8f4eb1640a54e1e32599078c275a",
+  "expected_test_database_from_user": "summon_mecha_step10_test",
+  "business_fixture_writes": false,
+  "mysql_port_access_attempted": false,
+  "network_settings_changed": false,
+  "ssh_available_from_handoff": false
+}

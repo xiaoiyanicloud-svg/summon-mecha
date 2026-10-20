@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-10-20T22:32:55+08:00",
+  "http_server_date_range_utc": ["2026-10-20T14:32:53Z", "2026-10-20T14:32:55Z"],
+  "source": "192.168.3.96",
+  "base_url": "http://192.168.3.97:8010",
+  "interface": "WLAN",
+  "tcp_command": "Test-NetConnection 192.168.3.97 -Port 8010 -WarningAction SilentlyContinue",
+  "tcp_test_succeeded": true,
+  "tcp_command_exit_code": 0,
+  "http_command_template": "curl.exe --noproxy '*' --silent --show-error --include --connect-timeout 5 --max-time 12 -H 'Accept: application/json' http://192.168.3.97:8010<path>",
+  "checks": [
+    {"method": "GET", "path": "/up", "status": 200, "curl_exit_code": 0, "content_type": "text/html; charset=UTF-8", "body_summary": "Application up"},
+    {"method": "GET", "path": "/api/events?per_page=1", "status": 200, "curl_exit_code": 0, "content_type": "application/json", "body": {"data": [], "meta": {"mode": "page", "current_page": 1, "last_page": 1, "per_page": 1, "total": 0, "filters": []}}},
+    {"method": "GET", "path": "/api/scenes", "status": 200, "curl_exit_code": 0, "content_type": "application/json", "body": {"data": []}},
+    {"method": "GET", "path": "/api/scene-workflow/capabilities", "status": 404, "curl_exit_code": 0, "content_type": "application/json", "body": {"code": "NOT_FOUND", "message": "请求的资源不存在。"}}
+  ],
+  "scope": "read_only_network_and_route_smoke",
+  "database_identity_verified": false,
+  "remote_git_head_verified": false,
+  "business_fixture_writes": false,
+  "database_commands_executed": false,
+  "network_settings_changed": false,
+  "remote_ai_notified_directly": false,
+  "remote_ai_read_receipt_received": false
+}

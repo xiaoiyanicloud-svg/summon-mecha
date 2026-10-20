@@ -51,6 +51,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies('*');
     })
     ->withSchedule(function (Schedule $schedule) {
+        $schedule->command('scenes:operations --consume=100 --sweep')
+            ->everyMinute()->withoutOverlapping()
+            ->when(fn () => (bool) config('scenes.operations_enabled', false));
         // Inspection/ledger scanning is separately opt-in. Execution additionally
         // requires the hard safety gate in skill_delivery.retry.safety_verified.
         $schedule->command('skills:scan-delivery-retries')

@@ -592,6 +592,12 @@ export default {
     trackAiEvent('ai_page_view', { logged_in: this.loggedIn });
     flushAiEvents();
     if (this.loggedIn) this.syncWithServer();
+    const pendingQuery = uni.getStorageSync('aiPendingQuery');
+    if (pendingQuery) {
+      uni.removeStorageSync('aiPendingQuery');
+      this.inputValue = String(pendingQuery);
+    }
+
   },
   // ⚠ 本页是 tabBar 页(pages.json 里 custom:true)：切 tab **只触发 onHide,不触发 onUnload**。
   //   不在这里停播,切走之后朗读会一直在后台响 —— 最容易漏、用户又立刻能察觉的一条。

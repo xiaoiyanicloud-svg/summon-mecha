@@ -275,6 +275,8 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('{id}', 'show')->name('shop.api.scenes.show');
     });
 
+    require __DIR__.'/scene-workflow.php';
+
     // 目录聚合:1 个请求返回租用/购买/配件/技能四类商品 + 场景(机器页性能优化,替代 6 连发)
     Route::controller(CatalogController::class)->prefix('tob-catalog')->group(function () {
         Route::get('', 'index')->name('shop.api.tob-catalog.index');
@@ -326,7 +328,7 @@ Route::group(['prefix' => 'api'], function () {
 
     // TOB 统一下单:租/买/配件/技能等直接创建真实后台订单(不依赖购物车/配送/支付配置)
     // api.customer 中间件:带 token 则绑定登录用户(customer_id 正确→前端订单页能按用户拉到);游客也放行
-    Route::controller(TobOrderController::class)->prefix('tob-order')->middleware(['api.customer'])->group(function () {
+    Route::controller(TobOrderController::class)->prefix('tob-order')->middleware(['api.customer', \Webkul\Shop\Http\Middleware\SceneWorkflowSafety::class])->group(function () {
         // X3:公开写入口,挂 write 档(带 token 按 customer 计,游客按 IP 计,30/分)
         Route::post('', 'store')->middleware('throttle:write')->name('shop.api.tob-order.store');
     });

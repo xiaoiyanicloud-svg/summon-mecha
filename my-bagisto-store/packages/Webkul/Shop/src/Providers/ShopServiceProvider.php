@@ -74,6 +74,8 @@ class ShopServiceProvider extends ServiceProvider
                 \Webkul\Shop\Console\Commands\EcosystemContractCheck::class,
                 // Q-05 存量数据 preflight（只读）
                 \Webkul\Shop\Console\Commands\EcosystemDataPreflight::class,
+                \Webkul\Shop\Console\Commands\SceneOperations::class,
+
             ]);
         }
     }

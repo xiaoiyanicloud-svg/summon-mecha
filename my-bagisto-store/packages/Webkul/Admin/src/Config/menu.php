@@ -114,6 +114,12 @@ return [
         'sort'       => 3,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.scene-workflow',
+        'name'       => '场景服务工作台',
+        'route'      => 'admin.catalog.scene-workflow.index',
+        'sort'       => 3,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.events',
         'name'       => '赛事活动',
         'route'      => 'admin.catalog.events.index',

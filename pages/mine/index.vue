@@ -77,6 +77,7 @@
 					<text class="module-title">常用功能</text>
 				</view>
 				<view class="function-grid">
+<view class="func-item" @click="goSceneRequests"><text class="func-icon">📑</text><text class="func-label">服务需求</text></view>
 					<view class="func-item" @click="goAddress">
 						<text class="func-icon">📍</text>
 						<text class="func-label">我的地址</text>
@@ -968,6 +969,7 @@
 				this.loadPartnerFormCache();
 			},
 			goCustomerService() { uni.navigateTo({ url: '/pages/mine/tickets' }); },
+            goSceneRequests() { uni.navigateTo({ url: '/pages/scene/requests' }); },
 			// 事故上报:技能在真实机器人上物理执行,出事需要可追溯的上报链(计划 §4.19)
 			goIncidentReport() { uni.navigateTo({ url: '/pages/mine/incidents' }); },
 			goSettings() { this.currentPage = 'settings'; },

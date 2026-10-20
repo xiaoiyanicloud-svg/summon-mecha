@@ -1,0 +1,21 @@
+{
+  "compiled_sfc": [
+    "pages/home/index.vue",
+    "pages/robot/index.vue",
+    "pages/robot/fangan.vue",
+    "pages/home/rmfangan.vue",
+    "pages/order/checkout.vue",
+    "pages/ai/index.vue",
+    "components/StateView.vue"
+  ],
+  "browser": "Chromium headless / Vue 3.5.13",
+  "scope": "真实 Vue 组件 + 隔离假接口；不是 uni-app 完整构建或实际后端联调",
+  "checks": [
+    "正常目录",
+    "场景 ID 进入结算",
+    "定制空内容说明",
+    "错误态无商品",
+    "无配置空态"
+  ],
+  "errors": []
+}

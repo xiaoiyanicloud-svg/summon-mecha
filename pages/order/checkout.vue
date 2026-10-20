@@ -299,6 +299,7 @@ export default {
       sku: q.sku ? decodeURIComponent(q.sku) : '',
       image: q.image ? decodeURIComponent(q.image) : '',
       from: q.from || '',
+      sceneId: q.sceneId || '',
     }
     if (q.qty) this.qty = Number(q.qty) || 1
 
@@ -593,6 +594,7 @@ export default {
           type: ['rent', 'plan', 'custom', 'skill', 'accessory'].includes(this.product.type) ? this.product.type : 'buy',
           // 下单来源(场景租用 from=scene → 后端归类为「方案」) + 场景名(写入条目名,后台可辨认)
           from: this.product.from || '',
+          scene_id: this.product.sceneId || null,
           scene: this.product.scene || '',
           phone: v.phone,
           city: v.city,
@@ -621,11 +623,12 @@ export default {
           delete payload.qty
         }
         const res = await tobOrderApi.create(payload)
+        if (!res || res.success !== true || !res.order_id) throw new Error((res && res.message) || '服务端尚未确认创建订单，请重试')
         this.syncAddressToMine()
         uni.hideLoading()
         this.submitting = false
         // 游客订单由 guest-orders 通用接口列表展示(真实数据);不再本地记一条,避免与真实单重复
-        // (本地意向单仅保留在下单异常时由 submitIntentWithError 兜底)
+        // 请求失败时不创建本地意向单。
         uni.setStorageSync('orderNeedRefresh', Date.now())
 
         // 技能下单成功 ≠ 技能可用:后端已自动开通授权,但用户还要选一台设备去启用、
@@ -649,8 +652,9 @@ export default {
         uni.showToast({ title: (res && res.success) ? '下单成功' : '订单已提交', icon: 'success' })
         setTimeout(() => { uni.switchTab({ url: '/pages/order/index' }) }, 800)
       } catch (e) {
-        // 后端下单异常 → 如实转为意向单,避免死路弹窗(意向单会出现在「订单」页)
-        this.submitIntentWithError((e && e.message) ? `下单遇到问题：${e.message}` : '后端未能创建订单，已为您保存为意向单')
+        // 未获服务端确认时保留当前表单，不能制造本地成功订单。
+        uni.hideLoading(); this.submitting = false
+        uni.showToast({ title: (e && e.message) || '订单未能提交，请重试', icon: 'none' })
       }
     },
 
@@ -708,103 +712,6 @@ export default {
         if (p && p.method) return p.method
       }
       return null
-    },
-
-    // 意向订单：本地保存 + 成功提示（后端未配置商品时的兜底）
-    submitIntentWithError(message) {
-      // 记录失败原因,由 submitIntent 如实提示(而不是假装"下单成功")
-      this._intentFallbackMsg = message || '后端下单未完成，已转为意向单'
-      this.submitIntent()
-    },
-
-    submitIntent() {
-      const fallbackMsg = this._intentFallbackMsg
-      this._intentFallbackMsg = ''
-      const list = uni.getStorageSync('intentOrders') || []
-      list.unshift({
-        id: Date.now(),
-        productId: this.product.id,
-        name: this.product.name,
-        price: this.product.price,
-        qty: this.qty,
-        icon: this.product.icon || '🤖',
-        bg: this.product.bg || '#F0F4FA',
-        scene: this.product.scene || '',
-        productType: this.product.productType || '',
-        rentPeriod: this.product.rentPeriod || '',
-        startDate: this.product.startDate || '',
-        endDate: this.product.endDate || '',
-        name2: this.form.name,
-        phone: this.form.phone,
-        city: this.form.city,
-        address: this.form.address,
-        email: this.form.email,
-        type: this.product.type,
-        time: new Date().toLocaleString('zh-CN', { hour12: false }),
-      })
-      uni.setStorageSync('intentOrders', list)
-      // 同步收货地址到「我的-地址管理」
-      this.syncAddressToMine()
-      uni.hideLoading()
-      this.submitting = false
-      // 与订单页数据互联：订单页 onShow 会读取 intentOrders 展示本次下单
-      uni.setStorageSync('orderNeedRefresh', Date.now())
-      // 如实提示:租用本就是意向;购买若走此路径说明后端下单失败
-      let msg, icon
-      if (this.product.type === 'rent') {
-        msg = '租用意向已提交，客服将尽快联系您'
-        icon = 'success'
-      } else {
-        msg = fallbackMsg || '订单已保存为意向单（未生成正式订单）'
-        icon = 'none'
-      }
-      uni.showToast({ title: msg, icon })
-      setTimeout(() => {
-        uni.switchTab({ url: '/pages/order/index' })
-      }, 800)
-    },
-
-    // 游客下单后记一条本地订单,保证「订单」页可看到(真实订单已落后台)
-    recordOrderLocally() {
-      const list = uni.getStorageSync('intentOrders') || []
-      // 多机合单(场景租用):URL 只传 items,主商品(this.product)是占位;用 items 组装机型/台数/实付
-      const isMulti = Array.isArray(this.multiItems) && this.multiItems.length > 0
-      let name = this.product.name
-      let qty = this.qty
-      let price = parseFloat(String(this.product.price).replace(/,/g, '')) || 0
-      let productId = this.product.id || 0
-      let rentPeriod = this.product.rentPeriod || ''
-      if (isMulti) {
-        const names = this.multiItems.map(it => it.name).filter(Boolean)
-        name = names.join('、') || '机器人'
-        qty = this.multiItems.length
-        price = this.multiItems.reduce((s, it) => s + (parseFloat(String(it.price).replace(/,/g, '')) || 0), 0) * (this.rentDays || 1)
-        productId = (this.multiItems[0] && (this.multiItems[0].product_id || this.multiItems[0].bagistoId || this.multiItems[0].id)) || 0
-        rentPeriod = this.rentDays ? this.rentDays + '天' : ''
-      }
-      list.unshift({
-        id: Date.now(),
-        productId,
-        name,
-        price: String(Math.round(price * 100) / 100),
-        qty,
-        icon: this.product.icon || '🤖',
-        bg: this.product.bg || '#F0F4FA',
-        scene: this.product.scene || '',
-        productType: this.product.productType || '',
-        rentPeriod,
-        startDate: this.product.startDate || '',
-        endDate: this.product.endDate || '',
-        name2: this.form.name,
-        phone: this.form.phone,
-        city: this.form.city,
-        address: this.form.address,
-        email: this.form.email,
-        type: this.product.type,
-        time: new Date().toLocaleString('zh-CN', { hour12: false }),
-        synced: true,
-      })
-      uni.setStorageSync('intentOrders', list)
     },
 
     // ================ 工具 ================

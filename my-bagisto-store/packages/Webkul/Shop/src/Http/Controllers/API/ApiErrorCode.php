@@ -623,6 +623,10 @@ final class ApiErrorCode
     public const COMPETITION_SHOWCASE_STATE = 'COMPETITION_SHOWCASE_STATE';
     /** 队长尚未授权当前作品版本公开展示。 */
     public const COMPETITION_CONSENT_REQUIRED = 'COMPETITION_CONSENT_REQUIRED';
+    public const SCENE_UNAVAILABLE = 'SCENE_UNAVAILABLE';
+    public const SCENE_REQUIRED = 'SCENE_REQUIRED';
+    public const SCENE_PRODUCT_UNAVAILABLE = 'SCENE_PRODUCT_UNAVAILABLE';
+
 
     /**
      * 全部已登记的码。

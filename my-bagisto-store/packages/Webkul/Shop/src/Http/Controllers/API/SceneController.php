@@ -4,6 +4,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Webkul\Shop\Models\Scene;
+use Webkul\Shop\Services\Scenes\SceneCatalogService;
 
 /**
  * 场景(Scene)接口 —— 供 uni-app 机器页「企业商用(TOB)场景详情」展示后台维护的真实图 + 描述。
@@ -11,7 +12,7 @@ use Webkul\Shop\Models\Scene;
  * 数据来自后端 scenes 表(后台「场景管理」维护):场景名、场景图(banner)、场景说明(description)。
  * 接口保持返回 matched/name/banner/description 结构,便于前端复用。
  *
- * 找不到该场景(如未 seed 或 id 超出 TOB 范围)时返回 matched=false 兜底,前端继续用本地数据,不报错。
+ * 未启用或不存在的场景统一返回 404，不允许回退为可交易的本地示例。
  */
 class SceneController extends APIController
 {
@@ -21,26 +22,22 @@ class SceneController extends APIController
      */
     public function index(): JsonResponse
     {
-        $query = Scene::where('status', 1)->orderBy('sort', 'desc')->orderBy('id', 'asc');
+        $query = Scene::enabled()->orderBy('sort', 'desc')->orderBy('id', 'asc');
 
-        if ($category = request()->query('category')) {
-            $query->where('category', $category);
+        $category = request()->query('category');
+        if ($category !== null && $category !== '' && $category !== 'all') {
+            if (! is_string($category) || ! array_key_exists($category, Scene::CATEGORIES)) {
+                return $this->fail(ApiErrorCode::VALIDATION_ERROR, '场景分类无效', 422);
+            }
+            if (config('scenes.publication_v2')) {
+                $query->whereExists(fn ($q) => $q->selectRaw('1')->from('scene_revisions as category_revision')
+                    ->whereColumn('category_revision.id', 'scenes.active_revision_id')->where('category_revision.content->category', $category));
+            } else {
+                $query->where('category', $category);
+            }
         }
 
-        $scenes = $query->get()->map(function ($scene) {
-            return [
-                'id'          => $scene->id,
-                'name'        => $scene->name,
-                'category'    => $scene->category,
-                'description' => $scene->description,
-                'banner'      => $scene->banner_url,
-                'sort'        => $scene->sort,
-                'icon'        => $scene->icon,
-                'bg_color'    => $scene->bg_color,
-                'is_hot'      => (bool) $scene->is_hot,
-                'consult_count' => $scene->consult_count,
-            ];
-        });
+        $scenes = $query->get()->map(fn ($scene) => app(SceneCatalogService::class)->summary($scene));
 
         return response()->json(['data' => $scenes]);
     }
@@ -48,30 +45,23 @@ class SceneController extends APIController
     /**
      * 根据 sceneId 返回后台维护的场景数据(图 + 描述)。
      */
-    public function show(int $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
-        $scene = Scene::find($id);
-
-        if (! $scene) {
-            return response()->json([
-                'id'          => $id,
-                'name'        => '企业商用',
-                'banner'      => null,
-                'description' => '',
-                'matched'     => false,
-            ]);
+        if (! preg_match('/^[1-9][0-9]{0,9}$/D', $id) || (float) $id > 4294967295) {
+            return $this->fail(ApiErrorCode::SCENE_UNAVAILABLE, '场景不存在或已停用', 404);
         }
 
-        return response()->json([
-            'id'          => $id,
-            'name'        => $scene->name,
-            'banner'      => $scene->banner_url,
-            'description' => $scene->description,
-            'matched'     => true,
-            'sort'        => $scene->sort,
-            'is_hot'      => (bool) $scene->is_hot,
-            // 完整方案内容（后台「场景管理」配置；前端详情页直接用此 scheme 覆盖本地兜底）
-            'scheme'      => $scene->scheme,
-        ]);
+        $scene = Scene::enabled()->find($id);
+        if (! $scene) {
+            return $this->fail(ApiErrorCode::SCENE_UNAVAILABLE, '场景不存在或已停用', 404);
+        }
+
+        $data = app(SceneCatalogService::class)->detail($scene, (int) core()->getCurrentChannel()->id);
+        $data['products'] = \Webkul\Product\Models\Product::query()
+            ->whereIn('id', $data['scheme']['robots'])->get()
+            ->map(fn ($product) => (new \Webkul\Shop\Http\Resources\ProductResource($product))->jsonSerialize()
+                + ['type' => $product->type])->values()->all();
+
+        return response()->json($data);
     }
 }

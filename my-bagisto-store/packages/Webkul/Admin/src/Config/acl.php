@@ -517,6 +517,39 @@ return [
         'route' => 'admin.catalog.ecosystem.ops.outbox.retry',
         'sort'  => 2,
     ], [
+        'key' => 'catalog.scene-workflow', 'name' => '场景服务工作台', 'route' => 'admin.catalog.scene-workflow.index', 'sort' => 4,
+    ], [
+        'key' => 'catalog.scene-workflow.contact', 'name' => '读取联系方式', 'route' => 'admin.catalog.scene-workflow.contact', 'sort' => 2,
+    ], [
+        'key' => 'catalog.scene-workflow.requests', 'name' => '受理与分派', 'route' => 'admin.catalog.scene-workflow.request', 'sort' => 3,
+    ], [
+        'key' => 'catalog.scene-workflow.assess', 'name' => '现场与能力评估', 'route' => 'admin.catalog.scene-workflow.assess', 'sort' => 4,
+    ], [
+        'key' => 'catalog.scene-workflow.quote', 'name' => '编制与发送报价', 'route' => 'admin.catalog.scene-workflow.quote', 'sort' => 5,
+    ], [
+        'key' => 'catalog.scene-workflow.approve', 'name' => '批准报价', 'route' => 'admin.catalog.scene-workflow.approvals', 'sort' => 6,
+    ], [
+        'key' => 'catalog.scene-workflow.revision_write', 'name' => '编制场景版本与送审', 'route' => 'admin.catalog.scene-workflow.revisions', 'sort' => 7,
+    ], [
+        'key' => 'catalog.scene-workflow.revision_review', 'name' => '独立审核场景版本', 'route' => 'admin.catalog.scene-workflow.revision-approvals', 'sort' => 7,
+    ], [
+        'key' => 'catalog.scene-workflow.publish', 'name' => '发布与撤下场景', 'route' => 'admin.catalog.scene-workflow.publications', 'sort' => 7,
+    ], [
+        'key' => 'catalog.scene-workflow.supply', 'name' => '价目与供给核验', 'route' => 'admin.catalog.scene-workflow.supply', 'sort' => 8,
+    ], [
+        'key' => 'catalog.scene-workflow.reserve', 'name' => '资源预留与暂停', 'route' => 'admin.catalog.scene-workflow.hold', 'sort' => 9,
+    ], [
+        'key' => 'catalog.scene-workflow.deliver', 'name' => '交付任务记录', 'route' => 'admin.catalog.scene-workflow.task', 'sort' => 10,
+    ], [
+        'key' => 'catalog.scene-workflow.operate', 'name' => '运营与事件恢复', 'route' => 'admin.catalog.scene-workflow.replay', 'sort' => 11,
+    ], [
+        'key' => 'catalog.scene-workflow.finance', 'name' => '记录线下款项凭证', 'route' => 'admin.catalog.scene-workflow.commercial', 'sort' => 12,
+    ], [
+        'key' => 'catalog.scene-workflow.finance_review', 'name' => '独立复核线下款项', 'route' => 'admin.catalog.scene-workflow.commercial-review', 'sort' => 13,
+    ], [
+        'key' => 'catalog.scene-workflow.support', 'name' => '处理服务售后', 'route' => 'admin.catalog.scene-workflow.ticket', 'sort' => 14,
+
+    ], [
         // 技能管理:技能包的版本 / 交付物 / 安装指引
         'key'   => 'catalog.skills',
         'name'  => '技能管理',

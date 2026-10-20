@@ -1,0 +1,64 @@
+{
+  "checked_at": "2026-10-20T13:10:40.304Z",
+  "stage": "SC0 首批代码及隔离验证；整体部分完成",
+  "frontend": {
+    "pass": 23,
+    "fail": 0
+  },
+  "backend": {
+    "groups": 11,
+    "failed": 0,
+    "database": "SQLite :memory:，不加载业务配置"
+  },
+  "vue": {
+    "compiled": 7,
+    "browser_checks": 5,
+    "errors": []
+  },
+  "php_lint": {
+    "files": 16,
+    "failed": 0
+  },
+  "diff_check": true,
+  "broken_document_links": [],
+  "untested": [
+    "另一台机器的真实业务库、存量引用和完整 Bagisto 请求链",
+    "Admin 登录/角色/Blade/DataGrid 实际 HTTP",
+    "MySQL 并发与订单仓储事务故障",
+    "HBuilderX H5 和微信小程序完整构建",
+    "现场交付和真机适配"
+  ],
+  "new_business_migrations": 0,
+  "environment_configuration_changed": false,
+  "production_database_accessed": false,
+  "source_sha256": {
+    "components/jiqi/changjing-data.js": "8a3fee47a61e3dbdbb05fb9170a4cf77aa53d5199fc65ad1005a4233cc45517c",
+    "my-bagisto-store/database/seeders/SceneSeeder.php": "be1e4fb4ba59d440e71ff02c9a632d74e26e9877895981233760d16de2d29103",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneController.php": "15f928671712a661438dae6707a1ab2f9b55547758ff221e57b012ba5244fa29",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Requests/SceneRequest.php": "69ea1ce79fb1fd16593e4a16f6f7650ab80d4d3f0830bcb18e99d873a9edf93d",
+    "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scenes/create.blade.php": "b37c21e965ad685f4d6c62538a2dcf9f74fef31f908d94111ffe1f98b6ae26b2",
+    "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scenes/edit.blade.php": "a16d68e9b7ca329143408123a235276bb593dbad9d04d425fb1402d844558bec",
+    "my-bagisto-store/packages/Webkul/Admin/src/Routes/catalog-routes.php": "e4e844c20f58ecb754c90a45419fc1ace78b67d6e5f2747810077dc8f097a78b",
+    "my-bagisto-store/packages/Webkul/Sales/src/Repositories/OrderRepository.php": "1193ed07aac979ebb57af085abd4a060002c8bb18d23be18625446deca189be8",
+    "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/ApiErrorCode.php": "969d1583363c57a7f2cd0cb18adf2ec2d2b5ad595973ada44b386d19d5c16558",
+    "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneController.php": "f9e0b3a4d477d28aa3d37922cb9d052a90490f751fd69c5d9c56aeadb1297d4b",
+    "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SummonController.php": "2caebf4f07b9732d0828e93548a2443016e4f5179befcb233d73e7b0ed0d2912",
+    "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php": "c4eb5110fe2290e987c97d957175c00386054eca617f2399b9c37b4b135567a2",
+    "my-bagisto-store/packages/Webkul/Shop/src/Models/Scene.php": "4b613c96f3abf335df3c3d804bf7a512d098c66bfe005b1230bf47ae64f0f9d5",
+    "pages/ai/index.vue": "d314a05dabb8b93c82a9a4b65dfab298d5550fc0c950bf7f3b3a288ddab52968",
+    "pages/home/index.vue": "1b21c79fc2b1211f7cce135ece3e50e51d33757a4f0430a084ce1bac147d0905",
+    "pages/home/rmfangan.vue": "6cd46c96eaf33e8791bc7700cdaa91f2d81c23bee6a65e0609c21a0615156141",
+    "pages/order/checkout.vue": "aab3f012fe6801f51e82f0cbee31d4e6871efca20620e2796aa087a3211e1ea3",
+    "pages/robot/fangan.vue": "94a6abcc7e218dfe38d7512247c44de3cd090b74e3444e0b08bef9e804e2b3ab",
+    "pages/robot/index.vue": "e813b90730763a84ce045f50ecd9ee636dcd875e2389d81fd55ba85f3d2eb04f",
+    "utils/api.js": "5a785b98ef948e807fdfe645e8bf5bf8479bb076403010246d081b2aed27f566",
+    "utils/scene-catalog.js": "79fab25db8913248681fbf40ac7206d41e70599d6d1a060e88abcb53d6d2de92",
+    "tools/tests/scene-catalog.test.mjs": "de6ac2e6535d865050d57e19bb700406d47d803e55686e1eafce10b5f7552d8e",
+    "tools/tests/scene-backend.php": "969c316dd245009829570fadf03bb8fbfe2f74eb62619e4a46232b96562e87e7",
+    "tools/tests/scene-ui-check.mjs": "e4b89897221e9ea3cd58e9d83c7f879fe75eceab298d16d304c9efd398480909",
+    "tools/tests/scene-http-readonly.mjs": "cb2b3a0f0494614710f61461ab2f948865e4985e49d362b5b358a6bd1dd4ae88",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneCatalogService.php": "3ffa1ddeb9e8c2109b1c559cfa45608167317c3ac2dc52723a6c3b83f08e6be5",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOrderGuard.php": "cf2061c11ff59e16bf9c0f87c27b15ca7d33cb3b15bd78fadbc1a123f5345baa",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/AuthorizeSceneAction.php": "27df7ce55ad56bbb3a3c1b4591308b1681d5254be4b8380d73b15857ef99b682"
+  }
+}

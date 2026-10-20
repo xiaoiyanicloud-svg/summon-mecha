@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-10-20T12:34:47.480Z",
+  "scope": "源码及注入假接口的独立 VM 行为复现，不代表数据库、HTTP、浏览器或真机验收",
+  "side_effects": {
+    "database": false,
+    "network": false,
+    "user_storage": false,
+    "source_mutations": false
+  },
+  "node_version": "v18.20.8",
+  "source_sha256": {
+    "components/jiqi/changjing-data.js": "c9707dffe20f7f975ef860427bf5c594b32b6a9136933c727c240d4560a2b049",
+    "pages/robot/fangan.vue": "7ea8f61d8505f4189325b9a917366b566f57e4ebaf0c07b79f3cd4db615235ba",
+    "pages/home/index.vue": "fc995d484a73b8204f92cf13e87e57409b1e1df765d593804a7c046313994fc7",
+    "pages/robot/index.vue": "491bfc423ee1087f862c073c56a26c184503a27e8b9ee56671375ba0da38d129",
+    "pages/order/checkout.vue": "4ac50faf98cf0c5d53e3c9466077d775be1df59c67a80acba6e82d0ff94be63e",
+    "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneController.php": "e169b8af5371ee2e2b0b113afc79b3ae54e0573c2f385ca29007c8794b3828ec",
+    "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php": "3f5ddde5c3013fb56ba2d8a1b2c54f2cc9fd09282fc35884d341f74ef7a4a75a",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneController.php": "44021283f3bcb56dd9a146f76f6a4b049171595ba2d666f8bf7c0fc094ad9edf",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Requests/SceneRequest.php": "bb1b6c1087b5bce7be2a73afbae7b33a4e2e2c8d4703259b15f373fb7650098c",
+    "my-bagisto-store/packages/Webkul/User/src/Http/Middleware/Bouncer.php": "1c0312ee3207f5f8616b48b79cab6cd7ed179f4399c5b0850749b9741cdfef92",
+    "my-bagisto-store/packages/Webkul/Admin/src/Config/acl.php": "0ed70f5400d8b45508c28e254a008c292b64fadae0930f5de6897b055286b925",
+    "my-bagisto-store/packages/Webkul/Admin/src/Routes/catalog-routes.php": "9cd9a529aa69a041aeb8a721583f5fcde5dba8547ce7e7f77f4192d431719ffb",
+    "my-bagisto-store/database/seeders/SceneSeeder.php": "2403401283d3daa3b195d045baa2fb9d6910c4364e7627d5392ad53b96c5332c",
+    "my-bagisto-store/packages/Webkul/Sales/src/Repositories/OrderRepository.php": "307db9c0d31c6a22c3dda0753d88e0fe00d1adcc3bdaff526001b4699c4c01c9"
+  },
+  "checks": [
+    {
+      "id": "R01",
+      "description": "成功响应只有一个场景，未返回的本地卡片仍保留",
+      "defect_observed": true,
+      "details": {
+        "backend_count": 1,
+        "displayed_count": 28
+      },
+      "refs": [
+        {
+          "file": "components/jiqi/changjing-data.js",
+          "line": 75,
+          "anchor": "list.forEach"
+        }
+      ]
+    },
+    {
+      "id": "R02",
+      "description": "后端成功返回空数组，仍展示本地卡片",
+      "defect_observed": true,
+      "details": {
+        "backend_count": 0,
+        "displayed_count": 28
+      },
+      "refs": [
+        {
+          "file": "components/jiqi/changjing-data.js",
+          "line": 74,
+          "anchor": "!list.length"
+        }
+      ]
+    },
+    {
+      "id": "R03",
+      "description": "咨询数归零和清空图片不能覆盖旧值",
+      "defect_observed": true,
+      "details": {
+        "returned_count": 0,
+        "displayed_count": 37,
+        "cleared_banner_still_present": true
+      },
+      "refs": [
+        {
+          "file": "components/jiqi/changjing-data.js",
+          "line": 87,
+          "anchor": "if (s.consult_count || s.consultCount)"
+        },
+        {
+          "file": "components/jiqi/changjing-data.js",
+          "line": 81,
+          "anchor": "if (s.banner)"
+        }
+      ]
+    },
+    {
+      "id": "R04",
+      "description": "格式错误响应也进入五分钟成功缓存",
+      "defect_observed": true,
+      "details": {
+        "consecutive_load_calls": 2,
+        "backend_calls": 1
+      },
+      "refs": [
+        {
+          "file": "components/jiqi/changjing-data.js",
+          "line": 72,
+          "anchor": "_scenesLoadedAt = Date.now()"
+        }
+      ]
+    },
+    {
+      "id": "R05",
+      "description": "未配置机型时，适用机型回退为可操作的模拟商品",
+      "defect_observed": true,
+      "details": {
+        "mock_count": 8,
+        "configured_ids": []
+      },
+      "refs": [
+        {
+          "file": "pages/robot/fangan.vue",
+          "line": 262,
+          "anchor": "return this.allProducts"
+        }
+      ]
+    },
+    {
+      "id": "R06",
+      "description": "目录请求失败时，适用机型回退为可操作的模拟商品",
+      "defect_observed": true,
+      "details": {
+        "mock_count": 8,
+        "configured_ids": [
+          999
+        ]
+      },
+      "refs": [
+        {
+          "file": "pages/robot/fangan.vue",
+          "line": 262,
+          "anchor": "return this.allProducts"
+        }
+      ]
+    },
+    {
+      "id": "R07",
+      "description": "配置的机型全被 booking 过滤时，适用机型回退为可操作的模拟商品",
+      "defect_observed": true,
+      "details": {
+        "mock_count": 8,
+        "configured_ids": [
+          999
+        ]
+      },
+      "refs": [
+        {
+          "file": "pages/robot/fangan.vue",
+          "line": 262,
+          "anchor": "return this.allProducts"
+        }
+      ]
+    },
+    {
+      "id": "R08",
+      "description": "配置的商品已不在目录时，适用机型回退为可操作的模拟商品",
+      "defect_observed": true,
+      "details": {
+        "mock_count": 8,
+        "configured_ids": [
+          888
+        ]
+      },
+      "refs": [
+        {
+          "file": "pages/robot/fangan.vue",
+          "line": 262,
+          "anchor": "return this.allProducts"
+        }
+      ]
+    },
+    {
+      "id": "R09",
+      "description": "接口异常被静默捕获，本地卡片继续展示",
+      "defect_observed": true,
+      "details": {
+        "injected_failure": true,
+        "displayed_count": 28
+      },
+      "refs": [
+        {
+          "file": "components/jiqi/changjing-data.js",
+          "line": 105,
+          "anchor": "// 接口失败保持本地 mock,不打扰"
+        }
+      ]
+    }
+  ],
+  "reproduced_count": 9,
+  "static_findings": [
+    {
+      "id": "S01",
+      "description": "场景详情按主键读取，没有与列表一致的启用条件",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneController.php",
+          "line": 53,
+          "anchor": "$scene = Scene::find($id);"
+        }
+      ]
+    },
+    {
+      "id": "S02",
+      "description": "非技能单允许正数客户端价格覆盖目录价",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php",
+          "line": 173,
+          "anchor": ": $line['price'];"
+        }
+      ]
+    },
+    {
+      "id": "S03",
+      "description": "定制线索依赖 LEAD-CUSTOM 商品",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php",
+          "line": 137,
+          "anchor": "findByField('sku', 'LEAD-CUSTOM')"
+        }
+      ]
+    },
+    {
+      "id": "S04",
+      "description": "定制需求截断拼入商品名",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php",
+          "line": 199,
+          "anchor": "mb_substr((string) $request->input('demand'), 0, 80)"
+        }
+      ]
+    },
+    {
+      "id": "S05",
+      "description": "完整 TOB 请求进入 debug 日志",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php",
+          "line": 48,
+          "anchor": "Log::debug('TOB_INPUT', $request->all())"
+        }
+      ]
+    },
+    {
+      "id": "S06",
+      "description": "前端自定义方案只存本机",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "pages/robot/index.vue",
+          "line": 1028,
+          "anchor": "uni.setStorageSync('customPlans', list)"
+        }
+      ]
+    },
+    {
+      "id": "S07",
+      "description": "客服入口仅 toast",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "pages/robot/fangan.vue",
+          "line": 394,
+          "anchor": "title: '客服功能'"
+        }
+      ]
+    },
+    {
+      "id": "S08",
+      "description": "案例入口仅 toast",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "pages/robot/fangan.vue",
+          "line": 413,
+          "anchor": "查看案例："
+        }
+      ]
+    },
+    {
+      "id": "S09",
+      "description": "企微二维码为占位",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "pages/robot/fangan.vue",
+          "line": 182,
+          "anchor": "企微咨询码（占位）"
+        }
+      ]
+    },
+    {
+      "id": "S10",
+      "description": "后台可直接改咨询人数",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneController.php",
+          "line": 224,
+          "anchor": "$scene->consult_count = (int) $request->input('consult_count', 0)"
+        }
+      ]
+    },
+    {
+      "id": "S11",
+      "description": "后台新建场景固定企业商用分类",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneController.php",
+          "line": 64,
+          "anchor": "'category'      => 'enterprise'"
+        }
+      ]
+    },
+    {
+      "id": "S12",
+      "description": "无匹配 ACL 路由时 Bouncer 没有逐动作拒绝分支",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/User/src/Http/Middleware/Bouncer.php",
+          "line": 83,
+          "anchor": "if (isset($roles[Route::currentRouteName()]))"
+        }
+      ]
+    },
+    {
+      "id": "S13",
+      "description": "订单仓储在回滚及递归重试之外还有 finally commit",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/packages/Webkul/Sales/src/Repositories/OrderRepository.php",
+          "line": 102,
+          "anchor": "DB::commit();"
+        }
+      ]
+    },
+    {
+      "id": "S14",
+      "description": "重复执行 SceneSeeder 重置图片和启用状态",
+      "evidence_type": "source_only",
+      "refs": [
+        {
+          "file": "my-bagisto-store/database/seeders/SceneSeeder.php",
+          "line": 51,
+          "anchor": "$scene->banner_path = null;"
+        }
+      ]
+    }
+  ]
+}
