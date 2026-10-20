@@ -71,3 +71,11 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 ## 2026-10-21 schema 路由绑定修复
 
 `GET /api/scene-workflow/schemas/{category}` 的 404 根因是 Bagisto 全局 `category` 路由模型绑定：`SubstituteBindings` 会把 `business_event` 当作 `Webkul\Category\Models\Category` 查询。现已把路由参数改名为 `{sceneCategory}`、控制器参数同步改名，公开 URL 不变。`8010` 实测 `GET /api/scene-workflow/schemas/business_event` 返回 `200 application/json`，控制器运行态测试新增参数名回归检查。
+## 2026-10-21 专用场景测试库与 401 联调复核
+
+- `8010` 当前运行环境为 `APP_ENV=testing`、`DB_DATABASE=summon_mecha_scenes_test`。
+- 专用库已完成 `2026_10_20_100001` 至 `100004` 场景迁移，并完成 Bagisto 安装基础 seed；`qa/scenes/preflight.php` 返回 `ok=true`，0 pending，表/列/唯一索引/路由齐全。
+- `GET /api/scene-requests` 无凭证返回 `401 SCENE_ACCESS_REQUIRED`。
+- `GET /api/scene-requests` 带格式合法但未签发的 64 位凭证返回 `401 SCENE_ACCESS_INVALID`，不再返回 500。
+- 之前的 500 根因是 8010 曾连接未包含 `scene_guest_capabilities` 等场景表的旧测试库，不是把缺表异常吞成 401；专用库切换后已恢复正确语义。
+- 六个场景开关仍全部关闭；`POST /api/scene-workflow/access` 当前返回 `503 SCENE_WRITES_DISABLED`，完整业务写入仍需按场景逐项开启并准备夹具。
