@@ -1,0 +1,311 @@
+{
+  "sources": [
+    {
+      "path": "components/SceneAttachments.vue",
+      "sha256_worktree_bytes": "b861e096b3605783731391dd401bdedf732f5760f65723e32face7f96b1aba81"
+    },
+    {
+      "path": "components/SceneFactsForm.vue",
+      "sha256_worktree_bytes": "6294e46a51dabc00d85b05e644b07e46e5357eb453cfae69ccb7a652688cd767"
+    },
+    {
+      "path": "docs/scenes/Repository-Handoff.md",
+      "sha256_worktree_bytes": "0f27ba960334b876e721c9781b4a46bf8432e4817e1e59030f95bed9bd8dcd97"
+    },
+    {
+      "path": "docs/scenes/SC1-SC2-Closeout-20261021.md",
+      "sha256_worktree_bytes": "b7362bac234d161f25544ad340d3e28a5df70c55f8bf2155019b0e63248d5a61"
+    },
+    {
+      "path": "docs/scenes/Scene-Backlog-Acceptance.md",
+      "sha256_worktree_bytes": "d1ee4ff3e0ca9a2b1b4f153e10c54c3a6ff3999df1a9b59dce515e1ba3a2fe9a"
+    },
+    {
+      "path": "docs/scenes/Scene-Workflow-Contract-v1.md",
+      "sha256_worktree_bytes": "40beaf537d090f6853285040251e0157424cca53f6fa376c45dc739b3337e5c1"
+    },
+    {
+      "path": "docs/skill-changes-summary.md",
+      "sha256_worktree_bytes": "8cdb9c16f9c46f735b368b25001648d5bcc29bae8de33dcd1e77d67aab7232a1"
+    },
+    {
+      "path": "docs/skill-dev-step18.md",
+      "sha256_worktree_bytes": "85809f1e20e2d05862a46c08bd49a26517571ba66753c4bec9cc34ef9ed6db2b"
+    },
+    {
+      "path": "docs/skill-dev-steps.md",
+      "sha256_worktree_bytes": "eb790aa8ceba628b48739222207ff0d8e0417298dd7e01ace02d7a75e2889a28"
+    },
+    {
+      "path": "my-bagisto-store/config/scene_policy_drafts.php",
+      "sha256_worktree_bytes": "bd92dc517dc6a6be0342ff393553f86fe7f72d548c54d1c28e0dad2165903039"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Config/acl.php",
+      "sha256_worktree_bytes": "98a48d9aeb7a28f3e19defdc22bb1719436e369087c34fce5599dd5d95110233"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php",
+      "sha256_worktree_bytes": "6b973bfa64a6bbb0589fde0dd122e0cf818bfe7ea44de252f84d460d54df6be4"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/AuthorizeSceneWorkflow.php",
+      "sha256_worktree_bytes": "acf68745d880b506267ae6d397841ccf9809e5342a536d6f57053b23d6b9d3d8"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/assessment-proposal.blade.php",
+      "sha256_worktree_bytes": "30e6d62ee1d1773a88f202f98ba85d3100b7920d6cf4eeb30397f0b6fad10cca"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/attachment-preservation.blade.php",
+      "sha256_worktree_bytes": "5187573cdea2bb5c64d14d1e09c1e2805398138f51026bf0e8dd28f20a6f0c5b"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/configuration.blade.php",
+      "sha256_worktree_bytes": "bb79720e5fe96a486756415c8a8665253ab54f093692dace29ef5d2b582c0f5b"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/evidence.blade.php",
+      "sha256_worktree_bytes": "c8c72398123e2f0dd4f2370726562edff003a86256a40a9baf3a4bebfdbbc167"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/index.blade.php",
+      "sha256_worktree_bytes": "7f514b3f8d16cc2b4bc9fa66e00dafeaff88c8d5e4604d11dd88cbf937c824bd"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/repeater.blade.php",
+      "sha256_worktree_bytes": "312effe0d2ea7096cfbc54823885dacccb6211c08c6c4997eb86373ff69a14e2"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/revision.blade.php",
+      "sha256_worktree_bytes": "e65d3ff03d5cb22c5077bcfb40e526755efc26dac9f9147bffe553128809c255"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php",
+      "sha256_worktree_bytes": "1b5ee5f25ce7479a60176efc1ac4965b5659f024599212a03807133c4e9e4b5c"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php",
+      "sha256_worktree_bytes": "7c6bfce0c1d564916693b76c77414b6f9f9d43e6b67093539fc0889259fa5bee"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/SceneAttachmentRetention.php",
+      "sha256_worktree_bytes": "0f1e4646bcf6a1e919ecc4730769ebbd322b49ac7c58c56e30eb192cedbc8e69"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/SceneOperations.php",
+      "sha256_worktree_bytes": "6d9f9ac82d05c0f6a1faf170c1ad27886eb1f5dbb4fc2b8497bcf581e3174268"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_100006_complete_scene_intake_and_publication.php",
+      "sha256_worktree_bytes": "5c8b370555ed3dc1c0a02c3eb76bf88062d483320c8021cc9bcc34960e7b7a9e"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_100007_complete_scene_assessment_and_proposals.php",
+      "sha256_worktree_bytes": "065ac390855a3733147747267102c9437934747b3d603ae22aead88ec256ca83"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneWorkflowController.php",
+      "sha256_worktree_bytes": "45860b69bd732af865d4319c8cc764aabf2e7c270dfd7980e7037b6812f50952"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SummonAiController.php",
+      "sha256_worktree_bytes": "97775db1ec6fe166cd14a058f165a6c09182395605cc363848028c8fd738f0a2"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SummonController.php",
+      "sha256_worktree_bytes": "a26e7cc4032404f8eb5da3919b588ba64b79af16b03add5d271a60f2ca47dbc0"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Providers/ShopServiceProvider.php",
+      "sha256_worktree_bytes": "3569b95732840c78c9f267177f34f18a1ce67a25100657e4193b5319f0f8c605"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Routes/scene-workflow.php",
+      "sha256_worktree_bytes": "6428113039102dd1cb341e024a8b40f0a369fa9c71098a8c1b020f5257a0663d"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAcceptanceService.php",
+      "sha256_worktree_bytes": "f88e32a3c3f8be69d705e872f1302ec75bfa6df0db98d45aad942e9bd00bfb1b"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAiDraftService.php",
+      "sha256_worktree_bytes": "60754a796dc3069380a59d6502781015f1c3f63b49905181e47973e953a32f45"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAssessmentService.php",
+      "sha256_worktree_bytes": "1086b28d37d8bb51f90a55146920d126070c9cd479754403b9cd342f86310f3d"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAttachmentRetentionService.php",
+      "sha256_worktree_bytes": "2f206c9d48cf69ee43d1ff144d7cf1005233d41e1c7507c612815d5bdf247a8c"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAttachmentService.php",
+      "sha256_worktree_bytes": "67411c69dace10c4d227e18a2e9b8a2ce78e3fb0e982f70ed061d7e6d080c2e2"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAttachmentUploadService.php",
+      "sha256_worktree_bytes": "1b19a246ecb8b091970f3320081e977165e392e10ddb2d2b4029672f4de04ff5"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneBusinessCalendar.php",
+      "sha256_worktree_bytes": "8122ea9060d4aaba84dd2f1e9d3aad65f8ae97466a4f5e34af058263e6100c17"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneCatalogService.php",
+      "sha256_worktree_bytes": "dc1b2cec6bd1ac5e68b08afad99a258fc9737c43e5affa5cd866d2d336d74d4e"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneContentEvidenceService.php",
+      "sha256_worktree_bytes": "1aa3562fdaf572ab7b139897326ecee07e37834a9a1898d5415e534761a84571"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneFieldRegistry.php",
+      "sha256_worktree_bytes": "46ffae5ab43caf9be4582183ac913b75c1774e6cfea467b76bb01605b759162f"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneIntakeClockService.php",
+      "sha256_worktree_bytes": "5124586098450589e23ee922eda4281961f92b18b42feff64b47829456a5e299"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php",
+      "sha256_worktree_bytes": "f34cbabdb7cc75d6ab6314ca1b3e65cc89f8cad72331a9c960fe1c9fac704328"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/ScenePolicyService.php",
+      "sha256_worktree_bytes": "e08b973f851797ab0608d52b54327ab639ce141ebb4e0b262cb0dae03acf181b"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php",
+      "sha256_worktree_bytes": "beb1a8e8012da3cdaf4ded04c6546ad2e4511e23d1fb2c4755dfe726086a47e1"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php",
+      "sha256_worktree_bytes": "5825a84281890783053682d548fcdefa9820b0b0918d699418355d223e9f4968"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/ScenePublicationService.php",
+      "sha256_worktree_bytes": "e662036973d8cf7300bf7025e755b003ce360bf3c51d830f6e7e843824c78863"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneQualificationService.php",
+      "sha256_worktree_bytes": "e8e8e4460c27fce5d3b1f20d90bc0bbdf1d6dbe4af62b2ae6da5bf576cd233a1"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneRequestService.php",
+      "sha256_worktree_bytes": "4d9b33cc2ab83ae962ec71d6fff650776b8a5aa882f082467711a4a400138254"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSchemaRegistry.php",
+      "sha256_worktree_bytes": "6fc862b1d479801f16b0a6f29c2152c43143e6d9d390b6eab46358803f985cf6"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSiteRules.php",
+      "sha256_worktree_bytes": "a2981a6f71295cb29419a8689ccca1ea1c90974bc0e9db3f78aec160e1dc3cc7"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSolutionService.php",
+      "sha256_worktree_bytes": "bb32c11932eb8759104dcc819b5d9331d2774f06dd3f0d358fedb47b2b5a2618"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSupplyService.php",
+      "sha256_worktree_bytes": "91123f23f7f5713501ad9ea66fafd8a04c0d39965e2c970ebcf2cca600793d38"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSurveyService.php",
+      "sha256_worktree_bytes": "49f59214448ec4b3dad20618e32f2857703e2547a016f0a0ea98a4a32e62f3ff"
+    },
+    {
+      "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/SkillDelivery/SkillMarketService.php",
+      "sha256_worktree_bytes": "083e7a021c5c8aee0ba24838755264796602d3e62d9c4640c86f09eec9d85e22"
+    },
+    {
+      "path": "my-bagisto-store/qa/scenes/preflight.php",
+      "sha256_worktree_bytes": "93aba8ac6cbf3ab690767a285250aeb6431080a921c37299ca3de3ca9d3a60af"
+    },
+    {
+      "path": "my-bagisto-store/qa/scenes/README.md",
+      "sha256_worktree_bytes": "b5bca5f1857882c120b7c151e43a43c4e649fd2461c57be92fb87858f1094d30"
+    },
+    {
+      "path": "pages/ai/index.vue",
+      "sha256_worktree_bytes": "42e6972ef4f759682744e73053616646486dc16f1032c42eed6d9b1613e377d1"
+    },
+    {
+      "path": "pages/robot/fangan.vue",
+      "sha256_worktree_bytes": "2f6bb40e5aa133bc5d7fe2365f1cbd4b81304181191e9f1ace2ee9ec7e6c80dc"
+    },
+    {
+      "path": "pages/scene/detail.vue",
+      "sha256_worktree_bytes": "b6ac253e001c496ebbca31195bb30959e3879d5034bb49e78be02bb01b06c362"
+    },
+    {
+      "path": "pages/scene/request.vue",
+      "sha256_worktree_bytes": "75c48412823a23a01a96d9e95e3f10ca3eb263322bd55ad2ed85aa90b2c7dd9d"
+    },
+    {
+      "path": "tools/tests/fixtures/scene-scanner.php",
+      "sha256_worktree_bytes": "14906b25580a5574b32bd45cefd58e9e91ad03e5964b046602b369fc109be1fa"
+    },
+    {
+      "path": "tools/tests/scene-acceptance-cases.php",
+      "sha256_worktree_bytes": "1d69dbc7c9757324a8212d4c9d632c723637b5e07bfdc7c774a62add2f394ec9"
+    },
+    {
+      "path": "tools/tests/scene-blade-compile.php",
+      "sha256_worktree_bytes": "84bc67e76e289d025846fb3c42a2b7195624b0bde7dac3f04144614e6c030776"
+    },
+    {
+      "path": "tools/tests/scene-controller-runtime.php",
+      "sha256_worktree_bytes": "6cbfb71397971f49541e250fbba073e5c37897c4827b0c193f6a3f8424f8ec21"
+    },
+    {
+      "path": "tools/tests/scene-http-readonly.mjs",
+      "sha256_worktree_bytes": "7e8dcec3dcb211afde1f1abd0866cfdd03fbd4e4339ae805b6af35ac4cf8df26"
+    },
+    {
+      "path": "tools/tests/scene-request.test.mjs",
+      "sha256_worktree_bytes": "0ef0ef2376a65812dad010f1c9b85237231d6a9cbb1f2d3b4d5ecbd5a9fbd444"
+    },
+    {
+      "path": "tools/tests/scene-sc1-sc2-cases.php",
+      "sha256_worktree_bytes": "fb9cbbd56740da913702f71be3a55525f406b9bd056c33cfea754e4b7e68b9f4"
+    },
+    {
+      "path": "tools/tests/scene-workflow-ui.mjs",
+      "sha256_worktree_bytes": "dc6b8e2cef9060a244e74282cd48245d3747770f2ba0f9920510ef3c76b6160b"
+    },
+    {
+      "path": "tools/tests/scene-workflow.php",
+      "sha256_worktree_bytes": "85b3368224bdd6649c361f498c134f72bfb6ce47e5e70414e9b058e5418945c0"
+    },
+    {
+      "path": "utils/api.js",
+      "sha256_worktree_bytes": "efa7a6aa8b78786b8951493df955f6e9202a9172df396826f39b12cf1495ff11"
+    },
+    {
+      "path": "utils/scene-fields.js",
+      "sha256_worktree_bytes": "47d6470bd1e6c9d8d9cdabc6188be6cd8631b2c2bfcf57f05f3722067e3c5066"
+    },
+    {
+      "path": "utils/scene-request.js",
+      "sha256_worktree_bytes": "ac64d38f752d1ab41c1ee7479ab74f0e918f9761ddf19f87b46c1af4391cc26d"
+    }
+  ],
+  "operator_signoff_completed": false,
+  "vue_sfc": 14,
+  "controller_passed": 16,
+  "remote_handoff_read": "8c7d660",
+  "baseline": "a9e5192b5ea043807dc88c3facdd979311ad5e9c",
+  "blade_compiled": 8,
+  "new_migrations_executed_on_remote": false,
+  "verified_at_utc": "2026-10-20T17:18:43.4483824Z",
+  "browser_checks": 17,
+  "branch": "codex/scene-workflow-sc0-sc5",
+  "mysql_concurrency_verified": false,
+  "frontend_passed": 32,
+  "backend_passed": 91,
+  "production_scanner_verified": false,
+  "hbuilderx_mini_program_verified": false
+}

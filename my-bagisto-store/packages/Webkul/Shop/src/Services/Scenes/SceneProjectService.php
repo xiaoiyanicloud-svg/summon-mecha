@@ -309,7 +309,7 @@ class SceneProjectService
 
     private function attachmentEvidence(int $requestId, array $ids): array
     {
-        $rows = DB::table('scene_attachments')->where('request_id', $requestId)->whereIn('id', $ids)->where('state', 'clean')->where('expires_at', '>', now('UTC'))->get(['id', 'sha256']);
+        $rows = DB::table('scene_attachments')->where('request_id', $requestId)->whereIn('id', $ids)->where('state', 'clean')->whereNull('revoked_at')->where('expires_at', '>', now('UTC'))->get(['id', 'sha256']);
         if ($rows->count() !== count($ids)) {
             throw new SceneWorkflowException('SCENE_EVIDENCE_INVALID', '证据附件未扫描通过、已过期或不属于本项目需求。');
         }

@@ -36,6 +36,7 @@
           <text class="intro-title">📌 场景说明</text>
           <text class="intro-content">{{ sceneInfo.intro || '具体服务条件请提交需求后确认。' }}</text>
         </view>
+        <view v-if="contentEvidence.length" class="scene-intro-card"><text class="intro-title">已授权观察记录</text><view v-for="(proof,index) in contentEvidence" :key="proof.id || index"><text class="intro-title">{{ proof.title }}</text><text class="intro-content">{{ proof.summary }}</text><text class="intro-content">适用边界：{{ proof.applicability }}</text><text v-if="proof.kind==='metric'" class="intro-content">观察值 {{ proof.value }} {{ proof.unit }} · 样本 {{ proof.sample_size }}</text><text class="intro-content">{{ proof.observed_from }} 至 {{ proof.observed_until }} UTC；观察记录不构成效果保证。</text></view></view>
 
         <!-- 适用机型 -->
         <view class="product-section">
@@ -186,7 +187,7 @@ export default {
   components: { StateView },
   data() {
     return {
-      sceneId: '', activeMode: 'rent', loading: true, loadError: '', loadVersion: 0, sceneLoaded: false,
+      sceneId: '', activeMode: 'rent', loading: true, loadError: '', loadVersion: 0, sceneLoaded: false, contentEvidence: [],
       sceneInfo: { name: '', banner: '', desc: '', intro: '' },
       scheme: { pains: [], benefits: [], scenes: [] }, sceneRobots: [], rentCatalog: [],
       selectedMachines: [], rentDays: 1, rentDayOptions: [1, 3, 7, 30],
@@ -211,6 +212,7 @@ export default {
         this.sceneInfo = { name: res.name, category: res.category, scene_revision_id: res.scene_revision_id, banner: normalizeSceneImage(res.banner, BASE_URL), desc: res.description || '', intro: res.description || '' }
         if (['pains', 'benefits', 'scenes', 'robots'].some(key => res.scheme[key] != null && !Array.isArray(res.scheme[key]))) throw new Error('场景数据格式异常，请重试')
         this.scheme = { pains: res.scheme.pains || [], benefits: res.scheme.benefits || [], scenes: res.scheme.scenes || [] }
+        this.contentEvidence=Array.isArray(res.content_evidence)?res.content_evidence:[]
         this.sceneRobots = res.scheme.robots || []
         this.rentCatalog = res.products.map(this.mapCatalogProduct).filter(Boolean)
         this.selectedMachines = this.filteredProducts.filter(item => this.selectedMachines.some(old => old.id === item.id))

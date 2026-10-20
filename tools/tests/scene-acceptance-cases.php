@@ -36,13 +36,17 @@ function acceptanceSandbox(callable $fn): void
         DB::table('scene_acceptance_records')->where('project_id', $projectId)->delete();
         DB::table('scene_attachments')->where('id', $attachmentId)->update(['storage_key'=>$proofKey, 'sha256'=>hash('sha256',$proofContent), 'state'=>'clean', 'expires_at'=>'2027-01-01 00:00:00']);
         file_put_contents($proofPath, $proofContent);
-        try { $fn(app(SceneAcceptanceService::class)); }
-        finally { file_put_contents($proofPath, $proofContent); }
+        try {
+            $fn(app(SceneAcceptanceService::class));
+        } finally {
+            file_put_contents($proofPath, $proofContent);
+        }
     });
 }
 function offlinePayload(array $items = []): array
 {
     global $attachmentId;
+
     return ['signatory_name'=>'测试客户代表', 'authority_basis'=>'隔离测试授权文件已核对', 'authority_confirmed'=>true, 'medium'=>'signed_document',
         'occurred_at'=>'2026-10-19T18:00:00+08:00', 'evidence_ids'=>[$attachmentId],
         'items'=>$items ?: [['key'=>'greeting','result'=>'pass'], ['key'=>'safety','result'=>'pass']]];
@@ -50,6 +54,7 @@ function offlinePayload(array $items = []): array
 function proofReview(SceneAcceptanceService $service, array $record, string $decision = 'approve', string $key = 'offline-review-key-0001'): array
 {
     global $projectId;
+
     return $service->reviewOffline($projectId, $record['id'], $record['project_row_version'], $record['row_version'], $key, ['decision'=>$decision, 'note'=>'已核验原始凭证和客户代表资格'], 2);
 }
 
@@ -62,7 +67,8 @@ try {
     });
     test('线下代录冻结凭证、加密确认人并强审计；尚不产生通过事实或改变验收状态', fn () => acceptanceSandbox(function ($s) use ($projectId) {
         $record = $s->recordOffline($projectId, 1, 'offline-record-key-0001', offlinePayload(), 1);
-        same(false, $record['effective']); same('pending_review', $record['state']);
+        same(false, $record['effective']);
+        same('pending_review', $record['state']);
         same('awaiting_acceptance', DB::table('scene_projects')->find($projectId)->state);
         same(0, DB::table('scene_acceptance_records')->where('project_id',$projectId)->count());
         $row = DB::table('scene_offline_acceptances')->find($record['id']);
@@ -71,10 +77,12 @@ try {
         same('测试客户代表', SceneWorkflow::unpack(Crypt::decryptString($row->encrypted_attestation))['signatory_name']);
         same(1, DB::table('scene_operation_todos')->where('dedupe_key','offline-acceptance:'.$record['id'])->where('state','open')->count());
         $events = DB::table('business_outbox')->where('event_type','scene.project.offline-acceptance.recorded')->pluck('payload')->implode('');
-        same(false, str_contains($events,'测试客户代表')); same(false, str_contains($events,'授权文件'));
+        same(false, str_contains($events, '测试客户代表'));
+        same(false, str_contains($events, '授权文件'));
     }));
     test('线下代录丢响应原键返回原回执；变载荷冲突，另键不能并行堆积待复核记录', fn () => acceptanceSandbox(function ($s) use ($projectId) {
-        $payload = offlinePayload(); $first = $s->recordOffline($projectId,1,'offline-record-key-0002',$payload,1);
+        $payload = offlinePayload();
+        $first = $s->recordOffline($projectId, 1, 'offline-record-key-0002', $payload, 1);
         same($first,$s->recordOffline($projectId,1,'offline-record-key-0002',$payload,1));
         error('IDEMPOTENCY_CONFLICT',fn () => $s->recordOffline($projectId,1,'offline-record-key-0002',['signatory_name'=>'另一个人']+$payload,1));
         error('SCENE_OFFLINE_REVIEW_PENDING',fn () => $s->recordOffline($projectId,2,'offline-record-key-other',$payload,1));
@@ -82,8 +90,11 @@ try {
     }));
     test('无客户代表确认、无原件、重复或未知验收项均拒绝代录且无半记录', fn () => acceptanceSandbox(function ($s) use ($projectId) {
         foreach ([['authority_confirmed'=>false], ['evidence_ids'=>[]], ['items'=>[['key'=>'greeting','result'=>'pass'],['key'=>'greeting','result'=>'fail']]]] as $patch) {
-            try { $s->recordOffline($projectId,1,'offline-invalid-key-001',$patch+offlinePayload(),1); throw new RuntimeException('非法代录未拒绝'); }
-            catch (Illuminate\Validation\ValidationException) {}
+            try {
+                $s->recordOffline($projectId, 1, 'offline-invalid-key-001', $patch + offlinePayload(), 1);
+                throw new RuntimeException('非法代录未拒绝');
+            } catch (Illuminate\Validation\ValidationException) {
+            }
         }
         error('SCENE_ACCEPTANCE_ITEM_UNKNOWN', fn () => $s->recordOffline($projectId,1,'offline-invalid-key-002',offlinePayload([['key'=>'unknown','result'=>'pass']]),1));
         same(0,DB::table('scene_offline_acceptances')->where('project_id',$projectId)->count());
@@ -107,10 +118,18 @@ try {
     }));
     test('独立复核逐项写入验收且来源与时间真实；重复请求不追加；不自动退款或返库', fn () => acceptanceSandbox(function ($s) use ($projectId) {
         $r=$s->recordOffline($projectId,1,'offline-approve-record01',offlinePayload(),1);
-        $review=proofReview($s,$r); same(true,$review['effective']); same('accepted',$review['project_state']);
+        $review = proofReview($s, $r);
+        same(true, $review['effective']);
+        same('accepted', $review['project_state']);
         same($review,proofReview($s,$r));
-        $rows=DB::table('scene_acceptance_records')->where('project_id',$projectId)->get(); same(2,$rows->count());
-        foreach ($rows as $row) { same('customer_offline_recorded',$row->method); same('admin:1',$row->principal_scope); same('2026-10-19 10:00:00',$row->occurred_at); same($r['id'],(int)$row->offline_acceptance_id); }
+        $rows = DB::table('scene_acceptance_records')->where('project_id', $projectId)->get();
+        same(2, $rows->count());
+        foreach ($rows as $row) {
+            same('customer_offline_recorded', $row->method);
+            same('admin:1', $row->principal_scope);
+            same('2026-10-19 10:00:00', $row->occurred_at);
+            same($r['id'], (int) $row->offline_acceptance_id);
+        }
         same(false,(bool)DB::table('scene_projects')->find($projectId)->returned);
         same('resolved',DB::table('scene_operation_todos')->where('dedupe_key','offline-acceptance:'.$r['id'])->value('state'));
         error('SCENE_VERSION_CONFLICT',fn () => $s->reviewOffline($projectId,$r['id'],3,1,'offline-second-review01',['decision'=>'approve','note'=>'不得重复复核'],2));
@@ -162,37 +181,57 @@ try {
     }));
     test('强审计失败回滚代录、复核、逐项结果、版本、待办和幂等回执', fn () => acceptanceSandbox(function ($s) use ($projectId) {
         $original=app(Webkul\Shop\Services\Ops\OperationLogger::class);
-        $rejecting=new class extends Webkul\Shop\Services\Ops\OperationLogger {
+        $rejecting = new class extends Webkul\Shop\Services\Ops\OperationLogger
+        {
             public string $target='scene.project.offline-acceptance.recorded';
-            public function logOrFail(string $actorType, ?int $actorId, string $action, ?string $targetType = null, ?int $targetId = null, array $payload = [], ?string $ip = null): Webkul\Shop\Models\OperationLog {
-                if ($action===$this->target) throw new RuntimeException('TEST_AUDIT_FAILURE');
+
+            public function logOrFail(string $actorType, ?int $actorId, string $action, ?string $targetType = null, ?int $targetId = null, array $payload = [], ?string $ip = null): Webkul\Shop\Models\OperationLog
+            {
+                if ($action === $this->target) {
+                    throw new RuntimeException('TEST_AUDIT_FAILURE');
+                }
+
                 return parent::logOrFail($actorType,$actorId,$action,$targetType,$targetId,$payload,$ip);
             }
         };
         app()->instance(Webkul\Shop\Services\Ops\OperationLogger::class,$rejecting);
-        try { $s->recordOffline($projectId,1,'offline-audit-fail-001',offlinePayload(),1); throw new LogicException('未回滚'); }
-        catch (RuntimeException $e) { same('TEST_AUDIT_FAILURE',$e->getMessage()); }
-        finally { app()->instance(Webkul\Shop\Services\Ops\OperationLogger::class,$original); }
+        try {
+            $s->recordOffline($projectId, 1, 'offline-audit-fail-001', offlinePayload(), 1);
+            throw new LogicException('未回滚');
+        } catch (RuntimeException $e) {
+            same('TEST_AUDIT_FAILURE', $e->getMessage());
+        } finally {
+            app()->instance(Webkul\Shop\Services\Ops\OperationLogger::class, $original);
+        }
         same(0,DB::table('scene_offline_acceptances')->where('project_id',$projectId)->count());
         $r=$s->recordOffline($projectId,1,'offline-audit-record001',offlinePayload(),1);
         $before=DB::table('business_outbox')->count();
         $rejecting->target='scene.project.offline-acceptance.reviewed';
         app()->instance(Webkul\Shop\Services\Ops\OperationLogger::class,$rejecting);
-        try { proofReview($s,$r); throw new LogicException('未回滚'); }
-        catch (RuntimeException $e) { same('TEST_AUDIT_FAILURE',$e->getMessage()); }
-        finally { app()->instance(Webkul\Shop\Services\Ops\OperationLogger::class,$original); }
+        try {
+            proofReview($s, $r);
+            throw new LogicException('未回滚');
+        } catch (RuntimeException $e) {
+            same('TEST_AUDIT_FAILURE', $e->getMessage());
+        } finally {
+            app()->instance(Webkul\Shop\Services\Ops\OperationLogger::class, $original);
+        }
         same('pending_review',DB::table('scene_offline_acceptances')->find($r['id'])->state);
         same(2,(int)DB::table('scene_projects')->find($projectId)->row_version);
-        same(0,DB::table('scene_acceptance_records')->where('project_id',$projectId)->count()); same($before,DB::table('business_outbox')->count());
+        same(0, DB::table('scene_acceptance_records')->where('project_id', $projectId)->count());
+        same($before, DB::table('business_outbox')->count());
         same('open',DB::table('scene_operation_todos')->where('dedupe_key','offline-acceptance:'.$r['id'])->value('state'));
         same('approved',proofReview($s,$r)['state']);
     }));
     test('客户 DTO 可见确认来源和复核进展，但不含确认人、资格资料、私有凭证路径和内部意见', fn () => acceptanceSandbox(function ($s) use ($projectId,$owner,$other) {
-        $r=$s->recordOffline($projectId,1,'offline-dto-record-001',offlinePayload(),1); proofReview($s,$r);
+        $r = $s->recordOffline($projectId, 1, 'offline-dto-record-001', offlinePayload(), 1);
+        proofReview($s, $r);
         $detail=app(SceneProjectService::class)->detail($owner,$projectId);
         same('approved',$detail['offline_confirmations'][0]->state);
         $json=SceneWorkflow::json($detail);
-        foreach (['测试客户代表','授权文件','review_note','encrypted_attestation','storage_key','authority_basis','recorded_by','reviewed_by'] as $private) { same(false,str_contains($json,$private)); }
+        foreach (['测试客户代表', '授权文件', 'review_note', 'encrypted_attestation', 'storage_key', 'authority_basis', 'recorded_by', 'reviewed_by'] as $private) {
+            same(false, str_contains($json, $private));
+        }
         error('SCENE_OBJECT_NOT_FOUND',fn () => app(SceneProjectService::class)->detail($other,$projectId));
     }));
     test('停写同时拒绝代录与复核，原客户历史来源仍可读', fn () => acceptanceSandbox(function ($s) use ($projectId,$owner) {
@@ -202,15 +241,22 @@ try {
             error('SCENE_WRITES_DISABLED',fn () => $s->recordOffline($projectId,2,'offline-disabled-record02',offlinePayload(),1));
             error('SCENE_WRITES_DISABLED',fn () => proofReview($s,$r));
             same('pending_review',app(SceneProjectService::class)->detail($owner,$projectId)['offline_confirmations'][0]->state);
-        } finally { app('config')->set('scenes.project_actions_enabled',true); }
+        } finally {
+            app('config')->set('scenes.project_actions_enabled', true);
+        }
     }));
     test('运营扫描补回待复核投影，旧代录事件重放不重开已复核待办', fn () => acceptanceSandbox(function ($s) use ($projectId) {
         $r=$s->recordOffline($projectId,1,'offline-worker-record001',offlinePayload(),1);
         DB::table('scene_operation_todos')->where('dedupe_key','offline-acceptance:'.$r['id'])->delete();
-        $ops=app(SceneOperationsService::class); $ops->sweep();
+        $ops = app(SceneOperationsService::class);
+        $ops->sweep();
         same('open',DB::table('scene_operation_todos')->where('dedupe_key','offline-acceptance:'.$r['id'])->value('state'));
         proofReview($s,$r);
-        for ($i=0;$i<300;$i++) { if ($ops->consumeOne()['state']==='idle') break; }
+        for ($i = 0; $i < 300; $i++) {
+            if ($ops->consumeOne()['state'] === 'idle') {
+                break;
+            }
+        }
         $event=DB::table('business_outbox')->where('event_type','scene.project.offline-acceptance.recorded')->orderByDesc('id')->first();
         DB::table('business_outbox')->where('id',$event->id)->update(['processed_at'=>null]);
         same('processed',$ops->consumeOne()['state']);
@@ -235,7 +281,10 @@ try {
     }));
     test('返库拒绝早于实际任务的时间；损坏暂停资源并为有效后续档期建待办，保留确认占用', fn () => acceptanceSandbox(function () use ($projectId,$attachmentId,$resourceId,$quoteId) {
         DB::table('scene_projects')->where('id',$projectId)->update(['state'=>'accepted']);
-        $nextQuote=(array)DB::table('scene_quotes')->find($quoteId); unset($nextQuote['id']); $nextQuote['version']=1000; $nextQuote['quote_no']='00000000-0000-4000-8000-000000000399';
+        $nextQuote = (array) DB::table('scene_quotes')->find($quoteId);
+        unset($nextQuote['id']);
+        $nextQuote['version'] = 1000;
+        $nextQuote['quote_no'] = '00000000-0000-4000-8000-000000000399';
         $nextId=DB::table('scene_quotes')->insertGetId($nextQuote);
         DB::table('scene_resources')->where('id',$resourceId)->update(['state'=>'ready']);
         DB::table('scene_reservations')->where('resource_id',$resourceId)->delete();
@@ -244,7 +293,11 @@ try {
         DB::table('scene_reservations')->insert($reservation);
         $next=DB::table('scene_reservations')->insertGetId(['quote_id'=>$nextId,'hold_group'=>'return-next-fixture','service_starts_at'=>'2026-10-21 03:00:00','service_ends_at'=>'2026-10-21 10:00:00','occupies_from'=>'2026-10-21 02:00:00','occupies_until'=>'2026-10-21 11:00:00']+$reservation);
         $expired=DB::table('scene_reservations')->insertGetId(['quote_id'=>$nextId,'hold_group'=>'return-expired-fixture','state'=>'held','hold_expires_at'=>'2026-10-19 23:59:59','service_starts_at'=>'2026-10-21 03:00:00','service_ends_at'=>'2026-10-21 10:00:00','occupies_from'=>'2026-10-21 02:00:00','occupies_until'=>'2026-10-21 11:00:00']+$reservation);
-        $person=(array)DB::table('scene_resources')->find($resourceId); unset($person['id']); $person['resource_no']='operator-return-fixture'; $person['kind']='operator'; $person['binding_id']=null;
+        $person = (array) DB::table('scene_resources')->find($resourceId);
+        unset($person['id']);
+        $person['resource_no'] = 'operator-return-fixture';
+        $person['kind'] = 'operator';
+        $person['binding_id'] = null;
         $personId=DB::table('scene_resources')->insertGetId($person);
         DB::table('scene_reservations')->insert(['resource_id'=>$personId,'hold_group'=>'return-operator-fixture']+$reservation);
         $payload=['parts_checked'=>true,'appearance_checked'=>true,'damage_dispute'=>true,'evidence_ids'=>[$attachmentId],'occurred_at'=>'2026-10-19T11:59:59+08:00'];
@@ -262,52 +315,106 @@ try {
         same('2026-10-19 10:00:00',SceneWorkflow::unpack(DB::table('scene_projects')->find($projectId)->snapshot)['return_record']['occurred_at']);
     }));
     test('新代录与复核接口 ACL 独立：仅查看、交付、财务或录入不能直接复核', function () {
-        $bouncer=new class { public array $allowed=[]; public function hasPermission($key) { return in_array($key,$this->allowed,true); } };
+        $bouncer = new class
+        {
+            public array $allowed = [];
+
+            public function hasPermission($key)
+            {
+                return in_array($key, $this->allowed, true);
+            }
+        };
         Webkul\User\Facades\Bouncer::swap($bouncer);
         $guard=new Webkul\Admin\Http\Middleware\AuthorizeSceneWorkflow;
         foreach (['recordOfflineAcceptance'=>'acceptance_record','reviewOfflineAcceptance'=>'acceptance_review'] as $method=>$permission) {
             $request=Illuminate\Http\Request::create('/test','POST');
             $handler=Webkul\Admin\Http\Controllers\Catalog\SceneWorkflowController::class.'@'.$method;
-            $route=new Illuminate\Routing\Route('POST','test',['uses'=>$handler,'controller'=>$handler]); $route->bind($request); $request->setRouteResolver(fn () => $route);
+            $route = new Illuminate\Routing\Route('POST', 'test', ['uses' => $handler, 'controller' => $handler]);
+            $route->bind($request);
+            $request->setRouteResolver(fn () => $route);
             foreach (['view','deliver','finance','finance_review', $permission==='acceptance_review'?'acceptance_record':'acceptance_review'] as $wrong) {
                 $bouncer->allowed=[$wrong==='view'?'catalog.scene-workflow':'catalog.scene-workflow.'.$wrong];
-                try { $guard->handle($request,fn () => true); throw new RuntimeException('权限错误放行'); }
-                catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { same(403,$e->getStatusCode()); }
+                try {
+                    $guard->handle($request, fn () => true);
+                    throw new RuntimeException('权限错误放行');
+                } catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                    same(403, $e->getStatusCode());
+                }
             }
-            $bouncer->allowed=['catalog.scene-workflow.'.$permission]; same(true,$guard->handle($request,fn () => true));
+            $bouncer->allowed = ['catalog.scene-workflow.'.$permission];
+            same(true, $guard->handle($request, fn () => true));
         }
     });
     test('Admin Blade 实际渲染线下录入与复核表单、私有原件链接和转义；仅查看角色不输出确认人资料', fn () => acceptanceSandbox(function ($s) use ($projectId,$app,$acceptanceStorage) {
         $r=$s->recordOffline($projectId,1,'offline-blade-record001',['signatory_name'=>'客户<script>alert(1)</script>']+offlinePayload(),1);
-        $router=app('router'); $router->getRoutes()->refreshNameLookups();
+        $router = app('router');
+        $router->getRoutes()->refreshNameLookups();
         $app->instance('url',new Illuminate\Routing\UrlGenerator($router->getRoutes(),Illuminate\Http\Request::create('https://qa.invalid')));
-        $session=new Illuminate\Session\Store('isolated-scene-qa',new Illuminate\Session\ArraySessionHandler(120)); $session->start(); $app->instance('session',$session);
+        $session = new Illuminate\Session\Store('isolated-scene-qa', new Illuminate\Session\ArraySessionHandler(120));
+        $session->start();
+        $app->instance('session', $session);
         $compiler=new Illuminate\View\Compilers\BladeCompiler(new Illuminate\Filesystem\Filesystem,$acceptanceStorage);
         $compiler->withoutComponentTags();
         $compiled=$compiler->compileString(file_get_contents($app->basePath('packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php')));
         $record=DB::table('scene_requests')->find(DB::table('scene_projects')->find($projectId)->request_id);
         $revision=DB::table('scene_request_revisions')->where('request_id',$record->id)->where('revision_no',$record->revision_no)->first();
-        $facts=SceneWorkflow::unpack($revision->facts); $schema=SceneWorkflow::unpack($revision->schema_snapshot);
+        $facts = SceneWorkflow::unpack($revision->facts);
+        $schema = SceneWorkflow::unpack($revision->schema_snapshot);
         $projects=collect([DB::table('scene_projects')->find($projectId)]);
         $offlineConfirmations=DB::table('scene_offline_acceptances')->where('project_id',$projectId)->get();
-        foreach ($offlineConfirmations as $confirmation) $confirmation->attestation=SceneWorkflow::unpack(Crypt::decryptString($confirmation->encrypted_attestation));
+        foreach ($offlineConfirmations as $confirmation) {
+            $confirmation->attestation = SceneWorkflow::unpack(Crypt::decryptString($confirmation->encrypted_attestation));
+        }
         $attachments=DB::table('scene_attachments')->where('request_id',$record->id)->get();
         $activities=$assessments=$quotes=$decisions=$prices=$resources=$tasks=$admins=$commercial=$tickets=collect();
         $errors=new Illuminate\Support\ViewErrorBag;
         $__env=new Illuminate\View\Factory(new Illuminate\View\Engines\EngineResolver,new Illuminate\View\FileViewFinder(new Illuminate\Filesystem\Filesystem,[]),new Illuminate\Events\Dispatcher($app));
+        $__env->getFinder()->addNamespace('admin', $app->basePath('packages/Webkul/Admin/src/Resources/views'));
+        $__env->getEngineResolver()->register('blade', fn () => new Illuminate\View\Engines\CompilerEngine($compiler));
         $__env->setContainer($app);
-        $bouncer=new class { public array $allowed=[]; public function hasPermission($key) { return in_array($key,$this->allowed,true); } };
+        $bouncer = new class
+        {
+            public array $allowed = [];
+
+            public function hasPermission($key)
+            {
+                return in_array($key, $this->allowed, true);
+            }
+        };
         Webkul\User\Facades\Bouncer::swap($bouncer);
         $bouncer->allowed=['catalog.scene-workflow.acceptance_record','catalog.scene-workflow.acceptance_review'];
-        ob_start(); try { eval('?>'.$compiled); $html=ob_get_contents(); } finally { ob_end_clean(); }
-        foreach (['name="authority_confirmed"','name="items[0][result]"','name="items[1][result]"','name="confirmation_version"','name="idempotency_key"','客户&lt;script&gt;alert(1)&lt;/script&gt;','/offline-acceptances/'.$r['id'].'/review'] as $expected) same(true,str_contains($html,$expected));
-        same(false,str_contains($html,'客户<script>')); same(false,str_contains($html,'encrypted_attestation'));
+        ob_start();
+        try {
+            eval('?>'.$compiled);
+            $html = ob_get_contents();
+        } finally {
+            ob_end_clean();
+        }
+        foreach (['name="authority_confirmed"', 'name="items[0][result]"', 'name="items[1][result]"', 'name="confirmation_version"', 'name="idempotency_key"', '客户&lt;script&gt;alert(1)&lt;/script&gt;', '/offline-acceptances/'.$r['id'].'/review'] as $expected) {
+            same(true, str_contains($html, $expected));
+        }
+        same(false, str_contains($html, '客户<script>'));
+        same(false, str_contains($html, 'encrypted_attestation'));
         $bouncer->allowed=['catalog.scene-workflow'];
-        ob_start(); try { eval('?>'.$compiled); $viewOnly=ob_get_contents(); } finally { ob_end_clean(); }
-        same(false,str_contains($viewOnly,'客户&lt;script&gt;')); same(false,str_contains($viewOnly,'name="authority_confirmed"'));
+        ob_start();
+        try {
+            eval('?>'.$compiled);
+            $viewOnly = ob_get_contents();
+        } finally {
+            ob_end_clean();
+        }
+        same(false, str_contains($viewOnly, '客户&lt;script&gt;'));
+        same(false, str_contains($viewOnly, 'name="authority_confirmed"'));
     }));
 } finally {
     $app->useStoragePath($originalStorage);
-    if (is_file($proofPath)) unlink($proofPath);
-    foreach (['/app/private/scenes','/app/private','/app',''] as $suffix) rmdir($acceptanceStorage.$suffix);
+    if (is_file($proofPath)) {
+        unlink($proofPath);
+    }
+    foreach (glob($acceptanceStorage.'/*.php') as $compiledView) {
+        unlink($compiledView);
+    }
+    foreach (['/app/private/scenes', '/app/private', '/app', ''] as $suffix) {
+        rmdir($acceptanceStorage.$suffix);
+    }
 }

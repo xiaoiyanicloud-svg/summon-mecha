@@ -246,6 +246,24 @@ return [
     ], [
         'key' => 'catalog.scene-workflow.acceptance_review', 'name' => '独立复核线下验收凭证', 'route' => 'admin.catalog.scene-workflow.offline-review', 'sort' => 16,
     ], [
+        'key' => 'catalog.scene-workflow.policy_view', 'name' => '查看服务政策及日历', 'route' => 'admin.catalog.scene-workflow.configuration', 'sort' => 17,
+    ], [
+        'key' => 'catalog.scene-workflow.policy_write', 'name' => '编制服务政策及日历', 'route' => 'admin.catalog.scene-workflow.policy-draft', 'sort' => 18,
+    ], [
+        'key' => 'catalog.scene-workflow.policy_review', 'name' => '独立批准或撤销服务政策', 'route' => 'admin.catalog.scene-workflow.policy-decision', 'sort' => 19,
+    ], [
+        'key' => 'catalog.scene-workflow.evidence_view', 'name' => '查看内容及任务核验依据', 'route' => 'admin.catalog.scene-workflow.evidence', 'sort' => 20,
+    ], [
+        'key' => 'catalog.scene-workflow.evidence_review', 'name' => '独立审核公开内容依据', 'route' => 'admin.catalog.scene-workflow.content-evidence-decision', 'sort' => 21,
+    ], [
+        'key' => 'catalog.scene-workflow.supply_review', 'name' => '独立复核及撤销任务与价格依据', 'route' => 'admin.catalog.scene-workflow.evidence-review', 'sort' => 22,
+    ], [
+        'key' => 'catalog.scene-workflow.solution_review', 'name' => '独立审核实例方案及 BOM', 'route' => 'admin.catalog.scene-workflow.solution-decision', 'sort' => 23,
+    ], [
+        'key' => 'catalog.scene-workflow.preserve', 'name' => '私有资料保全及撤销', 'route' => 'admin.catalog.scene-workflow.attachment-action', 'sort' => 24,
+    ], [
+        'key' => 'catalog.scene-workflow.preserve_read', 'name' => '按保全用途读取受限资料', 'route' => 'admin.catalog.scene-workflow.preserved-attachment', 'sort' => 25,
+    ], [
         // 技能管理:技能包的版本 / 交付物 / 安装指引
         'key'   => 'catalog.skills',
         'name'  => '技能管理',

@@ -18,11 +18,11 @@ class SceneWorkflowController extends APIController
     public function capabilities()
     {
         return response()->json(['data' => [
-            'requests'        => (bool) config('scenes.requests_enabled'), 'quotes' => (bool) config('scenes.quotes_enabled'),
-            'projects'        => (bool) config('scenes.project_actions_enabled'), 'publication_v2' => (bool) config('scenes.publication_v2'),
-            'attachments'     => is_array(config('scenes.attachment_scan_command')), 'order_conversion' => false,
+            'requests' => (bool) config('scenes.requests_enabled'), 'quotes' => (bool) config('scenes.quotes_enabled'),
+            'projects' => (bool) config('scenes.project_actions_enabled'), 'publication_v2' => (bool) config('scenes.publication_v2'),
+            'attachments' => is_array(config('scenes.attachment_scan_command')), 'order_conversion' => false,
             'consent_version' => 'scene-contact-v1',
-            'consent_text'    => '我同意平台为本次服务评估、方案沟通及交付联系我；现场资料仅供授权服务人员处理。',
+            'consent_text' => '我同意平台为本次服务评估、方案沟通及交付联系我；现场资料仅供授权服务人员处理。',
         ]]);
     }
 
@@ -31,14 +31,22 @@ class SceneWorkflowController extends APIController
         $flow->enabled('requests_enabled');
         $token = bin2hex(random_bytes(32));
         DB::table('scene_guest_capabilities')->insert(['token_hash' => hash('sha256', $token),
-            'expires_at'                                            => now('UTC')->addDays((int) config('scenes.guest_days', 30)), 'created_at' => now('UTC')]);
+            'expires_at' => now('UTC')->addDays((int) config('scenes.guest_days', 30)), 'created_at' => now('UTC')]);
 
         return response()->json(['token' => $token])->header('Cache-Control', 'no-store');
     }
 
-    public function schema(string $category, SceneSchemaRegistry $schemas)
+    public function schema(string $sceneCategory, SceneSchemaRegistry $schemas)
     {
-        return response()->json(['data' => $schemas->schema($category)]);
+        return response()->json(['data' => $schemas->schema($sceneCategory)]);
+    }
+
+    public function aiDraft(Request $r, \Webkul\Shop\Services\Scenes\SceneAiDraftService $service)
+    {
+        $r->validate(['original_text' => 'required|string|max:20000', 'suggestions' => 'sometimes|array',
+            'suggestions.facts' => 'sometimes|array|max:30', 'suggestions.product_ids' => 'sometimes|array|max:50']);
+
+        return response()->json(['data' => $service->build($r->input('original_text'), $r->input('suggestions', []), (int) core()->getCurrentChannel()->id)])->header('Cache-Control', 'no-store');
     }
 
     public function index(Request $request, SceneRequestService $service)
@@ -112,7 +120,12 @@ class SceneWorkflowController extends APIController
     {
         $request->validate(['file' => 'required|file|max:8192']);
 
-        return response()->json(['data' => $service->upload(ScenePrincipal::fromRequest($request), $id, $request->file('file'))], 201);
+        return response()->json(['data' => $service->upload(ScenePrincipal::fromRequest($request), $id, $request->file('file'), $request->header('Idempotency-Key'))], 201)->header('Cache-Control', 'no-store');
+    }
+
+    public function uploadReceipt(Request $request, int $id, \Webkul\Shop\Services\Scenes\SceneAttachmentUploadService $service)
+    {
+        return response()->json(['data' => $service->receipt(ScenePrincipal::fromRequest($request), $id, (string) $request->header('Idempotency-Key'))])->header('Cache-Control', 'no-store');
     }
 
     public function attachment(Request $request, int $id, int $attachmentId, SceneAttachmentService $service)

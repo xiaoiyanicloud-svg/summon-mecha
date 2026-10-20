@@ -7,12 +7,10 @@
       <view class="hero"><text class="heading">{{ sceneName || '机器人场景服务' }}</text><text>需求提交后进入人工受理、现场评估与正式报价。交付安排以项目确认为准。</text></view>
       <view v-if="!capabilities.requests" class="notice">在线受理暂未开放，您可以将草稿保存在本机。</view>
       <view class="card"><text class="section">需求描述</text><textarea v-model="form.original_text" maxlength="20000" placeholder="请描述任务目标、期望效果和现场限制" class="description" /><text class="muted">最多 20000 字，原文完整保存。</text></view>
+      <view v-if="source === 'ai'" class="card"><text class="section">需求草稿待确认</text><text class="muted">{{ aiNotice || '可直接人工填写；草稿建议不代表设备能力或正式报价。' }}</text><view v-for="field in aiFields" :key="field.key" class="divider"><text>{{ field.label }}：{{ field.value }}</text><button class="secondary" @tap="confirmAiField(field)">{{ aiSnapshot.confirmed_keys.includes(field.key) ? '已确认，可在现场信息中修正' : '确认并填入现场信息' }}</button></view></view>
       <view class="card"><text class="section">联系方式</text><label>联系人<input v-model="form.contact.name" maxlength="100" placeholder="请输入姓名" /></label><label>联系电话<input v-model="form.contact.phone" maxlength="25" placeholder="请输入联系电话" /></label><label>公司（选填）<input v-model="form.contact.company" maxlength="255" /></label><label>微信（选填）<input v-model="form.contact.wechat" maxlength="100" /></label></view>
       <view class="card"><text class="section">现场信息</text><text class="muted">暂不明确的条件可留空，服务人员会继续核实。</text>
-        <view v-for="field in schema.fields" :key="field.key" class="field"><text>{{ field.label }}</text>
-          <picker v-if="field.type === 'boolean'" :range="['待核实','是','否']" :value="booleanIndex(form.facts[field.key])" @change="setBoolean(field.key,$event)"><view class="picker">{{ ['待核实','是','否'][booleanIndex(form.facts[field.key])] }} ›</view></picker>
-          <input v-else v-model="form.facts[field.key]" :type="field.type === 'integer' ? 'number' : 'text'" :maxlength="field.type === 'integer' ? 10 : (field.max || 1000)" :placeholder="timeHint(field.key)" />
-        </view>
+        <SceneFactsForm :schema="schema" :facts="form.facts" @change="form.facts = $event" />
       </view>
       <view class="consent" @tap="consent = !consent"><text class="box">{{ consent ? '☑' : '☐' }}</text><text>{{ capabilities.consent_text || '我同意平台为本次服务评估、沟通及交付联系我。' }}</text></view>
       <text v-if="savedAt" class="muted">{{ draftState === 'awaiting_receipt' ? '提交结果待确认，请按原内容重试获取回执。' : '草稿保存在本机，尚未取得提交成功回执。' }} 保存于 {{ savedAt }}</text>
@@ -24,15 +22,17 @@
 </template>
 <script>
 import StateView from '@/components/StateView.vue'
+import SceneFactsForm from '@/components/SceneFactsForm.vue'
+import { normalizeSceneFacts } from '@/utils/scene-fields'
 import { sceneApi, sceneWorkflowApi } from '@/utils/api'
 import { sceneAccountScope, sceneLocalState, saveSceneDraft, sceneDraftPayload, submitSceneRequest } from '@/utils/scene-request'
 
 const blank = () => ({ original_text: '', contact: { name: '', phone: '', company: '', wechat: '' }, facts: {} })
 export default {
-  components: { StateView },
-  data() { return { sceneId: null, revisionId: null, category: 'enterprise', source: 'home', sceneName: '', schema: { fields: [] }, form: blank(), loading: false, error: '', submitting: false, consent: false, savedAt: '', draftState: '', capabilities: {}, scope: '', generation: 0 } },
+  components: { StateView, SceneFactsForm },
+  data() { return { aiSnapshot: null, aiFields: [], aiNotice: '', sceneId: null, revisionId: null, category: 'enterprise', source: 'home', sceneName: '', schema: { fields: [] }, form: blank(), loading: false, error: '', submitting: false, consent: false, savedAt: '', draftState: '', capabilities: {}, scope: '', generation: 0 } },
   onLoad(options) { this.sceneId = /^\d+$/.test(options.sceneId || '') ? Number(options.sceneId) : null; this.source = ['home','scene','robot','ai'].includes(options.source) ? options.source : 'home' },
-  onShow() { if (this.scope !== sceneAccountScope()) { this.scope = sceneAccountScope(); this.form = blank(); this.consent = false; const pending = sceneLocalState().pending.form; this.draftState = pending ? pending.state : ''; this.savedAt = pending ? pending.savedAt : ''; this.load() } },
+  onShow() { if (this.scope !== sceneAccountScope()) { this.scope = sceneAccountScope(); this.form = blank(); this.aiSnapshot = null; this.aiFields = []; this.aiNotice = ''; this.consent = false; const pending = sceneLocalState().pending.form; this.draftState = pending ? pending.state : ''; this.savedAt = pending ? pending.savedAt : ''; this.load() } },
   onUnload() { this.generation++ },
   methods: {
     back() { uni.navigateBack() }, mine() { uni.navigateTo({ url: '/pages/scene/requests' }) },
@@ -53,7 +53,9 @@ export default {
           this.form = { original_text: local.payload.original_text, contact: { ...local.payload.contact }, facts: { ...local.payload.facts } }
           this.savedAt = local.savedAt
           this.draftState = local.state
+          if (local.payload.ai_snapshot) this.aiSnapshot=local.payload.ai_snapshot
         }
+        if (this.source==='ai' && !this.aiSnapshot) await this.loadAiDraft(version,scope)
       } catch (e) { if (version === this.generation && scope === sceneAccountScope()) this.error = e.message || '加载失败，请重试' }
       finally { if (version === this.generation && scope === sceneAccountScope()) this.loading = false }
     },
@@ -61,10 +63,16 @@ export default {
     setBoolean(key, event) { const i = Number(event.detail.value); this.form.facts[key] = i === 0 ? null : i === 1 },
     timeHint(key) { return key.endsWith('_at') ? '例：2026-11-01T10:00:00+08:00' : (key === 'timezone' ? '例：Asia/Shanghai' : '暂不明确可留空') },
     payload() {
-      const facts = {}
-      this.schema.fields.forEach(field => { const v = this.form.facts[field.key]; if (v !== undefined && v !== null && v !== '') facts[field.key] = field.type === 'integer' ? Number(v) : v })
-      return sceneDraftPayload({ source: this.source, sceneId: this.sceneId, revisionId: this.revisionId, category: this.category, text: this.form.original_text, facts, contact: this.form.contact })
+      const facts = normalizeSceneFacts(this.schema, this.form.facts)
+      return { ...sceneDraftPayload({ source: this.source, sceneId: this.sceneId, revisionId: this.revisionId, category: this.category, text: this.form.original_text, facts, contact: this.form.contact }), ...(this.aiSnapshot ? {ai_snapshot:this.aiSnapshot} : {}) }
     },
+    async loadAiDraft(version,scope) {
+      try { const r=await sceneWorkflowApi.aiDraft(this.form.original_text,{category:this.category}); if(version!==this.generation||scope!==sceneAccountScope())return
+        const keys=new Set(this.schema.fields.map(f=>f.key)); const fields=(r.data?.suggested_fields||[]).filter(f=>keys.has(f.key)&&f.value!==null)
+        this.aiFields=fields; this.aiSnapshot={version:'scene-ai-draft-v1',original_text:this.form.original_text,suggestions:Object.fromEntries(fields.map(f=>[f.key,f.value])),confirmed_keys:[]}; this.aiNotice=r.data?.notice||''
+      } catch(e) { if(version===this.generation&&scope===sceneAccountScope())this.aiNotice='草稿整理暂不可用，请继续人工填写，原文已保留。' }
+    },
+    confirmAiField(field) { if(!this.aiSnapshot)return; this.form.facts={...this.form.facts,[field.key]:field.value}; if(!this.aiSnapshot.confirmed_keys.includes(field.key))this.aiSnapshot.confirmed_keys.push(field.key) },
     saveDraft() {
       try { const saved = saveSceneDraft('form', this.payload()); this.savedAt = saved.savedAt; this.draftState = saved.state; uni.showToast({ title: '草稿已保存到本机', icon: 'none' }) }
       catch (e) { uni.showToast({ title: e.message, icon: 'none' }) }

@@ -106,3 +106,57 @@ test('草稿与账号隔离；改变载荷生成新命令；访问能力不进�
   c.openSceneRequest({ ...payload,scene_id:3 })
   assert.match(navigation[0].url,/sceneId=3/);assert.doesNotMatch(navigation[0].url,/13800000000|access|token|contact/)
 })
+
+test('私有上传丢响应只按原标识恢复回执，不重新生成提交或跨账号清理',async()=>{
+  const calls=[]
+  const {context:c,storage}=harness({uploadAttachment:async(id,path,access,key)=>{calls.push(key);throw new Error('response lost')},uploadReceipt:async()=>({data:{id:7,state:'clean',availability_state:'available'}})})
+  await assert.rejects(c.submitSceneAttachment(3,{path:'/private/original.pdf'}),/response lost/)
+  const pending=storage.get('scene_request_v1:guest').pending['upload:3'];assert.equal(pending.state,'awaiting_receipt')
+  const receipt=await c.submitSceneAttachment(3,{path:'/private/changed.pdf'})
+  assert.equal(receipt.id,7);assert.equal(calls.length,1);assert.equal(storage.get('scene_request_v1:guest').pending['upload:3'],undefined)
+})
+test('原上传未确认时重选文件仍复用原键；错误回包和内容冲突不能清除待确认状态',async()=>{
+  const keys=[]
+  const {context:c,storage}=harness({uploadAttachment:async(id,path,access,key)=>{keys.push(key);throw Object.assign(new Error('conflict'),{statusCode:409})},uploadReceipt:async()=>({data:{state:'not_confirmed'}})})
+  await assert.rejects(c.submitSceneAttachment(3,{path:'/first.pdf'}),/conflict/)
+  await assert.rejects(c.submitSceneAttachment(3,{path:'/reselected.pdf'}),/conflict/)
+  assert.equal(keys[0],keys[1]);assert.equal(storage.get('scene_request_v1:guest').pending['upload:3'].state,'awaiting_receipt')
+})
+test('上传或下载回包前切号不把旧回执写入新主体、不打开私有文件',async()=>{
+  let resolve,opened=false
+  const pending=new Promise(r=>resolve=r)
+  const {context:c,storage}=harness({downloadAttachment:()=>pending})
+  c.uni.openDocument=()=>{opened=true}
+  const download=c.openSceneAttachment(3,7)
+  storage.set('token','new-token');storage.set('customer',{id:8});resolve({filePath:'/temp/private.pdf'})
+  await assert.rejects(download,/登录状态已变化/);assert.equal(opened,false);assert.equal(storage.has('scene_request_v1:customer:8'),false)
+})
+test('专业字段未知不变零，choice 使用公开标签，非法小数不能进入提交',async()=>{
+  const fields=await readFile(new URL('../../utils/scene-fields.js',import.meta.url),'utf8'),c=vm.createContext({})
+  vm.runInContext(fields.replace(/^export /gm,''),c)
+  const schema={fields:[{key:'payload',type:'decimal',label:'载荷',unit:'kg'},{key:'count',type:'integer',label:'数量'},{key:'kind',type:'choice',options:[{value:'ordinary',label:'普通环境'}]}]}
+  const result=c.normalizeSceneFacts(schema,{payload:'',count:0,kind:'ordinary'})
+  assert.equal(result.payload,null);assert.equal(result.count,0);assert.equal(c.sceneFactLabel(schema.fields[2],'ordinary'),'普通环境')
+  assert.throws(()=>c.normalizeSceneFacts(schema,{payload:'1e6'}),/三位小数/);assert.throws(()=>c.normalizeSceneFacts(schema,{count:'1.2'}),/整数/)
+})
+test('H5 PDF 使用鉴权下载后的 Blob，不能直接打开受保护 API 或误调用 openDocument',async()=>{
+  let clicked=false, opened=false
+  const {context:c}=harness({downloadAttachment:async()=>({filePath:'blob:isolated-private-document'})})
+  const anchor={click(){clicked=true},remove(){},href:'',download:''}
+  c.window={};c.document={createElement:()=>anchor,body:{appendChild(){}}};c.uni.openDocument=()=>{opened=true}
+  const result=await c.openSceneAttachment(1,7)
+  assert.equal(result.state,'download_started');assert.equal(clicked,true);assert.equal(opened,false);assert.equal(anchor.href,'blob:isolated-private-document');assert.equal(anchor.download,'scene-document-1-7.pdf')
+})
+test('文件选择组件遵守 H5 和微信不同 API/type/后缀协议',async()=>{
+  const text=await readFile(new URL('../../components/SceneAttachments.vue',import.meta.url),'utf8')
+  const script=text.match(/<script>([\s\S]*?)<\/script>/)[1].replace(/^import .*$/gm,'').replace('export default','globalThis.component =')
+  for(const platform of ['h5','wechat']){
+    let options
+    const c=vm.createContext({sceneAccountScope:()=> 'guest',uni:{chooseFile:o=>options=o}})
+    if(platform==='wechat')c.wx={chooseMessageFile:o=>options=o}
+    vm.runInContext(script,c);c.component.methods.choose.call({message:''})
+    assert.equal(options.count,1)
+    if(platform==='h5'){assert.equal(options.type,undefined);assert.equal(options.extension[0],'.pdf')}
+    else{assert.equal(options.type,'file');assert.equal(options.extension[0],'pdf')}
+  }
+})

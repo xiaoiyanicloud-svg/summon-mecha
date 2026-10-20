@@ -8,15 +8,20 @@ use Illuminate\Support\Str;
 class SceneOperationsService
 {
     private const EVENTS = [
-        'scene'                => ['scene.revision.review', 'scene.revision.approve', 'scene.revision.publish', 'scene.revision.withdraw', 'scene.availability.changed'],
-        'scene_revision'       => ['scene.revision.drafted'],
-        'scene_request'        => ['scene.request.submitted', 'scene.request.supplemented', 'scene.request.claimed', 'scene.request.assign', 'scene.request.contact', 'scene.request.close', 'scene.assessment.created', 'scene.attachment.added'],
-        'scene_quote'          => ['scene.quote.drafted', 'scene.quote.review', 'scene.quote.approve', 'scene.quote.return', 'scene.quote.send', 'scene.quote.void', 'scene.quote.accepted', 'scene.quote.rejected', 'scene.quote.invalidated', 'scene.resources.held'],
-        'scene_price'          => ['scene.price.created', 'scene.price.revoked'],
-        'scene_evidence'       => ['scene.evidence.recorded', 'scene.evidence.revoked'],
-        'scene_resource'       => ['scene.resource.verified', 'scene.resource.paused'],
-        'scene_project'        => ['scene.project.tasks.initialized', 'scene.project.task.completed', 'scene.project.acceptance.recorded', 'scene.project.offline-acceptance.recorded', 'scene.project.offline-acceptance.reviewed', 'scene.project.change.requested', 'scene.project.cancel.requested', 'scene.project.after_sale.requested', 'scene.commercial.recorded', 'scene.commercial.reviewed', 'scene.project.returned'],
+        'scene' => ['scene.revision.review', 'scene.revision.approve', 'scene.revision.publish', 'scene.revision.withdraw', 'scene.availability.changed'],
+        'scene_revision' => ['scene.revision.drafted'],
+        'scene_request' => ['scene.request.submitted', 'scene.request.supplemented', 'scene.request.claimed', 'scene.request.assign', 'scene.request.contact', 'scene.request.close', 'scene.assessment.created', 'scene.survey.recorded', 'scene.attachment.added', 'scene.request.contact.overdue', 'scene.request.contact.escalated'],
+        'scene_policy' => ['scene.policy.drafted', 'scene.policy.approve', 'scene.policy.reject', 'scene.policy.revoke'],
+        'scene_content_evidence' => ['scene.content-evidence.created', 'scene.content-evidence.approve', 'scene.content-evidence.revoke'],
+        'scene_proposal' => ['scene.proposal.drafted', 'scene.proposal.approve', 'scene.proposal.return'],
+        'scene_quote' => ['scene.quote.drafted', 'scene.quote.review', 'scene.quote.approve', 'scene.quote.return', 'scene.quote.send', 'scene.quote.void', 'scene.quote.accepted', 'scene.quote.rejected', 'scene.quote.invalidated', 'scene.resources.held'],
+        'scene_price' => ['scene.price.created', 'scene.price.revoked'],
+        'scene_evidence' => ['scene.evidence.recorded', 'scene.evidence.approved', 'scene.evidence.revoked'],
+        'scene_resource' => ['scene.resource.verified', 'scene.resource.paused'],
+        'scene_project' => ['scene.project.tasks.initialized', 'scene.project.task.completed', 'scene.project.acceptance.recorded', 'scene.project.offline-acceptance.recorded', 'scene.project.offline-acceptance.reviewed', 'scene.project.change.requested', 'scene.project.cancel.requested', 'scene.project.after_sale.requested', 'scene.commercial.recorded', 'scene.commercial.reviewed', 'scene.project.returned'],
         'scene_service_ticket' => ['scene.service-ticket.resolved'],
+        'scene_attachment' => ['scene.attachment.held', 'scene.attachment.hold-released', 'scene.attachment.revoked', 'scene.attachment.deletion-requested', 'scene.attachment.deleted'],
+        'scene_todo' => ['scene.todo.assigned'],
     ];
 
     public function __construct(protected SceneWorkflow $flow) {}
@@ -61,6 +66,17 @@ class SceneOperationsService
                         if ($request && ! $request->assignee_id && ! in_array($request->state, ['closed', 'cancelled', 'converted'], true)) {
                             $this->todo('unassigned:'.$request->id, (int) $request->id, 'unassigned_request');
                         }
+                        if (in_array($row->event_type, ['scene.request.contact.overdue', 'scene.request.contact.escalated'], true)) {
+                            $clock = DB::table('scene_service_clocks')->where('request_id', $row->aggregate_id)->first();
+                            $active = $request && ! in_array($request->state, ['closed', 'cancelled', 'converted'], true) && $clock?->state === 'awaiting_contact';
+                            $recipient = $active ? (int) ($row->event_type === 'scene.request.contact.overdue' ? $clock->assignee_id : $clock->escalation_assignee_id) : null;
+                            if ($active) {
+                                if (! $recipient || ! DB::table('admins')->where('id', $recipient)->where('status', 1)->exists()) {
+                                    throw new SceneWorkflowException('SCENE_NOTIFICATION_RECIPIENT_INVALID', '提醒负责人无效，须重新分派。', 409);
+                                }
+                                app(\Webkul\Shop\Services\NotificationService::class)->send('admin', $recipient, $row->event_type, '场景需求联系待处理', '请进入场景服务工作台核实实际联系进展。', ['request_id' => (int) $row->aggregate_id]);
+                            }
+                        }
                     }
                     if ($row->aggregate_type === 'scene_quote') {
                         $quote = DB::table('scene_quotes')->where('id', $row->aggregate_id)->first();
@@ -82,7 +98,7 @@ class SceneOperationsService
             }, 3);
         } catch (\Throwable $e) {
             DB::table('business_outbox')->where('id', $lease['id'])->where('lease_token', $lease['token'])->update([
-                'lease_until'     => null, 'lease_token' => null, 'available_at' => now('UTC')->addSeconds(min(3600, 2 ** $lease['attempts'] * 10)),
+                'lease_until' => null, 'lease_token' => null, 'available_at' => now('UTC')->addSeconds(min(3600, 2 ** $lease['attempts'] * 10)),
                 'last_error_code' => $e instanceof SceneWorkflowException ? $e->errorCode : 'OUTBOX_PROJECTION_FAILED', 'updated_at' => now('UTC'),
             ]);
 
@@ -104,13 +120,15 @@ class SceneOperationsService
             ->update(['state' => 'resolved', 'resolution_code' => 'request_routed_or_closed', 'updated_at' => now('UTC')]);
         DB::table('scene_quotes')->where('state', 'accepted')->orderBy('id')->chunkById(100, function ($quotes) {
             foreach ($quotes as $quote) {
-                $assessment = DB::table('scene_assessments')->where('id', $quote->assessment_id)->first();
-                foreach (SceneWorkflow::unpack($assessment?->candidate_snapshot) as $candidate) {
-                    $e = DB::table('scene_evidence')->where('id', $candidate['evidence_id'] ?? 0)->first();
-                    if (! $e || $e->revoked_at || $e->expires_at <= now('UTC')) {
+                DB::transaction(function () use ($quote) {
+                    $request = SceneWorkflow::requireRow('scene_requests', (int) $quote->request_id);
+                    $assessment = SceneWorkflow::requireRow('scene_assessments', (int) $quote->assessment_id, false);
+                    try {
+                        app(SceneAssessmentService::class)->assertCurrent($assessment, $request, (int) $assessment->channel_id);
+                    } catch (SceneWorkflowException) {
                         $this->todo('qualification:quote:'.$quote->id, (int) $quote->request_id, 'accepted_qualification_invalid');
                     }
-                }
+                }, 3);
             }
         });
         DB::table('scene_quotes')->whereIn('state', ['returned', 'rejected'])->orderBy('id')->chunkById(100, function ($quotes) {
@@ -124,7 +142,9 @@ class SceneOperationsService
             }
         });
 
-        return ['expired_holds' => $expired, 'open_todos' => DB::table('scene_operation_todos')->where('state', 'open')->count()];
+        $contacts = app(SceneIntakeClockService::class)->scan();
+
+        return ['expired_holds' => $expired, 'contacts' => $contacts, 'open_todos' => DB::table('scene_operation_todos')->where('state', 'open')->count()];
     }
 
     public function replay(int $id, int $actor): array
@@ -152,21 +172,49 @@ class SceneOperationsService
         $ids = (clone $real)->select('id');
 
         return [
-            'requests'           => (clone $real)->count(),
-            'accepted_quotes'    => DB::table('scene_quote_acceptances')->whereIn('quote_id', DB::table('scene_quotes')->whereIn('request_id', clone $ids)->select('id'))->count(),
+            'requests' => (clone $real)->count(),
+            'accepted_quotes' => DB::table('scene_quote_acceptances')->whereIn('quote_id', DB::table('scene_quotes')->whereIn('request_id', clone $ids)->select('id'))->count(),
             'confirmed_projects' => DB::table('scene_projects')->whereIn('request_id', clone $ids)->whereNotIn('state', ['cancelled'])->count(),
-            'open_todos'         => DB::table('scene_operation_todos')->where('state', 'open')->count(),
-            'outbox_pending'     => DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->count(),
-            'outbox_failed'      => DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->where('attempts', '>=', 8)->count(),
-            'definitions'        => ['requests' => '非测试且非旧线索适配的独立需求数', 'accepted_quotes' => '客户接受事实，非订单成交或收款', 'confirmed_projects' => '已建立项目，非验收或收款'],
-            'worker_status'      => 'requires_process_verification', 'sla_status' => 'calendar_not_configured',
+            'open_todos' => DB::table('scene_operation_todos')->where('state', 'open')->count(),
+            'outbox_pending' => DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->count(),
+            'outbox_failed' => DB::table('business_outbox')->where('event_type', 'like', 'scene.%')->whereNull('processed_at')->where('attempts', '>=', 8)->count(),
+            'definitions' => ['requests' => '非测试且非旧线索适配的独立需求数', 'accepted_quotes' => '客户接受事实，非订单成交或收款', 'confirmed_projects' => '已建立项目，非验收或收款'],
+            'worker_status' => 'requires_process_verification', 'sla_status' => app(ScenePolicyService::class)->effective('service_calendar') ? 'calendar_approved' : 'calendar_not_configured',
         ];
     }
 
     private function todo(string $key, int $requestId, string $kind): void
     {
         DB::table('scene_operation_todos')->insertOrIgnore(['dedupe_key' => $key, 'request_id' => $requestId, 'kind' => $kind,
-            'state'                                                      => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+            'state' => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+    }
+
+    public function assignTodo(int $id, int $expected, int $assignee, string $reason, int $actor): array
+    {
+        $this->flow->enabled('operations_enabled');
+
+        return DB::transaction(function () use ($id, $expected, $assignee, $reason, $actor) {
+            $ref = SceneWorkflow::requireRow('scene_operation_todos', $id, false);
+            if ($ref->request_id) {
+                SceneWorkflow::requireRow('scene_requests', (int) $ref->request_id);
+            }
+            $todo = SceneWorkflow::requireRow('scene_operation_todos', $id);
+            SceneWorkflow::version($todo, $expected);
+            if ($todo->state !== 'open' || ! DB::table('admins')->where('id', $assignee)->where('status', 1)->exists() || mb_strlen(trim($reason)) < 3) {
+                throw new SceneWorkflowException('SCENE_TODO_ASSIGN_INVALID', '待办已处理、负责人无效或缺少转派依据。', 409);
+            }
+            DB::table('scene_operation_todos')->where('id', $id)->update(['assignee_id' => $assignee, 'row_version' => $expected + 1, 'updated_at' => now('UTC')]);
+            if (in_array($todo->kind, ['contact_overdue', 'contact_escalation'], true)) {
+                DB::table('scene_service_clocks')->where('request_id', $todo->request_id)->where('state', 'awaiting_contact')->update([
+                    ($todo->kind === 'contact_overdue' ? 'assignee_id' : 'escalation_assignee_id') => $assignee, 'updated_at' => now('UTC')]);
+            }
+            if ($todo->request_id) {
+                DB::table('scene_activities')->insert(['request_id' => $todo->request_id, 'kind' => 'todo_assigned', 'actor_type' => 'admin', 'actor_id' => $actor, 'note' => $reason, 'visibility' => 'internal', 'occurred_at' => now('UTC'), 'created_at' => now('UTC')]);
+            }
+            $this->flow->record('admin', $actor, 'scene_todo', $id, $expected + 1, 'scene.todo.assigned', ['assignee_id' => $assignee]);
+
+            return ['id' => $id, 'state' => 'open', 'row_version' => $expected + 1];
+        }, 3);
     }
 
     private function quoteTodo(object $quote): void

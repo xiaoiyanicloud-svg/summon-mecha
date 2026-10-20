@@ -69,3 +69,18 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 新增流程 PHP 27/27、SC0 后端回归 11/11、前端 28/28、12 个 Vue SFC、7 个新流程及 5 个目录浏览器夹具检查通过；PHP 语法 51 文件通过。源文件哈希与[验证快照](sc1-sc5-evidence/verification.json)一致。
 
 这些证据不替代真实 MySQL 行锁/订单事务、Admin 角色 HTTP、HBuilderX H5/小程序、真机、扫描器或 worker/scheduler 常驻验收。
+
+## 2026-10-21：已读取另一端交接与 SC1 / SC2 收尾代码
+
+已 fetch 另一端 `8c7d660`（之前为 2ab79da），读取 `f1e1ee2` / `8c7d660`：schema 的 `{category}` 与 Bagisto 全局模型绑定冲突，已按同一修复改为 `{sceneCategory}`，公开路径不变；另一端报告 8010 为 `APP_ENV=testing`、`summon_mecha_scenes_test`，迁移至 100004。旧 500 来自当时运行库未有场景表，不能吞成 401。本机最新 GET-only 20 项通过，未签发凭证为 `401 SCENE_ACCESS_INVALID`；目录空导致详情跳过，未对远端执行写入。
+
+本轮 SC1/SC2 开发、表单/API/后台接通和本机验证详见[第 18 步](../skill-dev-step18.md)、[执行账本](SC1-SC2-Closeout-20261021.md)、[实际技术契约](Scene-Workflow-Contract-v1.md)。本分支包含第三批 a9e5192 及本轮增量；不要只取 78b0629 或旧交接中首批 SHA。政策草案、现场依据、BOM、技能任务依据和附件保全不是自动 seed，不在 root 写数据。
+
+给另一端的具体下一步：
+
+1. fetch `codex/scene-workflow-sc0-sc5` 最新提交，在隔离 checkout 合并；保留 EcoCenter、SkillMarket、mine 等本机未提交内容，不整文件覆盖，不 git add -A。若交接文档发生尾部冲突，保留双方日期说明；sceneCategory 修复两边等价，不能恢复 category 参数名。
+2. 按更新后的 `my-bagisto-store/qa/scenes/README.md` 审查并在专用测试库执行待执行的 100005、100006、100007。之后 `optimize:clear`、实际服务重启、重新 preflight；七份迁移、新表/列/唯一约束及路由齐全后才准备写入演练。
+3. 两个不同 Admin 完成草案、独立审核/复核及退回，客户完成受理/附件回执/表单修订/方案比较和报价决策。先配测试环境所需实际主体标识、联系渠道、负责人、日历及扫描器；正式库必须是真实主体及授权依据。不能把 fixture 扫描器作为生产杀毒扫描器。
+4. 运行新版本 MySQL 多连接、完整 Admin 会话和 HBuilderX H5/小程序验收并回传脱敏结果；本机 91 后端、16 控制器、32 Node、14 SFC/17 交互不替代这些步骤。原件清理需显式单 ID 和批准政策版本，默认只读。
+
+回传实际运行 HEAD/路径、APP_ENV/数据库身份、迁移/preflight JSON、角色与夹具标识、命令/退出码、失败信息和精确清理结果。SC3 转换仍硬阻断，SC4 变更/取消未自动生效，不因本轮条款草案而开放。本页是已写入仓库的交接，未声称对方已经读取、部署或完成新批次验收。
