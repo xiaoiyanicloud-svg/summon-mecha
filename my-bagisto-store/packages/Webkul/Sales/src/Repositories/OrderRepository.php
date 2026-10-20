@@ -43,66 +43,56 @@ class OrderRepository extends Repository
      */
     public function createOrderIfNotThenRetry(array $data, int $retry = 0)
     {
-        DB::beginTransaction();
-
+        // Laravel 管理 savepoint 和 Throwable 回滚；仓储不能提交调用方的外层事务。
+        // 只在顶层对数据库并发错误有界重试，业务/监听器异常直接向调用方传播。
+        $attempts = DB::transactionLevel() === 0 ? max(1, 3 - max(0, $retry)) : 1;
         try {
-            Event::dispatch('checkout.order.save.before', [$data]);
+            return DB::transaction(function () use ($data) {
+                Event::dispatch('checkout.order.save.before', [$data]);
 
-            $data['status'] = Order::STATUS_PENDING;
+                $data['status'] = Order::STATUS_PENDING;
 
-            $order = $this->model->create(array_merge($data, ['increment_id' => $this->generateIncrementId()]));
+                $order = $this->model->create(array_merge($data, ['increment_id' => $this->generateIncrementId()]));
 
-            $order->payment()->create($data['payment']);
+                $order->payment()->create($data['payment']);
 
-            if (isset($data['shipping_address'])) {
-                $order->addresses()->create($data['shipping_address']);
-            }
-
-            $order->addresses()->create($data['billing_address']);
-
-            foreach ($data['items'] as $item) {
-                Event::dispatch('checkout.order.orderitem.save.before', $item);
-
-                $orderItem = $this->orderItemRepository->create(array_merge($item, ['order_id' => $order->id]));
-
-                if (! empty($item['children'])) {
-                    foreach ($item['children'] as $child) {
-                        $this->orderItemRepository->create(array_merge($child, ['order_id' => $order->id, 'parent_id' => $orderItem->id]));
-                    }
+                if (isset($data['shipping_address'])) {
+                    $order->addresses()->create($data['shipping_address']);
                 }
 
-                $this->orderItemRepository->manageInventory($orderItem);
+                $order->addresses()->create($data['billing_address']);
 
-                $this->orderItemRepository->manageCustomizableOptions($orderItem);
+                foreach ($data['items'] as $item) {
+                    Event::dispatch('checkout.order.orderitem.save.before', $item);
 
-                $this->downloadableLinkPurchasedRepository->saveLinks($orderItem, 'available');
+                    $orderItem = $this->orderItemRepository->create(array_merge($item, ['order_id' => $order->id]));
 
-                Event::dispatch('checkout.order.orderitem.save.after', $orderItem);
-            }
+                    if (! empty($item['children'])) {
+                        foreach ($item['children'] as $child) {
+                            $this->orderItemRepository->create(array_merge($child, ['order_id' => $order->id, 'parent_id' => $orderItem->id]));
+                        }
+                    }
 
-            Event::dispatch('checkout.order.save.after', $order);
-        } catch (\Exception $e) {
-            /* rolling back first */
-            DB::rollBack();
+                    $this->orderItemRepository->manageInventory($orderItem);
 
-            /* storing log for errors */
+                    $this->orderItemRepository->manageCustomizableOptions($orderItem);
+
+                    $this->downloadableLinkPurchasedRepository->saveLinks($orderItem, 'available');
+
+                    Event::dispatch('checkout.order.orderitem.save.after', $orderItem);
+                }
+
+                Event::dispatch('checkout.order.save.after', $order);
+
+                return $order;
+            }, $attempts);
+        } catch (\Throwable $e) {
             Log::error(
                 'OrderRepository:createOrderIfNotThenRetry',
-                ['exception' => get_class($e), 'attempt' => $retry + 1, 'order_type' => $data['order_type'] ?? null]
+                ['exception' => get_class($e), 'retry_limit' => $attempts]
             );
-
-            /* 重试有上限，避免任意建单异常导致无限递归刷日志/卡死(如 booking 类型商品曾触发) */
-            if ($retry >= 2) {
-                throw $e;
-            }
-
-            return $this->createOrderIfNotThenRetry($data, $retry + 1);
-        } finally {
-            /* commit in each case */
-            DB::commit();
+            throw $e;
         }
-
-        return $order;
     }
 
     /**
