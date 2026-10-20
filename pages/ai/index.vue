@@ -26,37 +26,46 @@
     <scroll-view class="chat-area" role="log" aria-label="与小召的对话" scroll-y="true" show-scrollbar="false" :scroll-into-view="scrollAnchor" scroll-with-animation="true" @scroll="onChatScroll">
       <!-- 空态:欢迎卡片(有对话后自动隐藏) -->
       <view class="main-card" v-if="messages.length === 0">
-        <!-- 上半部分：试试这样问我 -->
         <view class="card-section">
           <view class="card-header">
-            <text class="card-title"><text class="icon-sparkle">✨</text> 试试这样问我</text>
-            <text class="card-date">需求诊断</text>
+            <view class="card-heading">
+              <text class="card-title"><text class="icon-sparkle">✨</text> 一句话，帮你选对机器人</text>
+              <text class="card-subtitle">说清场景、任务和预算，小召给你选型与落地建议</text>
+            </view>
           </view>
           <view class="question-btns">
+            <text class="question-label">不知道怎么描述？可以从这里开始</text>
             <view class="q-btn" role="button" tabindex="0" aria-label="询问工厂分拣机器人怎么选型" @tap="onQuestionTap('工厂分拣机器人怎么选型？请结合节拍、精度和预算给建议')" @keydown.enter.prevent="onQuestionTap('工厂分拣机器人怎么选型？请结合节拍、精度和预算给建议')">
               <text>工厂分拣怎么选型</text>
-              <text class="q-tag">热门</text>
+              <text class="q-arrow">›</text>
             </view>
             <view class="q-btn" role="button" tabindex="0" aria-label="询问酒店配送机器人怎么部署" @tap="onQuestionTap('酒店配送机器人怎么部署？需要考虑楼层、电梯和高峰期')" @keydown.enter.prevent="onQuestionTap('酒店配送机器人怎么部署？需要考虑楼层、电梯和高峰期')">
               <text>酒店配送怎么落地</text>
-              <text class="q-tag">实战</text>
+              <text class="q-arrow">›</text>
             </view>
             <view class="q-btn" role="button" tabindex="0" aria-label="询问展会接待机器人租用报价" @tap="onQuestionTap('展会接待机器人租一周大概怎么报价？需要迎宾和互动')" @keydown.enter.prevent="onQuestionTap('展会接待机器人租一周大概怎么报价？需要迎宾和互动')">
               <text>展会租用怎么报价</text>
-              <text class="q-tag">对比</text>
+              <text class="q-arrow">›</text>
             </view>
           </view>
         </view>
 
-        <!-- 分割线 -->
-        <view class="divider"></view>
-
-        <!-- 下半部分：AI帮你选机甲 -->
-        <view class="card-section filter-section">
-          <view class="filter-header">
-            <text class="filter-title">AI帮你选机甲</text>
-            <text class="filter-badge">智能匹配</text>
+        <view
+          class="quick-filter-toggle"
+          role="button"
+          tabindex="0"
+          :aria-expanded="quickFilterExpanded ? 'true' : 'false'"
+          @tap="toggleQuickFilter"
+          @keydown.enter.prevent="toggleQuickFilter"
+        >
+          <view class="quick-filter-copy">
+            <text class="quick-filter-title">按预算和任务筛选</text>
+            <text class="quick-filter-sub">已有明确条件时再展开</text>
           </view>
+          <text class="quick-filter-arrow">{{ quickFilterExpanded ? '收起 ↑' : '展开 ↓' }}</text>
+        </view>
+
+        <view class="quick-filter-panel" v-if="quickFilterExpanded">
           <view class="tags-row">
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('3万以下') ? 'true' : 'false'" :class="{ active: isTagSelected('3万以下') }" @tap="onTagClick('3万以下')" @keydown.enter.prevent="onTagClick('3万以下')">3万以下</text>
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('3-10万') ? 'true' : 'false'" :class="{ active: isTagSelected('3-10万') }" @tap="onTagClick('3-10万')" @keydown.enter.prevent="onTagClick('3-10万')">3-10万</text>
@@ -472,6 +481,7 @@ export default {
       chatViewportHeight: 0,
       quickBudget: '',
       quickTasks: [],
+      quickFilterExpanded: false,
       draftRestored: false,
       // 真实历史对话(本地持久化):[{ id, title, time, messages:[...] }]
       // 原来是 6 条写死的假数据,点了没反应(死数据)。
@@ -868,6 +878,7 @@ export default {
         const budgets = ['3万以下', '3-10万', '10-30万', '30万以上'];
         if (budgets.includes(draft.quickBudget)) this.quickBudget = draft.quickBudget;
         if (Array.isArray(draft.quickTasks)) this.quickTasks = draft.quickTasks.slice(0, 6);
+        this.quickFilterExpanded = Boolean(this.quickBudget || this.quickTasks.length);
       } catch (e) {
         console.warn('[ai] 草稿恢复失败', e);
       }
@@ -923,6 +934,7 @@ export default {
       this.messages = [];
       this.quickBudget = '';
       this.quickTasks = [];
+      this.quickFilterExpanded = false;
       this.inputValue = '';
       this.lastUserPrompt = '';
       this.followLatest = true;
@@ -1026,6 +1038,9 @@ export default {
       }
       this.saveConversations();
       this.scheduleServerSync();
+    },
+    toggleQuickFilter() {
+      this.quickFilterExpanded = !this.quickFilterExpanded;
     },
     isTagSelected(tag) {
       if (['3万以下', '3-10万', '10-30万', '30万以上'].includes(tag)) {
@@ -1925,6 +1940,7 @@ page {
 /* H5 键盘焦点必须有可见反馈；小程序端会自动忽略这些规则。 */
 .menu-icon:focus-visible,
 .q-btn:focus-visible,
+.quick-filter-toggle:focus-visible,
 .tag:focus-visible,
 .quick-start:focus-visible,
 .think-head:focus-visible,
@@ -2017,15 +2033,22 @@ page {
   position: relative;
 }
 .card-header {
+  margin-bottom: 22rpx;
+}
+.card-heading {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
+  flex-direction: column;
+  gap: 10rpx;
 }
 .card-title {
   font-size: 34rpx;
   font-weight: 600;
   color: #1a2a3a;
+}
+.card-subtitle {
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #607080;
 }
 .icon-sparkle {
   margin-right: 10rpx;
@@ -2041,8 +2064,12 @@ page {
 .question-btns {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
-  padding-right: 80rpx;
+  gap: 14rpx;
+}
+.question-label {
+  margin-bottom: 2rpx;
+  font-size: 23rpx;
+  color: #6b7a88;
 }
 .q-btn {
   background: rgba(255, 255, 255, 0.75);
@@ -2059,6 +2086,12 @@ page {
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
   position: relative;
   overflow: hidden;
+}
+.q-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #7b8fa5;
+  font-size: 34rpx;
 }
 .q-btn::before {
   content: '';
@@ -2078,6 +2111,38 @@ page {
   padding: 2rpx 16rpx;
   border-radius: 30rpx;
   margin-left: auto;
+}
+.quick-filter-toggle {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+.quick-filter-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+.quick-filter-title {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #1a2a3a;
+}
+.quick-filter-sub {
+  font-size: 21rpx;
+  color: #718293;
+}
+.quick-filter-arrow {
+  flex-shrink: 0;
+  font-size: 23rpx;
+  color: #165DFF;
+}
+.quick-filter-panel {
+  padding-top: 20rpx;
 }
 
 .divider {

@@ -22,6 +22,14 @@
 
 ## 变更记录
 
+### [AI首屏减负] 2026-10-20 · 收起次要筛选，降低首屏认知负担
+- 问题：首屏同时展示 3 条示例问题和 10 个预算/任务标签，两条路径争抢注意力。
+- 调整：主标题改为“一句话，帮你选对机器人”；保留 3 个代表性示例；预算/任务筛选默认收起，用户明确需要时再展开。
+- 视觉：移除示例问题的“热门/实战/对比”徽标，改为轻量箭头；筛选展开入口合并为一行，展开后才显示标签与匹配按钮。
+- 验证：HBuilderX H5 编译成功；真实 Chrome `7/7` 通过；默认卡片高度 `328px`，展开后 `442px`；320 / 375px 无横向溢出；页面异常 0。
+- 截图：`.claude/backup/ai-empty-state-simplify-20261020/evidence/ai-empty-collapsed-375.png`、`ai-empty-expanded-375.png`。
+- 回滚：使用 `.claude/backup/ai-empty-state-simplify-20261020/pages/ai/index.vue` 覆盖。
+
 ### [AI召唤收口] 2026-10-20 · 跨设备历史 + 正式埋点 + 读屏闭环（用户批准一次性完成）
 - 范围：新增 additive 数据表、登录客户同步 API、公开埋点 API、CLI 报表与前端账号作用域隔离；未改既有业务表。
 - 跨设备历史：`ai_conversations` 按 `customer_id + client_id` 唯一；`client_updated_at` 裁决版本；90 天删除墓碑防旧设备复活。
