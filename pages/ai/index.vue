@@ -546,8 +546,8 @@ export default {
       return this.isGenerating || (this.inputValue.trim().length > 0 && this.inputValue.length <= this.inputMaxLength);
     },
     inputPlaceholder() {
-      if (this.isGenerating) return '小召正在回答，可先输入下一条需求…';
-      return '描述场景、任务和预算，例如：仓库分拣，预算 10 万';
+      if (this.isGenerating) return '小召回答中，可继续输入…';
+      return '说说场景和预算…';
     },
     replyStateText() {
       if (this.requestState === 'thinking') return '正在分析需求…';
