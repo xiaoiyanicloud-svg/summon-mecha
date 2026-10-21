@@ -3,14 +3,23 @@
 namespace Webkul\Shop\Services\Scenes;
 
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Webkul\Shop\Models\Scene;
 
 class SceneSchemaRegistry
 {
-    public function schema(string $category): array
+    public function schema(string $category, int $version = 2): array
     {
         if (! array_key_exists($category, Scene::CATEGORIES)) {
             throw new SceneWorkflowException('SCENE_SCHEMA_UNSUPPORTED', '场景类别无效。');
+        }
+        if ($version === 2) {
+            return ['version' => 2, 'rule_version' => 'scene-site-v2', 'category' => $category,
+                'fields' => SceneFieldRegistry::fields($category), 'unknown_policy' => 'manual_review',
+                'notice' => '初次受理允许未知；正式方案须有现场核验及对应设备/任务证据。'];
+        }
+        if ($version !== 1) {
+            throw new SceneWorkflowException('SCENE_SCHEMA_UNSUPPORTED', '表单版本不受支持。');
         }
         $fields = [
             ['key' => 'city', 'label' => '服务城市', 'type' => 'text', 'required' => true, 'max' => 100],
@@ -26,11 +35,11 @@ class SceneSchemaRegistry
         ];
         // 类别补充用于勘察；字段未知不会自动给出能力结论。
         $specific = [
-            'education'           => ['age_range', '参与者年龄范围'],
-            'medical'             => ['privacy_scope', '隐私与接触范围'],
-            'industry'            => ['payload_kg', '搬运载荷（kg）'],
+            'education' => ['age_range', '参与者年龄范围'],
+            'medical' => ['privacy_scope', '隐私与接触范围'],
+            'industry' => ['payload_kg', '搬运载荷（kg）'],
             'warehouse_logistics' => ['payload_kg', '搬运载荷（kg）'],
-            'home'                => ['access_limits', '家庭通行限制'],
+            'home' => ['access_limits', '家庭通行限制'],
         ];
         [$key, $label] = $specific[$category] ?? ['task_goal', '任务目标与边界'];
         $fields[] = ['key' => $key, 'label' => $label, 'type' => 'text', 'required' => false, 'max' => 2000];
@@ -44,8 +53,14 @@ class SceneSchemaRegistry
         foreach ($schema['fields'] as $field) {
             $rule = [$complete && $field['required'] ? 'required' : 'nullable'];
             $rule[] = match ($field['type']) {
-                'integer' => 'integer', 'boolean' => 'boolean', default => 'string'
+                'integer' => 'integer', 'boolean' => 'boolean', 'decimal' => 'numeric', default => 'string'
             };
+            if ($field['type'] === 'choice') {
+                $rule[] = Rule::in(array_column($field['options'], 'value'));
+            }
+            if ($field['type'] === 'decimal') {
+                $rule[] = 'regex:/^\d{1,9}(?:\.\d{1,3})?$/D';
+            }
             if (isset($field['max'])) {
                 $rule[] = 'max:'.$field['max'];
             }
@@ -59,6 +74,19 @@ class SceneSchemaRegistry
             throw new SceneWorkflowException('SCENE_FACT_UNKNOWN', '存在当前表单不支持的字段，请刷新表单。');
         }
 
-        return Validator::make($facts, $rules)->validate();
+        $values = Validator::make($facts, $rules)->validate();
+        foreach ($schema['fields'] as $field) {
+            if (! array_key_exists($field['key'], $values) || $values[$field['key']] === null) {
+                continue;
+            }
+            if ($field['type'] === 'boolean') {
+                $values[$field['key']] = (bool) $values[$field['key']];
+            }
+            if ($field['type'] === 'integer') {
+                $values[$field['key']] = (int) $values[$field['key']];
+            }
+        }
+
+        return $values;
     }
 }

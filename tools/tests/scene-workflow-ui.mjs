@@ -8,7 +8,7 @@ const {parse,compileTemplate}=require('@vue/compiler-sfc')
 const {parse:parseScript}=require('@babel/parser')
 const {chromium}=require('playwright-core')
 const out=path.resolve(process.env.SCENE_EVIDENCE_DIR||'docs/scenes/sc1-sc5-batch2-evidence');fs.mkdirSync(out,{recursive:true})
-const files=['pages/scene/request.vue','pages/scene/requests.vue','pages/scene/detail.vue','pages/scene/project.vue','pages/home/index.vue','pages/robot/index.vue','pages/robot/fangan.vue','pages/home/rmfangan.vue','pages/order/checkout.vue','pages/ai/index.vue','pages/mine/index.vue','components/StateView.vue']
+const files=['pages/scene/request.vue','pages/scene/requests.vue','pages/scene/detail.vue','pages/scene/project.vue','pages/home/index.vue','pages/robot/index.vue','pages/robot/fangan.vue','pages/home/rmfangan.vue','pages/order/checkout.vue','pages/ai/index.vue','pages/mine/index.vue','components/StateView.vue','components/SceneFactsForm.vue','components/SceneAttachments.vue']
 const customTags=['view','text','image','scroll-view','swiper','swiper-item','input','textarea','button','picker','video','label']
 function stripImports(source){const ast=parseScript(source,{sourceType:'module'});for(const n of [...ast.program.body].reverse()){if(n.type==='ImportDeclaration')source=source.slice(0,n.start)+source.slice(n.end)}return source}
 const sources={}
@@ -31,7 +31,7 @@ try{
   const shared=fs.readFileSync('pages/scene/scene.css','utf8').replace(/([\d.]+)rpx/g,(_,v)=>Number(v)/2+'px')
   await page.setContent('<style>body{margin:0;font-family:Arial,sans-serif}view,text,scroll-view{display:block}button{border:0}input,textarea{font-family:inherit}'+shared+'</style><div id="app"></div>')
   await page.addScriptTag({path:require.resolve('vue/dist/vue.global.prod.js')})
-  await page.evaluate(({sources,helper})=>{
+  await page.evaluate(({sources,helper,fields})=>{
     window.storage=new Map();window.nav=[];window.toasts=[];window.failCreate=false;window.createCalls=[]
     window.uni={getStorageSync:k=>window.storage.get(k),setStorageSync:(k,v)=>window.storage.set(k,structuredClone(v)),navigateTo:v=>window.nav.push(v),redirectTo:v=>window.nav.push(v),navigateBack:()=>{},showToast:v=>window.toasts.push(v)}
     const schema={version:1,category:'enterprise',fields:[{key:'city',label:'服务城市',type:'text',max:100,required:true},{key:'timezone',label:'服务地 IANA 时区',type:'text',max:80,required:true},{key:'indoor',label:'是否室内',type:'boolean',required:false}]}
@@ -42,20 +42,27 @@ try{
       project:async()=>({data:{id:2,project_no:'SP-QA-2',request_id:12,state:'awaiting_acceptance',row_version:1,commercial_state:'confirmed_offline',payment_state:'unpaid',tasks:[{id:1,name:'现场服务',state:'done',occurred_at:'2026-10-20 10:00:00'}],acceptance_template:[{key:'greeting',label:'按冻结脚本完成迎宾',required:true}],acceptances:[],changes:[],tickets:[]}}),
       projectAction:async()=>{throw new Error('网络中断，请重试')},supplement:async()=>({data:{}}),accept:async()=>({data:{state:'accepted'}})}
     window.sceneApiFixture=api
-    const helpers=new Function('sceneWorkflowApi','TOKEN_KEY','CUSTOMER_KEY',helper+'\nreturn {sceneAccountScope,sceneLocalState,sceneGuestAccess,sceneGuestReceipts,saveSceneDraft,clearSceneDraft,sceneDraftPayload,submitSceneRequest,submitSceneCommand,scenePendingCommands,sceneStatusLabel}') (api,'token','customer')
+    const helpers=new Function('sceneWorkflowApi','TOKEN_KEY','CUSTOMER_KEY',helper+'\nreturn {sceneAccountScope,sceneLocalState,sceneGuestAccess,sceneGuestReceipts,saveSceneDraft,clearSceneDraft,sceneDraftPayload,submitSceneRequest,submitSceneCommand,scenePendingCommands,sceneStatusLabel,sceneAttachmentPending,recoverSceneAttachment,submitSceneAttachment,openSceneAttachment}') (api,'token','customer')
+    Object.assign(helpers,new Function(fields+'\nreturn {normalizeSceneFacts,sceneFactLabel}')())
     const state=sources['components/StateView.vue'];const StateView=new Function(state.script.replace('export default','return'))();StateView.render=new Function('Vue',state.render)(Vue)
+    const factSource=sources['components/SceneFactsForm.vue'];const SceneFactsForm=new Function(factSource.script.replace('export default','return'))();SceneFactsForm.render=new Function('Vue',factSource.render)(Vue)
+    const attachmentSource=sources['components/SceneAttachments.vue'];const SceneAttachments=new Function(...Object.keys(helpers),attachmentSource.script.replace('export default','return'))(...Object.values(helpers));SceneAttachments.render=new Function('Vue',attachmentSource.render)(Vue)
     window.mountScene=(file,options={})=>{
       if(window.sceneApp)window.sceneApp.unmount()
-      const entry=sources[file],names=['StateView','sceneWorkflowApi','sceneApi',...Object.keys(helpers)]
-      const component=new Function(...names,entry.script.replace('export default','return'))(StateView,api,{getSceneDetail:async()=>({matched:true,name:'展会迎宾服务',category:'enterprise',scene_revision_id:5,requirement_schema:schema})},...Object.values(helpers))
+      const entry=sources[file],names=['StateView','SceneFactsForm','SceneAttachments','sceneWorkflowApi','sceneApi',...Object.keys(helpers)]
+      const component=new Function(...names,entry.script.replace('export default','return'))(StateView,SceneFactsForm,SceneAttachments,api,{getSceneDetail:async()=>({matched:true,name:'展会迎宾服务',category:'enterprise',scene_revision_id:5,requirement_schema:schema})},...Object.values(helpers))
       component.render=new Function('Vue',entry.render)(Vue)
       component.created=function(){component.onLoad.call(this,options);component.onShow.call(this)}
       const style=document.createElement('style');style.textContent=entry.styles.replace(/@import[^;]+;/g,'').replace(/([\d.]+)rpx/g,(_,v)=>Number(v)/2+'px');document.head.append(style)
       window.sceneApp=Vue.createApp(component);window.sceneVm=window.sceneApp.mount('#app')
     }
-  },{sources,helper:stripImports(fs.readFileSync('utils/scene-request.js','utf8')).replace(/^export /gm,'')})
+  },{sources,helper:stripImports(fs.readFileSync('utils/scene-request.js','utf8')).replace(/^export /gm,''),fields:fs.readFileSync('utils/scene-fields.js','utf8').replace(/^export /gm,'')})
   await page.evaluate(()=>window.mountScene('pages/scene/request.vue',{sceneId:'1',source:'scene'}));await page.waitForFunction(()=>window.sceneVm.loading===false)
   await page.getByText('展会迎宾服务',{exact:true}).waitFor();checks.push('真实 Vue 挂载需求动态表单')
+  await page.evaluate(()=>{const v=window.sceneVm;v.schema.fields.push({key:'payload_kg',label:'载荷',type:'decimal',unit:'kg',max:1000},{key:'environment',label:'环境',type:'choice',options:[{value:'ordinary',label:'普通环境'},{value:'hazardous',label:'高危环境'}]});const component=v.$.subTree.children.find(()=>false);v.form.facts.payload_kg='1.250';v.form.facts.environment='ordinary';v.form.facts.indoor=false})
+  await page.getByText('载荷（kg）',{exact:true}).waitFor();await page.getByText('普通环境 ›',{exact:true}).waitFor()
+  if(!await page.evaluate(()=>window.sceneVm.payload().facts.indoor===false&&window.sceneVm.payload().facts.payload_kg==='1.250'))throw new Error('专业字段值被转换为默认值')
+  checks.push('真实专业表单显示 choice 中文选项、数值单位并保留 false 与小数')
   await page.evaluate(()=>{const v=window.sceneVm;v.form.original_text='展会迎宾';v.form.contact.name='测试';v.form.contact.phone='13800000000';v.form.facts.city='上海';v.form.facts.timezone='Asia/Shanghai'})
   await page.evaluate(()=>window.sceneVm.submit());if(await page.evaluate(()=>window.createCalls.length)!==0)throw new Error('未授权联系却提交')
   checks.push('未确认联系授权禁止提交')
@@ -69,9 +76,30 @@ try{
   checks.push('重试使用同一幂等键并凭真实回执进入详情')
   await page.evaluate(()=>window.mountScene('pages/scene/detail.vue',{id:'12'}));await page.waitForFunction(()=>window.sceneVm.loading===false)
   await page.getByText('SR-QA-12',{exact:true}).waitFor();await page.screenshot({path:path.join(out,'request-detail.png'),fullPage:true});checks.push('需求号、原文、现场信息与真实空报价显示')
+  await page.evaluate(()=>{window.uploadCalls=[];window.uni.chooseFile=o=>o.success({tempFiles:[{path:'/isolated/original.pdf',size:128}]});window.sceneApiFixture.uploadAttachment=async(id,path,access,key)=>{window.uploadCalls.push({id,path,key});throw new Error('上传结果待确认')};window.sceneApiFixture.uploadReceipt=async()=>({data:{id:77,state:'clean',availability_state:'available'}})})
+  await page.getByText('选择并扫描上传',{exact:true}).dispatchEvent('tap');await page.getByText('上次上传回执待确认，查询或重选原件会保留同一提交标识。',{exact:true}).waitFor()
+  if(!await page.evaluate(()=>window.uploadCalls.length===1&&window.storage.get('scene_request_v1:guest').pending['upload:12']))throw new Error('上传失败未保留未知结果')
+  await page.getByText('查询原上传回执',{exact:true}).dispatchEvent('tap');await page.waitForFunction(()=>!window.storage.get('scene_request_v1:guest').pending['upload:12'])
+  checks.push('真实附件组件上传丢响应保留原标识，查询已提交回执后清理待确认状态')
   await page.evaluate(()=>window.mountScene('pages/scene/requests.vue'));await page.waitForFunction(()=>window.sceneVm.loading===false);await page.getByText('暂无已提交需求',{exact:true}).waitFor();checks.push('需求列表成功空态')
   await page.evaluate(()=>window.mountScene('pages/scene/project.vue',{id:'2'}));await page.waitForFunction(()=>window.sceneVm.loading===false)
   await page.getByText('按冻结脚本完成迎宾（必需）',{exact:false}).waitFor();await page.screenshot({path:path.join(out,'project-acceptance.png'),fullPage:true});checks.push('冻结验收标准和项目款项状态分离')
+  await page.evaluate(()=>{
+    window.sceneVm.project.acceptances=[{id:10,item_key:'greeting',attempt:1,result:'fail',method:'customer_offline_recorded',occurred_at:'2026-10-19 10:00:00',created_at:'2026-10-20 00:00:00',note:'初验未达到脚本要求'}]
+    window.sceneVm.project.offline_confirmations=[{id:20,state:'pending_review',occurred_at:'2026-10-19 10:00:00',created_at:'2026-10-20 00:00:00'}]
+  })
+  await page.getByText('客户线下确认 · 平台代录并经独立复核',{exact:true}).waitFor()
+  await page.getByText('线下确认凭证 #20 · 待独立复核，未生效',{exact:true}).waitFor()
+  await page.getByText('实际确认：2026-10-19 10:00:00 UTC',{exact:true}).waitFor()
+  await page.getByText('平台记录：2026-10-20 00:00:00 UTC',{exact:true}).waitFor()
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth))throw new Error('线下凭证说明在窄屏出现横向溢出')
+  await page.screenshot({path:path.join(out,'project-offline-confirmation.png'),fullPage:true})
+  checks.push('客户区分线下验收来源、实际确认/平台记录时间和待复核未生效；390px 无横向溢出')
+  await page.evaluate(()=>{window.sceneVm.project.acceptances[0].method='untrusted_source';window.sceneVm.project.acceptances[0].occurred_at=null;window.sceneVm.project.offline_confirmations[0].state='rejected';window.sceneVm.project.offline_confirmations[0].reviewed_at='2026-10-20 01:00:00'})
+  await page.getByText('历史验收记录（来源待核实）',{exact:true}).waitFor()
+  await page.getByText('实际确认：历史实际时间未记录',{exact:true}).waitFor()
+  await page.getByText('线下确认凭证 #20 · 已退回，未生效',{exact:true}).waitFor()
+  checks.push('未知历史来源与时间明确标记，退回凭证不显示验收通过')
   await page.evaluate(async()=>{
     window.projectData=(await window.sceneApiFixture.project()).data
     window.sceneApiFixture.project=async()=>({data:window.projectData})
@@ -94,6 +122,7 @@ try{
   await page.evaluate(async()=>{
     const record=(await window.sceneApiFixture.detail()).data
     const quote={id:31,version:2,row_version:4,request_revision_no:1,state:'sent',currency:'CNY',total_minor:12721,deposit_minor:10000,discount_minor:0,tax_minor:720,expires_at:'2026-11-01 00:00:00',is_expired:false,terms_hash:'a'.repeat(64),content_hash:'b'.repeat(64),terms:{terms:{version:'test-v1',text:'隔离测试正式服务条款'}},schedule:{starts_at:'2026-11-02T10:00:00+08:00',ends_at:'2026-11-02T18:00:00+08:00',timezone:'Asia/Shanghai'},items:[{name:'人工现场服务',quantity:1,billing_units:1,unit:'day',line_minor:12721}]}
+    quote.proposal={title:'受控迎宾实例方案',version:2,scope:'冻结脚本内的迎宾和现场讲解',exclusions:'不包含无人值守和自主跨楼层',components:[{key:'robot',label:'已核验机器人',quantity:1,required:true,selected:true}],acceptance:[{key:'greeting',label:'完成冻结脚本',required:true}]}
     const old={...quote,id:30,version:1,state:'voided',total_minor:11449,discount_minor:1200,tax_minor:648,items:[{...quote.items[0],line_minor:11449}]}
     window.quoteData={...record,quotes:[quote,old]};window.sceneApiFixture.detail=async()=>({data:window.quoteData})
     window.comparisonFixture={left:old,right:quote,same_currency:true,amount_deltas:{total_minor:1272,deposit_minor:0},changes:{terms:false,request_revision:false,schedule:false,items:true}}
@@ -108,6 +137,8 @@ try{
     window.mountScene('pages/scene/detail.vue',{id:'12'})
   })
   await page.waitForFunction(()=>window.sceneVm.loading===false)
+  await page.getByText('交付范围：冻结脚本内的迎宾和现场讲解',{exact:true}).first().waitFor();await page.getByText('不含范围：不包含无人值守和自主跨楼层',{exact:true}).first().waitFor()
+  checks.push('客户报价详情展示冻结方案、排除项、必选数量与验收标准')
   await page.evaluate(()=>window.sceneVm.compareQuotes());await page.getByText('服务总额变化 +12.72 CNY；押金变化 0.00',{exact:false}).waitFor()
   checks.push('已发送报价对比展示金额变化、条款/范围/时间差异且保留历史')
   await page.screenshot({path:path.join(out,'quote-comparison.png'),fullPage:true})

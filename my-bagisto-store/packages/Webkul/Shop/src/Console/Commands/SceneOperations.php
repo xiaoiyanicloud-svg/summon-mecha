@@ -15,11 +15,11 @@ class SceneOperations extends Command
 
     public function handle(SceneOperationsService $ops): int
     {
-        $tables = ['business_idempotency_keys', 'business_outbox', 'scene_revisions', 'scene_requests', 'scene_quotes', 'scene_resources', 'scene_reservations', 'scene_projects', 'scene_operation_todos'];
+        $tables = ['business_idempotency_keys', 'business_outbox', 'scene_revisions', 'scene_requests', 'scene_quotes', 'scene_resources', 'scene_reservations', 'scene_projects', 'scene_operation_todos', 'scene_policy_versions', 'scene_policy_kinds', 'scene_service_clocks', 'scene_site_surveys', 'scene_proposals', 'scene_attachment_holds', 'scene_content_evidence'];
         $missing = array_values(array_filter($tables, fn ($t) => ! Schema::hasTable($t)));
         $report = ['database_driver' => DB::connection()->getDriverName(), 'missing_tables' => $missing,
-            'features'               => collect(config('scenes'))->only(['publication_v2', 'requests_enabled', 'quotes_enabled', 'reservations_enabled', 'project_actions_enabled', 'operations_enabled'])->all(),
-            'order_conversion'       => 'blocked_pending_mysql_transaction_verification'];
+            'features' => collect(config('scenes'))->only(['publication_v2', 'requests_enabled', 'quotes_enabled', 'reservations_enabled', 'project_actions_enabled', 'operations_enabled'])->all(),
+            'order_conversion' => 'blocked_pending_mysql_transaction_verification'];
         if ($missing) {
             $this->line(json_encode($report, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 

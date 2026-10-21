@@ -1,0 +1,104 @@
+{
+  "target": "http://192.168.3.97:8010",
+  "checked_at": "2026-10-20T16:59:27.965Z",
+  "method": "GET only",
+  "capabilities": {
+    "requests": true,
+    "quotes": true,
+    "projects": true,
+    "publication_v2": true,
+    "attachments": false,
+    "order_conversion": false,
+    "consent_version": "scene-contact-v1",
+    "consent_text": "我同意平台为本次服务评估、方案沟通及交付联系我；现场资料仅供授权服务人员处理。"
+  },
+  "database_identity_independently_verified": false,
+  "results": [
+    {
+      "name": "列表返回合法快照",
+      "pass": true
+    },
+    {
+      "name": "列表无虚构咨询人数",
+      "pass": true
+    },
+    {
+      "name": "列表场景身份无重复",
+      "pass": true
+    },
+    {
+      "name": "真实详情",
+      "pass": null,
+      "note": "当前无启用场景，未验证详情，不创建测试数据"
+    },
+    {
+      "name": "非法 ID undefined 稳定拒绝",
+      "pass": true
+    },
+    {
+      "name": "非法 ID -1 稳定拒绝",
+      "pass": true
+    },
+    {
+      "name": "非法 ID 1x 稳定拒绝",
+      "pass": true
+    },
+    {
+      "name": "非法 ID 4294967296 稳定拒绝",
+      "pass": true
+    },
+    {
+      "name": "场景能力协议与转换硬阻断",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 business_event",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 enterprise",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 culture_tourism",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 education",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 security",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 warehouse_logistics",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 industry",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 medical",
+      "pass": true
+    },
+    {
+      "name": "专业 schema 路由 home",
+      "pass": true
+    },
+    {
+      "name": "未知专业类别返回字段错误",
+      "pass": true
+    },
+    {
+      "name": "无凭证拒绝读取私有列表",
+      "pass": true
+    },
+    {
+      "name": "未签发凭证稳定 401，不以缺表或服务器错误冒充鉴权",
+      "pass": true
+    }
+  ],
+  "failed": 0
+}

@@ -134,6 +134,47 @@ export function scenePendingCommands(prefix) {
     .filter(([slot, draft]) => slot.startsWith(prefix) && draft.state === 'awaiting_receipt')
     .map(([slot, draft]) => ({ slot, payload: draft.payload }))
 }
+
+export function sceneAttachmentPending(id) { return sceneLocalState().pending['upload:'+id] || null }
+export async function recoverSceneAttachment(id) {
+  const scope=sceneAccountScope(), pending=sceneAttachmentPending(id)
+  if (!pending) return null
+  const r=await sceneWorkflowApi.uploadReceipt(id,sceneLocalState().access,pending.key)
+  if (scope!==sceneAccountScope()) throw new Error('登录状态已变化，请重新打开需求')
+  if (r.data && Number.isSafeInteger(r.data.id) && r.data.availability_state) { clearSceneDraft('upload:'+id); return r.data }
+  if (r.data?.state!=='not_confirmed') throw new Error('原上传回执暂不可用，请稍后查询')
+  return null
+}
+export async function submitSceneAttachment(id,file) {
+  const scope=sceneAccountScope(), slot='upload:'+id
+  let pending=sceneAttachmentPending(id)
+  if (pending) { const receipt=await recoverSceneAttachment(id); if (receipt) return receipt }
+  const state=sceneLocalState()
+  if (!pending) pending={key:sceneCommandKey(),payload:{},state:'awaiting_receipt',savedAt:new Date().toISOString()}
+  const path=file?.path || pending.payload.path
+  if (!path) throw new Error('请重新选择原文件，保留原上传标识核验')
+  pending={...pending,payload:{path},state:'awaiting_receipt'}; state.pending[slot]=pending; save(state,scope)
+  const response=await sceneWorkflowApi.uploadAttachment(id,path,state.access,pending.key)
+  if (scope!==sceneAccountScope()) throw new Error('登录状态已变化，请重新打开需求查询回执')
+  if (!Number.isSafeInteger(response?.data?.id) || !response.data.availability_state) throw new Error('上传结果待确认，请查询原回执')
+  clearSceneDraft(slot); return response.data
+}
+export async function openSceneAttachment(id,attachmentId,mime='application/pdf') {
+  const scope=sceneAccountScope()
+  const file=await sceneWorkflowApi.downloadAttachment(id,attachmentId,sceneLocalState().access)
+  if (scope!==sceneAccountScope()) throw new Error('登录状态已变化，已停止打开私有资料')
+  // uni.openDocument 不支持 H5；只下载本次带鉴权头取得的本地 Blob，不直链受保护 API。
+  if (!mime.startsWith('image/') && typeof window!=='undefined' && typeof document!=='undefined') {
+    if (!file.filePath.startsWith('blob:')) throw new Error('浏览器未取得可用文件，请核对下载服务后重试')
+    const link=document.createElement('a');link.href=file.filePath;link.download='scene-document-'+id+'-'+attachmentId+'.pdf';link.rel='noopener';document.body.appendChild(link);link.click();link.remove()
+    return {state:'download_started'}
+  }
+  return new Promise((resolve,reject)=>{
+    const callbacks={success:resolve,fail:()=>reject(new Error('当前设备不能预览此资料，请更换受支持的设备'))}
+    if(mime.startsWith('image/'))uni.previewImage({urls:[file.filePath],showmenu:false,...callbacks})
+    else uni.openDocument({filePath:file.filePath,showMenu:false,...callbacks})
+  })
+}
 export function sceneDraftPayload({ source, sceneId, revisionId, category, text, facts = {}, contact }) {
   return { source, scene_id: sceneId || null, scene_revision_id: revisionId || null, category: category || 'enterprise',
     original_text: text || '希望沟通机器人场景服务，请联系我进一步确认需求。', facts,

@@ -8,7 +8,7 @@ use Webkul\Shop\Models\Scene;
 class SceneCatalogService
 {
     /** 目录资格不代表现场能力、档期或真机适配已经验证。 */
-    public function rentalProductIds(int $channelId, ?array $only = null): array
+    public function rentalProductIds(int $channelId, ?array $only = null, bool $current = false): array
     {
         $query = DB::table('products as p')
             ->join('product_flat as pf', 'pf.product_id', '=', 'p.id')
@@ -27,7 +27,11 @@ class SceneCatalogService
             $query->whereIn('p.id', $only);
         }
 
-        return $query->distinct()->pluck('p.id')->map(fn ($id) => (int) $id)->all();
+        if ($current) {
+            $query->lockForUpdate();
+        }
+
+        return $query->orderBy('p.id')->distinct()->pluck('p.id')->map(fn ($id) => (int) $id)->all();
     }
 
     public function summary(Scene $scene): array
@@ -39,7 +43,7 @@ class SceneCatalogService
             return ['id'            => $scene->id, 'name' => $c['name'], 'category' => $c['category'], 'description' => $c['description'],
                 'banner'            => $c['banner'] ?? null, 'tags' => $c['tags'], 'sort' => $scene->sort, 'is_hot' => (bool) $scene->is_hot,
                 'icon'              => $scene->icon, 'bg_color' => $scene->bg_color, 'consult_count' => null, 'consult_count_source' => 'not_published',
-                'scene_revision_id' => (int) $r->id, 'public_seq' => (int) $scene->public_seq];
+                'scene_revision_id' => (int) $r->id, 'public_seq' => (int) $scene->public_seq, 'offer_mode' => $c['offer_mode'] ?? 'consultation'];
         }
 
         return [
@@ -67,6 +71,7 @@ class SceneCatalogService
             $robots = $this->rentalProductIds($channelId, $c['robots']);
 
             return $this->summary($scene) + ['matched' => true, 'requirement_schema' => SceneWorkflow::unpack($r->requirement_schema),
+                'content_evidence' => app(SceneContentEvidenceService::class)->visible($c['content_evidence'] ?? []),
                 'acceptance_template'                  => SceneWorkflow::unpack($r->acceptance_template), 'deliverables' => $c['deliverables'],
                 'scheme'                               => ['desc' => $c['description'], 'icon' => $scene->icon, 'bgColor' => $scene->bg_color,
                     'consultCount'                                => null, 'stats' => null, 'tags' => $c['tags'], 'pains' => [], 'scenes' => [],

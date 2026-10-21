@@ -236,6 +236,7 @@ const sceneHeaders = (access, key) => ({ header: {
 }, loading: false })
 export const sceneWorkflowApi = {
   capabilities: () => http.get('/api/scene-workflow/capabilities'),
+  aiDraft: (original_text, suggestions = {}) => http.post('/api/scene-workflow/ai-draft', { original_text, suggestions }),
   access: () => http.post('/api/scene-workflow/access'),
   schema: category => http.get('/api/scene-workflow/schemas/' + encodeURIComponent(category)),
   list: (access, beforeId) => http.get('/api/scene-requests', { ...sceneHeaders(access), data: beforeId ? { before_id: beforeId } : {} }),
@@ -243,11 +244,33 @@ export const sceneWorkflowApi = {
   detail: (id, access) => http.get('/api/scene-requests/' + Number(id), sceneHeaders(access)),
   supplement: (id, data, access, key) => http.post('/api/scene-requests/' + Number(id) + '/supplements', data, sceneHeaders(access, key)),
   claim: (id, access) => http.post('/api/scene-requests/' + Number(id) + '/claim', {}, sceneHeaders(access)),
+  uploadReceipt: (id, access, key) => http.get('/api/scene-requests/' + Number(id) + '/attachment-receipt', sceneHeaders(access,key)),
+  uploadAttachment: (id, filePath, access, key) => scenePrivateFile('/api/scene-requests/' + Number(id) + '/attachments', { filePath, access, key }),
+  downloadAttachment: (id, attachmentId, access) => scenePrivateFile('/api/scene-requests/' + Number(id) + '/attachments/' + Number(attachmentId), { access }),
   accept: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/accept', data, sceneHeaders(access, key)),
   reject: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/reject', data, sceneHeaders(access, key)),
   compareQuotes: (id, leftId, rightId, access) => http.get('/api/scene-requests/' + Number(id) + '/quote-comparison', { ...sceneHeaders(access), data: { left_id: leftId, right_id: rightId } }),
   project: (id, access) => http.get('/api/scene-projects/' + Number(id), sceneHeaders(access)),
   projectAction: (id, action, data, access, key) => http.post('/api/scene-projects/' + Number(id) + '/' + action, data, sceneHeaders(access, key)),
+}
+
+// 上传和下载同样只在 API 入口发起；访问能力只放请求头，不放 URL 或本地文件名。
+function scenePrivateFile(path, { filePath, access, key }) {
+  const token=uni.getStorageSync(TOKEN_KEY)
+  const header={ Accept:'application/json', ...(token ? {Authorization:'Bearer '+token} : {}), ...sceneHeaders(access,key).header }
+  return new Promise((resolve,reject)=>{
+    const options={url:BASE_URL+path,header,timeout:45000,
+      success(res) {
+        let body=res.data
+        if (filePath && typeof body==='string') { try { body=JSON.parse(body) } catch (_) { body=null } }
+        if (res.statusCode<200 || res.statusCode>=300) { reject({statusCode:res.statusCode,message:body?.message || '私有资料操作失败（'+res.statusCode+'）'}); return }
+        if (filePath) { if (!body?.data?.id) { reject(new Error('未收到有效上传回执')); return }; resolve(body) }
+        else if (res.tempFilePath) resolve({filePath:res.tempFilePath})
+        else reject(new Error('未取得可用私有文件'))
+      },fail:()=>reject(new Error(filePath?'上传结果待确认，请查询原回执':'下载失败，请重试'))}
+    if (filePath) uni.uploadFile({...options,filePath,name:'file'})
+    else uni.downloadFile(options)
+  })
 }
 
 // ==================== 赛事(生态中心赛事活动 tab) ====================

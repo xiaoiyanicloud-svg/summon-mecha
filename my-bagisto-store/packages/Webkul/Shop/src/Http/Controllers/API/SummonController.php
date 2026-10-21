@@ -142,6 +142,7 @@ class SummonController extends APIController
                 'desc' => $r['scene']->description,
             ]),
             'engine' => 'rule-v1',
+            'scene_draft' => app(\Webkul\Shop\Services\Scenes\SceneAiDraftService::class)->build($q, ['scene_id' => $topScene ? (int) $topScene['scene']->id : null], (int) core()->getCurrentChannel()->id),
         ]);
     }
 

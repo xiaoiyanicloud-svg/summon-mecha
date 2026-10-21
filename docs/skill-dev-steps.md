@@ -8,6 +8,8 @@
 
 ## 进度快照（2026-10-14）
 
+2026-10-21 场景专项最新开发交付：[第 18 步：SC1/SC2 收尾](skill-dev-step18.md)。发布/依据、受理/附件、工作日历、九类勘察、设备与技能资格、实例 BOM/报价、AI 草稿已接通并做本机验证；独立 MySQL、真实三端和运营签收仍待另一端完成，不将其标为整阶段关闭。以下旧技能进度按原日期保留。
+
 > 依据各步交付说明 + **代码实测核验**（迁移/表/路由/种子/Pest 均已跑过，非仅凭文档）。
 > 详见 [step2-3](./skill-dev-step2-3.md)、[step4](./skill-dev-step4.md)、[step5](./skill-dev-step5.md)、[step6](./skill-dev-step6.md)、[step7](./skill-dev-step7.md)、[step8](./skill-dev-step8.md)、[step9](./skill-dev-step9.md)、**[剩余闭环清单](./skill-remaining-closure.md)**。
 > **一句话**：**代码主体已铺到第 9 步**；真正卡住上线的是**外部审批/支付资质**与**几处未做的后台 UI 和对象存储**。

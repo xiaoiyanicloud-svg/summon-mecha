@@ -2,12 +2,12 @@
 // node tools/tests/scene-http-readonly.mjs http://127.0.0.1:8000
 const base = new URL(process.argv[2] || 'http://127.0.0.1:8000')
 if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password) throw new Error('请传入不带凭证的后端 HTTP 地址')
-async function get(route) {
+async function get(route, headers = {}) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 8000)
   try {
-    const response = await fetch(new URL(route, base), { headers: { Accept: 'application/json' }, signal: controller.signal, redirect: 'error' })
-    return { status: response.status, body: await response.json() }
+    const response = await fetch(new URL(route, base), { headers: { Accept: 'application/json', ...headers }, signal: controller.signal, redirect: 'error' })
+    return { status: response.status, content_type: response.headers.get('content-type'), body: await response.json() }
   } finally { clearTimeout(timer) }
 }
 const results = []
@@ -15,7 +15,7 @@ function check(name, condition) { results.push({ name, pass: Boolean(condition) 
 const list = await get('/api/scenes')
 check('列表返回合法快照', list.status === 200 && Array.isArray(list.body.data))
 if (Array.isArray(list.body.data)) {
-  check('列表无虚构咨询人数', list.body.data.every(s => s.consult_count === null && s.consult_count_source === 'legacy_unverified'))
+  check('列表无虚构咨询人数', list.body.data.every(s => s.consult_count === null && ['legacy_unverified','not_published'].includes(s.consult_count_source)))
   check('列表场景身份无重复', new Set(list.body.data.map(s => s.id)).size === list.body.data.length)
   if (list.body.data.length) {
     const detail = await get('/api/scenes/' + list.body.data[0].id)
@@ -26,6 +26,17 @@ if (Array.isArray(list.body.data)) {
 }
 const invalid = await Promise.all(['undefined','-1','1x','4294967296'].map(async id => [id, await get('/api/scenes/' + id)]))
 for (const [id, response] of invalid) check('非法 ID ' + id + ' 稳定拒绝', response.status === 404)
-const report = { target: base.origin, checked_at: new Date().toISOString(), method: 'GET only', results, failed: results.filter(r => r.pass === false).length }
+const capabilities=await get('/api/scene-workflow/capabilities')
+check('场景能力协议与转换硬阻断',capabilities.status===200 && capabilities.body.data?.order_conversion===false)
+for (const category of ['business_event','enterprise','culture_tourism','education','security','warehouse_logistics','industry','medical','home']) {
+  const schema=await get('/api/scene-workflow/schemas/'+category)
+  check('专业 schema 路由 '+category,schema.status===200 && schema.body.data?.category===category && Array.isArray(schema.body.data?.fields))
+}
+const unsupported=await get('/api/scene-workflow/schemas/not-a-category')
+check('未知专业类别返回字段错误',unsupported.status===422 && unsupported.body.code==='SCENE_SCHEMA_UNSUPPORTED')
+const anonymous=await get('/api/scene-requests'), forged=await get('/api/scene-requests',{'X-Scene-Access':'0'.repeat(64)})
+check('无凭证拒绝读取私有列表',anonymous.status===401 && anonymous.body.code==='SCENE_ACCESS_REQUIRED')
+check('未签发凭证稳定 401，不以缺表或服务器错误冒充鉴权',forged.status===401 && forged.body.code==='SCENE_ACCESS_INVALID')
+const report = { target: base.origin, checked_at: new Date().toISOString(), method: 'GET only', capabilities:capabilities.body.data, database_identity_independently_verified:false, results, failed: results.filter(r => r.pass === false).length }
 process.stdout.write(JSON.stringify(report, null, 2) + '\n')
 if (report.failed) process.exitCode = 1

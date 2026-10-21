@@ -37,16 +37,16 @@ class SkillMarketService
             ->whereIn('category_id', fn ($q) => $q->select('category_id')->from('category_translations')->where('slug', 'skill'));
     }
 
-    protected function publicRows(): Builder
+    protected function publicRows(?string $channelCode = null): Builder
     {
         return DB::table('product_flat')->where('status', 1)->where('visible_individually', 1)
-            ->where('locale', app()->getLocale())->where('channel', core()->getCurrentChannel()->code)
+            ->where('locale', app()->getLocale())->where('channel', $channelCode ?? core()->getCurrentChannel()->code)
             ->whereNotNull('name')->whereNotNull('price')->where('price', '>=', 0);
     }
 
-    public function visibleRows(): Builder
+    public function visibleRows(?string $channelCode = null): Builder
     {
-        $query = $this->publicRows()->whereIn('product_id', $this->categoryProducts())
+        $query = $this->publicRows($channelCode)->whereIn('product_id', $this->categoryProducts())
             ->whereIn('product_id', $this->currentVersions());
         $blocked = app(KillSwitchService::class)->saleBlockedSkillIds();
         if ($blocked) {
@@ -110,6 +110,7 @@ class SkillMarketService
                 if ($declaredType === 'skill') {
                     return $this->unavailable(ApiErrorCode::SKILL_UNAVAILABLE, '该商品不是可购买的技能，请返回技能市场重新选择。');
                 }
+
                 continue;
             }
             if (app(KillSwitchService::class)->isBlockedFor($id, 'sale', current: true)) {

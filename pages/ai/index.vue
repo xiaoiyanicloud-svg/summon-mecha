@@ -163,6 +163,7 @@
         </view>
 
         <!-- AI 消息附带的推荐卡片 -->
+        <view v-if="m.role === 'ai' && m.text" class="picks"><button class="summon-scene" @tap="createSceneRequest(i)">整理本次需求，继续人工评估与正式报价</button></view>
         <view class="picks" v-if="m.role === 'ai' && m.scene" @tap="goSceneDetail(m.scene)">
           <view class="summon-scene">
             <text class="summon-scene-icon">{{ m.scene.icon || '🎯' }}</text>
@@ -399,6 +400,7 @@ import CustomTabBar from '@/components/CustomTabBar.vue';
 import { summonApi, summonStream, aiConversationApi } from '@/utils/api';
 import { TOKEN_KEY, CUSTOMER_KEY } from '@/utils/config';
 import { trackAiEvent, flushAiEvents } from '@/utils/ai-analytics';
+import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 import {
   createVoiceSession,
   isVoiceSupported,
@@ -1640,6 +1642,11 @@ export default {
     goSceneDetail(scene) {
       trackAiEvent('ai_recommendation_click', { recommendation_type: 'scene', target_id: String(scene.id || '') })
       uni.navigateTo({ url: `/pages/robot/fangan?sceneId=${scene.id}` })
+    },
+    createSceneRequest(index) {
+      const question=this.messages.slice(0,index).reverse().find(message=>message.role==='user')
+      if(!question?.text)return
+      openSceneRequest(sceneDraftPayload({source:'ai',text:question.text,category:'enterprise',contact:{name:'',phone:''}}))
     },
     // 点推荐卡片 → 打开机器人库页的商品详情
     //
