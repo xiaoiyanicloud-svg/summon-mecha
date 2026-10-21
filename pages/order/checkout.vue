@@ -288,6 +288,14 @@ export default {
 
   onLoad(options) {
     const q = options || {}
+    if (q.scene_quote_id || q.quoteId) {
+      uni.redirectTo({ url: '/pages/scene/confirm?quoteId=' + encodeURIComponent(q.scene_quote_id || q.quoteId) })
+      return
+    }
+    if (q.sceneId || q.scene_id || q.scene || q.from === 'scene' || q.from === 'custom_plan' || q.type === 'plan') {
+      uni.redirectTo({ url: '/pages/scene/request?source=scene' + (q.sceneId || q.scene_id ? '&sceneId=' + encodeURIComponent(q.sceneId || q.scene_id) : '') })
+      return
+    }
     this.product = {
       id: Number(q.productId) || 0,
       name: q.name ? decodeURIComponent(q.name) : '机器人',

@@ -190,6 +190,7 @@ import NavBar from '@/components/NavBar.vue'
 				// 方式一：优先使用列表页同步过来的完整订单（viewDetail 里 setStorageSync）
 				const synced = uni.getStorageSync('orderDetailData')
 				if (synced && (id == null || Number(synced.id) === Number(id))) {
+					if (this.routeSceneOrder(synced)) { this.loading = false; return }
 					uni.removeStorageSync('orderDetailData')
 					this.order = this.normalizeOrder(synced)
 					this.loading = false
@@ -200,6 +201,7 @@ import NavBar from '@/components/NavBar.vue'
 				const orderList = uni.getStorageSync('orderList') || []
 				const found = orderList.find(item => Number(item.id) === Number(id))
 				if (found) {
+					if (this.routeSceneOrder(found)) { this.loading = false; return }
 					this.order = this.normalizeOrder(found)
 					this.loading = false
 					return
@@ -212,6 +214,7 @@ import NavBar from '@/components/NavBar.vue'
 						const res = await orderApi.getOrderDetail(id)
 						const d = (res && res.data) || {}
 						if (d && d.id) {
+							if (this.routeSceneOrder(d)) { this.loading = false; return }
 							this.order = this.normalizeOrder(this.mapApiDetail(d))
 							this.loading = false
 							return
@@ -280,6 +283,14 @@ import NavBar from '@/components/NavBar.vue'
 			},
 
 			goBack() { uni.navigateBack() },
+			routeSceneOrder(order) {
+				const context = order.sceneWorkflow || order.scene_workflow
+				if (!context) return false
+				this.order = null
+				if (context.project_id) uni.redirectTo({url:'/pages/scene/project?id='+context.project_id})
+				else this.loadError = '场景订单关联待复核，请联系服务人员。'
+				return true
+			},
 
 			// 技能单的「开通」落点在「我的技能」页(绑设备 + 下技能包)
 			goSkills() { uni.navigateTo({ url: '/pages/mine/skills' }); },

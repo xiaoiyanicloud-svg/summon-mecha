@@ -27,3 +27,20 @@ test('未知参数被拒绝，help 不包含连接凭证',async()=>{
   const result=await run(['--help'],{});assert.equal(result.code,0)
   assert.equal(result.body.mode,'read_only');assert.equal(result.body.database_password_required_in_report,false)
 })
+test('独立环境路径无效或重复时在 bootstrap 前拒绝',async()=>{
+  const env={APP_ENV:'testing',DB_DATABASE:'summon_mecha_scenes_test'}
+  for(const args of [
+    ['--environment-path='+path.resolve('.claude/sc3-path-that-does-not-exist')],
+    ['--environment-path='+process.cwd(),'--environment-path='+process.cwd()],
+  ]){
+    const result=await run(args,env)
+    assert.equal(result.code,2);assert.equal(result.body.code,'SCENE_ENVIRONMENT_PATH_INVALID')
+    assert.equal(result.body.bootstrap_loaded,false)
+  }
+})
+test('自选环境路径不能绕过 testing 和专用测试库守卫',async()=>{
+  for(const env of [{APP_ENV:'production',DB_DATABASE:'summon_mecha_scenes_test'},{APP_ENV:'testing',DB_DATABASE:'root'}]){
+    const result=await run(['--environment-path='+process.cwd(),'--check-env-only'],env)
+    assert.equal(result.code,2);assert.equal(result.body.code,'SCENE_TEST_ENVIRONMENT_REQUIRED')
+  }
+})

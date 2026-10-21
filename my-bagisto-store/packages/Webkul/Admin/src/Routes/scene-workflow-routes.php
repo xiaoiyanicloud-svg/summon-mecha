@@ -7,6 +7,29 @@ use Webkul\Shop\Http\Middleware\SceneWorkflowSafety;
 
 Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->middleware([AuthorizeSceneWorkflow::class, SceneWorkflowSafety::class])->group(function () {
     Route::get('', 'index')->name('admin.catalog.scene-workflow.index');
+    Route::get('configuration', 'configuration')->name('admin.catalog.scene-workflow.configuration');
+    Route::get('resources', 'resourcesPage')->name('admin.catalog.scene-workflow.resources');
+    Route::post('resources/{id}/verify', 'resourceVerify')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.resource-verify');
+    Route::post('resources/{id}/legacy-source', 'resourceLegacy')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.resource-legacy');
+    Route::post('sku-mappings', 'skuRegister')->name('admin.catalog.scene-workflow.sku-register');
+    Route::post('sku-mappings/{id}/{action}', 'skuDecision')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['approve', 'revoke'])->name('admin.catalog.scene-workflow.sku-decision');
+    Route::post('quotes/{id}/commercial/record', 'quoteCommercial')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.quote-commercial');
+    Route::post('quotes/{id}/commercial/{recordId}/review', 'quoteCommercialReview')->where(['id' => '[1-9][0-9]{0,14}', 'recordId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.quote-commercial-review');
+    Route::post('quotes/{id}/reservations/release', 'releaseHold')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.release-hold');
+    Route::get('evidence', 'contentEvidencePage')->name('admin.catalog.scene-workflow.evidence');
+    Route::get('revision/{id}', 'revisionEditor')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.revision-editor');
+    Route::post('policies/{kind}', 'policyDraft')->whereIn('kind', ['commercial', 'retention', 'service_calendar'])->name('admin.catalog.scene-workflow.policy-draft');
+    Route::post('policy-versions/{id}/{action}', 'policyDecision')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['approve', 'reject', 'revoke'])->name('admin.catalog.scene-workflow.policy-decision');
+    Route::post('scenes/{id}/content-evidence', 'contentEvidenceCreate')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.content-evidence-create');
+    Route::post('content-evidence/{id}/{action}', 'contentEvidenceDecision')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['approve', 'revoke'])->name('admin.catalog.scene-workflow.content-evidence-decision');
+    Route::post('evidence/{id}/review', 'evidenceReview')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.evidence-review');
+    Route::post('supply/{kind}/{id}/revoke', 'supplyRevoke')->where('id', '[1-9][0-9]{0,14}')->whereIn('kind', ['price', 'evidence'])->name('admin.catalog.scene-workflow.supply-revoke');
+    Route::post('requests/{id}/surveys/create', 'survey')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.survey');
+    Route::post('requests/{id}/solutions/create', 'solution')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.solution');
+    Route::post('solutions/{id}/{action}', 'solutionDecision')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['approve', 'return'])->name('admin.catalog.scene-workflow.solution-decision');
+    Route::post('requests/{id}/attachments/{attachmentId}/{action}', 'attachmentAction')->where(['id' => '[1-9][0-9]{0,14}', 'attachmentId' => '[1-9][0-9]{0,14}'])->whereIn('action', ['hold', 'release', 'revoke'])->name('admin.catalog.scene-workflow.attachment-action');
+    Route::post('todos/{id}/assign', 'todoAssign')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.todo-assign');
+    Route::post('requests/{id}/preserved-attachments/{attachmentId}', 'preservedAttachment')->where(['id' => '[1-9][0-9]{0,14}', 'attachmentId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.preserved-attachment');
     Route::get('approvals', 'index')->name('admin.catalog.scene-workflow.approvals');
     Route::get('revisions', 'index')->name('admin.catalog.scene-workflow.revisions');
     Route::get('revision-approvals', 'index')->name('admin.catalog.scene-workflow.revision-approvals');
@@ -19,7 +42,7 @@ Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->mid
     Route::post('requests/{id}/assessments/create', 'assess')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.assess');
     Route::post('requests/{id}/quotes/create', 'quote')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.quote');
     Route::post('quotes/{id}/{action}', 'quoteAction')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['review', 'approve', 'return', 'send', 'void'])->name('admin.catalog.scene-workflow.quote-action');
-    Route::post('scenes/{id}/{action}', 'publication')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['draft', 'review', 'approve', 'publish', 'withdraw'])->name('admin.catalog.scene-workflow.publication');
+    Route::post('scenes/{id}/{action}', 'publication')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['draft', 'edit', 'review', 'approve', 'publish', 'withdraw'])->name('admin.catalog.scene-workflow.publication');
     Route::post('supply/{kind}', 'supply')->whereIn('kind', ['prices', 'evidence', 'resources'])->name('admin.catalog.scene-workflow.supply');
     Route::post('quotes/{id}/reservations/hold', 'hold')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.hold');
     Route::post('resources/{id}/pause', 'pause')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.pause');
@@ -28,5 +51,7 @@ Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->mid
     Route::post('projects/{id}/commercial', 'commercial')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.commercial');
     Route::post('projects/{id}/commercial/{recordId}/review', 'reviewCommercial')->where(['id' => '[1-9][0-9]{0,14}', 'recordId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.commercial-review');
     Route::post('projects/{id}/return', 'returnResources')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.return');
+    Route::post('projects/{id}/offline-acceptances', 'recordOfflineAcceptance')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.offline-record');
+    Route::post('projects/{id}/offline-acceptances/{confirmationId}/review', 'reviewOfflineAcceptance')->where(['id' => '[1-9][0-9]{0,14}', 'confirmationId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.offline-review');
     Route::post('service-tickets/{id}/resolve', 'resolveTicket')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.ticket');
 });

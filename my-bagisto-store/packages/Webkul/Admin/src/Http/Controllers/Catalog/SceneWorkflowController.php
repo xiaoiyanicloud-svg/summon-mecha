@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\Shop\Services\Scenes\SceneAcceptanceService;
 use Webkul\Shop\Services\Scenes\SceneAssessmentService;
 use Webkul\Shop\Services\Scenes\SceneOperationsService;
 use Webkul\Shop\Services\Scenes\SceneProjectService;
@@ -28,8 +29,9 @@ class SceneWorkflowController extends Controller
         $prices = DB::table('scene_price_items')->whereNull('revoked_at')->orderByDesc('id')->limit(200)->get();
         $resources = DB::table('scene_resources')->orderByDesc('id')->limit(200)->get();
         $metrics = $ops->metrics();
+        $admins = DB::table('admins')->where('status', 1)->get(['id', 'name']);
 
-        return view('admin::catalog.scene-workflow.index', compact('requests', 'todos', 'failures', 'scenes', 'revisions', 'prices', 'resources', 'metrics'));
+        return view('admin::catalog.scene-workflow.index', compact('requests', 'todos', 'failures', 'scenes', 'revisions', 'prices', 'resources', 'metrics', 'admins'));
     }
 
     public function show(int $id)
@@ -45,13 +47,31 @@ class SceneWorkflowController extends Controller
         $prices = DB::table('scene_price_items')->whereNull('revoked_at')->where('valid_until', '>', now())->orderBy('code')->get();
         $resources = DB::table('scene_resources')->where('state', 'ready')->orderBy('id')->get();
         $projects = DB::table('scene_projects')->where('request_id', $id)->get();
+        $offlineConfirmations = collect();
+        if (bouncer()->hasPermission('catalog.scene-workflow.acceptance_record') || bouncer()->hasPermission('catalog.scene-workflow.acceptance_review')) {
+            $offlineConfirmations = DB::table('scene_offline_acceptances')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
+            foreach ($offlineConfirmations as $confirmation) {
+                $confirmation->attestation = SceneWorkflow::unpack(Crypt::decryptString($confirmation->encrypted_attestation));
+            }
+            if ($offlineConfirmations->isNotEmpty()) {
+                app(\Webkul\Shop\Services\Ops\OperationLogger::class)->logOrFail('admin', $this->actor(), 'scene.offline-acceptance.viewed', 'scene_request', $id, []);
+            }
+        }
         $tasks = DB::table('scene_project_tasks')->whereIn('project_id', $projects->pluck('id'))->orderBy('id')->get();
         $commercial = DB::table('scene_commercial_records')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
         $tickets = DB::table('scene_service_tickets')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
-        $attachments = DB::table('scene_attachments')->where('request_id', $id)->where('state', 'clean')->get(['id', 'mime', 'size']);
+        $attachments = DB::table('scene_attachments')->where('request_id', $id)->where('state', 'clean')->whereNull('revoked_at')->where('expires_at', '>', now('UTC'))->get(['id', 'mime', 'size']);
         $admins = DB::table('admins')->where('status', 1)->get(['id', 'name']);
+        $surveys = DB::table('scene_site_surveys')->where('request_id', $id)->orderByDesc('id')->get();
+        $solutions = DB::table('scene_proposals')->where('request_id', $id)->orderByDesc('version')->get();
+        $clock = app(\Webkul\Shop\Services\Scenes\SceneIntakeClockService::class)->customerDto($id);
+        $attachmentRecords = DB::table('scene_attachments')->where('request_id', $id)->orderByDesc('id')->get();
+        $holds = DB::table('scene_attachment_holds')->whereIn('attachment_id', $attachmentRecords->pluck('id'))->get();
+        $reservations = DB::table('scene_reservations')->whereIn('quote_id', $quotes->pluck('id'))->orderByDesc('id')->get();
+        $quoteCommercial = (bouncer()->hasPermission('catalog.scene-workflow.finance') || bouncer()->hasPermission('catalog.scene-workflow.finance_review'))
+            ? DB::table('scene_quote_commercial')->whereIn('quote_id', $quotes->pluck('id'))->orderByDesc('id')->get() : collect();
 
-        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets'));
+        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets', 'offlineConfirmations', 'surveys', 'solutions', 'clock', 'attachmentRecords', 'holds', 'reservations', 'quoteCommercial'));
     }
 
     public function contact(int $id)
@@ -69,7 +89,7 @@ class SceneWorkflowController extends Controller
     {
         $r->validate(['file' => 'required|file|max:8192']);
 
-        return $this->result($r, $s->uploadForAdmin($id, $r->file('file'), $this->actor()));
+        return $this->result($r, $s->uploadForAdmin($id, $r->file('file'), $this->actor(), $r->header('Idempotency-Key') ?: $r->input('idempotency_key')));
     }
 
     public function attachment(int $id, int $attachmentId, \Webkul\Shop\Services\Scenes\SceneAttachmentService $s)
@@ -111,10 +131,19 @@ class SceneWorkflowController extends Controller
 
     public function publication(Request $r, int $id, string $action, ScenePublicationService $s)
     {
-        if ($action === 'draft') {
+        if (in_array($action, ['draft', 'edit'], true)) {
             $r->merge(['robots' => $r->input('robots') ?: []]);
+            $r->merge(['tags' => $r->input('tags') ?: []]);
+            foreach (['robots', 'tags', 'deliverables'] as $key) {
+                if (is_array($r->input($key))) {
+                    $r->merge([$key => array_values(array_filter($r->input($key), fn ($v) => $v !== '' && $v !== null))]);
+                }
+            }
+            if ($action === 'edit') {
+                $r->validate(['revision_id' => 'required|integer|min:1', 'row_version' => 'required|integer|min:1']);
+            }
 
-            return $this->result($r, $s->draft($id, $r->all(), $this->actor()));
+            return $this->result($r, $s->draft($id, $r->all(), $this->actor(), $action === 'edit' ? $r->integer('revision_id') : null, $action === 'edit' ? $r->integer('row_version') : null));
         }
         $r->validate(['revision_id' => 'required|integer|min:1', 'row_version' => 'required|integer|min:1']);
 
@@ -123,9 +152,13 @@ class SceneWorkflowController extends Controller
 
     public function supply(Request $r, string $kind, SceneSupplyService $s)
     {
+        if ($kind === 'evidence' && is_array($r->input('skill')) && ! array_filter($r->input('skill'), fn ($v) => $v !== null && $v !== '')) {
+            $r->request->remove('skill');
+        }
+
         return $this->result($r, match ($kind) {
-            'prices'    => $s->price($r->all(), $this->actor()),
-            'evidence'  => $s->evidence($r->all(), $this->actor()),
+            'prices' => $s->price($r->all(), $this->actor()),
+            'evidence' => $s->evidence($r->all(), $this->actor()),
             'resources' => $s->resource($r->all(), $this->actor()),
         });
     }
@@ -142,6 +175,59 @@ class SceneWorkflowController extends Controller
         return $this->result($r, $s->pause($id, $r->integer('row_version'), $r->input('reason'), $this->actor()));
     }
 
+    public function resourcesPage()
+    {
+        $resources = DB::table('scene_resources')->orderByDesc('id')->limit(200)->get();
+        $mappings = DB::table('scene_sku_mappings')->orderByDesc('id')->limit(200)->get();
+        $prices = DB::table('scene_price_items')->whereNull('revoked_at')->orderBy('id')->get(['id', 'code', 'version', 'name']);
+        $channels = DB::table('channels')->get(['id', 'code']);
+
+        return view('admin::catalog.scene-workflow.resources', compact('resources', 'mappings', 'prices', 'channels'));
+    }
+
+    public function resourceVerify(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneResourceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->verify($id, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function resourceLegacy(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneResourceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->registerLegacy($id, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function releaseHold(Request $r, int $id, SceneReservationService $s)
+    {
+        $r->validate(['hold_group' => 'required|uuid']);
+
+        return $this->result($r, $s->release($id, $r->input('hold_group'), (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $this->actor()));
+    }
+
+    public function skuRegister(Request $r, \Webkul\Shop\Services\Scenes\SceneSkuService $s)
+    {
+        return $this->result($r, $s->register($r->all(), $this->actor()));
+    }
+
+    public function skuDecision(Request $r, int $id, string $action, \Webkul\Shop\Services\Scenes\SceneSkuService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->review($id, $r->integer('row_version'), $action, $this->actor()));
+    }
+
+    public function quoteCommercial(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneCommercialService $s)
+    {
+        return $this->result($r, $s->record($id, $r->all(), (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $this->actor()));
+    }
+
+    public function quoteCommercialReview(Request $r, int $id, int $recordId, \Webkul\Shop\Services\Scenes\SceneCommercialService $s)
+    {
+        return $this->result($r, $s->review($id, $recordId, $r->all(), $this->actor()));
+    }
+
     public function task(Request $r, int $id, int $taskId, SceneProjectService $s)
     {
         $r->validate(['row_version' => 'required|integer|min:1']);
@@ -152,6 +238,21 @@ class SceneWorkflowController extends Controller
     public function replay(Request $r, int $id, SceneOperationsService $s)
     {
         return $this->result($r, $s->replay($id, $this->actor()));
+    }
+
+    public function recordOfflineAcceptance(Request $r, int $id, SceneAcceptanceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->recordOffline($id, $r->integer('row_version'), (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $r->all(), $this->actor()));
+    }
+
+    public function reviewOfflineAcceptance(Request $r, int $id, int $confirmationId, SceneAcceptanceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'confirmation_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->reviewOffline($id, $confirmationId, $r->integer('row_version'), $r->integer('confirmation_version'),
+            (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $r->all(), $this->actor()));
     }
 
     public function commercial(Request $r, int $id, SceneProjectService $s)
@@ -180,6 +281,152 @@ class SceneWorkflowController extends Controller
         $r->validate(['row_version' => 'required|integer|min:1', 'resolution' => 'required|string|max:10000']);
 
         return $this->result($r, $s->resolveTicket($id, $r->integer('row_version'), $r->input('resolution'), $this->actor()));
+    }
+
+    public function configuration()
+    {
+        $policies = DB::table('scene_policy_versions')->orderByDesc('id')->limit(60)->get();
+        $defaults = require base_path('config/scene_policy_drafts.php');
+        $admins = DB::table('admins')->where('status', 1)->get(['id', 'name']);
+
+        return view('admin::catalog.scene-workflow.configuration', compact('policies', 'defaults', 'admins'));
+    }
+
+    public function policyDraft(Request $r, string $kind, \Webkul\Shop\Services\Scenes\ScenePolicyService $s)
+    {
+        if ($kind === 'commercial' && $r->has('required_price_codes_text')) {
+            $r->validate(['required_price_codes_text' => 'required|string|max:5000']);
+            $r->merge(['required_price_codes' => array_values(array_filter(array_map('trim', explode("\n", $r->input('required_price_codes_text')))))]);
+        }
+        if ($kind === 'service_calendar') {
+            $r->validate(['weekdays' => 'required|array|min:1|max:7', 'weekdays.*' => 'integer|between:1,7|distinct', 'override_lines' => 'nullable|string|max:30000']);
+            $overrides = [];
+            foreach (array_filter(array_map('trim', explode("\n", $r->input('override_lines', '')))) as $line) {
+                if (! preg_match('/^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2})-(\d{2}:\d{2}))?$/D', $line, $match)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['override_lines' => '特殊日期格式无效。']);
+                }
+                if (isset($match[2])) {
+                    $overrides[$match[1]][] = ['start' => $match[2], 'end' => $match[3]];
+                } else {
+                    $overrides[$match[1]] = [];
+                }
+            }
+            $r->merge(['weekly' => array_fill_keys($r->input('weekdays', []), $r->input('intervals', [])),
+                'holidays' => array_values(array_filter(array_map('trim', explode("\n", $r->input('holiday_dates', ''))))), 'overrides' => $overrides]);
+        }
+
+        return $this->result($r, $s->create($kind, $r->all(), $this->actor()));
+    }
+
+    public function policyDecision(Request $r, int $id, string $action, \Webkul\Shop\Services\Scenes\ScenePolicyService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'reason' => 'required|string|min:3|max:2000']);
+
+        return $this->result($r, $s->decide($id, $r->integer('row_version'), $action, $r->input('reason'), $this->actor()));
+    }
+
+    public function revisionEditor(Request $r, int $id, \Webkul\Shop\Services\Scenes\ScenePublicationService $s)
+    {
+        $revision = SceneWorkflow::requireRow('scene_revisions', $id, false);
+        $content = SceneWorkflow::unpack($revision->content);
+        $acceptance = SceneWorkflow::unpack($revision->acceptance_template);
+        $others = DB::table('scene_revisions')->where('scene_id', $revision->scene_id)->where('id', '!=', $id)->orderByDesc('id')->get(['id', 'revision_no', 'state']);
+        $difference = null;
+        $publicEvidence = DB::table('scene_content_evidence')->where('scene_id', $revision->scene_id)->where('state', 'approved')->where('expires_at', '>', now('UTC'))->get(['id', 'title']);
+        if ($r->filled('compare_id')) {
+            $r->validate(['compare_id' => 'integer|min:1']);
+            $difference = $s->compare((int) $revision->scene_id, $r->integer('compare_id'), $id);
+        }
+
+        return view('admin::catalog.scene-workflow.revision', compact('revision', 'content', 'acceptance', 'others', 'difference', 'publicEvidence'));
+    }
+
+    public function contentEvidencePage()
+    {
+        $evidence = DB::table('scene_content_evidence')->orderByDesc('id')->limit(100)->get();
+        $scenes = DB::table('scenes')->get(['id', 'name']);
+        $taskEvidence = DB::table('scene_evidence')->orderByDesc('id')->limit(100)->get();
+        $prices = DB::table('scene_price_items')->orderByDesc('id')->limit(100)->get();
+
+        return view('admin::catalog.scene-workflow.evidence', compact('evidence', 'scenes', 'taskEvidence', 'prices'));
+    }
+
+    public function contentEvidenceCreate(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneContentEvidenceService $s)
+    {
+        return $this->result($r, $s->create($id, $r->all(), $this->actor()));
+    }
+
+    public function contentEvidenceDecision(Request $r, int $id, string $action, \Webkul\Shop\Services\Scenes\SceneContentEvidenceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'reason' => 'required|string|min:3|max:2000']);
+
+        return $this->result($r, $s->decide($id, $r->integer('row_version'), $action, $r->input('reason'), $this->actor()));
+    }
+
+    public function evidenceReview(Request $r, int $id, SceneSupplyService $s)
+    {
+        return $this->result($r, $s->reviewEvidence($id, $r->all(), $this->actor()));
+    }
+
+    public function supplyRevoke(Request $r, string $kind, int $id, SceneSupplyService $s)
+    {
+        $r->validate(['reason' => 'required|string|min:3|max:5000']);
+
+        return $this->result($r, $s->revoke($kind, $id, $r->input('reason'), $this->actor()));
+    }
+
+    public function survey(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneSurveyService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->record($id, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function solution(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneSolutionService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+        $components = $r->input('components', []);
+        foreach ($components as &$item) {
+            $item['dependencies'] = array_values(array_filter(array_map('trim', explode(',', $item['dependency_keys'] ?? ''))));
+            unset($item['dependency_keys']);
+        }
+        unset($item);
+        $r->merge(['components' => $components]);
+
+        return $this->result($r, $s->draft($id, $r->integer('row_version'), $r->all(), $this->actor(), $this->channel()));
+    }
+
+    public function solutionDecision(Request $r, int $id, string $action, \Webkul\Shop\Services\Scenes\SceneSolutionService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'reason' => 'required|string|min:3|max:2000']);
+
+        return $this->result($r, $s->decide($id, $r->integer('row_version'), $action, $r->input('reason'), $this->actor(), $this->channel()));
+    }
+
+    public function attachmentAction(Request $r, int $id, int $attachmentId, string $action, \Webkul\Shop\Services\Scenes\SceneAttachmentRetentionService $s)
+    {
+        $r->validate(['reason' => 'required|string|min:3|max:5000']);
+
+        return $this->result($r, match ($action) {
+            'hold' => $s->hold($id, $attachmentId, $r->all(), $this->actor()),
+            'release' => $s->release($id, $attachmentId, $r->integer('hold_id'), $r->input('reason'), $this->actor()),
+            'revoke' => $s->revoke($id, $attachmentId, $r->input('reason'), $this->actor()),
+        });
+    }
+
+    public function preservedAttachment(Request $r, int $id, int $attachmentId, \Webkul\Shop\Services\Scenes\SceneAttachmentService $s)
+    {
+        $r->validate(['reason' => 'required|string|min:3|max:2000']);
+        $file = $s->readPreservedForAdmin($id, $attachmentId, $r->input('reason'), $this->actor());
+
+        return response()->file($file['path'], ['Content-Type' => $file['mime'], 'Content-Disposition' => 'attachment', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
+    public function todoAssign(Request $r, int $id, SceneOperationsService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'assignee_id' => 'required|integer|min:1', 'reason' => 'required|string|min:3|max:2000']);
+
+        return $this->result($r, $s->assignTodo($id, $r->integer('row_version'), $r->integer('assignee_id'), $r->input('reason'), $this->actor()));
     }
 
     private function actor(): int

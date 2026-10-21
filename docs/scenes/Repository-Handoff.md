@@ -1,5 +1,9 @@
 # 场景流程仓库分支交接
 
+最新开发增量（2026-10-21）：[SC3 收尾账本](SC3-Closeout-20261021.md)与[证据](sc3-closeout-evidence/verification.json)。资源核验/排期、真实 MySQL 并发及仓储故障、报价原子转单、技能拆单/授权时序、线下商务双审和旧订单入口已接通。新增 100008，预检现要求八份迁移；转换默认关闭。以下早期“转换未实现”及测试数保留历史语境，当前启用/迁移以最新账本和 QA README 为准。本批未部署或迁移另一端业务环境。
+
+剩余联调补齐：[完整集成运行手册](SC3-Integration-Runbook.md)提供一条命令重跑真实完整应用、EAV、Admin 会话/CSRF、权限矩阵、HTTP 转单、消费者失败/中断恢复、Scheduler 与实际 H5，运行器自建实例并校验所有权后清理。最新完整证据位于 `sc3-closeout-evidence/integration/`。只读证据一致性检查为 `node tools/tests/scene-sc3-verify-evidence.mjs`；目标地址/连接方式与实际运营签收不能由本机结果代替。
+
 日期：2026-10-20。用户已授权将本轮场景代码提交至 `xiaoiyanicloud-svg/summon-mecha`。
 
 ## 分支和范围
@@ -9,6 +13,7 @@
 - 范围：SC0 真实性修复、SC1–SC5 首批代码、测试和实施文档；全部阶段的剩余项见[第 14 步](../skill-dev-step14.md)。这不是生产上线或全部阶段签收。
 - 后续第二批代码/验证和剩余项见[第 15 步](../skill-dev-step15.md)，包含共享订单事务修复、报价退回/拒绝/对比、客户可见性、原载荷回执恢复、事件范围隔离及只读预检。始终 fetch 本分支最新 HEAD，不只取首批提交。
 - 最新跨机复测和控制器继承签名修复见[第 16 步](../skill-dev-step16.md)。已取得生态分支合并提交 `2609992`，它只合入至首批 `546a6a0`；capabilities 已 200，但 schemas 404、未签发凭证 500 尚待运行环境核对。第二批必须包含后续 `rejectQuote` 修复及 15 项真实控制器装载/Router 检查。
+- 第三批开发见[第 17 步](../skill-dev-step17.md)：线下验收凭证代录/独立复核与客户来源展示、履约时间/阶段约束、返库风险影响及待办。新增 `2026_10_20_100005_add_scene_offline_acceptance.php`、acceptance_record/acceptance_review 两项 ACL；须在专用测试库完成增量迁移并以两个真实 Admin 角色联调。本批没有远端部署、迁移或新数据库身份验证。
 - 不包含 `.env`、本机备份、截图、打包 ZIP 或临时 Git index。`docs/scenes/handoff/` 是本机生成的补丁交接目录，不纳入本次提交。
 - `sc0-evidence`、`sc1-sc5-evidence` 中的 JSON/TAP 是生成时的验证快照。其中 `git_commit_created=false`、`pushed=false` 等字段记录验证发生时的状态，不代表仓库提交后的状态。
 
@@ -68,3 +73,32 @@ git diff --stat 3fd8753 origin/codex/scene-workflow-sc0-sc5
 新增流程 PHP 27/27、SC0 后端回归 11/11、前端 28/28、12 个 Vue SFC、7 个新流程及 5 个目录浏览器夹具检查通过；PHP 语法 51 文件通过。源文件哈希与[验证快照](sc1-sc5-evidence/verification.json)一致。
 
 这些证据不替代真实 MySQL 行锁/订单事务、Admin 角色 HTTP、HBuilderX H5/小程序、真机、扫描器或 worker/scheduler 常驻验收。
+
+## 2026-10-21：已读取另一端交接与 SC1 / SC2 收尾代码
+
+已 fetch 另一端 `8c7d660`（之前为 2ab79da），读取 `f1e1ee2` / `8c7d660`：schema 的 `{category}` 与 Bagisto 全局模型绑定冲突，已按同一修复改为 `{sceneCategory}`，公开路径不变；另一端报告 8010 为 `APP_ENV=testing`、`summon_mecha_scenes_test`，迁移至 100004。旧 500 来自当时运行库未有场景表，不能吞成 401。本机最新 GET-only 20 项通过，未签发凭证为 `401 SCENE_ACCESS_INVALID`；目录空导致详情跳过，未对远端执行写入。
+
+本轮 SC1/SC2 开发、表单/API/后台接通和本机验证详见[第 18 步](../skill-dev-step18.md)、[执行账本](SC1-SC2-Closeout-20261021.md)、[实际技术契约](Scene-Workflow-Contract-v1.md)。本分支包含第三批 a9e5192 及本轮增量；不要只取 78b0629 或旧交接中首批 SHA。政策草案、现场依据、BOM、技能任务依据和附件保全不是自动 seed，不在 root 写数据。
+
+给另一端的具体下一步：
+
+1. fetch `codex/scene-workflow-sc0-sc5` 最新提交，在隔离 checkout 合并；保留 EcoCenter、SkillMarket、mine 等本机未提交内容，不整文件覆盖，不 git add -A。若交接文档发生尾部冲突，保留双方日期说明；sceneCategory 修复两边等价，不能恢复 category 参数名。
+2. 按更新后的 `my-bagisto-store/qa/scenes/README.md` 审查并在专用测试库执行待执行的 100005、100006、100007。之后 `optimize:clear`、实际服务重启、重新 preflight；七份迁移、新表/列/唯一约束及路由齐全后才准备写入演练。
+3. 两个不同 Admin 完成草案、独立审核/复核及退回，客户完成受理/附件回执/表单修订/方案比较和报价决策。先配测试环境所需实际主体标识、联系渠道、负责人、日历及扫描器；正式库必须是真实主体及授权依据。不能把 fixture 扫描器作为生产杀毒扫描器。
+4. 运行新版本 MySQL 多连接、完整 Admin 会话和 HBuilderX H5/小程序验收并回传脱敏结果；本机 91 后端、16 控制器、32 Node、14 SFC/17 交互不替代这些步骤。原件清理需显式单 ID 和批准政策版本，默认只读。
+
+回传实际运行 HEAD/路径、APP_ENV/数据库身份、迁移/preflight JSON、角色与夹具标识、命令/退出码、失败信息和精确清理结果。SC3 转换仍硬阻断，SC4 变更/取消未自动生效，不因本轮条款草案而开放。本页是已写入仓库的交接，未声称对方已经读取、部署或完成新批次验收。
+
+## 2026-10-21：SC1 / SC2 代码提交已推送并复核
+
+本批代码提交为 [`41db1b2ef17fa8a12ea4a216baee1595b2e5483c`](https://github.com/xiaoiyanicloud-svg/summon-mecha/commit/41db1b2ef17fa8a12ea4a216baee1595b2e5483c)，包含 82 个文件的代码、测试、契约、进度和交接。已用 `git ls-remote` 再次核对 GitHub 同名分支指向该提交；本次补充说明前无未提交的已跟踪代码。之后的文档同步提交继续保留在同一分支，合并时取该分支最新 HEAD。
+
+```powershell
+git fetch origin codex/scene-workflow-sc0-sc5
+git show --stat 41db1b2ef17fa8a12ea4a216baee1595b2e5483c
+git log --oneline 78b0629..origin/codex/scene-workflow-sc0-sc5
+```
+
+早期 [13/14 只读探测](lan-integration-evidence/2026-10-21-api-probe.json)一并归档，它记录当时未签发凭证请求得到 500 的真实失败及 GitHub 暂时不可达；后续 [20 项通过的只读复测](sc1-sc2-closeout-evidence/remote-readonly.json)已经记录恢复。早期文件不是当前运行状态，也未证明新版本业务写入或实际数据库身份。
+
+给另一端的执行顺序及待回传清单仍按上一节。尚无对方合并 `41db1b2`、执行 100005–100007 或完成新批次验收的回执；不据“已上仓库”推定这些动作完成。本次仅更新文档和归档历史记录，没有变更业务代码或重新运行已通过的代码测试。原验证快照保留其生成时的源文件哈希，后续文档补充不冒充原测试的重跑结果。

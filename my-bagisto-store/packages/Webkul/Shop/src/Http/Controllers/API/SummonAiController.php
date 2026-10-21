@@ -108,6 +108,7 @@ class SummonAiController extends APIController
             'skills'       => $this->resolveItems($picks['skills'], $catalog['skills'], $answer),
             'accessories'  => $this->resolveItems($picks['accessories'], $catalog['accessories'], $answer),
             'alternatives' => [],
+            'scene_draft' => app(\Webkul\Shop\Services\Scenes\SceneAiDraftService::class)->build($q, [], (int) core()->getCurrentChannel()->id),
         ]);
     }
 
@@ -200,6 +201,7 @@ class SummonAiController extends APIController
                 // 推荐追问:Coze 生成的可点击问题,前端渲染成气泡下方的追问按钮。
                 // ⚠ 去重 + 截断:模型偶发重复,而追问过多会把界面撑满
                 'follow_ups'  => array_slice(array_values(array_unique($followUps)), 0, 5),
+                'scene_draft' => app(\Webkul\Shop\Services\Scenes\SceneAiDraftService::class)->build($q, [], (int) core()->getCurrentChannel()->id),
             ]);
         }, 200, [
             'Content-Type'      => 'text/event-stream; charset=utf-8',
@@ -298,6 +300,7 @@ class SummonAiController extends APIController
 
                 if (mb_strpos($full, '【推荐机型】') !== false) {
                     $stopped = true;   // 进入系统清单段,后面的都不发
+
                     continue;
                 }
 
@@ -347,8 +350,6 @@ class SummonAiController extends APIController
         if ($httpCode < 200 || $httpCode >= 300) {
             throw new \RuntimeException('Coze 发起失败 HTTP '.$httpCode);
         }
-
-
 
         if ($full === '') {
             throw new \RuntimeException('Coze 未返回正文');

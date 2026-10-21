@@ -8,6 +8,24 @@ use Illuminate\Support\Facades\Validator;
 
 class SceneTime
 {
+    /** 实际发生时间必须自带 offset；禁止依赖服务器时区或默许 PHP 修正非法日期。 */
+    public static function occurredAt(string $text): string
+    {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/D', $text)) {
+            throw new SceneWorkflowException('SCENE_EVENT_TIME_INVALID', '实际发生时间须为含 UTC offset 的 ISO 8601 秒级格式。');
+        }
+        $normalized = preg_replace('/Z$/', '+00:00', $text);
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:sP', $normalized);
+        $errors = DateTimeImmutable::getLastErrors();
+        if (! $date || ($errors && ($errors['warning_count'] || $errors['error_count']))
+            || $date->format('Y-m-d\TH:i:sP') !== $normalized || abs($date->getOffset()) > 14 * 3600
+            || $date->getTimestamp() > now('UTC')->timestamp) {
+            throw new SceneWorkflowException('SCENE_EVENT_TIME_INVALID', '实际发生时间无效或晚于当前时间。');
+        }
+
+        return $date->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+    }
+
     public static function schedule(array $input): array
     {
         $data = Validator::make($input, [

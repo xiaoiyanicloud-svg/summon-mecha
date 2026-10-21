@@ -36,15 +36,17 @@ class SceneRequestService
             $schema = $revision ? SceneWorkflow::unpack($revision->requirement_schema) : $this->schemas->schema($data['category'] ?? 'enterprise');
             $facts = $this->schemas->validate($data['facts'], $schema);
             $id = DB::table('scene_requests')->insertGetId([
-                'request_no'       => 'SR-'.strtoupper(str_replace('-', '', (string) Str::uuid())),
-                'customer_id'      => $owner->customerId, 'guest_access_hash' => $owner->customerId ? null : $owner->guestHash,
+                'request_no' => 'SR-'.strtoupper(str_replace('-', '', (string) Str::uuid())),
+                'customer_id' => $owner->customerId, 'guest_access_hash' => $owner->customerId ? null : $owner->guestHash,
                 'guest_expires_at' => $guestCapability?->expires_at,
-                'scene_id'         => $data['scene_id'] ?? null, 'scene_revision_id' => $revision?->id,
-                'revision_no'      => 1, 'row_version' => 1, 'state' => 'submitted',
-                'source'           => $data['source'], 'consent_version' => $data['consent_version'],
-                'created_at'       => now('UTC'), 'updated_at' => now('UTC'),
+                'scene_id' => $data['scene_id'] ?? null, 'scene_revision_id' => $revision?->id,
+                'revision_no' => 1, 'row_version' => 1, 'state' => 'submitted',
+                'source' => $data['source'], 'consent_version' => $data['consent_version'],
+                'created_at' => now('UTC'), 'updated_at' => now('UTC'),
             ]);
-            $this->writeRevision($id, 1, $data['original_text'], $facts, $schema);
+            $sourceSnapshot = isset($data['ai_snapshot']) ? $this->aiSnapshot($data['ai_snapshot'], $schema) : null;
+            $this->writeRevision($id, 1, $data['original_text'], $facts, $schema, $sourceSnapshot);
+            app(SceneIntakeClockService::class)->start(SceneWorkflow::requireRow('scene_requests', $id, false));
             DB::table('scene_request_contacts')->insert([
                 'request_id' => $id, 'encrypted_contact' => Crypt::encryptString(SceneWorkflow::json($data['contact'])),
                 'created_at' => now('UTC'), 'updated_at' => now('UTC'),
@@ -59,7 +61,7 @@ class SceneRequestService
     public function supplement(ScenePrincipal $owner, int $id, int $expected, string $key, array $input): array
     {
         $this->flow->enabled('requests_enabled');
-        $data = Validator::make($input, ['original_text' => 'required|string|max:20000', 'facts' => 'present|array|max:30'])->validate();
+        $data = Validator::make($input, ['original_text' => 'required|string|max:20000', 'facts' => 'present|array|max:30', 'upgrade_schema_version' => 'sometimes|in:2'])->validate();
 
         return $this->flow->command($owner->scope(), 'scene.request.supplement:'.$id, $key, [$expected, $data], function () use ($owner, $id, $expected, $data) {
             $row = $owner->request($id, true);
@@ -69,9 +71,12 @@ class SceneRequestService
             }
             $previous = DB::table('scene_request_revisions')->where('request_id', $id)->where('revision_no', $row->revision_no)->first();
             $schema = SceneWorkflow::unpack($previous->schema_snapshot);
+            if (isset($data['upgrade_schema_version'])) {
+                $schema = $this->schemas->schema($schema['category'], 2);
+            }
             $facts = $this->schemas->validate($data['facts'], $schema);
             $next = (int) $row->revision_no + 1;
-            $this->writeRevision($id, $next, $data['original_text'], $facts, $schema);
+            $this->writeRevision($id, $next, $data['original_text'], $facts, $schema, $previous->source_snapshot ? SceneWorkflow::unpack($previous->source_snapshot) : null);
             DB::table('scene_requests')->where('id', $id)->update(['revision_no' => $next, 'row_version' => $expected + 1, 'state' => 'submitted', 'updated_at' => now('UTC')]);
             app(SceneQuoteLifecycleService::class)->invalidate($id, ['draft', 'in_review', 'approved', 'sent', 'accepted', 'returned'],
                 'request_revised', $owner->customerId ? 'customer' : 'guest', $owner->customerId);
@@ -124,16 +129,21 @@ class SceneRequestService
             }
             $patch = ['row_version' => $expected + 1, 'updated_at' => now('UTC')];
             if ($action === 'assign' && ! empty($data['assignee_id'])) {
-                $patch += ['assignee_id' => $data['assignee_id'], 'state' => 'triaged'];
-            } elseif ($action === 'contact' && ! empty($data['note']) && ! empty($data['occurred_at']) && ! empty($data['channel'])) {
-                if (strtotime($data['occurred_at']) > now('UTC')->timestamp) {
-                    throw new SceneWorkflowException('SCENE_CONTACT_TIME_INVALID', '联系记录不能使用未来时间。');
+                if (! DB::table('admins')->where('id', $data['assignee_id'])->where('status', 1)->exists()) {
+                    throw new SceneWorkflowException('SCENE_ASSIGNEE_INACTIVE', '不能分派给已停用的工作人员。');
                 }
+                $patch += ['assignee_id' => $data['assignee_id'], 'state' => $row->state === 'submitted' ? 'triaged' : $row->state];
+                app(SceneIntakeClockService::class)->routed($id, (int) $data['assignee_id']);
+            } elseif ($action === 'contact' && ! empty($data['note']) && ! empty($data['occurred_at']) && ! empty($data['channel'])) {
+                $data['occurred_at'] = SceneTime::occurredAt($data['occurred_at']);
+                app(SceneIntakeClockService::class)->contacted($row, $data['occurred_at']);
             } elseif ($action === 'close' && ! empty($data['note'])) {
                 if (DB::table('scene_quotes')->where('request_id', $id)->where('state', 'accepted')->exists()) {
                     throw new SceneWorkflowException('SCENE_ACCEPTED_QUOTE_EXISTS', '已有接受的报价，需先处理商务撤销。', 409);
                 }
                 $patch['state'] = 'closed';
+                DB::table('scene_service_clocks')->where('request_id', $id)->where('state', 'awaiting_contact')->update(['state' => 'stopped', 'updated_at' => now('UTC')]);
+                DB::table('scene_operation_todos')->where('request_id', $id)->where('state', 'open')->whereIn('kind', ['calendar_unconfigured', 'contact_overdue', 'contact_escalation', 'unassigned_request'])->update(['state' => 'resolved', 'resolution_code' => 'request_closed', 'updated_at' => now('UTC')]);
                 app(SceneQuoteLifecycleService::class)->invalidate($id, ['draft', 'in_review', 'approved', 'sent', 'returned'], 'request_closed', 'admin', $actor);
             } else {
                 throw new SceneWorkflowException('SCENE_OPERATION_INVALID', '操作或必填资料无效。');
@@ -155,44 +165,64 @@ class SceneRequestService
 
         return $this->summary($row) + [
             'original_text' => $revision->original_text, 'facts' => SceneWorkflow::unpack($revision->facts),
-            'schema'        => SceneWorkflow::unpack($revision->schema_snapshot),
-            'quotes'        => $quotes->map(fn ($q) => app(SceneProposalService::class)->customerDto($q))->all(),
-            'projects'      => $projects->all(),
-            'activities'    => DB::table('scene_activities')->where('request_id', $id)->where('visibility', 'customer')->orderBy('id')->get(['id', 'kind', 'occurred_at'])->all(),
-            'attachments'   => DB::table('scene_attachments')->where('request_id', $id)->where('state', 'clean')->get(['id', 'mime', 'size', 'created_at'])->all(),
+            'schema' => SceneWorkflow::unpack($revision->schema_snapshot),
+            'source_snapshot' => $revision->source_snapshot ? SceneWorkflow::unpack($revision->source_snapshot) : null,
+            'quotes' => $quotes->map(fn ($q) => app(SceneProposalService::class)->customerDto($q))->all(),
+            'projects' => $projects->all(),
+            'activities' => DB::table('scene_activities')->where('request_id', $id)->where('visibility', 'customer')->orderBy('id')->get(['id', 'kind', 'occurred_at'])->all(),
+            'attachments' => DB::table('scene_attachments')->where('request_id', $id)->get(['id', 'mime', 'size', 'created_at', 'expires_at', 'state', 'revoked_at'])->map(fn ($a) => [
+                'id' => (int) $a->id, 'mime' => $a->mime, 'size' => (int) $a->size, 'created_at' => $a->created_at, 'expires_at' => $a->expires_at,
+                'availability_state' => $a->state === 'clean' ? ($a->revoked_at ? 'revoked' : ($a->expires_at <= now('UTC') ? 'expired' : 'available')) : $a->state,
+            ])->all(),
+            'service_clock' => app(SceneIntakeClockService::class)->customerDto($id),
         ];
     }
 
     public function summary(object $r): array
     {
-        return ['id'      => (int) $r->id, 'request_no' => $r->request_no, 'state' => $r->state,
+        return ['id' => (int) $r->id, 'request_no' => $r->request_no, 'state' => $r->state,
             'revision_no' => (int) $r->revision_no, 'row_version' => (int) $r->row_version,
-            'scene_id'    => $r->scene_id, 'created_at' => $r->created_at, 'updated_at' => $r->updated_at];
+            'scene_id' => $r->scene_id, 'created_at' => $r->created_at, 'updated_at' => $r->updated_at];
     }
 
     private function validate(array $input): array
     {
         return Validator::make($input, [
-            'scene_id'        => 'nullable|integer|min:1|max:4294967295', 'scene_revision_id' => 'nullable|integer|min:1',
-            'category'        => 'nullable|string|max:40', 'original_text' => 'required|string|max:20000',
-            'facts'           => 'present|array|max:30', 'source' => 'required|in:home,scene,robot,ai,legacy_custom',
+            'scene_id' => 'nullable|integer|min:1|max:4294967295', 'scene_revision_id' => 'nullable|integer|min:1',
+            'category' => 'nullable|string|max:40', 'original_text' => 'required|string|max:20000',
+            'facts' => 'present|array|max:30', 'source' => 'required|in:home,scene,robot,ai,legacy_custom',
             'consent_version' => 'required|in:scene-contact-v1',
-            'contact'         => 'required|array:name,phone,company,wechat',
-            'contact.name'    => 'required|string|max:100', 'contact.phone' => 'required|string|regex:/^\+?[0-9 -]{7,25}$/',
+            'contact' => 'required|array:name,phone,company,wechat',
+            'contact.name' => 'required|string|max:100', 'contact.phone' => 'required|string|regex:/^\+?[0-9 -]{7,25}$/',
             'contact.company' => 'nullable|string|max:255', 'contact.wechat' => 'nullable|string|max:100',
+            'ai_snapshot' => 'sometimes|array:version,original_text,suggestions,confirmed_keys',
+            'ai_snapshot.version' => 'required_with:ai_snapshot|in:scene-ai-draft-v1', 'ai_snapshot.original_text' => 'required_with:ai_snapshot|string|max:20000',
+            'ai_snapshot.suggestions' => 'required_with:ai_snapshot|array|max:30', 'ai_snapshot.confirmed_keys' => 'present_with:ai_snapshot|array|max:30',
+            'ai_snapshot.confirmed_keys.*' => 'required|string|distinct|max:80',
         ])->validate();
     }
 
-    private function writeRevision(int $id, int $no, string $text, array $facts, array $schema): void
+    private function aiSnapshot(array $snapshot, array $schema): array
+    {
+        $suggestions = $this->schemas->validate($snapshot['suggestions'], $schema);
+        if (array_diff($snapshot['confirmed_keys'], array_keys($suggestions))) {
+            throw new SceneWorkflowException('SCENE_AI_CONFIRMATION_INVALID', '确认项必须来自当前待确认草稿。');
+        }
+
+        return ['version' => $snapshot['version'], 'original_text' => $snapshot['original_text'], 'suggestions' => $suggestions,
+            'confirmed_keys' => $snapshot['confirmed_keys'], 'trust' => 'customer_confirmed_input_only_not_task_evidence'];
+    }
+
+    private function writeRevision(int $id, int $no, string $text, array $facts, array $schema, ?array $sourceSnapshot = null): void
     {
         DB::table('scene_request_revisions')->insert(['request_id' => $id, 'revision_no' => $no,
-            'original_text'                                        => $text, 'facts' => SceneWorkflow::json($facts), 'schema_snapshot' => SceneWorkflow::json($schema),
-            'input_hash'                                           => SceneWorkflow::hash([$text, $facts, $schema]), 'created_at' => now('UTC')]);
+            'original_text' => $text, 'facts' => SceneWorkflow::json($facts), 'schema_snapshot' => SceneWorkflow::json($schema),
+            'input_hash' => SceneWorkflow::hash([$text, $facts, $schema]), 'source_snapshot' => $sourceSnapshot ? SceneWorkflow::json($sourceSnapshot) : null, 'created_at' => now('UTC')]);
     }
 
     private function activity(int $id, string $kind, string $actorType, ?int $actorId, ?string $note, string $visibility, mixed $occurred = null): void
     {
         DB::table('scene_activities')->insert(['request_id' => $id, 'kind' => $kind, 'actor_type' => $actorType,
-            'actor_id'                                      => $actorId, 'note' => $note, 'visibility' => $visibility, 'occurred_at' => $occurred ?? now('UTC'), 'created_at' => now('UTC')]);
+            'actor_id' => $actorId, 'note' => $note, 'visibility' => $visibility, 'occurred_at' => $occurred ?? now('UTC'), 'created_at' => now('UTC')]);
     }
 }

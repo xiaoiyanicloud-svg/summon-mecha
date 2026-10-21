@@ -29,6 +29,7 @@
 		<scroll-view class="tab-scroll" scroll-x="true" show-scrollbar="false">
 			<view class="tab-list">
 				<text class="tab-item" :class="{ active: currentStatus === 'all' }" @click="switchStatus('all')">全部</text>
+				<text class="tab-item" :class="{ active: currentStatus === 'scene' }" @click="switchStatus('scene')">场景服务</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'pending' }" @click="switchStatus('pending')">待付款</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'confirm' }" @click="switchStatus('confirm')">待确认</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'active' }" @click="switchStatus('active')">服务中</text>
@@ -104,6 +105,7 @@
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import StateView from '@/components/StateView.vue';
 	import { orderApi } from '@/utils/api';
+	import { sceneStatusLabel } from '@/utils/scene-request';
 
 	export default {
 		components: {
@@ -187,7 +189,7 @@
 					fraud: 'cancelled',
 				}
 				// 方案咨询/定制类线索(custom):提交即视为已完成,无需后续操作
-				const status = (o.order_type === 'custom') ? 'completed' : (statusMap[o.status] || 'active')
+				const status = o.scene_workflow ? 'scene' : ((o.order_type === 'custom') ? 'completed' : (statusMap[o.status] || 'active'))
 				const textMap = {
 					pending: '待付款',
 					confirm: '待确认',
@@ -224,8 +226,9 @@
 					quantity: o.items_qty || (Array.isArray(o.items) ? o.items.reduce((s, i) => s + (Number(i.qty_ordered) || 0), 0) : 0) || 1,
 					amount,
 					status,
-					statusText: textMap[status],
-					statusClass: status,
+					statusText: o.scene_workflow ? sceneStatusLabel(o.scene_workflow.state) + ' · ' + sceneStatusLabel(o.scene_workflow.payment_state) : textMap[status],
+					statusClass: o.scene_workflow ? 'confirm' : status,
+					sceneWorkflow: o.scene_workflow || null,
 				}
 			},
 
@@ -277,6 +280,7 @@
 				return this.orders.filter(item => item.status === status).length
 			},
 			viewDetail(item) {
+				if (item.sceneWorkflow?.project_id) { uni.navigateTo({url:'/pages/scene/project?id='+item.sceneWorkflow.project_id}); return }
 				// 同步完整订单数据给详情页
 				uni.setStorageSync('orderDetailData', item)
 				uni.navigateTo({
@@ -287,6 +291,7 @@
 				uni.showToast({ title: '客服已接入', icon: 'none' })
 			},
 			reorder(item) {
+				if (item.sceneWorkflow) { uni.navigateTo({url:'/pages/scene/request?source=scene'+(item.sceneWorkflow.scene_id?'&sceneId='+item.sceneWorkflow.scene_id:'')}); return }
 				const pid = item.productId || ''
 				if (!pid) {
 					uni.showToast({ title: '该订单未关联可再次下单的商品', icon: 'none' })

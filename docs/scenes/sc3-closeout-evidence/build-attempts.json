@@ -1,0 +1,104 @@
+[
+  {
+    "directory": ".claude/sc3-builds/1792520650026",
+    "compiler": "5.26.2026091411.1611",
+    "results": [
+      {
+        "platform": "h5",
+        "exitCode": null,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n"
+      },
+      {
+        "platform": "mp-weixin",
+        "exitCode": null,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n"
+      }
+    ]
+  },
+  {
+    "directory": ".claude/sc3-builds/1792521053329",
+    "compiler": "5.26.2026091411.1611",
+    "node": "D:\\工具\\HBuilderX.5.07.2026041006\\HBuilderX\\plugins\\node\\node.exe",
+    "results": [
+      {
+        "platform": "h5",
+        "exitCode": null,
+        "timedOut": true,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n"
+      },
+      {
+        "platform": "mp-weixin",
+        "exitCode": null,
+        "timedOut": true,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n"
+      }
+    ]
+  },
+  {
+    "directory": ".claude/sc3-builds/1792521561731",
+    "compiler": "5.26.2026091411.1611",
+    "node": "D:\\工具\\HBuilderX.5.07.2026041006\\HBuilderX\\plugins\\node\\node.exe",
+    "results": [
+      {
+        "platform": "h5",
+        "exitCode": null,
+        "timedOut": true,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n"
+      },
+      {
+        "platform": "mp-weixin",
+        "exitCode": null,
+        "timedOut": true,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n"
+      }
+    ]
+  },
+  {
+    "directory": ".claude/sc3-builds/1792522230294",
+    "compiler": "5.26.2026091411.1611",
+    "node": "D:\\工具\\HBuilderX.5.07.2026041006\\HBuilderX\\plugins\\node\\node.exe",
+    "results": [
+      {
+        "platform": "h5",
+        "exitCode": null,
+        "timedOut": true,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n"
+      },
+      {
+        "platform": "mp-weixin",
+        "exitCode": 0,
+        "timedOut": false,
+        "complete": true,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\nSC3 complete uni-app build: mp-weixin\n"
+      }
+    ]
+  },
+  {
+    "directory": ".claude/sc3-builds/1792522401035",
+    "compiler": "5.26.2026091411.1611",
+    "node": "D:\\nvm4w\\nodejs\\node.exe",
+    "results": [
+      {
+        "platform": "h5",
+        "exitCode": 1,
+        "timedOut": false,
+        "complete": false,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n\n欢迎将web站点部署到uniCloud前端网页托管平台，高速、免费、安全、省心，详见：https://uniapp.dcloud.io/uniCloud/hosting\nx Build failed in 1.25s\nError: [vite:css] Preprocessor dependency \"sass\" not found. Did you install it? Try `npm install -D sass`.\nfile: D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/home/jineng.vue?vue&type=style&index=0&scoped=fee78a06&lang.scss\n    at loadPreprocessorPath (file:///D:/%E5%B7%A5%E5%85%B7/HBuilderX.5.07.2026041006/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:32677:19)\n    at process (file:///D:/%E5%B7%A5%E5%85%B7/HBuilderX.5.07.2026041006/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:32810:30)\n    at compileCSSPreprocessors (file:///D:/%E5%B7%A5%E5%85%B7/HBuilderX.5.07.2026041006/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:32115:36)\n    at compileCSS (file:///D:/%E5%B7%A5%E5%85%B7/HBuilderX.5.07.2026041006/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:32165:42)\n    at async Object.transform (file:///D:/%E5%B7%A5%E5%85%B7/HBuilderX.5.07.2026041006/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:31563:56)\n    at async transform (file:///D:/%E5%B7%A5%E5%85%B7/HBuilderX.5.07.2026041006/HBuilderX/plugins/uniapp-cli-vite/node_modules/rollup/dist/es/shared/node-entry.js:18513:16)\n    at async ModuleLoader.addModuleSource (file:///D:/%E5%B7%A5%E5%85%B7/HBuilderX.5.07.2026041006/HBuilderX/plugins/uniapp-cli-vite/node_modules/rollup/dist/es/shared/node-entry.js:18729:36) {\n  code: 'PLUGIN_ERROR',\n  plugin: 'vite:css',\n  hook: 'transform',\n  id: 'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/home/jineng.vue?vue&type=style&index=0&scoped=fee78a06&lang.scss',\n  watchFiles: [\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/index.html',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/main.js',\n    'D:\\\\CodexDeploy\\\\summon-mecha\\\\.claude\\\\sc3-builds\\\\1792522401035\\\\package.json',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/App.vue',\n    'D:\\\\工具\\\\HBuilderX.5.07.2026041006\\\\HBuilderX\\\\plugins\\\\uniapp-cli-vite\\\\node_modules\\\\@dcloudio\\\\uni-h5-vue\\\\dist\\\\vue.runtime.esm.js',\n    'D:\\\\工具\\\\HBuilderX.5.07.2026041006\\\\HBuilderX\\\\plugins\\\\uniapp-cli-vite\\\\node_modules\\\\@dcloudio\\\\uni-h5\\\\style\\\\framework\\\\async.css',\n    'D:\\\\工具\\\\HBuilderX.5.07.2026041006\\\\HBuilderX\\\\plugins\\\\uniapp-cli-vite\\\\node_modules\\\\@dcloudio\\\\uni-h5\\\\style\\\\framework\\\\base.css',\n    'D:\\\\工具\\\\HBuilderX.5.07.2026041006\\\\HBuilderX\\\\plugins\\\\uniapp-cli-vite\\\\node_modules\\\\@dcloudio\\\\uni-h5\\\\style\\\\framework\\\\shadow.css',\n    'D:\\\\工具\\\\HBuilderX.5.07.2026041006\\\\HBuilderX\\\\plugins\\\\uniapp-cli-vite\\\\node_modules\\\\@dcloudio\\\\uni-h5\\\\style\\\\framework\\\\tabBar.css',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/scene/request.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/home/index.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/scene/requests.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/scene/confirm.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/scene/detail.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/scene/project.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/home/rmfangan.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/home/jineng.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/robot/index.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/robot/fangan.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/ai/index.vue',\n    'D:\\\\工具\\\\HBuilderX.5.07.2026041006\\\\HBuilderX\\\\plugins\\\\uniapp-cli-vite\\\\node_modules\\\\@dcloudio\\\\uni-h5\\\\dist\\\\uni-h5.es.js',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/order/order-detail.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/order/checkout.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/notifications.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/index.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/tickets.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/ticket-detail.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/skills.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/devices.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/after-sales.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/incidents.vue',\n    'D:/CodexDeploy/summon-mecha/.claude/sc3-builds/1792522401035/source/pages/mine/incident-detail.vue'\n  ]\n}\n"
+      },
+      {
+        "platform": "mp-weixin",
+        "exitCode": 0,
+        "timedOut": false,
+        "complete": true,
+        "log": "Compiler version: 5.26（vue3）\nCompiling...\n\nuni-app 有新版本发布，请执行 `npx @dcloudio/uvm@latest alpha` 更新，更新日志详见：https://download1.dcloud.net.cn/hbuilderx/changelog/5.32.2026101609-alpha.html\nSC3 complete uni-app build: mp-weixin\n"
+      }
+    ]
+  }
+]

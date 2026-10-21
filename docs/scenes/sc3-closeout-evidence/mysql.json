@@ -1,0 +1,317 @@
+{
+    "environment": "mysql",
+    "tests": [
+        {
+            "name": "发布须独立批准；旧 row_version 冲突；批准内容不可覆盖",
+            "pass": true
+        },
+        {
+            "name": "需求幂等、载荷冲突、跨主体与完整原文；联系方式加密且无客资 outbox",
+            "pass": true
+        },
+        {
+            "name": "具体设备证据通过后评估与服务端定点报价；客户端价格不被读取",
+            "pass": true
+        },
+        {
+            "name": "SC3 独立核验逐台资源与真实服务 SKU；来源与班次不默认完成",
+            "pass": true
+        },
+        {
+            "name": "SC3 服务端核价、订单\/项目\/资源\/任务同事务；重复键、新键与丢响应返回同一订单",
+            "pass": true
+        },
+        {
+            "name": "SC3 商务未复核\/自审\/跨需求原件\/重复凭证均拒绝，客户上传不置已收款",
+            "pass": true
+        },
+        {
+            "name": "SC3 已有效接受不因报价期限过去失效；商务确认期限仍约束；新内容版本保留已接受承诺",
+            "pass": true
+        },
+        {
+            "name": "SC3 历史资源显式补来源后仍须独立核验；重复来源和自审不产生可承诺容量",
+            "pass": true
+        },
+        {
+            "name": "SC3 履约任务和验收由报价冻结，修改运行配置不改变已接受承诺；客户不见内部来源",
+            "pass": true
+        },
+        {
+            "name": "SC3 held 到期即不占用，停止 worker 仍正确；新客户抢占后旧 hold 不可转确认",
+            "pass": true
+        },
+        {
+            "name": "SC3 多资源一项故障则全部不确认；已承诺资源不替换，影响待办可查",
+            "pass": true
+        },
+        {
+            "name": "SC3 人员班次、城市、行程和休息缓冲拒绝超范围；相邻半开区间可用",
+            "pass": true
+        },
+        {
+            "name": "SC3 客户身份、渠道、指纹与冻结金额不可绕过；停写仍可查原确认结果",
+            "pass": true
+        },
+        {
+            "name": "SC3 SKU 缺失\/撤销\/类型不符拒绝且不留半套资源；已确认组不能当 hold 释放",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 orders \/ 1=1",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 order_payment \/ 1=1",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 addresses \/ NEW.address_type='order_shipping'",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 addresses \/ NEW.address_type='order_billing'",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 order_items \/ NEW.product_id=101",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 order_items \/ NEW.product_id=102",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 scene_projects \/ 1=1",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 scene_order_links \/ 1=1",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 scene_project_tasks \/ NEW.task_key='dispatch'",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 operation_log \/ NEW.action='scene.order.converted'",
+            "pass": true
+        },
+        {
+            "name": "SC3 故障回滚 business_outbox \/ NEW.event_type='scene.order.converted'",
+            "pass": true
+        },
+        {
+            "name": "SC3 listener Throwable 回滚真实仓储、地址、款项、关联、强审计及 outbox",
+            "pass": true
+        },
+        {
+            "name": "SC3 删除全部场景元数据、修改普通类型或后台直调仓储仍不能购买服务 SKU",
+            "pass": true
+        },
+        {
+            "name": "SC3 技能费用独立拆单，服务建单不发授权；实际收款独立复核后复用既有授权且幂等",
+            "pass": true
+        },
+        {
+            "name": "SC3 未批准的错误 SKU 草案不影响普通租买，普通机器人订单继续进入既有仓储",
+            "pass": true
+        },
+        {
+            "name": "SC3 即使 worker 停止，已晚归且未核实返库的实物不能确认下一个档期",
+            "pass": true
+        },
+        {
+            "name": "SC3 假设已付款状态不能替代收款事实；待退款、争议和技能版本变化阻止新授权",
+            "pass": true
+        },
+        {
+            "name": "SC3 真实 Bagisto 库存与授权监听器故障回滚：inventory",
+            "pass": true
+        },
+        {
+            "name": "SC3 真实 Bagisto 库存与授权监听器故障回滚：listener_after_grant",
+            "pass": true
+        },
+        {
+            "name": "SC3 DST 回拨两种 offset 表达不同真实时刻；跨日和无效本地时间不默许纠正",
+            "pass": true
+        },
+        {
+            "name": "SC3 真实订单取消\/支付创建\/支付回调入口识别场景关联，普通订单入口不能改变履约或收款",
+            "pass": true
+        },
+        {
+            "name": "SC3 MySQL 两客户真实进程抢同档",
+            "pass": true
+        },
+        {
+            "name": "SC3 MySQL 两客户真实进程抢同档，RR 旧快照且延迟获取父锁",
+            "pass": true
+        },
+        {
+            "name": "SC3 MySQL 同一报价多进程不同提交标识只建一单一项目，丢响应可查询",
+            "pass": true
+        },
+        {
+            "name": "SC3 MySQL 资源父行锁等待超时有界失败且无半预留",
+            "pass": true
+        },
+        {
+            "name": "SC3 MySQL 真死锁触发命令有界重试、重新读事实，失败尝试不残留",
+            "pass": true
+        }
+    ],
+    "passed": 40,
+    "failed": 0,
+    "mysql_concurrency_verified": true,
+    "mysql_version": "5.7.30",
+    "transaction_level": 0,
+    "concurrency_evidence": [
+        [
+            {
+                "ok": false,
+                "code": "SCENE_RESOURCE_CONFLICT",
+                "sqlstate": null,
+                "connection_id": 61,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 111,
+                "transaction_level": 0,
+                "attempts": 0
+            },
+            {
+                "ok": true,
+                "result": {
+                    "hold_group": "7b8c4c92-6dd5-435e-9f64-57b2a26c245a",
+                    "state": "held",
+                    "expires_at": "2026-10-20T00:20:00+00:00",
+                    "delivery_status": "awaiting_confirmation"
+                },
+                "connection_id": 60,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 2735,
+                "transaction_level": 0,
+                "attempts": 0
+            }
+        ],
+        [
+            {
+                "ok": true,
+                "result": {
+                    "hold_group": "253c4b86-885d-45b6-8b00-f315d300d740",
+                    "state": "held",
+                    "expires_at": "2026-10-20T00:20:00+00:00",
+                    "delivery_status": "awaiting_confirmation"
+                },
+                "connection_id": 62,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 87,
+                "transaction_level": 0,
+                "attempts": 0
+            },
+            {
+                "ok": false,
+                "code": "SCENE_RESOURCE_CONFLICT",
+                "sqlstate": null,
+                "connection_id": 63,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 277,
+                "transaction_level": 0,
+                "attempts": 0
+            }
+        ],
+        [
+            {
+                "ok": true,
+                "result": {
+                    "id": 22,
+                    "state": "confirmed",
+                    "quote_id": 36,
+                    "order_id": 27,
+                    "increment_id": "SCDE83D90CC230C3DF216218F8",
+                    "skill_order_id": null,
+                    "project_id": 22,
+                    "project_no": "206fbd8e-bd97-4a2d-84d6-185d1e868f5f",
+                    "delivery_status": "confirmed",
+                    "commercial_state": "confirmed",
+                    "payment_state": "unpaid"
+                },
+                "connection_id": 64,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 2745,
+                "transaction_level": 0,
+                "attempts": 0
+            },
+            {
+                "ok": true,
+                "result": {
+                    "id": 22,
+                    "state": "confirmed",
+                    "quote_id": 36,
+                    "order_id": 27,
+                    "increment_id": "SCDE83D90CC230C3DF216218F8",
+                    "skill_order_id": null,
+                    "project_id": 22,
+                    "project_no": "206fbd8e-bd97-4a2d-84d6-185d1e868f5f",
+                    "delivery_status": "confirmed",
+                    "commercial_state": "confirmed",
+                    "payment_state": "unpaid"
+                },
+                "connection_id": 65,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 136,
+                "transaction_level": 0,
+                "attempts": 0
+            }
+        ],
+        [
+            {
+                "ok": false,
+                "code": "DATABASE_CONCURRENCY_ERROR",
+                "sqlstate": 1205,
+                "connection_id": 66,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 6162,
+                "transaction_level": 0,
+                "attempts": 0
+            },
+            {
+                "ok": false,
+                "code": "DATABASE_CONCURRENCY_ERROR",
+                "sqlstate": 1205,
+                "connection_id": 67,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 6164,
+                "transaction_level": 0,
+                "attempts": 0
+            }
+        ],
+        [
+            {
+                "ok": true,
+                "result": {
+                    "id": 1,
+                    "state": "committed"
+                },
+                "connection_id": 68,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 30,
+                "transaction_level": 0,
+                "attempts": 1
+            },
+            {
+                "ok": true,
+                "result": {
+                    "id": 1,
+                    "state": "committed"
+                },
+                "connection_id": 69,
+                "isolation": "REPEATABLE READ",
+                "elapsed_ms": 27,
+                "transaction_level": 0,
+                "attempts": 2
+            }
+        ]
+    ],
+    "reported_errors": []
+}

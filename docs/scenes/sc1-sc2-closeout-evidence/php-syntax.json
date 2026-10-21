@@ -1,0 +1,182 @@
+[
+  {
+    "path": "my-bagisto-store/config/scene_policy_drafts.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Admin/src/Config/acl.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/AuthorizeSceneWorkflow.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/SceneAttachmentRetention.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/SceneOperations.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_100006_complete_scene_intake_and_publication.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_100007_complete_scene_assessment_and_proposals.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneWorkflowController.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SummonAiController.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SummonController.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Providers/ShopServiceProvider.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Routes/scene-workflow.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAcceptanceService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAiDraftService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAssessmentService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAttachmentRetentionService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAttachmentService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneAttachmentUploadService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneBusinessCalendar.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneCatalogService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneContentEvidenceService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneFieldRegistry.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneIntakeClockService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/ScenePolicyService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/ScenePublicationService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneQualificationService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneRequestService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSchemaRegistry.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSiteRules.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSolutionService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSupplyService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSurveyService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/SkillDelivery/SkillMarketService.php",
+    "ok": true
+  },
+  {
+    "path": "my-bagisto-store/qa/scenes/preflight.php",
+    "ok": true
+  },
+  {
+    "path": "tools/tests/fixtures/scene-scanner.php",
+    "ok": true
+  },
+  {
+    "path": "tools/tests/scene-acceptance-cases.php",
+    "ok": true
+  },
+  {
+    "path": "tools/tests/scene-blade-compile.php",
+    "ok": true
+  },
+  {
+    "path": "tools/tests/scene-controller-runtime.php",
+    "ok": true
+  },
+  {
+    "path": "tools/tests/scene-sc1-sc2-cases.php",
+    "ok": true
+  },
+  {
+    "path": "tools/tests/scene-workflow.php",
+    "ok": true
+  }
+]

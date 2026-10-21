@@ -12,6 +12,7 @@
     { "path": "pages/scene/request", "style": { "navigationStyle": "custom", "navigationBarTitleText": "场景服务" } },
     { "path": "pages/scene/requests", "style": { "navigationStyle": "custom", "navigationBarTitleText": "场景服务" } },
     { "path": "pages/scene/detail", "style": { "navigationStyle": "custom", "navigationBarTitleText": "场景服务" } },
+    { "path": "pages/scene/confirm", "style": { "navigationStyle": "custom", "navigationBarTitleText": "服务订单确认" } },
     { "path": "pages/scene/project", "style": { "navigationStyle": "custom", "navigationBarTitleText": "场景服务" } },
     {
       "path": "pages/home/rmfangan",

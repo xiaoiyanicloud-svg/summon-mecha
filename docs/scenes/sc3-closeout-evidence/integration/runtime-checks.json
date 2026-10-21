@@ -1,0 +1,79 @@
+{
+    "checks": [
+        {
+            "name": "真实运维命令只读报告反映已启用转换及完整 SC3 表",
+            "pass": true
+        },
+        {
+            "name": "只读命令不改变审计、outbox、通知或回执",
+            "pass": true
+        },
+        {
+            "name": "非法消费参数在扫描前拒绝且不写任何事实",
+            "pass": true
+        },
+        {
+            "name": "生产注册的场景事件按分钟调度并防止重叠",
+            "pass": true
+        },
+        {
+            "name": "场景调度受实际运维开关限制",
+            "pass": true
+        },
+        {
+            "name": "真实 Scheduler 事件启动隔离 Console 子进程执行消费者",
+            "pass": true
+        },
+        {
+            "name": "完整 EAV 无测试专用商品属性列",
+            "pass": true
+        },
+        {
+            "name": "只有一份正式订单、项目及预留关联",
+            "pass": true
+        },
+        {
+            "name": "服务确认没有伪造在线收款或技能授权",
+            "pass": true
+        },
+        {
+            "name": "失败和中断没有遗留事务",
+            "pass": true
+        }
+    ],
+    "operations_report": {
+        "database_driver": "mysql",
+        "missing_tables": [],
+        "features": {
+            "publication_v2": true,
+            "requests_enabled": true,
+            "quotes_enabled": true,
+            "reservations_enabled": true,
+            "project_actions_enabled": true,
+            "operations_enabled": true,
+            "order_conversion_enabled": true
+        },
+        "order_conversion": "enabled",
+        "delivery": [],
+        "metrics": {
+            "requests": 0,
+            "accepted_quotes": 0,
+            "confirmed_projects": 0,
+            "open_todos": 1,
+            "outbox_pending": 0,
+            "outbox_failed": 0,
+            "definitions": {
+                "requests": "非测试且非旧线索适配的独立需求数",
+                "accepted_quotes": "客户接受事实，非订单成交或收款",
+                "confirmed_projects": "已建立项目，非验收或收款"
+            },
+            "worker_status": "requires_process_verification",
+            "sla_status": "calendar_not_configured"
+        }
+    },
+    "database": {
+        "name": "summon_mecha_scenes_test",
+        "version": "5.7.30",
+        "isolation": "REPEATABLE-READ"
+    }
+}
