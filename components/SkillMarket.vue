@@ -14,7 +14,6 @@
         <view class="market-filter">{{ group.title }}：{{ group.options[filterIndex(group)].label }} ▾</view>
       </picker>
     </view>
-    <text class="market-note">机型筛选仅按交付方式初筛，实际适配条件请在技能详情中确认。</text>
     <view v-if="market.error" class="market-state market-error">
       <text>技能加载失败</text><text class="market-note">{{ market.error }}</text>
       <button size="mini" @click="refresh">重新加载</button>
@@ -69,7 +68,7 @@ export default {
   emits: ['select', 'show-all'],
   data() {
     return {
-      query: '', filters: { model: '', channel: '', risk: '', motion: '' }, market: createSkillMarketState(),
+      query: '', filters: { model: '', channel: '', motion: '' }, market: createSkillMarketState(),
       filterLoading: false, filterError: '', options: { models: [], channels: [], risks: [], motions: [] },
       showExamples: false,
       examples: SKILL_LIST.slice(0, 3).map((row, i) => ({ key: `example-${i}`, name: row.name, icon: row.icon || '💡' })),
@@ -81,7 +80,6 @@ export default {
       return [
         { key: 'model', title: '机型', source: this.options.models.map(x => ({ value: x.code, label: x.name })) },
         { key: 'channel', title: '交付', source: this.options.channels.map(x => ({ value: x.value, label: x.label })) },
-        { key: 'risk', title: '风险', source: this.options.risks.map(x => ({ value: x.value, label: x.label })) },
         { key: 'motion', title: '动作', source: this.options.motions.map(x => ({ value: x.name, label: x.name })) },
       ].filter(x => x.source.length).map(x => ({ ...x, options: [{ value: '', label: '全部' }, ...x.source] }))
     },
