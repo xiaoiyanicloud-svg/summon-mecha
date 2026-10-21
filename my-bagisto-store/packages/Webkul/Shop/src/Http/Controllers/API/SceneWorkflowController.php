@@ -20,7 +20,7 @@ class SceneWorkflowController extends APIController
         return response()->json(['data' => [
             'requests' => (bool) config('scenes.requests_enabled'), 'quotes' => (bool) config('scenes.quotes_enabled'),
             'projects' => (bool) config('scenes.project_actions_enabled'), 'publication_v2' => (bool) config('scenes.publication_v2'),
-            'attachments' => is_array(config('scenes.attachment_scan_command')), 'order_conversion' => false,
+            'attachments' => is_array(config('scenes.attachment_scan_command')), 'order_conversion' => (bool) config('scenes.order_conversion_enabled') && (bool) config('scenes.reservations_enabled'),
             'consent_version' => 'scene-contact-v1',
             'consent_text' => '我同意平台为本次服务评估、方案沟通及交付联系我；现场资料仅供授权服务人员处理。',
         ]]);
@@ -97,9 +97,15 @@ class SceneWorkflowController extends APIController
             (string) $request->header('Idempotency-Key'), $request->input('terms_hash'), $request->input('content_hash'), (int) core()->getCurrentChannel()->id)]);
     }
 
-    public function convert(SceneOrderConversionService $service): never
+    public function convert(Request $r, int $id, SceneOrderConversionService $service)
     {
-        $service->convert();
+        return response()->json(['data' => $service->convert(ScenePrincipal::fromRequest($r), $id, $r->all(),
+            (string) $r->header('Idempotency-Key'), (int) core()->getCurrentChannel()->id)])->header('Cache-Control', 'no-store');
+    }
+
+    public function confirmation(Request $r, int $id, SceneOrderConversionService $service)
+    {
+        return response()->json(['data' => $service->status(ScenePrincipal::fromRequest($r), $id)])->header('Cache-Control', 'no-store');
     }
 
     public function rejectQuote(Request $request, int $id, SceneProposalService $service)

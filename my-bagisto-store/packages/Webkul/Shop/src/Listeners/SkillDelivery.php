@@ -87,6 +87,13 @@ class SkillDelivery
      */
     protected function grantForOrder($order): void
     {
+        // 场景技能子单创建时完整项目/关联尚未提交，禁止在仓储事件中提前授权或发送设备指令。
+        $sceneItems = $order->items->filter(fn ($item) => ($item->additional['scene']['protocol'] ?? null) === 'scene-sc3-v1');
+        if ($sceneItems->isNotEmpty()) {
+            if ($sceneItems->count() !== $order->items->count() || ! app(\Webkul\Shop\Services\Scenes\SceneSkillOrderGate::class)->allows($order)) {
+                return;
+            }
+        }
         $skillProductIds = $this->skillProductIds();
 
         if (empty($skillProductIds)) {
@@ -168,11 +175,11 @@ class SkillDelivery
                 'skill',
                 (int) $item->product_id,
                 [
-                    'order_id'      => $order->id,
+                    'order_id' => $order->id,
                     'order_item_id' => $item->id,
-                    'product_id'    => $item->product_id,
-                    'customer_id'   => $order->customer_id,
-                    'reason'        => 'skill_blocked',
+                    'product_id' => $item->product_id,
+                    'customer_id' => $order->customer_id,
+                    'reason' => 'skill_blocked',
                 ]
             );
 
@@ -189,23 +196,27 @@ class SkillDelivery
             ->orderByDesc('released_at')
             ->orderByDesc('id')
             ->first();
+        if (($additional['scene']['protocol'] ?? null) === 'scene-sc3-v1'
+            && (! $version || (int) $version->id !== (int) ($additional['skill']['version_id'] ?? 0))) {
+            throw new \RuntimeException('SCENE_SKILL_VERSION_CHANGED');
+        }
 
         $product = ProductProxy::modelClass()::find($item->product_id);
 
         $entitlement = SkillEntitlement::firstOrCreate(
             ['order_item_id' => $item->id],
             [
-                'customer_id'      => $order->customer_id,
-                'order_id'         => $order->id,
-                'product_id'       => $item->product_id,
+                'customer_id' => $order->customer_id,
+                'order_id' => $order->id,
+                'product_id' => $item->product_id,
                 'skill_version_id' => $version?->id,
-                'device_id'        => $deviceId,
-                'seller_id'        => $product?->seller_id,
-                'status'           => SkillEntitlement::STATUS_PENDING_BIND,
-                'license_key'      => SkillEntitlement::newLicenseKey(),
+                'device_id' => $deviceId,
+                'seller_id' => $product?->seller_id,
+                'status' => SkillEntitlement::STATUS_PENDING_BIND,
+                'license_key' => SkillEntitlement::newLicenseKey(),
                 'delivery_channel' => (string) config('skill_delivery.default'),
-                'max_activations'  => $version?->max_activations,
-                'expires_at'       => $version?->valid_days
+                'max_activations' => $version?->max_activations,
+                'expires_at' => $version?->valid_days
                     ? now()->addDays($version->valid_days)
                     : null,
             ]
@@ -234,9 +245,9 @@ class SkillDelivery
             } else {
                 // Business rejection is observable, but never a technical retry.
                 $meta['delivery_failed'] ??= [
-                    'at'        => now()->toDateTimeString(),
-                    'code'      => $result->code,
-                    'message'   => $result->message,
+                    'at' => now()->toDateTimeString(),
+                    'code' => $result->code,
+                    'message' => $result->message,
                     'retryable' => false,
                 ];
                 $this->alertFailure((int) $order->id, (int) $item->id, $result->code);
@@ -260,14 +271,14 @@ class SkillDelivery
             'skill_entitlement',
             $entitlement->id,
             [
-                'order_id'         => $order->id,
-                'order_item_id'    => $item->id,
-                'product_id'       => $item->product_id,
-                'customer_id'      => $order->customer_id,
+                'order_id' => $order->id,
+                'order_item_id' => $item->id,
+                'product_id' => $item->product_id,
+                'customer_id' => $order->customer_id,
                 'delivery_channel' => $entitlement->delivery_channel,
-                'created'          => $created,
-                'delivery_ok'      => $result->ok,
-                'delivery_code'    => $result->code,
+                'created' => $created,
+                'delivery_ok' => $result->ok,
+                'delivery_code' => $result->code,
             ]
         );
     }

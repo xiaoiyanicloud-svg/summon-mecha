@@ -2,6 +2,7 @@
     <x-slot:title>场景服务工作台</x-slot>
     <div class="flex flex-col gap-6">
         <h1 class="text-xl font-bold">场景服务工作台</h1>
+        <a class="text-blue-600" href="{{ route('admin.catalog.scene-workflow.resources') }}">资源班次核验与交易 SKU 映射</a>
         <p>需求 {{ $metrics['requests'] }} · 已接受报价 {{ $metrics['accepted_quotes'] }} · 项目 {{ $metrics['confirmed_projects'] }} · 待办 {{ $metrics['open_todos'] }}。接受报价不表示已确认交付或收款。</p>
         <p>订单转换待事务验收。{{ $metrics['sla_status']==='calendar_approved'?'当前已批准工作日历，新需求将冻结受理时限。':'工作日历尚未批准，当前不提供响应时限承诺。' }}</p>
         <nav class="flex gap-4">@if (bouncer()->hasPermission('catalog.scene-workflow.policy_view'))<a class="text-blue-600" href="{{ route('admin.catalog.scene-workflow.configuration') }}">服务条款、资料保留与工作日历</a>@endif @if (bouncer()->hasPermission('catalog.scene-workflow.evidence_view'))<a class="text-blue-600" href="{{ route('admin.catalog.scene-workflow.evidence') }}">内容与具体设备任务证据审核</a>@endif</nav>
@@ -62,8 +63,8 @@
         </section>
         <section class="rounded border p-4"><h2 class="mb-3 text-lg font-semibold">登记逐台资源</h2>
             <form method="POST" action="{{ route('admin.catalog.scene-workflow.supply', 'resources') }}" class="grid gap-3 md:grid-cols-2">@csrf
-                @foreach (['resource_no'=>'资源唯一编号','product_id'=>'商品 ID','binding_id'=>'设备 binding ID','external_reference'=>'供给来源与核验索引','city'=>'服务城市','timezone'=>'服务地 IANA 时区','verification_expires_at'=>'核验有效期（含时区）'] as $key=>$label)<label>{{ $label }}<input name="{{ $key }}" class="w-full rounded border p-2" @if (!in_array($key,['product_id','binding_id'])) required @endif></label>@endforeach
-                <label>类型<select name="kind" class="w-full rounded border p-2"><option value="robot">机器人</option><option value="operator">人员</option><option value="accessory">配件</option></select></label><button class="primary-button self-start">记录核验资源</button>
+                @foreach (['resource_no'=>'资源唯一编号','identity_reference'=>'资源身份索引（同一人员/配件必须一致）','product_id'=>'商品 ID','binding_id'=>'设备 binding ID','external_reference'=>'供给来源与核验索引','city'=>'服务城市','timezone'=>'服务地 IANA 时区','verification_expires_at'=>'资料拟有效期（含时区）'] as $key=>$label)<label>{{ $label }}<input name="{{ $key }}" class="w-full rounded border p-2" @if (!in_array($key,['product_id','binding_id'])) required @endif></label>@endforeach
+                <label>类型<select name="kind" class="w-full rounded border p-2"><option value="robot">机器人</option><option value="operator">人员</option><option value="accessory">配件</option></select></label><button class="primary-button self-start">登记资源，等待独立核验班次</button>
             </form>
         </section>@endif
         @if (bouncer()->hasPermission('catalog.scene-workflow.reserve'))<section class="rounded border p-4"><h2 class="mb-3 text-lg font-semibold">资源异常</h2>

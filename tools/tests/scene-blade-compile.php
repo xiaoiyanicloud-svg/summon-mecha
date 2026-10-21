@@ -14,9 +14,13 @@ $checks = [];
 foreach ($files as $file) {
     $output = $target.'/'.basename($file).'.php';
     file_put_contents($output, $compiler->compileString(file_get_contents($file)));
-    $process = new Symfony\Component\Process\Process([PHP_BINARY, '-l', $output]);
-    $process->run();
-    $checks[] = ['template' => basename($file), 'syntax_ok' => $process->isSuccessful()];
+    // 在同一个 PHP 引擎进行实际语法解析，避免 Windows 每模板子进程的启动超时。
+    try {
+        token_get_all(file_get_contents($output), TOKEN_PARSE);
+        $checks[] = ['template' => basename($file), 'syntax_ok' => true];
+    } catch (ParseError $e) {
+        $checks[] = ['template' => basename($file), 'syntax_ok' => false, 'error' => $e->getMessage()];
+    }
 }
 $failed = count(array_filter($checks, fn ($r) => ! $r['syntax_ok']));
 echo json_encode(['compiled' => count($files), 'failed' => $failed, 'checks' => $checks, 'component_layout_rendered' => false, 'output' => $target], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;

@@ -1,0 +1,26 @@
+{
+  "environment": "Actual HBuilderX compiled H5 + actual Laravel HTTP/Sanctum + isolated MySQL; proxy changes destination only",
+  "checks": [
+    "完整 HBuilderX H5 产物读取真实后端确认回执",
+    "页面显示实际订单编号、商务确认与未收款事实",
+    "实际收款状态与提示文本分行且不遮挡",
+    "实际 H5 从确认页进入同一交付项目并读取冻结资源",
+    "真实编译 CSS 在 390px 下无横向溢出",
+    "真实 H5 切换账号后跨客户拒绝且不残留原单号"
+  ],
+  "pageErrors": [],
+  "apiCalls": [
+    {
+      "path": "/api/scene-quotes/1/confirmation",
+      "status": 200
+    },
+    {
+      "path": "/api/scene-projects/1",
+      "status": 200
+    },
+    {
+      "path": "/api/scene-quotes/1/confirmation",
+      "status": 404
+    }
+  ]
+}

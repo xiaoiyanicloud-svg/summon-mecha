@@ -1,10 +1,10 @@
 # 场景流程 v1 技术契约与开放边界
 
-日期：2026-10-20。实现记录：[第 14 步](../skill-dev-step14.md)、[第 15 步](../skill-dev-step15.md)、[第 17 步](../skill-dev-step17.md)。该契约是本批代码的实际行为，不替代商业条款、真机能力或上线签收。
+更新：2026-10-21。实现记录：[第 14 步](../skill-dev-step14.md)、[第 15 步](../skill-dev-step15.md)、[第 17 步](../skill-dev-step17.md)、[SC3 收尾](SC3-Closeout-20261021.md)。该契约是本批代码的实际行为，不替代商业条款、真机能力或上线签收。
 
 ## 1 当前服务范围
 
-当前只实现需要人工受理和核验的场景服务流程。需求、评估、报价接受、资源预留、项目状态、款项事实分别存在。配置中所有新功能开关默认关闭；订单转换是硬阻断，不能通过设置环境变量绕过。
+当前支持人工受理和核验的场景服务流程。需求、评估、报价接受、资源预留、项目状态、款项事实分别存在。所有新功能开关默认关闭；SC3 已实现实际转单，须目标环境验收并显式开启转换及预留开关，不能借环境开关绕过业务事实校验。
 
 机器人/服务/运输/人员/配件使用服务端版本化价目。SC1/SC2 收尾增量允许在独立批准 BOM 中列入已核验的具体技能版本：必须钉住绑定、登记、兼容性、真实产物字节和任务证据，重新核对当前渠道可售性及熔断。报价不会新增技能授权或设备命令，技能交易与 D10 规则继续沿用。资源只能引用 `device_binding`，不修改归属。未知现场条件和不支持的场景不能得到“可交付”结论。
 
@@ -47,7 +47,7 @@ SC1/SC2 新增九类 v2 专业字段、单位、枚举、分阶段条件规则�
 
 相同恢复规则覆盖需求补充、报价接受/拒绝、项目验收/变更/取消/售后。刷新后显示原载荷待确认入口，即便服务端状态已变化，也按原键恢复回执；等待期间不发送相冲突的新动作。明确 4xx 拒绝可修正内容，网络失败/5xx/不完整回执继续保留未知状态。
 
-旧 `tob-order type=custom` 适配为需求，要求新凭证、幂等键和联系授权，不再生成零元订单。带场景/方案标识的直接 TOB 建单返回 `SCENE_QUOTE_REQUIRED`。完全移除场景标识的普通租买仍是既有普通交易路径；完整来源防绕过及场景 checkout 转换属于未完成范围。
+旧 `tob-order type=custom` 适配为需求，要求新凭证、幂等键和联系授权，不再生成零元订单。带场景/方案标识的直接 TOB 建单返回 `SCENE_QUOTE_REQUIRED`。删除全部场景元数据也不能直接购买已独立批准过的 service SKU（包括后来撤销的映射）；仓储 before-save 使用请求作用域服务端写入上下文校验，客户端不能伪造。未批准的映射草案不影响普通机器人租买，普通租买继续原交易路径。场景 checkout 引导至独立确认页；订单列表、详情和旧缓存关联到项目。
 
 ## 4 权限与私有资料
 
@@ -67,11 +67,11 @@ Admin 基础查看为 `catalog.scene-workflow`，另有 contact、requests、ass
 
 按环境开放 `SCENE_PUBLICATION_V2`、`SCENE_REQUESTS_ENABLED`、`SCENE_QUOTES_ENABLED`、`SCENE_RESERVATIONS_ENABLED`、`SCENE_PROJECT_ACTIONS_ENABLED`、`SCENE_OPERATIONS_ENABLED`。报价另需明确配置 `scenes.terms` 和 `commercial_policy.required_price_codes`，缺失即拒绝，不默认免费或补商业责任条款。
 
-`scenes:operations` 默认只读；`--consume=100 --sweep` 显式投影和扫描，需 operations 开关。scheduler 已注册每分钟执行，但本机和远端均未验证常驻进程、故障恢复或告警承接，不能因此宣称运营上线。
+`scenes:operations` 默认只读；`--consume=100 --sweep` 显式投影和扫描，需 operations 开关，非法消费参数在扫描前拒绝，投影失败返回非零。scheduler 注册每分钟执行且防重叠；本机已实际验证消费者进程中断、真实租约恢复及调度子进程。生产常驻与告警承接仍须在目标机器验证，不能因此宣称运营上线。
 
 场景消费者、失败列表、重放和 outbox 统计限定 scene.*；消费者校验支持事件与 aggregate/schema/payload。未知场景事件进入失败重试，不作为无操作签收；其他业务事件不租赁、不重试。拒绝/退回生成重编待办，新版发送或需求变化后关闭；客户复验通过只关闭对应失败项的整改投影，原验收记录保留。
 
-`qa/scenes/preflight.php` 是独立测试库只读预检，强制显式 APP_ENV=testing、DB_DATABASE=summon_mecha_scenes_test，并检查缓存与实际连接身份；不自动执行迁移或准备夹具。其 0 退出码只说明结构/路由就绪，不证明实际 MySQL 并发、监听器或业务验收通过。共享订单仓储已修复异常提交和递归重试，但场景订单转换仍硬阻断。
+`qa/scenes/preflight.php` 是独立测试库只读预检，强制显式 APP_ENV=testing、DB_DATABASE=summon_mecha_scenes_test，并检查缓存与实际连接身份；不自动执行迁移或准备夹具。其 0 退出码只说明八份迁移及结构/路由就绪，不证明业务验收。共享订单仓储修复和 SC3 转换已用本机独立 MySQL 验证；目标环境仍按 [QA 说明](../../my-bagisto-store/qa/scenes/README.md)验收后启用。
 
 迁移只做 expand。迁移 `down()` 故意拒绝删除已有需求、报价和交付事实；停写回退保留新表和新数据。若远端生态专项已有同名 outbox/幂等实现，先对照合并，不得直接创建第二套或覆盖现有实现。
 
@@ -89,3 +89,15 @@ Admin 基础查看为 `catalog.scene-workflow`，另有 contact、requests、ass
 客户新增 `GET /api/scene-requests/{id}/attachment-receipt`（原幂等键置于 Header）；上传须 `Idempotency-Key`。所有访问能力只在 Header，不进 URL。schema 路由参数使用 `{sceneCategory}`，公开 URL 形状不变，避开 Bagisto 全局 `category` 绑定。
 
 后台新增 policy_view / policy_write / policy_review、evidence_view / evidence_review、supply_review、solution_review、preserve / preserve_read 权限；勘察和编制实例方案复用 assess；待办转派复用 operate。具体路由及控制器动作映射以源码为准，未映射动作默认拒绝。报价仍须正式价目、税率及条款，不以草案建议补价格。
+
+## 7 SC3 交易确认增量（2026-10-21）
+
+- 第八份迁移为 `2026_10_21_100008_complete_scene_resources_and_transactions.php`，增加资源来源/班次/核验、报价确认期限、预留快照以及 SKU 映射、建单前商务、技能子单关联。只做 expand，down 拒绝删除事实。
+- 正式报价新增 `confirmation={method,required_minor}` 和 `confirmation_deadline`。`offline_contract` 门槛为 0，`offline_receipt` 门槛须为正整数分且不超过应收；确认截止不得晚于服务开始。这些连同工作流版本进入冻结条款和 hash。缺少此条款的历史报价不能转换。
+- `GET /api/scene-quotes/{id}/confirmation` 返回所属可见报价、当前 held 组/占用区间、最小商务复核摘要、开关及已有正式回执。停写后仍可查，不暴露凭证、人员来源、审核意见或私有路径。
+- `POST /api/scene-quotes/{id}/convert` 要求所属登录客户、`Idempotency-Key`、`terms_hash`、`content_hash` 及存在实物/人员/配件时对应 `hold_group`。返回 `order_id`、`skill_order_id`（可空）、`project_id`、公开单号及独立商务/款项状态。相同报价跨键/并发仍同一订单与项目；原键不同载荷 409，丢响应保留原载荷恢复。
+- 临时预留须精确满足冻结 BOM 的产品/绑定和台数/人数。核验人不同于登记人；服务城市、IANA 时区、有效期与可服务班次同时匹配。资源与报价取最大准备/行程/维护缓冲；expired held 即时不占，confirmed 不能按 hold 释放。资源变更或部分维修不静默替换已承诺资源。
+- 价目版本×渠道映射由两人登记/批准。服务费为非库存 virtual SKU，技能为原商品独立子单。原件凭证须同需求、clean、未撤销/到期且实际字节哈希一致；登记不等于复核，客户截图不置 paid。
+- 合同授信可形成 `commercial_state=confirmed,payment_state=unpaid`；部分/足额实际收款分别为 `offline_partial`、`offline_verified`。普通在线支付/回调返回 `409 SCENE_OFFLINE_ONLY`，普通取消要求项目变更，不直接释放资源或处理退款。
+- 技能仅在提交后的独立 outbox 事务内按真实足额复核收款、当前版本和项目状态复用原授权；建单监听器不提前授权，服务费确认不等于技能已付，不发设备指令。
+- `SCENE_ORDER_CONVERSION_ENABLED` 默认 false，转换还依赖预留开关；历史查询保留。新增后台动作复用 supply/supply_review、reserve、finance/finance_review 分权。实际本机 MySQL 40 项、浏览器与完整 H5/微信构建证据及部署边界见收尾账本。

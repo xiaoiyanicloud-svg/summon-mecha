@@ -10,7 +10,7 @@ class SceneProjectService
     public function __construct(protected SceneWorkflow $flow) {}
 
     /** 必须由经过准入的转换事务调用；此方法不提供跳过订单确认的公开入口。 */
-    public function initializeTasks(int $projectId, int $actor): void
+    public function initializeTasks(int $projectId, ?int $actor): void
     {
         if (DB::transactionLevel() < 1) {
             throw new \LogicException('任务生成须属于项目确认事务。');
@@ -51,20 +51,20 @@ class SceneProjectService
             }
             DB::table('scene_project_tasks')->insertOrIgnore([
                 'project_id' => $projectId, 'task_key' => $task['key'], 'name' => $task['name'], 'dependencies' => SceneWorkflow::json($task['dependencies']),
-                'checklist'  => SceneWorkflow::json($task['checklist']), 'project_state_after' => $task['project_state_after'],
-                'state'      => 'pending', 'created_at' => now('UTC'), 'updated_at' => now('UTC'),
+                'checklist' => SceneWorkflow::json($task['checklist']), 'project_state_after' => $task['project_state_after'],
+                'state' => 'pending', 'created_at' => now('UTC'), 'updated_at' => now('UTC'),
             ]);
         }
-        $this->flow->record('admin', $actor, 'scene_project', $projectId, $project->row_version, 'scene.project.tasks.initialized');
+        $this->flow->record($actor ? 'admin' : 'system', $actor ?: null, 'scene_project', $projectId, $project->row_version, 'scene.project.tasks.initialized');
     }
 
     public function completeTask(int $projectId, int $taskId, int $expected, array $input, int $actor): array
     {
         $this->flow->enabled('project_actions_enabled');
         $data = Validator::make($input, [
-            'checks'       => 'required|array|min:1|max:30', 'checks.*' => 'required|string|max:80',
+            'checks' => 'required|array|min:1|max:30', 'checks.*' => 'required|string|max:80',
             'evidence_ids' => 'required|array|min:1|max:30', 'evidence_ids.*' => 'required|integer|distinct|min:1',
-            'occurred_at'  => 'required|string|max:40',
+            'occurred_at' => 'required|string|max:40',
         ])->validate();
         $data['occurred_at'] = SceneTime::occurredAt($data['occurred_at']);
 
@@ -103,9 +103,9 @@ class SceneProjectService
                 throw new SceneWorkflowException('SCENE_TASKS_INCOMPLETE', '全部履约任务完成后才能进入验收。', 409);
             }
             DB::table('scene_project_tasks')->where('id', $taskId)->update([
-                'state'       => 'done', 'row_version' => $expected + 1, 'assignee_id' => $actor,
+                'state' => 'done', 'row_version' => $expected + 1, 'assignee_id' => $actor,
                 'occurred_at' => $data['occurred_at'], 'recorded_at' => now('UTC'),
-                'evidence'    => SceneWorkflow::json(['source' => 'manual', 'attachments' => $evidence, 'checks' => $data['checks']]), 'updated_at' => now('UTC'),
+                'evidence' => SceneWorkflow::json(['source' => 'manual', 'attachments' => $evidence, 'checks' => $data['checks']]), 'updated_at' => now('UTC'),
             ]);
             DB::table('scene_projects')->where('id', $projectId)->update(['state' => $next, 'row_version' => $project->row_version + 1, 'updated_at' => now('UTC')]);
             $this->flow->record('admin', $actor, 'scene_project', $projectId, $project->row_version + 1, 'scene.project.task.completed', ['task_id' => $taskId]);
@@ -139,8 +139,8 @@ class SceneProjectService
                     throw new SceneWorkflowException('SCENE_STATE_CONFLICT', '项目已关闭，请使用售后入口。', 409);
                 }
                 $id = DB::table('scene_project_changes')->insertGetId(['project_id' => $projectId, 'base_version' => $expected,
-                    'kind'                                                          => $action, 'reason' => $data['reason'], 'requested_change' => SceneWorkflow::json($data['requested_change'] ?? []),
-                    'principal_scope'                                               => $owner->scope(), 'state' => 'requested', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+                    'kind' => $action, 'reason' => $data['reason'], 'requested_change' => SceneWorkflow::json($data['requested_change'] ?? []),
+                    'principal_scope' => $owner->scope(), 'state' => 'requested', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
             }
             DB::table('scene_projects')->where('id', $projectId)->update(['row_version' => $expected + 1, 'updated_at' => now('UTC')]);
             $this->flow->record($owner->customerId ? 'customer' : 'guest', $owner->customerId, 'scene_project', $projectId, $expected + 1, 'scene.project.'.$action.'.requested');
@@ -157,32 +157,39 @@ class SceneProjectService
         $project = SceneWorkflow::requireRow('scene_projects', $id, false);
         $owner->request((int) $project->request_id);
         $snapshot = SceneWorkflow::unpack($project->snapshot);
+        $link = DB::table('scene_order_links')->where('project_id', $id)->first();
+        $part = $link ? DB::table('scene_order_parts')->where('quote_id', $link->quote_id)->first() : null;
 
-        return ['id'                => (int) $project->id, 'project_no' => $project->project_no, 'request_id' => (int) $project->request_id,
-            'state'                 => $project->state, 'row_version' => (int) $project->row_version,
-            'payment_state'         => $project->payment_state, 'commercial_state' => $project->commercial_state, 'returned' => (bool) $project->returned,
-            'acceptance_template'   => $snapshot['acceptance_template'] ?? [],
-            'tasks'                 => DB::table('scene_project_tasks')->where('project_id', $id)->orderBy('id')->get(['id', 'task_key', 'name', 'state', 'occurred_at'])->all(),
-            'acceptances'           => DB::table('scene_acceptance_records')->where('project_id', $id)->orderBy('id')->get(['id', 'item_key', 'attempt', 'result', 'method', 'note', 'occurred_at', 'created_at', 'offline_acceptance_id'])->all(),
+        return ['id' => (int) $project->id, 'project_no' => $project->project_no, 'request_id' => (int) $project->request_id,
+            'state' => $project->state, 'row_version' => (int) $project->row_version,
+            'payment_state' => $project->payment_state, 'commercial_state' => $project->commercial_state, 'returned' => (bool) $project->returned,
+            'acceptance_template' => $snapshot['acceptance_template'] ?? [],
+            'schedule' => $snapshot['schedule'] ?? null,
+            'orders' => array_values(array_filter([$link ? ['id' => (int) $link->order_id, 'kind' => 'service'] : null, $part ? ['id' => (int) $part->order_id, 'kind' => 'skill'] : null])),
+            'resources' => array_map(fn ($item) => ['resource_id' => $item['resource']['resource_id'], 'kind' => $item['resource']['kind'],
+                'product_id' => $item['resource']['product_id'], 'occupies_from' => $item['occupies_from'], 'occupies_until' => $item['occupies_until']], $snapshot['resources'] ?? []),
+            'resource_attention' => ! $project->returned && DB::table('scene_operation_todos')->where('request_id', $project->request_id)->where('kind', 'resource_impact')->where('state', 'open')->exists(),
+            'tasks' => DB::table('scene_project_tasks')->where('project_id', $id)->orderBy('id')->get(['id', 'task_key', 'name', 'state', 'occurred_at'])->all(),
+            'acceptances' => DB::table('scene_acceptance_records')->where('project_id', $id)->orderBy('id')->get(['id', 'item_key', 'attempt', 'result', 'method', 'note', 'occurred_at', 'created_at', 'offline_acceptance_id'])->all(),
             'offline_confirmations' => DB::table('scene_offline_acceptances')->where('project_id', $id)->orderByDesc('id')->get(['id', 'state', 'occurred_at', 'created_at', 'reviewed_at'])->all(),
-            'changes'               => DB::table('scene_project_changes')->where('project_id', $id)->orderByDesc('id')->get(['id', 'kind', 'state', 'reason', 'created_at'])->all(),
-            'tickets'               => DB::table('scene_service_tickets')->where('project_id', $id)->orderByDesc('id')->get(['id', 'kind', 'description', 'state', 'resolution', 'created_at'])->all()];
+            'changes' => DB::table('scene_project_changes')->where('project_id', $id)->orderByDesc('id')->get(['id', 'kind', 'state', 'reason', 'created_at'])->all(),
+            'tickets' => DB::table('scene_service_tickets')->where('project_id', $id)->orderByDesc('id')->get(['id', 'kind', 'description', 'state', 'resolution', 'created_at'])->all()];
     }
 
     public function recordCommercial(int $projectId, int $expected, array $input, int $actor): array
     {
         $this->flow->enabled('project_actions_enabled');
         $data = Validator::make($input, ['kind' => 'required|in:payment_receipt,refund_due,refund_receipt',
-            'amount_minor'                      => 'required|integer|min:1|max:1000000000000', 'reference' => 'required|string|max:255',
-            'evidence_ids'                      => 'required|array|min:1|max:30', 'evidence_ids.*' => 'required|integer|distinct|min:1'])->validate();
+            'amount_minor' => 'required|integer|min:1|max:1000000000000', 'reference' => 'required|string|max:255',
+            'evidence_ids' => 'required|array|min:1|max:30', 'evidence_ids.*' => 'required|integer|distinct|min:1'])->validate();
 
         return DB::transaction(function () use ($projectId, $expected, $data, $actor) {
             $project = SceneWorkflow::requireRow('scene_projects', $projectId);
             SceneWorkflow::version($project, $expected);
             $evidence = $this->attachmentEvidence((int) $project->request_id, $data['evidence_ids']);
             $id = DB::table('scene_commercial_records')->insertGetId(['project_id' => $projectId, 'kind' => $data['kind'],
-                'amount_minor'                                                     => $data['amount_minor'], 'reference' => $data['reference'], 'evidence' => SceneWorkflow::json($evidence),
-                'recorded_by'                                                      => $actor, 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+                'amount_minor' => $data['amount_minor'], 'reference' => $data['reference'], 'evidence' => SceneWorkflow::json($evidence),
+                'recorded_by' => $actor, 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
             DB::table('scene_projects')->where('id', $projectId)->update(['row_version' => $expected + 1, 'updated_at' => now('UTC')]);
             $this->flow->record('admin', $actor, 'scene_project', $projectId, $expected + 1, 'scene.commercial.recorded', ['record_id' => $id]);
 
@@ -206,7 +213,7 @@ class SceneProjectService
             }
             $sum = fn ($kind) => (int) DB::table('scene_commercial_records')->where('project_id', $projectId)->where('kind', $kind)->whereNotNull('reviewed_at')->sum('amount_minor');
             $quote = SceneWorkflow::requireRow('scene_quotes', (int) $project->quote_id, false);
-            $paid = $sum('payment_receipt');
+            $paid = $sum('payment_receipt') + (int) (SceneWorkflow::unpack($project->snapshot)['commercial']['paid_minor'] ?? 0);
             $due = $sum('refund_due');
             $refunded = $sum('refund_receipt');
             $patch = ['row_version' => $expected + 1, 'updated_at' => now('UTC')];
@@ -235,8 +242,8 @@ class SceneProjectService
     {
         $this->flow->enabled('project_actions_enabled');
         $data = Validator::make($input, ['occurred_at' => 'required|string|max:40', 'parts_checked' => 'required|accepted',
-            'appearance_checked'                       => 'required|accepted', 'damage_dispute' => 'required|boolean',
-            'evidence_ids'                             => 'required|array|min:1|max:30', 'evidence_ids.*' => 'required|integer|distinct|min:1'])->validate();
+            'appearance_checked' => 'required|accepted', 'damage_dispute' => 'required|boolean',
+            'evidence_ids' => 'required|array|min:1|max:30', 'evidence_ids.*' => 'required|integer|distinct|min:1'])->validate();
         $data['occurred_at'] = SceneTime::occurredAt($data['occurred_at']);
 
         return DB::transaction(function () use ($projectId, $expected, $data, $actor) {
@@ -262,24 +269,24 @@ class SceneProjectService
                     // 损坏争议不能继续作为 ready 资源出售；保留 confirmed，不偷偷释放已签档期。
                     $reason = $data['damage_dispute'] ? '返库损坏争议，需复核设备状态与后续档期' : '晚归，需重新核验维护与后续档期';
                     DB::table('scene_resources')->where('id', $reservation->resource_id)->update(['state' => $resource->state === 'ready' ? 'maintenance' : $resource->state,
-                        'state_reason'                                                                    => $resource->state === 'ready' ? $reason : ($resource->state_reason ? $resource->state_reason.'；'.$reason : $reason),
-                        'row_version'                                                                     => $resource->row_version + 1, 'updated_at' => now('UTC')]);
+                        'state_reason' => $resource->state === 'ready' ? $reason : ($resource->state_reason ? $resource->state_reason.'；'.$reason : $reason),
+                        'row_version' => $resource->row_version + 1, 'updated_at' => now('UTC')]);
                     DB::table('scene_operation_todos')->insertOrIgnore(['dedupe_key' => 'return-risk:'.$projectId.':'.$reservation->resource_id,
-                        'request_id'                                                 => $project->request_id, 'kind' => $data['damage_dispute'] ? 'return_damage_review' : 'late_return_impact', 'state' => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+                        'request_id' => $project->request_id, 'kind' => $data['damage_dispute'] ? 'return_damage_review' : 'late_return_impact', 'state' => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
                     foreach (DB::table('scene_reservations')->where('resource_id', $reservation->resource_id)->where('quote_id', '!=', $project->quote_id)
                         ->where('occupies_until', '>', now('UTC'))->where(fn ($q) => $q->where('state', 'confirmed')->orWhere(fn ($held) => $held->where('state', 'held')->where('hold_expires_at', '>', now('UTC'))))->get() as $affected) {
                         $quote = SceneWorkflow::requireRow('scene_quotes', (int) $affected->quote_id, false);
                         DB::table('scene_operation_todos')->insertOrIgnore(['dedupe_key' => 'return-impact:'.$projectId.':'.$affected->id,
-                            'request_id'                                                 => $quote->request_id, 'kind' => 'resource_impact', 'state' => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+                            'request_id' => $quote->request_id, 'kind' => 'resource_impact', 'state' => 'open', 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
                     }
                     $this->flow->record('admin', $actor, 'scene_resource', (int) $resource->id, $resource->row_version + 1, 'scene.resource.paused');
                 }
             }
             $snapshot = SceneWorkflow::unpack($project->snapshot);
             $snapshot['return_record'] = ['source' => 'manual', 'occurred_at' => SceneWorkflow::utc($data['occurred_at']), 'recorded_at' => now('UTC')->toIso8601String(),
-                'parts_checked'                    => true, 'appearance_checked' => true, 'damage_dispute' => (bool) $data['damage_dispute'], 'attachments' => $evidence, 'actor_id' => $actor];
+                'parts_checked' => true, 'appearance_checked' => true, 'damage_dispute' => (bool) $data['damage_dispute'], 'attachments' => $evidence, 'actor_id' => $actor];
             DB::table('scene_projects')->where('id', $projectId)->update(['returned' => true, 'open_dispute' => (bool) $project->open_dispute || (bool) $data['damage_dispute'],
-                'snapshot'                                                           => SceneWorkflow::json($snapshot), 'row_version' => $expected + 1, 'updated_at' => now('UTC')]);
+                'snapshot' => SceneWorkflow::json($snapshot), 'row_version' => $expected + 1, 'updated_at' => now('UTC')]);
             $this->flow->record('admin', $actor, 'scene_project', $projectId, $expected + 1, 'scene.project.returned');
 
             return ['id' => $projectId, 'returned' => true, 'row_version' => $expected + 1, 'refund_status' => 'requires_financial_review'];
@@ -300,7 +307,7 @@ class SceneProjectService
                 throw new SceneWorkflowException('SCENE_STATE_CONFLICT', '工单已经处理。', 409);
             }
             DB::table('scene_service_tickets')->where('id', $id)->update(['state' => 'resolved', 'resolution' => $resolution,
-                'assignee_id'                                                     => $actor, 'row_version' => $expected + 1, 'updated_at' => now('UTC')]);
+                'assignee_id' => $actor, 'row_version' => $expected + 1, 'updated_at' => now('UTC')]);
             $this->flow->record('admin', $actor, 'scene_service_ticket', $id, $expected + 1, 'scene.service-ticket.resolved');
 
             return ['id' => $id, 'state' => 'resolved', 'row_version' => $expected + 1];

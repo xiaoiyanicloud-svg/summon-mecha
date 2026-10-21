@@ -1,5 +1,9 @@
 # 场景流程仓库分支交接
 
+最新开发增量（2026-10-21）：[SC3 收尾账本](SC3-Closeout-20261021.md)与[证据](sc3-closeout-evidence/verification.json)。资源核验/排期、真实 MySQL 并发及仓储故障、报价原子转单、技能拆单/授权时序、线下商务双审和旧订单入口已接通。新增 100008，预检现要求八份迁移；转换默认关闭。以下早期“转换未实现”及测试数保留历史语境，当前启用/迁移以最新账本和 QA README 为准。本批未部署或迁移另一端业务环境。
+
+剩余联调补齐：[完整集成运行手册](SC3-Integration-Runbook.md)提供一条命令重跑真实完整应用、EAV、Admin 会话/CSRF、权限矩阵、HTTP 转单、消费者失败/中断恢复、Scheduler 与实际 H5，运行器自建实例并校验所有权后清理。最新完整证据位于 `sc3-closeout-evidence/integration/`。只读证据一致性检查为 `node tools/tests/scene-sc3-verify-evidence.mjs`；目标地址/连接方式与实际运营签收不能由本机结果代替。
+
 日期：2026-10-20。用户已授权将本轮场景代码提交至 `xiaoiyanicloud-svg/summon-mecha`。
 
 ## 分支和范围

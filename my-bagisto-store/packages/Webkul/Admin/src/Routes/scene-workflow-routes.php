@@ -8,6 +8,14 @@ use Webkul\Shop\Http\Middleware\SceneWorkflowSafety;
 Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->middleware([AuthorizeSceneWorkflow::class, SceneWorkflowSafety::class])->group(function () {
     Route::get('', 'index')->name('admin.catalog.scene-workflow.index');
     Route::get('configuration', 'configuration')->name('admin.catalog.scene-workflow.configuration');
+    Route::get('resources', 'resourcesPage')->name('admin.catalog.scene-workflow.resources');
+    Route::post('resources/{id}/verify', 'resourceVerify')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.resource-verify');
+    Route::post('resources/{id}/legacy-source', 'resourceLegacy')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.resource-legacy');
+    Route::post('sku-mappings', 'skuRegister')->name('admin.catalog.scene-workflow.sku-register');
+    Route::post('sku-mappings/{id}/{action}', 'skuDecision')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['approve', 'revoke'])->name('admin.catalog.scene-workflow.sku-decision');
+    Route::post('quotes/{id}/commercial/record', 'quoteCommercial')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.quote-commercial');
+    Route::post('quotes/{id}/commercial/{recordId}/review', 'quoteCommercialReview')->where(['id' => '[1-9][0-9]{0,14}', 'recordId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.quote-commercial-review');
+    Route::post('quotes/{id}/reservations/release', 'releaseHold')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.release-hold');
     Route::get('evidence', 'contentEvidencePage')->name('admin.catalog.scene-workflow.evidence');
     Route::get('revision/{id}', 'revisionEditor')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.revision-editor');
     Route::post('policies/{kind}', 'policyDraft')->whereIn('kind', ['commercial', 'retention', 'service_calendar'])->name('admin.catalog.scene-workflow.policy-draft');

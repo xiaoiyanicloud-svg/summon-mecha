@@ -1,0 +1,11 @@
+{
+    "actual": {
+        "version": "5.7.30",
+        "datadir": "D:\\CodexDeploy\\summon-mecha\\.claude\\runtime\\scene-sc3-mysql57\\",
+        "port": 23316
+    },
+    "matched_task_datadir": true,
+    "remaining_qa_databases": 0,
+    "own_instance_shutdown": true,
+    "business_database_touched": false
+}

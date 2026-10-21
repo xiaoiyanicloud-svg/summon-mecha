@@ -14,11 +14,12 @@ class SceneOperationsService
         'scene_policy' => ['scene.policy.drafted', 'scene.policy.approve', 'scene.policy.reject', 'scene.policy.revoke'],
         'scene_content_evidence' => ['scene.content-evidence.created', 'scene.content-evidence.approve', 'scene.content-evidence.revoke'],
         'scene_proposal' => ['scene.proposal.drafted', 'scene.proposal.approve', 'scene.proposal.return'],
-        'scene_quote' => ['scene.quote.drafted', 'scene.quote.review', 'scene.quote.approve', 'scene.quote.return', 'scene.quote.send', 'scene.quote.void', 'scene.quote.accepted', 'scene.quote.rejected', 'scene.quote.invalidated', 'scene.resources.held'],
+        'scene_quote' => ['scene.quote.drafted', 'scene.quote.review', 'scene.quote.approve', 'scene.quote.return', 'scene.quote.send', 'scene.quote.void', 'scene.quote.accepted', 'scene.quote.rejected', 'scene.quote.invalidated', 'scene.resources.held', 'scene.resources.released', 'scene.quote.commercial.recorded', 'scene.quote.commercial.reviewed'],
         'scene_price' => ['scene.price.created', 'scene.price.revoked'],
         'scene_evidence' => ['scene.evidence.recorded', 'scene.evidence.approved', 'scene.evidence.revoked'],
-        'scene_resource' => ['scene.resource.verified', 'scene.resource.paused'],
-        'scene_project' => ['scene.project.tasks.initialized', 'scene.project.task.completed', 'scene.project.acceptance.recorded', 'scene.project.offline-acceptance.recorded', 'scene.project.offline-acceptance.reviewed', 'scene.project.change.requested', 'scene.project.cancel.requested', 'scene.project.after_sale.requested', 'scene.commercial.recorded', 'scene.commercial.reviewed', 'scene.project.returned'],
+        'scene_resource' => ['scene.resource.registered', 'scene.resource.verified', 'scene.resource.paused', 'scene.resources.expired'],
+        'scene_sku' => ['scene.sku.registered', 'scene.sku.approve', 'scene.sku.revoke'],
+        'scene_project' => ['scene.project.tasks.initialized', 'scene.project.task.completed', 'scene.project.acceptance.recorded', 'scene.project.offline-acceptance.recorded', 'scene.project.offline-acceptance.reviewed', 'scene.project.change.requested', 'scene.project.cancel.requested', 'scene.project.after_sale.requested', 'scene.commercial.recorded', 'scene.commercial.reviewed', 'scene.project.returned', 'scene.order.converted', 'scene.skill.fulfillment.pending'],
         'scene_service_ticket' => ['scene.service-ticket.resolved'],
         'scene_attachment' => ['scene.attachment.held', 'scene.attachment.hold-released', 'scene.attachment.revoked', 'scene.attachment.deletion-requested', 'scene.attachment.deleted'],
         'scene_todo' => ['scene.todo.assigned'],
@@ -90,6 +91,16 @@ class SceneOperationsService
                         }
                         $this->offlineTodo($payload['confirmation_id'], (int) $row->aggregate_id);
                     }
+                    if ($row->aggregate_type === 'scene_project' && in_array($row->event_type, ['scene.skill.fulfillment.pending', 'scene.commercial.reviewed'], true)) {
+                        app(SceneSkillFulfillmentService::class)->fulfill((int) $row->aggregate_id);
+                    }
+                    if ($row->event_type === 'scene.order.converted') {
+                        $p = DB::table('scene_projects')->where('id', $row->aggregate_id)->first();
+                        $r = $p ? DB::table('scene_requests')->where('id', $p->request_id)->first() : null;
+                        if ($r?->customer_id) {
+                            app(\Webkul\Shop\Services\NotificationService::class)->send('customer', (int) $r->customer_id, 'scene.order.converted', '场景服务已确认', '请进入交付项目查看安排及款项事实。', ['project_id' => (int) $p->id]);
+                        }
+                    }
                     DB::table('business_event_receipts')->insert($receipt + ['created_at' => now('UTC')]);
                 }
                 DB::table('business_outbox')->where('id', $row->id)->where('lease_token', $lease['token'])->update(['processed_at' => now('UTC'), 'lease_until' => null, 'lease_token' => null, 'last_error_code' => null, 'updated_at' => now('UTC')]);
@@ -109,7 +120,7 @@ class SceneOperationsService
     public function sweep(): array
     {
         $this->flow->enabled('operations_enabled');
-        $expired = DB::table('scene_reservations')->where('state', 'held')->where('hold_expires_at', '<=', now('UTC'))->update(['state' => 'expired', 'updated_at' => now('UTC')]);
+        $expired = app(SceneReservationService::class)->expire();
         DB::table('scene_requests')->whereNull('assignee_id')->whereNotIn('state', ['closed', 'cancelled', 'converted'])->orderBy('id')->chunkById(200, function ($rows) {
             foreach ($rows as $request) {
                 $this->todo('unassigned:'.$request->id, (int) $request->id, 'unassigned_request');

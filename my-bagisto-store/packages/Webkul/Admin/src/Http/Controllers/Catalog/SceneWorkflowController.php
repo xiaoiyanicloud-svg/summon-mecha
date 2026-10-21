@@ -67,8 +67,11 @@ class SceneWorkflowController extends Controller
         $clock = app(\Webkul\Shop\Services\Scenes\SceneIntakeClockService::class)->customerDto($id);
         $attachmentRecords = DB::table('scene_attachments')->where('request_id', $id)->orderByDesc('id')->get();
         $holds = DB::table('scene_attachment_holds')->whereIn('attachment_id', $attachmentRecords->pluck('id'))->get();
+        $reservations = DB::table('scene_reservations')->whereIn('quote_id', $quotes->pluck('id'))->orderByDesc('id')->get();
+        $quoteCommercial = (bouncer()->hasPermission('catalog.scene-workflow.finance') || bouncer()->hasPermission('catalog.scene-workflow.finance_review'))
+            ? DB::table('scene_quote_commercial')->whereIn('quote_id', $quotes->pluck('id'))->orderByDesc('id')->get() : collect();
 
-        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets', 'offlineConfirmations', 'surveys', 'solutions', 'clock', 'attachmentRecords', 'holds'));
+        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets', 'offlineConfirmations', 'surveys', 'solutions', 'clock', 'attachmentRecords', 'holds', 'reservations', 'quoteCommercial'));
     }
 
     public function contact(int $id)
@@ -170,6 +173,59 @@ class SceneWorkflowController extends Controller
         $r->validate(['row_version' => 'required|integer|min:1', 'reason' => 'required|string|max:5000']);
 
         return $this->result($r, $s->pause($id, $r->integer('row_version'), $r->input('reason'), $this->actor()));
+    }
+
+    public function resourcesPage()
+    {
+        $resources = DB::table('scene_resources')->orderByDesc('id')->limit(200)->get();
+        $mappings = DB::table('scene_sku_mappings')->orderByDesc('id')->limit(200)->get();
+        $prices = DB::table('scene_price_items')->whereNull('revoked_at')->orderBy('id')->get(['id', 'code', 'version', 'name']);
+        $channels = DB::table('channels')->get(['id', 'code']);
+
+        return view('admin::catalog.scene-workflow.resources', compact('resources', 'mappings', 'prices', 'channels'));
+    }
+
+    public function resourceVerify(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneResourceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->verify($id, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function resourceLegacy(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneResourceService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->registerLegacy($id, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function releaseHold(Request $r, int $id, SceneReservationService $s)
+    {
+        $r->validate(['hold_group' => 'required|uuid']);
+
+        return $this->result($r, $s->release($id, $r->input('hold_group'), (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $this->actor()));
+    }
+
+    public function skuRegister(Request $r, \Webkul\Shop\Services\Scenes\SceneSkuService $s)
+    {
+        return $this->result($r, $s->register($r->all(), $this->actor()));
+    }
+
+    public function skuDecision(Request $r, int $id, string $action, \Webkul\Shop\Services\Scenes\SceneSkuService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->review($id, $r->integer('row_version'), $action, $this->actor()));
+    }
+
+    public function quoteCommercial(Request $r, int $id, \Webkul\Shop\Services\Scenes\SceneCommercialService $s)
+    {
+        return $this->result($r, $s->record($id, $r->all(), (string) ($r->header('Idempotency-Key') ?: $r->input('idempotency_key')), $this->actor()));
+    }
+
+    public function quoteCommercialReview(Request $r, int $id, int $recordId, \Webkul\Shop\Services\Scenes\SceneCommercialService $s)
+    {
+        return $this->result($r, $s->review($id, $recordId, $r->all(), $this->actor()));
     }
 
     public function task(Request $r, int $id, int $taskId, SceneProjectService $s)

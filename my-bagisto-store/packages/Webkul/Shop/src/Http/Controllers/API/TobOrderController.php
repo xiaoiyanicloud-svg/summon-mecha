@@ -43,7 +43,8 @@ class TobOrderController extends APIController
         if ($request->input('type') === 'custom') {
             return app(SceneWorkflowController::class)->store($this->adaptLegacyCustom($request), app(\Webkul\Shop\Services\Scenes\SceneRequestService::class));
         }
-        if ($request->filled('scene_id') || $request->filled('scene_quote_id') || $request->filled('scene')
+        $sceneLine = collect($request->input('items', []))->contains(fn ($line) => is_array($line) && (! empty($line['scene_id']) || ! empty($line['scene_quote_id']) || ! empty($line['scene']) || ! empty($line['additional']['scene'])));
+        if ($sceneLine || $request->filled('scene_id') || $request->filled('scene_revision_id') || $request->filled('scene_quote_id') || $request->filled('scene') || $request->filled('additional.scene')
             || $request->input('type') === 'plan' || in_array($request->input('from'), ['scene', 'custom_plan'], true)) {
             return response()->json(['code' => 'SCENE_QUOTE_REQUIRED', 'message' => '场景服务请先提交需求并确认正式报价。'], 409);
         }

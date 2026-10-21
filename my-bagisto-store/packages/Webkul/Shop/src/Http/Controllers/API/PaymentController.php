@@ -34,6 +34,9 @@ class PaymentController extends APIController
         if (! $order) {
             return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单不存在。', 404);
         }
+        if (app(\Webkul\Shop\Services\Scenes\SceneLinkedOrderService::class)->context((int) $order->id)) {
+            return response()->json(['code' => 'SCENE_OFFLINE_ONLY', 'message' => '场景服务使用已约定的线下商务流程，请在交付项目查看款项记录。'], 409);
+        }
 
         try {
             $payload = $this->payments->gateway()->createPayment($order);
@@ -43,7 +46,7 @@ class PaymentController extends APIController
 
         return response()->json([
             'message' => '支付单已创建。',
-            'data'    => $payload,
+            'data' => $payload,
         ]);
     }
 }

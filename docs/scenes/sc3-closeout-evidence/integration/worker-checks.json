@@ -1,0 +1,65 @@
+{
+    "checks": [
+        {
+            "name": "HTTP 转换留下待处理真实 outbox",
+            "pass": true
+        },
+        {
+            "name": "实际命令在投影失败时返回非零",
+            "pass": true
+        },
+        {
+            "name": "通知失败保留业务订单且无消费回执",
+            "pass": true
+        },
+        {
+            "name": "真实 worker 中断后仅保留已提交租约，通知及 receipt 回滚",
+            "pass": true
+        },
+        {
+            "name": "租约到期前其他进程不提前消费",
+            "pass": true
+        },
+        {
+            "name": "真实租约到期后新进程恢复且仅一份通知及回执",
+            "pass": true
+        },
+        {
+            "name": "再次启动消费者不重复通知",
+            "pass": true
+        },
+        {
+            "name": "项目订单资源保持完整且事务层级归零",
+            "pass": true
+        }
+    ],
+    "reports": [
+        {
+            "phase": "notification_failure",
+            "exit": 1,
+            "output": "SC3_WORKER_CONNECTION:224\r\n{\n    \"database_driver\": \"mysql\",\n    \"missing_tables\": [],\n    \"features\": {\n        \"publication_v2\": true,\n        \"requests_enabled\": true,\n        \"quotes_enabled\": true,\n        \"reservations_enabled\": true,\n        \"project_actions_enabled\": true,\n        \"operations_enabled\": true,\n        \"order_conversion_enabled\": true\n    },\n    \"order_conversion\": \"enabled\",\n    \"delivery\": [\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"b24ce6c1-740f-4a59-b733-e0549d301bfe\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"44e5cf7f-e48c-4559-8950-6889e6086cd7\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"1a3738b4-c934-40ef-92a4-6e32895c920a\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"2a7b7fa9-478f-4412-bb2d-7c682bcc3461\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"061edc95-813f-471f-b381-073fba764396\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"5dcc1c24-5bb4-497f-9371-e2b01940c0d2\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"72889083-9b35-41a9-bcc3-00529a203de2\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"7d4550e1-e745-4316-80e6-0c6a3c6953fd\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"376fbf4b-bad3-4d6e-b529-5fcb19f6abee\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"dd13b5e0-240e-4ac0-93df-46463ad7e0f0\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"d87379c7-6a81-4105-9c86-e34522edda8a\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"06dfb87e-888a-4b13-9ae6-941fe04d316b\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"f714e357-e71d-47fa-bc6a-5caaf1abd755\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"92027e1f-eb94-445a-b1c4-3f6878e0e81c\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"6f69b928-3a6f-474c-bd74-ed2d514c87be\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"028b2132-cba1-40cd-b7ff-32a9ac15936c\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"b91ff713-77ce-48a3-8beb-9f1c3ed856ec\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"2bc77ae7-ee2d-48c9-a456-5342404f68bb\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"19e03574-da1b-42e9-86e1-48e4ea026564\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"a1a7ac3d-0672-4370-98af-99457d82c62f\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"ea894167-1dc7-43fb-89e3-c5886cbbbf7d\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"2053d862-34b1-4880-9309-929571ecc5d1\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"c5b47546-bc5f-4e59-b4fb-5a104e55e661\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"8b6c3273-545d-477b-b130-dd6709b779d7\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"ea4dcac9-5a58-4bb6-b3d6-0781b217d8c7\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"6cfe7ec9-9c09-435c-91f4-952fa417ba40\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"9083245a-34a0-42e9-81ac-3e5cef5fab11\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"0e533dfd-b64c-49a3-93c8-7c193ffb60c9\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"6971947f-a1f3-4979-ac6b-5b8d22e55e68\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"690e8730-d2d8-4d87-b5d6-5559195d40f2\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"0e80de28-6ac7-433d-ae17-7333194c6ac4\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"cf13647f-2f3d-4128-9225-35409d476b09\"\n        },\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"894ffff6-fab7-44c4-828d-1e57930d76ee\"\n        },\n        {\n            \"state\": \"failed\",\n            \"id\": 34\n        },\n        {\n            \"state\": \"idle\"\n        }\n    ],\n    \"metrics\": {\n        \"requests\": 0,\n        \"accepted_quotes\": 0,\n        \"confirmed_projects\": 0,\n        \"open_todos\": 1,\n        \"outbox_pending\": 1,\n        \"outbox_failed\": 0,\n        \"definitions\": {\n            \"requests\": \"非测试且非旧线索适配的独立需求数\",\n            \"accepted_quotes\": \"客户接受事实，非订单成交或收款\",\n            \"confirmed_projects\": \"已建立项目，非验收或收款\"\n        },\n        \"worker_status\": \"requires_process_verification\",\n        \"sla_status\": \"calendar_not_configured\"\n    }\n}\r\n"
+        },
+        {
+            "phase": "killed_after_committed_lease",
+            "connection_id": 226,
+            "exit": 1
+        },
+        {
+            "phase": "before_lease_expiry",
+            "exit": 0,
+            "output": "SC3_WORKER_CONNECTION:228\r\n{\n    \"database_driver\": \"mysql\",\n    \"missing_tables\": [],\n    \"features\": {\n        \"publication_v2\": true,\n        \"requests_enabled\": true,\n        \"quotes_enabled\": true,\n        \"reservations_enabled\": true,\n        \"project_actions_enabled\": true,\n        \"operations_enabled\": true,\n        \"order_conversion_enabled\": true\n    },\n    \"order_conversion\": \"enabled\",\n    \"delivery\": [\n        {\n            \"state\": \"idle\"\n        }\n    ],\n    \"metrics\": {\n        \"requests\": 0,\n        \"accepted_quotes\": 0,\n        \"confirmed_projects\": 0,\n        \"open_todos\": 1,\n        \"outbox_pending\": 1,\n        \"outbox_failed\": 0,\n        \"definitions\": {\n            \"requests\": \"非测试且非旧线索适配的独立需求数\",\n            \"accepted_quotes\": \"客户接受事实，非订单成交或收款\",\n            \"confirmed_projects\": \"已建立项目，非验收或收款\"\n        },\n        \"worker_status\": \"requires_process_verification\",\n        \"sla_status\": \"calendar_not_configured\"\n    }\n}\r\n"
+        },
+        {
+            "phase": "recovered_after_real_expiry",
+            "exit": 0,
+            "output": "SC3_WORKER_CONNECTION:230\r\n{\n    \"database_driver\": \"mysql\",\n    \"missing_tables\": [],\n    \"features\": {\n        \"publication_v2\": true,\n        \"requests_enabled\": true,\n        \"quotes_enabled\": true,\n        \"reservations_enabled\": true,\n        \"project_actions_enabled\": true,\n        \"operations_enabled\": true,\n        \"order_conversion_enabled\": true\n    },\n    \"order_conversion\": \"enabled\",\n    \"delivery\": [\n        {\n            \"state\": \"processed\",\n            \"event_id\": \"0a271508-74e4-4bab-b55c-c79954be9c53\"\n        }\n    ],\n    \"metrics\": {\n        \"requests\": 0,\n        \"accepted_quotes\": 0,\n        \"confirmed_projects\": 0,\n        \"open_todos\": 1,\n        \"outbox_pending\": 0,\n        \"outbox_failed\": 0,\n        \"definitions\": {\n            \"requests\": \"非测试且非旧线索适配的独立需求数\",\n            \"accepted_quotes\": \"客户接受事实，非订单成交或收款\",\n            \"confirmed_projects\": \"已建立项目，非验收或收款\"\n        },\n        \"worker_status\": \"requires_process_verification\",\n        \"sla_status\": \"calendar_not_configured\"\n    }\n}\r\n"
+        },
+        {
+            "phase": "repeated_consumer",
+            "exit": 0,
+            "output": "SC3_WORKER_CONNECTION:232\r\n{\n    \"database_driver\": \"mysql\",\n    \"missing_tables\": [],\n    \"features\": {\n        \"publication_v2\": true,\n        \"requests_enabled\": true,\n        \"quotes_enabled\": true,\n        \"reservations_enabled\": true,\n        \"project_actions_enabled\": true,\n        \"operations_enabled\": true,\n        \"order_conversion_enabled\": true\n    },\n    \"order_conversion\": \"enabled\",\n    \"delivery\": [\n        {\n            \"state\": \"idle\"\n        }\n    ],\n    \"metrics\": {\n        \"requests\": 0,\n        \"accepted_quotes\": 0,\n        \"confirmed_projects\": 0,\n        \"open_todos\": 1,\n        \"outbox_pending\": 0,\n        \"outbox_failed\": 0,\n        \"definitions\": {\n            \"requests\": \"非测试且非旧线索适配的独立需求数\",\n            \"accepted_quotes\": \"客户接受事实，非订单成交或收款\",\n            \"confirmed_projects\": \"已建立项目，非验收或收款\"\n        },\n        \"worker_status\": \"requires_process_verification\",\n        \"sla_status\": \"calendar_not_configured\"\n    }\n}\r\n"
+        }
+    ],
+    "event_id": "0a271508-74e4-4bab-b55c-c79954be9c53",
+    "project_id": 1
+}

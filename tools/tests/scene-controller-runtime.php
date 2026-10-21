@@ -107,7 +107,7 @@ runtimeCase('未知表单类别为稳定 422；不是无路由 404', function ()
     runtimeExpect(422, $response->getStatusCode());
     runtimeExpect('SCENE_SCHEMA_UNSUPPORTED', json_decode($response->getContent(), true)['code']);
 });
-foreach (['/api/scene-requests/1', '/api/scene-projects/1', '/api/scene-requests/1/attachments/1'] as $path) {
+foreach (['/api/scene-requests/1', '/api/scene-projects/1', '/api/scene-requests/1/attachments/1', '/api/scene-quotes/1/confirmation'] as $path) {
     runtimeCase('未登录不读私有记录 '.$path, function () use ($path) {
         $response = dispatchRead($path);
         runtimeExpect(401, $response->getStatusCode());

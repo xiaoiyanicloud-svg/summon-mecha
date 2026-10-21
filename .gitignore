@@ -19,6 +19,10 @@ my-bagisto-store2 备份/storage/
 
 # AI 备份目录（与 git 双保险分层，独立存在）
 .claude/backup/
+# SC3 独立集成环境及私有进程参数；正式脱敏证据位于 docs/scenes/。
+.claude/sc3-*
+.claude/runtime/sc3-http-*/
+.claude/runtime/scene-sc3-mysql57/
 # 嵌套的 .claude 备份：上面的写法带斜杠、锚定在仓库根，覆盖不到 my-bagisto-store/ 下的同类目录
 my-bagisto-store/.claude/
 

@@ -185,6 +185,6 @@ export function sceneStatusLabel(state) {
   return ({ submitted: '待受理', triaged: '已分派', assessing: '评估中', feasible: '评估通过', accepted: '报价已接受',
     converted: '已建立项目', closed: '已关闭', cancelled: '已取消', sent: '待确认', voided: '已失效', rejected: '客户已拒绝', returned: '已退回重编',
     unpaid: '未确认收款', offline_verified: '线下收款已复核', offline_partial: '部分线下收款已复核',
-    confirmed_offline: '线下商务已确认', unconfirmed: '待商务确认', preparing: '交付准备',
+    confirmed: '已确认', requires_review: '需人工复核', confirmed_offline: '线下商务已确认', unconfirmed: '待商务确认', preparing: '交付准备',
     delivering: '交付中', servicing: '服务中', awaiting_acceptance: '待验收', rectification: '整改中' })[state] || state
 }

@@ -32,10 +32,10 @@ class OrderController extends APIController
         $data = $orders->through(fn ($order) => $this->formatOrder($order))->items();
 
         return new JsonResource([
-            'data'       => $data,
-            'total'      => $orders->total(),
-            'current'    => $orders->currentPage(),
-            'last_page'  => $orders->lastPage(),
+            'data' => $data,
+            'total' => $orders->total(),
+            'current' => $orders->currentPage(),
+            'last_page' => $orders->lastPage(),
         ]);
     }
 
@@ -54,9 +54,9 @@ class OrderController extends APIController
 
         if (! $guestKey) {
             return new JsonResource([
-                'data'      => [],
-                'total'     => 0,
-                'current'   => 1,
+                'data' => [],
+                'total' => 0,
+                'current' => 1,
                 'last_page' => 1,
             ]);
         }
@@ -71,9 +71,9 @@ class OrderController extends APIController
         $data = $orders->through(fn ($order) => $this->formatOrder($order))->items();
 
         return new JsonResource([
-            'data'      => $data,
-            'total'     => $orders->total(),
-            'current'   => $orders->currentPage(),
+            'data' => $data,
+            'total' => $orders->total(),
+            'current' => $orders->currentPage(),
             'last_page' => $orders->lastPage(),
         ]);
     }
@@ -108,24 +108,25 @@ class OrderController extends APIController
     protected function formatOrder(Order $order, bool $withDetails = false): array
     {
         $data = [
-            'id'                        => $order->id,
-            'increment_id'              => $order->increment_id,
-            'status'                    => $order->status,
-            'status_label'              => $order->status_label,
-            'order_type'                => $order->order_type,
-            'created_at'                => $order->created_at->format('Y-m-d H:i:s'),
-            'items_count'               => $order->items_count,
-            'items_qty'                 => $order->items_qty,
-            'grand_total'               => $order->grand_total,
-            'grand_total_formatted'     => core()->formatPrice($order->grand_total),
-            'sub_total'                 => $order->sub_total,
-            'sub_total_formatted'       => core()->formatPrice($order->sub_total),
-            'tax_total'                 => $order->tax_total,
-            'tax_total_formatted'       => core()->formatPrice($order->tax_total),
-            'shipping_amount'           => $order->shipping_amount,
+            'id' => $order->id,
+            'increment_id' => $order->increment_id,
+            'status' => $order->status,
+            'status_label' => $order->status_label,
+            'order_type' => $order->order_type,
+            'created_at' => $order->created_at->format('Y-m-d H:i:s'),
+            'items_count' => $order->items_count,
+            'items_qty' => $order->items_qty,
+            'grand_total' => $order->grand_total,
+            'grand_total_formatted' => core()->formatPrice($order->grand_total),
+            'sub_total' => $order->sub_total,
+            'sub_total_formatted' => core()->formatPrice($order->sub_total),
+            'tax_total' => $order->tax_total,
+            'tax_total_formatted' => core()->formatPrice($order->tax_total),
+            'shipping_amount' => $order->shipping_amount,
             'shipping_amount_formatted' => core()->formatPrice($order->shipping_amount),
-            'customer_name'             => $order->customer_first_name.' '.$order->customer_last_name,
-            'customer_email'            => $order->customer_email,
+            'customer_name' => $order->customer_first_name.' '.$order->customer_last_name,
+            'customer_email' => $order->customer_email,
+            'scene_workflow' => app(\Webkul\Shop\Services\Scenes\SceneLinkedOrderService::class)->context((int) $order->id),
         ];
 
         // 技能单:把授权信息接进订单详情。
@@ -145,23 +146,23 @@ class OrderController extends APIController
             $entitlement = $entitlements->get($item->id);
 
             return [
-                'id'              => $item->id,
-                'product_id'      => $item->product_id,
-                'name'            => $item->name,
-                'sku'             => $item->sku,
-                'type'            => $item->type,
-                'qty_ordered'     => $item->qty_ordered,
-                'price'           => $item->price,
+                'id' => $item->id,
+                'product_id' => $item->product_id,
+                'name' => $item->name,
+                'sku' => $item->sku,
+                'type' => $item->type,
+                'qty_ordered' => $item->qty_ordered,
+                'price' => $item->price,
                 'price_formatted' => core()->formatPrice($item->price),
-                'total'           => $item->total,
+                'total' => $item->total,
                 'total_formatted' => core()->formatPrice($item->total),
-                'base_image'      => $item->product?->base_image,
+                'base_image' => $item->product?->base_image,
                 // 下单瞬间的快照(技能单才有,其余类型为 null)
-                'additional'      => $item->additional,
+                'additional' => $item->additional,
                 // 授权侧的真实状态
-                'license_key'     => $entitlement?->license_key,
-                'device_sn'       => $entitlement?->device?->sn,
-                'skill_status'    => $entitlement?->status,
+                'license_key' => $entitlement?->license_key,
+                'device_sn' => $entitlement?->device?->sn,
+                'skill_status' => $entitlement?->status,
             ];
         })->values();
 
@@ -218,6 +219,9 @@ class OrderController extends APIController
             if (! $order) {
                 return ['order' => null, 'canceled' => false];
             }
+            if (app(\Webkul\Shop\Services\Scenes\SceneLinkedOrderService::class)->context((int) $order->id)) {
+                return ['order' => $order, 'canceled' => false, 'scene' => true];
+            }
 
             if ($order->status !== 'pending') {
                 return ['order' => $order, 'canceled' => false];
@@ -239,6 +243,10 @@ class OrderController extends APIController
         }
 
         if (! $outcome['canceled']) {
+            if ($outcome['scene'] ?? false) {
+                return response()->json(['code' => 'SCENE_CHANGE_REQUIRED', 'message' => '场景订单请进入交付项目提交取消申请，资源、费用与退款需分别核实。'], 409);
+            }
+
             return $this->fail(ApiErrorCode::ORDER_NOT_CANCELABLE, '仅待处理订单可自助取消，请联系客服。', 200);
         }
 
@@ -258,7 +266,7 @@ class OrderController extends APIController
         return response()->json([
             'success' => true,
             'message' => '订单已取消。',
-            'status'  => 'canceled',
+            'status' => 'canceled',
         ]);
     }
 }

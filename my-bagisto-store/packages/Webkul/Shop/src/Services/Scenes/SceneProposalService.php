@@ -19,9 +19,27 @@ class SceneProposalService
             'items.*' => 'array:price_item_id,quantity,billing_units', 'items.*.price_item_id' => 'required|integer|distinct|min:1',
             'items.*.quantity' => 'required|integer|min:1|max:1000', 'items.*.billing_units' => 'required|integer|min:1|max:366',
             'discount_bps' => 'required|integer|min:0|max:10000', 'expires_at' => 'required|date|after:now', 'schedule' => 'required|array',
+            'confirmation_deadline' => 'nullable|date|after:now',
+            'confirmation' => 'sometimes|array:method,required_minor', 'confirmation.method' => 'required_with:confirmation|in:offline_contract,offline_receipt',
+            'confirmation.required_minor' => 'required_with:confirmation|integer|min:0|max:1000000000000',
         ])->validate();
+        foreach ($data['items'] as &$item) {
+            $item = array_map('intval', $item);
+        }
+        unset($item);
         $schedule = SceneTime::schedule($data['schedule']);
         $data['expires_at'] = SceneWorkflow::utc($data['expires_at']);
+        if (isset($data['confirmation'])) {
+            if (empty($data['confirmation_deadline']) || SceneWorkflow::utc($data['confirmation_deadline']) > $schedule['service_starts_at']) {
+                throw new SceneWorkflowException('SCENE_CONFIRMATION_DEADLINE_REQUIRED', '正式交易须明确商务与资源确认截止时间，且不得晚于服务开始。');
+            }
+            $data['confirmation_deadline'] = SceneWorkflow::utc($data['confirmation_deadline']);
+            $data['confirmation']['required_minor'] = (int) $data['confirmation']['required_minor'];
+            if (($data['confirmation']['method'] === 'offline_receipt' && $data['confirmation']['required_minor'] < 1)
+                || ($data['confirmation']['method'] === 'offline_contract' && $data['confirmation']['required_minor'] !== 0)) {
+                throw new SceneWorkflowException('SCENE_CONFIRMATION_POLICY_INVALID', '收款门槛须为正金额；合同授信方式须明确无需预收款。');
+            }
+        }
         $terms = config('scenes.terms');
         $policy = config('scenes.commercial_policy');
         $policyRecord = app(ScenePolicyService::class)->effective('commercial');
@@ -99,6 +117,17 @@ class SceneProposalService
             }
             $version = (int) DB::table('scene_quotes')->where('request_id', $requestId)->orderByDesc('version')->lockForUpdate()->value('version') + 1;
             $frozenTerms = ['terms' => $terms, 'policy' => $policy];
+            $template = $request->scene_revision_id ? SceneWorkflow::requireRow('scene_revisions', (int) $request->scene_revision_id) : null;
+            $frozenTerms['workflow'] = $template ? SceneWorkflow::unpack($template->workflow) : config('scenes.workflows.manual_site_v1');
+            if (empty($frozenTerms['workflow']['version']) || empty($frozenTerms['workflow']['tasks'])) {
+                throw new SceneWorkflowException('SCENE_WORKFLOW_MISSING', '报价必须冻结完整履约任务模板。', 409);
+            }
+            if (isset($data['confirmation'])) {
+                if ($data['confirmation']['required_minor'] > $subtotal - $discount + $tax + $deposit) {
+                    throw new SceneWorkflowException('SCENE_CONFIRMATION_POLICY_INVALID', '预收款门槛不能超过本版应收总额。');
+                }
+                $frozenTerms['confirmation'] = $data['confirmation'] + ['deadline' => $data['confirmation_deadline']];
+            }
             if ($policyRecord) {
                 $frozenTerms['policy_record_id'] = $policyRecord['id'];
             }
@@ -109,8 +138,9 @@ class SceneProposalService
                 'subtotal_minor' => $subtotal, 'discount_minor' => $discount, 'tax_minor' => $tax,
                 'total_minor' => $subtotal - $discount + $tax, 'deposit_minor' => $deposit,
                 'terms_snapshot' => SceneWorkflow::json($frozenTerms), 'terms_hash' => SceneWorkflow::hash($frozenTerms),
-                'content_hash' => SceneWorkflow::hash([$request->revision_no, $assessment->id, $lines, $schedule, $frozenTerms, $data['expires_at'], $proposal]),
+                'content_hash' => SceneWorkflow::hash([(int) $request->revision_no, (int) $assessment->id, array_map(fn ($line) => array_replace($line, ['snapshot' => SceneWorkflow::unpack($line['snapshot'])]), $lines), $schedule, $frozenTerms, $data['expires_at'], $proposal]),
                 'schedule' => SceneWorkflow::json($schedule), 'expires_at' => $data['expires_at'], 'created_by' => $actor,
+                'confirmation_deadline' => $data['confirmation_deadline'] ?? null,
                 'created_at' => now('UTC'), 'updated_at' => now('UTC'),
             ];
             if ($quote['total_minor'] + $deposit > 1000000000000) {
@@ -280,14 +310,18 @@ class SceneProposalService
 
     public function assertUsable(object $quote, object $request, int $channel): void
     {
-        if (strtotime($quote->expires_at.' UTC') <= now('UTC')->timestamp || (int) $quote->request_revision_no !== (int) $request->revision_no || in_array($request->state, ['closed', 'cancelled'], true)) {
+        $this->assertIntegrity($quote);
+        if ($quote->state !== 'accepted' && $quote->confirmation_deadline && $quote->confirmation_deadline <= now('UTC')) {
+            throw new SceneWorkflowException('SCENE_CONFIRMATION_EXPIRED', '本版商务与资源确认期限已过，请协商新版安排。', 409);
+        }
+        if (($quote->state !== 'accepted' && strtotime($quote->expires_at.' UTC') <= now('UTC')->timestamp) || (int) $quote->request_revision_no !== (int) $request->revision_no || in_array($request->state, ['closed', 'cancelled'], true)) {
             throw new SceneWorkflowException('SCENE_QUOTE_EXPIRED', '报价已到期或需求已更新。', 409);
         }
         if ($request->scene_id) {
             if (! $request->scene_revision_id) {
                 throw new SceneWorkflowException('SCENE_TEMPLATE_VERSION_REQUIRED', '该需求未冻结发布版本，请补充确认当前场景后再报价。', 409);
             }
-            $this->publication->active((int) $request->scene_id, (int) $request->scene_revision_id, true);
+            $this->publication->active((int) $request->scene_id, $quote->state === 'accepted' ? null : (int) $request->scene_revision_id, true);
         }
         $this->assessments->assertCurrent(SceneWorkflow::requireRow('scene_assessments', (int) $quote->assessment_id), $request, $channel);
         if (! $quote->proposal_id || ! $quote->proposal_snapshot) {
@@ -310,6 +344,36 @@ class SceneProposalService
         }
     }
 
+    public function assertIntegrity(object $quote): void
+    {
+        $lines = [];
+        $subtotal = $discount = $tax = $deposit = 0;
+        foreach (DB::table('scene_quote_items')->where('quote_id', $quote->id)->orderBy('line_no')->get() as $line) {
+            $s = SceneWorkflow::unpack($line->snapshot);
+            $raw = (int) $s['unit_minor'] * (int) $line->quantity * (int) $line->billing_units;
+            if ($raw - (int) $s['discount_minor'] + (int) $s['tax_minor'] !== (int) $line->line_minor || $s['currency'] !== $quote->currency) {
+                throw new SceneWorkflowException('SCENE_QUOTE_INTEGRITY', '报价分项金额或币种指纹异常。', 409);
+            }
+            if ($s['charge_type'] === 'deposit') {
+                $deposit += $raw;
+            } else {
+                $subtotal += $raw;
+                $discount += (int) $s['discount_minor'];
+                $tax += (int) $s['tax_minor'];
+            }
+            $lines[] = ['price_item_id' => (int) $line->price_item_id, 'line_no' => (int) $line->line_no, 'quantity' => (int) $line->quantity,
+                'billing_units' => (int) $line->billing_units, 'snapshot' => $s, 'line_minor' => (int) $line->line_minor];
+        }
+        $terms = SceneWorkflow::unpack($quote->terms_snapshot);
+        $hash = SceneWorkflow::hash([(int) $quote->request_revision_no, (int) $quote->assessment_id, $lines,
+            SceneWorkflow::unpack($quote->schedule), $terms, $quote->expires_at, SceneWorkflow::unpack($quote->proposal_snapshot)]);
+        if (! $lines || ! hash_equals($quote->content_hash, $hash) || ! hash_equals($quote->terms_hash, SceneWorkflow::hash($terms))
+            || $subtotal !== (int) $quote->subtotal_minor || $discount !== (int) $quote->discount_minor || $tax !== (int) $quote->tax_minor
+            || $deposit !== (int) $quote->deposit_minor || $subtotal - $discount + $tax !== (int) $quote->total_minor) {
+            throw new SceneWorkflowException('SCENE_QUOTE_INTEGRITY', '报价指纹或金额合计与冻结版本不符。', 409);
+        }
+    }
+
     public function customerDto(object $quote): array
     {
         $this->assertVisible($quote);
@@ -324,12 +388,13 @@ class SceneProposalService
             'tax_minor' => (int) $quote->tax_minor, 'deposit_minor' => (int) $quote->deposit_minor,
             // 只返回正式客户条款及政策版本，配置内的成本/内部审核资料不进入 DTO。
             'terms' => ['terms' => ['version' => $terms['terms']['version'] ?? null, 'text' => $terms['terms']['text'] ?? null], 'policy_version' => $terms['policy']['version'] ?? null],
+            'confirmation' => $terms['confirmation'] ?? null,
             'terms_hash' => $quote->terms_hash, 'content_hash' => $quote->content_hash,
             'expires_at' => $quote->expires_at, 'schedule' => SceneWorkflow::unpack($quote->schedule),
             'sent_at' => $quote->sent_at, 'is_expired' => strtotime($quote->expires_at.' UTC') <= now('UTC')->timestamp,
             'customer_rejection' => $rejection ? ['reason' => $rejection->reason, 'created_at' => $rejection->created_at] : null,
             'proposal' => $this->publicProposal(SceneWorkflow::unpack($quote->proposal_snapshot)),
-            'delivery_status' => 'awaiting_confirmation',
+            'delivery_status' => DB::table('scene_order_links')->where('quote_id', $quote->id)->exists() ? 'confirmed' : 'awaiting_confirmation',
             'items' => DB::table('scene_quote_items')->where('quote_id', $quote->id)->orderBy('line_no')->get()->map(function ($i) {
                 $s = SceneWorkflow::unpack($i->snapshot);
 
