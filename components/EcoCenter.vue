@@ -21,17 +21,6 @@
 
       <!-- ========== 配件皮肤 ========== -->
       <view v-show="currentTab === 'accessory'" class="tab-panel">
-        <scroll-view class="category-scroll" scroll-x="true" show-scrollbar="false">
-          <view class="category-list">
-            <text class="category-item" :class="{ active: accessoryCategory === 'all' }" @click="accessoryCategory='all'">全部</text>
-            <text class="category-item" :class="{ active: accessoryCategory === 'fight' }" @click="accessoryCategory='fight'">格斗改装</text>
-            <text class="category-item" :class="{ active: accessoryCategory === 'skin' }" @click="accessoryCategory='skin'">皮肤/外壳</text>
-            <text class="category-item" :class="{ active: accessoryCategory === 'battery' }" @click="accessoryCategory='battery'">电池电源</text>
-            <text class="category-item" :class="{ active: accessoryCategory === 'sensor' }" @click="accessoryCategory='sensor'">传感器</text>
-            <text class="category-item" :class="{ active: accessoryCategory === 'arm' }" @click="accessoryCategory='arm'">机械臂/夹具</text>
-            <text class="category-item more" @click="goMoreAccessoriesList">更多 →</text>
-          </view>
-        </scroll-view>
         <view class="grid-3col">
           <view class="eco-card accessory-card" v-for="item in accessoryCards" :key="item.uid" @click="onAccessoryClick(item)">
             <view class="eco-img accessory-img" :style="{ backgroundColor: item.bg || '#F0F4FA' }">
@@ -126,7 +115,6 @@ export default {
   data() {
     return {
       currentTab: 'skill',
-      accessoryCategory: 'all',
       // 赛事预览:只消费 G1-10 公开 DTO;空/错/格式异常分别交给 StateView
       eventList: [],
       eventLoading: false,
@@ -175,19 +163,14 @@ export default {
 
     // 有搜索词或任一筛选维度 → 走服务端搜索(否则显示全部)
 
-    // 配件皮肤: 后台真实商品 + 静态 mock 共存(mock 仍受分类 chips 筛选, 同样按名称去重)
+    // 配件皮肤: 后台真实商品 + 静态 mock 共存(同样按名称去重)
     accessoryCards() {
       const real = this.accessoryCatalog.map(p => ({ ...p, uid: 'r' + p.id }));
       const realNames = new Set(real.map(p => String(p.name || '').trim()));
-      const mock = this.filteredAccessoryList
+      const mock = this.accessoryList
         .filter(m => !realNames.has(m.name))
         .map(m => ({ ...m, uid: 'm' + m.id }));
       return real.concat(mock);
-    },
-    filteredAccessoryList() {
-      return this.accessoryCategory === 'all'
-        ? this.accessoryList
-        : this.accessoryList.filter(item => item.category === this.accessoryCategory);
     },
   },
   mounted() {
@@ -445,38 +428,6 @@ export default {
   font-weight: 500;
   letter-spacing: 2rpx;
 }
-.category-scroll {
-  width: 100%;
-  white-space: nowrap;
-  margin-bottom: 16rpx;
-}
-.category-list {
-  display: inline-block;
-  white-space: nowrap;
-  padding: 4rpx 0;
-}
-.category-item {
-  display: inline-block;
-  padding: 6rpx 24rpx;
-  margin-right: 12rpx;
-  font-size: 22rpx;
-  color: #6B7280;
-  background: #F8FAFC;
-  border-radius: 30rpx;
-  border: 1px solid #E5E7EB;
-  white-space: nowrap;
-}
-.category-item.active {
-  background: #5588FF;
-  color: #fff;
-  border-color: #165DFF;
-}
-.category-item.more {
-  color: #165DFF;
-  border-color: #165DFF;
-  background: #F0F7FF;
-}
-
 /* ===== 赛事预览（G1 公开只读） ===== */
 .eco-subhead {
   display: flex;
