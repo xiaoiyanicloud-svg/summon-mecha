@@ -90,6 +90,10 @@
 						<text class="func-icon">✨</text>
 						<text class="func-label">我的技能</text>
 					</view>
+					<view class="func-item" @click="goDeveloperPortal">
+						<text class="func-icon">🧑‍💻</text>
+						<text class="func-label">开发者后台</text>
+					</view>
 					<view class="func-item" @click="goMyRegistrations">
 						<text class="func-icon">🎟️</text>
 						<text class="func-label">我的报名</text>
@@ -655,7 +659,7 @@
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import StateView from '@/components/StateView.vue';
 	import { authApi, addressApi, invoiceApi, orderApi } from '@/utils/api';
-	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION } from '@/utils/config';
+	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION, BASE_URL } from '@/utils/config';
 	import { serverToLocal, localToServerPayload } from '@/utils/address';
 
 	export default {
@@ -963,6 +967,22 @@
 			// 消息通知:审核/下发/试用到期/退款 都落这里(v3.4)
 			goNotifications() { uni.navigateTo({ url: '/pages/mine/notifications' }); },
 			goCooperate() { this.currentPage = 'cooperate'; },
+			// 开发者后台(v3.4 步骤 9):独立 Blade 门户,跑在商城同域 /dev,与 C 端同一账号体系
+			// (邮箱+密码登录 developer 会话)。H5 新开标签页;App/小程序没有同域 web-view 条件,
+			// 复制链接让用户去浏览器打开 —— 与赛事报名外部链接的做法一致。
+			goDeveloperPortal() {
+				const url = String(BASE_URL).replace(/\/+$/, '') + '/dev';
+				// #ifdef H5
+				window.open(url, '_blank', 'noopener');
+				// #endif
+				// #ifndef H5
+				uni.setClipboardData({
+					data: url,
+					success: () => uni.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }),
+					fail: () => uni.showToast({ title: '复制失败，请稍后重试', icon: 'none' }),
+				});
+				// #endif
+			},
 			goSupplierCode() { uni.showToast({ title: '供应商邀请码：即将开放', icon: 'none' }); },
 			goPartnerRecommend() {
 				this.currentPage = 'partner';
