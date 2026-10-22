@@ -271,11 +271,11 @@ try {
 
     test('SC5-06 预检脚本全量 9 份增量迁移与表结构完整性纳管', fn () => sc5Sandbox(function () {
         $base = dirname(__DIR__, 2).'/my-bagisto-store';
-        $migrations = array_merge(
+        $migrations = array_values(array_filter(array_merge(
             glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_10000*.php'),
             glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_10000*.php'),
             glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_22_10000*.php')
-        );
+        ), fn ($file) => str_contains(basename($file), 'scene')));
 
         // 必须包含全部 9 份增量迁移
         same(9, count($migrations));

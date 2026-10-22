@@ -1,0 +1,224 @@
+{
+  "generated_at": "2026-10-22T05:28:11.528Z",
+  "ok": true,
+  "stages": [
+    {
+      "name": "mysql-initialize",
+      "exit_code": 0
+    },
+    {
+      "name": "database-create",
+      "exit_code": 0
+    },
+    {
+      "name": "migrate",
+      "exit_code": 0
+    },
+    {
+      "name": "seed",
+      "exit_code": 0
+    },
+    {
+      "name": "runbook",
+      "exit_code": 0
+    },
+    {
+      "name": "cleanup",
+      "exit_code": 0
+    }
+  ],
+  "cleanup": {
+    "own_instance_shutdown": true,
+    "own_database_removed": true,
+    "identity": {
+      "datadir": "D:\\main-scene-integration\\.claude\\runtime\\sc3-http-15a6d19752dc5af7b9c6\\mysql\\",
+      "version": "5.7.30",
+      "port": 64719
+    }
+  },
+  "business_database_touched": false,
+  "production_flags_changed": false,
+  "external_calls": false,
+  "runbook": {
+    "environment": "complete Laravel/Bagisto + dedicated MySQL, actual Console, Admin guard/controller and real audit failure",
+    "sql_blocks": 5,
+    "artisan_commands": 7,
+    "checks": [
+      {
+        "name": "手册包含五组实际告警与排查 SQL",
+        "pass": true
+      },
+      {
+        "name": "SQL 1 仅允许单条 SELECT",
+        "pass": true
+      },
+      {
+        "name": "SQL 1 在真实 MySQL 执行成功且无业务写入",
+        "pass": true
+      },
+      {
+        "name": "SQL 2 仅允许单条 SELECT",
+        "pass": true
+      },
+      {
+        "name": "SQL 2 在真实 MySQL 执行成功且无业务写入",
+        "pass": true
+      },
+      {
+        "name": "SQL 3 仅允许单条 SELECT",
+        "pass": true
+      },
+      {
+        "name": "SQL 3 在真实 MySQL 执行成功且无业务写入",
+        "pass": true
+      },
+      {
+        "name": "SQL 4 仅允许单条 SELECT",
+        "pass": true
+      },
+      {
+        "name": "SQL 4 在真实 MySQL 执行成功且无业务写入",
+        "pass": true
+      },
+      {
+        "name": "SQL 5 仅允许单条 SELECT",
+        "pass": true
+      },
+      {
+        "name": "SQL 5 在真实 MySQL 执行成功且无业务写入",
+        "pass": true
+      },
+      {
+        "name": "手册包含七条实际 Artisan 命令",
+        "pass": true
+      },
+      {
+        "name": "实际 Artisan 命令通过：help scenes:operations",
+        "pass": true
+      },
+      {
+        "name": "只读命令/缓存清理不修改业务事实：help scenes:operations",
+        "pass": true
+      },
+      {
+        "name": "实际 Artisan 命令通过：schedule:list",
+        "pass": true
+      },
+      {
+        "name": "只读命令/缓存清理不修改业务事实：schedule:list",
+        "pass": true
+      },
+      {
+        "name": "实际 Artisan 命令通过：migrate:status",
+        "pass": true
+      },
+      {
+        "name": "只读命令/缓存清理不修改业务事实：migrate:status",
+        "pass": true
+      },
+      {
+        "name": "实际 Artisan 命令通过：scenes:operations",
+        "pass": true
+      },
+      {
+        "name": "只读命令/缓存清理不修改业务事实：scenes:operations",
+        "pass": true
+      },
+      {
+        "name": "实际 Artisan 命令通过：scenes:operations --metrics",
+        "pass": true
+      },
+      {
+        "name": "只读命令/缓存清理不修改业务事实：scenes:operations --metrics",
+        "pass": true
+      },
+      {
+        "name": "实际 Artisan 命令通过：scenes:operations --consume=100 --sweep",
+        "pass": true
+      },
+      {
+        "name": "实际 Artisan 命令通过：config:clear",
+        "pass": true
+      },
+      {
+        "name": "只读命令/缓存清理不修改业务事实：config:clear",
+        "pass": true
+      },
+      {
+        "name": "手册明确不存在的参数不在实际命令定义中：check-sla",
+        "pass": true
+      },
+      {
+        "name": "手册明确不存在的参数不在实际命令定义中：limit",
+        "pass": true
+      },
+      {
+        "name": "手册明确不存在的参数不在实际命令定义中：json",
+        "pass": true
+      },
+      {
+        "name": "手册参数存在：consume",
+        "pass": true
+      },
+      {
+        "name": "手册参数存在：sweep",
+        "pass": true
+      },
+      {
+        "name": "手册参数存在：metrics",
+        "pass": true
+      },
+      {
+        "name": "非法消费数量在扫描前失败且无写入",
+        "pass": true
+      },
+      {
+        "name": "实际 Scheduler 注册与手册一致且防重叠",
+        "pass": true
+      },
+      {
+        "name": "重放使用真实数据库审计失败整体回滚",
+        "pass": true
+      },
+      {
+        "name": "实际 Admin 角色无 operate 权限拒绝重放",
+        "pass": true
+      },
+      {
+        "name": "实际路由、权限及 Controller 通过受审计重放入口",
+        "pass": true
+      },
+      {
+        "name": "真实重放审计带操作者及目标对象",
+        "pass": true
+      },
+      {
+        "name": "重放重置 attempts、错误码和可用时间",
+        "pass": true
+      },
+      {
+        "name": "按手册命令恢复后该事件确实被处理，且仅一份 receipt",
+        "pass": true
+      },
+      {
+        "name": "已完成事件拒绝重放",
+        "pass": true
+      },
+      {
+        "name": "有效租约拒绝重放",
+        "pass": true
+      },
+      {
+        "name": "非场景事件拒绝重放",
+        "pass": true
+      },
+      {
+        "name": "没有遗留数据库事务",
+        "pass": true
+      }
+    ],
+    "business_database_touched": false,
+    "external_calls": false,
+    "http_network_submission": false
+  }
+}

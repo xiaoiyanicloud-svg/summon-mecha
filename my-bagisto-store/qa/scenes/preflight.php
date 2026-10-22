@@ -106,11 +106,12 @@ try {
     }
     $engines = $connection->table('information_schema.TABLES')->where('TABLE_SCHEMA', $database)->whereIn('TABLE_NAME', $tables)->get(['TABLE_NAME', 'ENGINE']);
     $nonTransactional = $engines->filter(fn ($row) => strcasecmp((string) $row->ENGINE, 'InnoDB') !== 0)->pluck('TABLE_NAME')->all();
-    $expectedMigrations = array_map(fn ($file) => pathinfo($file, PATHINFO_FILENAME), array_merge(
+    $sceneMigrationFiles = array_values(array_filter(array_merge(
         glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_10000*.php'),
         glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_10000*.php'),
         glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_22_10000*.php')
-    ));
+    ), fn ($file) => str_contains(basename($file), 'scene')));
+    $expectedMigrations = array_map(fn ($file) => pathinfo($file, PATHINFO_FILENAME), $sceneMigrationFiles);
     $ran = $schema->hasTable('migrations') ? $connection->table('migrations')->whereIn('migration', $expectedMigrations)->pluck('migration')->all() : [];
     $pendingMigrations = array_values(array_diff($expectedMigrations, $ran));
     $indexes = [];

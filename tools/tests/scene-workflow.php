@@ -157,11 +157,12 @@ $schema->create('operation_log', function (Blueprint $t) {
 foreach (glob($base.'/packages/Webkul/Shop/src/Database/Migrations/*scenes_table.php') as $migration) {
     (require $migration)->up();
 }
-foreach (array_merge(
+$sceneMigrations = array_values(array_filter(array_merge(
     glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_10000*.php'),
     glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_10000*.php'),
     glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_22_10000*.php')
-) as $migration) {
+), fn ($file) => str_contains(basename($file), 'scene')));
+foreach ($sceneMigrations as $migration) {
     (require $migration)->up();
 }
 DB::table('customers')->insert([['id' => 1], ['id' => 2]]);
