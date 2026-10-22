@@ -9,9 +9,9 @@ use Webkul\Shop\Services\Scenes\SceneOperationsService;
 
 class SceneOperations extends Command
 {
-    protected $signature = 'scenes:operations {--consume=0 : 最多消费条数，0 为只读} {--sweep : 扫描过期预留与待办}';
+    protected $signature = 'scenes:operations {--consume=0 : 最多消费条数，0 为只读} {--sweep : 扫描过期预留与待办} {--metrics : 输出全景运营指标}';
 
-    protected $description = '场景流程只读准入报告，或显式消费 outbox / 扫描待办';
+    protected $description = '场景流程只读准入报告，或显式消费 outbox / 扫描待办 / 全景指标分析';
 
     public function handle(SceneOperationsService $ops): int
     {
@@ -21,7 +21,7 @@ class SceneOperations extends Command
 
             return self::FAILURE;
         }
-        $tables = ['business_idempotency_keys', 'business_outbox', 'business_event_receipts', 'scene_revisions', 'scene_requests', 'scene_quotes', 'scene_resources', 'scene_reservations', 'scene_projects', 'scene_order_links', 'scene_operation_todos', 'scene_policy_versions', 'scene_policy_kinds', 'scene_service_clocks', 'scene_site_surveys', 'scene_proposals', 'scene_attachment_holds', 'scene_content_evidence', 'scene_sku_mappings', 'scene_quote_commercial', 'scene_order_parts'];
+        $tables = ['business_idempotency_keys', 'business_outbox', 'business_event_receipts', 'scene_revisions', 'scene_requests', 'scene_quotes', 'scene_resources', 'scene_reservations', 'scene_projects', 'scene_order_links', 'scene_operation_todos', 'scene_policy_versions', 'scene_policy_kinds', 'scene_service_clocks', 'scene_site_surveys', 'scene_proposals', 'scene_attachment_holds', 'scene_content_evidence', 'scene_sku_mappings', 'scene_quote_commercial', 'scene_order_parts', 'scene_project_changes', 'scene_service_tickets'];
         $missing = array_values(array_filter($tables, fn ($t) => ! Schema::hasTable($t)));
         $report = ['database_driver' => DB::connection()->getDriverName(), 'missing_tables' => $missing,
             'features' => collect(config('scenes'))->only(['publication_v2', 'requests_enabled', 'quotes_enabled', 'reservations_enabled', 'project_actions_enabled', 'operations_enabled', 'order_conversion_enabled'])->all(),

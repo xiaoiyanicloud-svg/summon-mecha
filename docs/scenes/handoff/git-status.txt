@@ -1,0 +1,55 @@
+## main...origin/main
+ M components/jiqi/changjing-data.js
+ M my-bagisto-store/bootstrap/app.php
+ M my-bagisto-store/database/seeders/SceneSeeder.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Config/acl.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Config/menu.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneController.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Http/Requests/SceneRequest.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scenes/create.blade.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scenes/edit.blade.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Routes/catalog-routes.php
+ M my-bagisto-store/packages/Webkul/Sales/src/Repositories/OrderRepository.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/ApiErrorCode.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SummonController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Models/Scene.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Providers/ShopServiceProvider.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Routes/api.php
+ M pages.json
+ M pages/ai/index.vue
+ M pages/home/index.vue
+ M pages/home/rmfangan.vue
+ M pages/mine/index.vue
+ M pages/order/checkout.vue
+ M pages/robot/fangan.vue
+ M pages/robot/index.vue
+ M utils/api.js
+?? docs/scenes/
+?? docs/skill-dev-step13.md
+?? docs/skill-dev-step14.md
+?? my-bagisto-store/config/scenes.php
+?? my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php
+?? my-bagisto-store/packages/Webkul/Admin/src/Http/Middleware/
+?? my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/
+?? my-bagisto-store/packages/Webkul/Admin/src/Routes/scene-workflow-routes.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/SceneOperations.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_100001_create_scene_workflow_foundation.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_100002_create_scene_commercial_and_resources.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_100003_create_scene_delivery_and_operations.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SceneWorkflowController.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Http/Middleware/SceneWorkflowSafety.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Routes/scene-workflow.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/
+?? pages/scene/
+?? tools/tests/scene-backend.php
+?? tools/tests/scene-blade-compile.php
+?? tools/tests/scene-catalog.test.mjs
+?? tools/tests/scene-http-readonly.mjs
+?? tools/tests/scene-request.test.mjs
+?? tools/tests/scene-ui-check.mjs
+?? tools/tests/scene-workflow-ui.mjs
+?? tools/tests/scene-workflow.php
+?? utils/scene-catalog.js
+?? utils/scene-request.js

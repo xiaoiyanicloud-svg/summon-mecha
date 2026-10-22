@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-10-22T05:17:43.520Z",
+  "scope": "关闭上一轮四项 P2（Q08–Q11），保留本地既有改动及已完成的七项 P1。",
+  "verdict": "four_p2_fixed_and_regression_verified",
+  "fixes": [
+    {
+      "id": "Q08",
+      "priority": 2,
+      "state": "fixed",
+      "title": "技能报障必须具备本客户、本项目技能子单和冻结版本的有效正式授权",
+      "proof": [
+        "普通商品、异项目、异客户、撤销/过期/回收中、版本不符、未付款等反例拒绝且不留半工单",
+        "订单明细解析到唯一授权，同键重试同一工单；强审计失败回滚",
+        "复用既有 D10 政策，原售后入口真实验证试用拒绝、未下发受理、已激活人工审与重复申请保护",
+        "场景技能工单只处理技术支持，UI 和服务均阻断从场景工单直接登记技能退款责任"
+      ]
+    },
+    {
+      "id": "Q09",
+      "priority": 2,
+      "state": "fixed",
+      "title": "初验率按 project_id + item_key 去重",
+      "proof": [
+        "两个项目同名标准各初验通过：2/2=100%",
+        "其中一项初验失败后复验通过：初验率仍 1/2=50%",
+        "无验收事实为零，测试/旧线索不参与统计；无需截断比例掩盖计算错误"
+      ]
+    },
+    {
+      "id": "Q10",
+      "priority": 2,
+      "state": "fixed",
+      "title": "转单前收款纳入统一现金事实并消除快照与跨阶段凭证重复",
+      "proof": [
+        "真实报价录入、独立复核后收款即可统计；转单冻结副本不再叠加",
+        "同一项目跨阶段同凭证去重；不同项目同名凭证、同额不同凭证独立计入",
+        "项目后收款、部分实退、已核准应退及待复核建议分账；押金包含在总收款中且不冒充收入",
+        "老项目仅有冻结额时保留一次历史值，并输出待核账标记；异额凭证和快照差异显式暴露"
+      ]
+    },
+    {
+      "id": "Q11",
+      "priority": 2,
+      "state": "fixed",
+      "title": "运维手册按真实命令、迁移字段及受审计恢复入口重写",
+      "proof": [
+        "真实独立 MySQL 完整应用迁移、5 组只读 SQL、7 条 Artisan 命令执行成功",
+        "实际 Admin 角色与 Controller 重放成功；无 operate 权限、非场景事件、已完成与有效租约均拒绝",
+        "真实 MySQL 审计插入失败触发整体回滚；恢复消费仅留一份 receipt",
+        "修正 Scheduler 避免重复 Cron、租约由消费接管、配置开关错误码、返库维护和 D10 操作说明"
+      ]
+    }
+  ],
+  "checks": {
+    "workflow": {
+      "passed": 150,
+      "failed": 0,
+      "p2_cases": 22,
+      "p1_cases": 22,
+      "environment": "isolated SQLite :memory:"
+    },
+    "sc3": {
+      "passed": 35,
+      "failed": 0,
+      "environment": "sqlite"
+    },
+    "node": {
+      "tests": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "controllers": {
+      "passed": 17,
+      "failed": 0
+    },
+    "blade": {
+      "compiled": 10,
+      "failed": 0
+    },
+    "php_lint": [
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/SkillDelivery/AfterSaleService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/SkillDelivery/AfterSaleService.php"
+      },
+      {
+        "file": "tools/tests/scene-workflow.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-workflow.php"
+      },
+      {
+        "file": "tools/tests/scene-sc4-cases.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-sc4-cases.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php"
+      },
+      {
+        "file": "tools/tests/scene-sc45-p1-cases.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-sc45-p1-cases.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSkillAfterSaleService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSkillAfterSaleService.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneFinancialMetrics.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneFinancialMetrics.php"
+      },
+      {
+        "file": "tools/tests/fixtures/scene-skill-after-sale.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/fixtures/scene-skill-after-sale.php"
+      },
+      {
+        "file": "tools/tests/scene-sc45-p2-cases.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-sc45-p2-cases.php"
+      },
+      {
+        "file": "tools/tests/scene-sc3-integration/runbook-checks.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-sc3-integration/runbook-checks.php"
+      }
+    ],
+    "pint": {
+      "files": 11,
+      "passed": true
+    },
+    "git_diff_check": {
+      "passed": true
+    },
+    "runbook": {
+      "full_application": true,
+      "mysql_version": "5.7.30",
+      "migrations": 218,
+      "pending_migrations": [],
+      "sql_blocks": 5,
+      "artisan_commands": 7,
+      "checks": 43,
+      "failed": 0,
+      "actual_admin_guard_controller": true,
+      "real_database_audit_failure": true,
+      "cleanup": true
+    }
+  },
+  "remaining_from_previous_review": [],
+  "limitations": [
+    "业务回归使用真实迁移/服务与 SQLite 内存事务，不作为 MySQL 并发证明",
+    "本轮完整应用 MySQL 检查覆盖运维 SQL、Console、实际 Admin 权限和 Controller；未重新执行网络 HTTP/H5/微信真机全链路",
+    "旧数据只有冻结金额或同凭证异额时标记 requires_reconciliation，必须按原件核账，不能从聚合指标推断到账或收入"
+  ],
+  "git": {
+    "committed": false,
+    "pushed": false
+  },
+  "business_database_touched": false,
+  "production_flags_changed": false,
+  "external_calls": false,
+  "source_sha256": {
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php": "8e94084d1557dca1280b1414dbbd3c034ff0329bbbac64327861f099be782114",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php": "7129794c580a57d21179bdd955df33966461c63072f109571fb2b6ead1c569b9",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/SkillDelivery/AfterSaleService.php": "de3cd2a7ad65554db6b94dd381094695cf6f7e9d14410ce5420ab789b2031896",
+    "docs/scenes/SC5-Operations-Runbook.md": "a8af68409ac6a1113befae1841e5d7539e04e9d590519254ca35f34d8870c2cb",
+    "tools/tests/scene-workflow.php": "04f9c3b6414a67acb6fcc34de5513a499e9df214726418beb7e7bc368701aa24",
+    "tools/tests/scene-sc4-cases.php": "ee8ea6147e0304cfe7e586f9815b8a5ccdd1222ff3b82be3af93bc03c62569db",
+    "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php": "b5cafea5dc35ba53cc3935ff5694bea792b6a23dfbd10d571625e0bcbcc70b8b",
+    "tools/tests/scene-sc45-p1-cases.php": "548d3d5a528b2ce6a0575560b98ddcd2d2366bb42aab8464427641cd270b3a26",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneSkillAfterSaleService.php": "bbc710fc7d11030734d997c604f1d679a66899a9efb02a66899ffc25405a4338",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneFinancialMetrics.php": "97220ae3346341e3bb5286e48395d7e0ff60921688859f920eef179c5f7fd886",
+    "tools/tests/fixtures/scene-skill-after-sale.php": "4ecc02542d52207fcf3f555e25c96c943edba9bb6bf9a8f1f247f5889d4126e3",
+    "tools/tests/scene-sc45-p2-cases.php": "f1543d1a9df8c122ae84a460a480ffd9400d916bc148cf689c591174f37b8f81",
+    "tools/tests/scene-sc3-integration/runbook-checks.php": "79763c043f5fd472bf605e9943cc200627e3d44e803c54b0938d74b786a0e5c1",
+    "tools/tests/scene-operations-runbook.mjs": "91c2cc17a9d098fd6b92abebfb7c905fe66ed4bb8942f0b4aa3cff39cd937080"
+  }
+}

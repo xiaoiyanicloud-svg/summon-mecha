@@ -25,4 +25,5 @@ Route::controller(SceneWorkflowController::class)->middleware([SceneWorkflowSafe
     Route::get('scene-quotes/{id}/confirmation', 'confirmation')->where('id', '[1-9][0-9]{0,14}')->name('shop.api.scene-quotes.confirmation');
     Route::get('scene-projects/{id}', 'project')->where('id', '[1-9][0-9]{0,14}')->name('shop.api.scene-projects.show');
     Route::post('scene-projects/{id}/{action}', 'projectAction')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['acceptance', 'change', 'cancel', 'after_sale'])->middleware('throttle:write')->name('shop.api.scene-projects.action');
+    Route::post('scene-projects/{id}/changes/{changeId}/decision', 'changeDecision')->where(['id' => '[1-9][0-9]{0,14}', 'changeId' => '[1-9][0-9]{0,14}'])->middleware('throttle:write')->name('shop.api.scene-projects.change-decision');
 });

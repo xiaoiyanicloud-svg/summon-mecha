@@ -94,8 +94,92 @@
         </section>@endif
         @if (bouncer()->hasPermission('catalog.scene-workflow.finance_review'))<section class="rounded border p-4"><h2 class="mb-3 text-lg font-semibold">款项复核</h2>@foreach ($commercial->where('project_id',$project->id) as $entry)<p>#{{ $entry->id }} · {{ $entry->kind }} · {{ $entry->amount_minor }} 分 · {{ $entry->reference }} · {{ $entry->reviewed_at ? '已人工复核' : '待复核' }}</p>@if (!$entry->reviewed_at)<form method="POST" action="{{ route('admin.catalog.scene-workflow.commercial-review',['id'=>$project->id,'recordId'=>$entry->id]) }}" class="mt-2">@csrf<input type="hidden" name="row_version" value="{{ $project->row_version }}"><button class="secondary-button">确认已核对实际线下凭证</button></form>@endif @endforeach</section>@endif
         @if (bouncer()->hasPermission('catalog.scene-workflow.deliver') && !$project->returned)<section class="rounded border p-4"><h2 class="mb-3 text-lg font-semibold">返库记录</h2><form method="POST" action="{{ route('admin.catalog.scene-workflow.return',$project->id) }}" class="flex flex-col gap-3">@csrf<input type="hidden" name="row_version" value="{{ $project->row_version }}"><label>实际返库时间（ISO 8601，含 UTC offset）<input placeholder="2026-10-20T18:00:00+08:00" name="occurred_at" class="w-full rounded border p-2" required></label><label><input type="checkbox" name="parts_checked" value="1" required>部件已核对</label><label><input type="checkbox" name="appearance_checked" value="1" required>外观已检查</label><label>是否有损坏争议<select name="damage_dispute" class="rounded border p-2"><option value="0">无争议</option><option value="1">存在争议</option></select></label><select name="evidence_ids[]" multiple class="rounded border p-2" required>@foreach ($attachments as $attachment)<option value="{{ $attachment->id }}">证据 #{{ $attachment->id }}</option>@endforeach</select><button class="primary-button self-start">记录返库，不自动退款或关闭</button></form></section>@endif
+        <section class="rounded border p-4">
+            <h2 class="mb-3 text-lg font-semibold">项目 #{{ $project->id }} · 现场安全与事故处置</h2>
+            <p>项目状态：{{ $project->state }} @if ($project->incident_ref) · 事故编号：{{ $project->incident_ref }} @endif</p>
+            @if ($project->state === 'paused' && bouncer()->hasPermission('catalog.scene-workflow.deliver'))
+                <form method="POST" action="{{ route('admin.catalog.scene-workflow.resume', $project->id) }}" class="mt-3 flex flex-col gap-2">
+                    @csrf
+                    <input type="hidden" name="row_version" value="{{ $project->row_version }}">
+                    <button class="primary-button self-start">确认安全隐患已排除并恢复项目</button>
+                </form>
+            @elseif (!in_array($project->state, ['closed', 'cancelled']) && bouncer()->hasPermission('catalog.scene-workflow.deliver'))
+                <form method="POST" action="{{ route('admin.catalog.scene-workflow.incident', $project->id) }}" class="mt-3 flex flex-col gap-2">
+                    @csrf
+                    <input type="hidden" name="row_version" value="{{ $project->row_version }}">
+                    <input type="hidden" name="pause_project" value="1">
+                    <label>现场事故单号<input name="incident_ref" maxlength="80" class="w-full rounded border p-2" required></label>
+                    <label>事故现场报告与处置说明<textarea name="reason" minlength="5" maxlength="2000" class="w-full rounded border p-2" required></textarea></label>
+                    <button class="secondary-button self-start">报告现场重大事故并暂停项目</button>
+                </form>
+            @endif
+        </section>
+        <section class="rounded border p-4">
+            <h2 class="mb-3 text-lg font-semibold">项目 #{{ $project->id }} · 变更与取消申请</h2>
+            @forelse (($projectChanges ?? collect())->where('project_id', $project->id) as $change)
+                <div class="mt-3 border-t pt-3">
+                    <p>#{{ $change->id }} · {{ $change->kind === 'cancel' ? '取消申请' : '变更申请' }} · 状态：{{ $change->state }} · 原因：{{ $change->reason }}</p>
+                    @if ($change->kind === 'cancel' && $change->state === 'requested' && bouncer()->hasPermission('catalog.scene-workflow.approve'))
+                        <form method="POST" action="{{ route('admin.catalog.scene-workflow.cancel-execute', ['id' => $project->id, 'changeId' => $change->id]) }}" class="mt-2 flex flex-col gap-2">
+                            @csrf
+                            <input type="hidden" name="row_version" value="{{ $project->row_version }}">
+                            <label>审核决定<select name="decision" class="rounded border p-2" required><option value="approve">批准取消并按冻结政策扣罚</option><option value="reject">驳回取消申请</option></select></label>
+                            <label>审核说明<textarea name="note" minlength="3" maxlength="2000" class="w-full rounded border p-2" required></textarea></label>
+                            <button class="primary-button self-start">处理取消申请</button>
+                        </form>
+                    @elseif ($change->kind === 'change')
+                        @if ($change->state === 'requested' && bouncer()->hasPermission('catalog.scene-workflow.assess'))
+                            <form method="POST" action="{{ route('admin.catalog.scene-workflow.change-evaluate', ['id' => $project->id, 'changeId' => $change->id]) }}" class="mt-2 flex flex-col gap-2">
+                                @csrf
+                                <input type="hidden" name="row_version" value="{{ $project->row_version }}">
+                                <label>调价差额（分；加价为正，降价为负）<input name="price_delta_minor" type="number" class="w-full rounded border p-2" value="0" required></label>
+                                <label>方案评估与排期说明<textarea name="evaluation_summary" maxlength="5000" class="w-full rounded border p-2" required></textarea></label>
+                                <details><summary>同时调整服务时间（可选）</summary><p>填写时须提供完整起止时间和服务地时区；系统会重新核验实物班次及缓冲。</p><label>开始时间（含 UTC offset）<input name="schedule_delta[starts_at]" maxlength="40" placeholder="2026-11-01T09:00:00+08:00"></label><label>结束时间（含 UTC offset）<input name="schedule_delta[ends_at]" maxlength="40" placeholder="2026-11-01T18:00:00+08:00"></label><label>服务地 IANA 时区<input name="schedule_delta[timezone]" maxlength="50" placeholder="Asia/Shanghai"></label></details>
+                                <button class="secondary-button self-start">提交方案评估与差额</button>
+                            </form>
+                        @elseif ($change->state === 'evaluated' && bouncer()->hasPermission('catalog.scene-workflow.approve'))
+                            <p class="text-sm text-gray-600">已评估调价差额：{{ $change->price_delta_minor }} 分</p>
+                            <form method="POST" action="{{ route('admin.catalog.scene-workflow.change-review', ['id' => $project->id, 'changeId' => $change->id]) }}" class="mt-2 flex flex-col gap-2">
+                                @csrf
+                                <input type="hidden" name="row_version" value="{{ $project->row_version }}">
+                                <label>独立审核结论（防自审）<select name="decision" class="rounded border p-2" required><option value="approve">批准变更方案</option><option value="reject">驳回变更方案</option></select></label>
+                                <label>审核意见<textarea name="note" minlength="3" maxlength="2000" class="w-full rounded border p-2" required></textarea></label>
+                                <button class="primary-button self-start">提交独立审核</button>
+                            </form>
+                        @elseif ($change->state === 'pending_customer_acceptance')
+                            <p class="text-sm text-blue-600">等待客户在线确认（已审核差额：{{ $change->price_delta_minor }} 分）</p>
+                        @endif
+                    @endif
+                </div>
+            @empty
+                <p>暂无变更或取消申请</p>
+            @endforelse
+        </section>
         @endforeach
-        @if (bouncer()->hasPermission('catalog.scene-workflow.support'))<section class="rounded border p-4"><h2 class="mb-3 text-lg font-semibold">服务售后处理</h2>@forelse ($tickets as $ticket)<div class="mt-3 border-t pt-3"><p>#{{ $ticket->id }} · {{ $ticket->state }} · {{ $ticket->description }}</p>@if ($ticket->state !== 'resolved')<form method="POST" action="{{ route('admin.catalog.scene-workflow.ticket',$ticket->id) }}" class="mt-2 flex flex-col gap-2">@csrf<input type="hidden" name="row_version" value="{{ $ticket->row_version }}"><textarea name="resolution" maxlength="10000" placeholder="实际处理结果（客户可见）" class="rounded border p-2" required></textarea><button class="primary-button self-start">记录处理完成</button></form>@else<p>{{ $ticket->resolution }}</p>@endif</div>@empty<p>暂无服务售后工单</p>@endforelse</section>@endif
+        @if (bouncer()->hasPermission('catalog.scene-workflow.support'))
+        <section class="rounded border p-4">
+            <h2 class="mb-3 text-lg font-semibold">服务售后工单处置</h2>
+            @forelse ($tickets as $ticket)
+                <div class="mt-3 border-t pt-3">
+                    <p>#{{ $ticket->id }} · {{ $ticket->state }} · 范围：{{ $ticket->scope }} · {{ $ticket->description }}</p>
+                    @if ($ticket->state !== 'resolved')
+                        <form method="POST" action="{{ route('admin.catalog.scene-workflow.ticket', $ticket->id) }}" class="mt-2 flex flex-col gap-2">
+                            @csrf
+                            <input type="hidden" name="row_version" value="{{ $ticket->row_version }}">
+                            <textarea name="resolution" maxlength="10000" placeholder="实际处理结果（客户可见）" class="rounded border p-2" required></textarea>
+                            @if ($ticket->scope === 'skill_fault')<input type="hidden" name="refund_proposal_minor" value="0"><p>技能授权 #{{ $ticket->entitlement_id }} · 订单明细 #{{ $ticket->order_item_id }}。本工单记录技术支持结果；技能退款须走既有 D10 售后申请与独立审核。</p>
+                            @else<label>建议补偿退款（分，可选；由财务复核）<input name="refund_proposal_minor" type="number" min="0" class="rounded border p-2" value="0"></label>@endif
+                            <button class="primary-button self-start">解决工单并记录处理</button>
+                        </form>
+                    @else
+                        <p>{{ $ticket->resolution }} @if ($ticket->refund_proposal_minor) · 建议退款：{{ $ticket->refund_proposal_minor }} 分 @endif</p>
+                    @endif
+                </div>
+            @empty
+                <p>暂无服务售后工单</p>
+            @endforelse
+        </section>
+        @endif
         <section class="rounded border p-4"><h2 class="mb-3 text-lg font-semibold">处理记录（内部）</h2>@foreach ($activities as $activity)<p class="mt-2">{{ $activity->occurred_at }} · {{ $activity->kind }} · {{ $activity->note }}</p>@endforeach</section>
     </div>
     @include('admin::catalog.scene-workflow.repeater')

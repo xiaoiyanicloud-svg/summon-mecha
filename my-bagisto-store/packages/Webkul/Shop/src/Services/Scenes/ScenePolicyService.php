@@ -84,12 +84,15 @@ class ScenePolicyService
     {
         $rules = match ($kind) {
             'commercial' => ['supplier_name' => ($approve ? 'required' : 'nullable').'|string|max:255', 'supplier_contact' => ($approve ? 'required' : 'nullable').'|string|max:255',
-                'text' => 'required|string|min:20|max:30000', 'required_price_codes' => 'required|array|min:1|max:50', 'required_price_codes.*' => 'required|string|distinct|max:80'],
+                'text' => 'required|string|min:20|max:30000', 'required_price_codes' => 'required|array|min:1|max:50', 'required_price_codes.*' => 'required|string|distinct|max:80', 'cancellation' => 'nullable|array'],
             'retention' => ['days' => 'required|integer|min:1|max:3650', 'purpose' => 'required|string|min:3|max:2000', 'deletion_notice' => 'required|string|min:3|max:2000'],
             'service_calendar' => null,
             default => throw new SceneWorkflowException('SCENE_POLICY_KIND_INVALID', '政策类型无效。'),
         };
         $data = $kind === 'service_calendar' ? $this->calendar->validate($input) : Validator::make($input, $rules)->validate();
+        if ($kind === 'commercial' && isset($data['cancellation'])) {
+            $data['cancellation'] = app(SceneCancellationPolicy::class)->normalize(array_replace($data['cancellation'], ['version' => 'commercial-draft']));
+        }
         if ($approve && $kind === 'service_calendar') {
             $ids = [$data['owner_id'] ?? 0, $data['escalation_owner_id'] ?? 0];
             if ($ids[0] === $ids[1] || DB::table('admins')->whereIn('id', $ids)->where('status', 1)->count() !== 2) {

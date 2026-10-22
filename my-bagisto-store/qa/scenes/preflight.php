@@ -92,6 +92,9 @@ try {
         'scene_request_revisions' => ['source_snapshot'], 'scene_revisions' => ['last_edited_by'], 'scene_evidence' => ['binding_snapshot', 'constraint_snapshot', 'skill_snapshot', 'approved_by', 'approved_at', 'review_note', 'revocation_reason'],
         'scene_assessments' => ['survey_id', 'survey_hash', 'rule_version', 'channel_id'], 'scene_proposals' => ['row_version', 'content_hash', 'components', 'review_note'],
         'scene_attachments' => ['retention_version', 'deleted_at', 'revoked_at', 'revocation_reason'], 'scene_operation_todos' => ['row_version'],
+        'scene_projects' => ['paused_from_state', 'incident_ref'],
+        'scene_project_changes' => ['price_delta_minor', 'evaluation', 'reviewed_by', 'reviewed_at'],
+        'scene_service_tickets' => ['scope', 'order_item_id', 'entitlement_id', 'refund_proposal_minor'],
         'scene_quotes' => ['row_version', 'customer_visible', 'sent_at', 'proposal_id', 'proposal_snapshot', 'confirmation_deadline']];
     $missingColumns = [];
     foreach ($requiredColumns as $table => $columns) {
@@ -103,7 +106,11 @@ try {
     }
     $engines = $connection->table('information_schema.TABLES')->where('TABLE_SCHEMA', $database)->whereIn('TABLE_NAME', $tables)->get(['TABLE_NAME', 'ENGINE']);
     $nonTransactional = $engines->filter(fn ($row) => strcasecmp((string) $row->ENGINE, 'InnoDB') !== 0)->pluck('TABLE_NAME')->all();
-    $expectedMigrations = array_map(fn ($file) => pathinfo($file, PATHINFO_FILENAME), array_merge(glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_10000*.php'), glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_10000*.php')));
+    $expectedMigrations = array_map(fn ($file) => pathinfo($file, PATHINFO_FILENAME), array_merge(
+        glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_10000*.php'),
+        glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_10000*.php'),
+        glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_22_10000*.php')
+    ));
     $ran = $schema->hasTable('migrations') ? $connection->table('migrations')->whereIn('migration', $expectedMigrations)->pluck('migration')->all() : [];
     $pendingMigrations = array_values(array_diff($expectedMigrations, $ran));
     $indexes = [];

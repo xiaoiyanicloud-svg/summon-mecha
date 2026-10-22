@@ -28,7 +28,10 @@ Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->mid
     Route::post('requests/{id}/solutions/create', 'solution')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.solution');
     Route::post('solutions/{id}/{action}', 'solutionDecision')->where('id', '[1-9][0-9]{0,14}')->whereIn('action', ['approve', 'return'])->name('admin.catalog.scene-workflow.solution-decision');
     Route::post('requests/{id}/attachments/{attachmentId}/{action}', 'attachmentAction')->where(['id' => '[1-9][0-9]{0,14}', 'attachmentId' => '[1-9][0-9]{0,14}'])->whereIn('action', ['hold', 'release', 'revoke'])->name('admin.catalog.scene-workflow.attachment-action');
+    Route::get('todos', 'todos')->name('admin.catalog.scene-workflow.todos');
     Route::post('todos/{id}/assign', 'todoAssign')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.todo-assign');
+    Route::post('todos/{id}/resolve', 'resolveTodo')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.todo-resolve');
+    Route::get('metrics', 'metrics')->name('admin.catalog.scene-workflow.metrics');
     Route::post('requests/{id}/preserved-attachments/{attachmentId}', 'preservedAttachment')->where(['id' => '[1-9][0-9]{0,14}', 'attachmentId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.preserved-attachment');
     Route::get('approvals', 'index')->name('admin.catalog.scene-workflow.approvals');
     Route::get('revisions', 'index')->name('admin.catalog.scene-workflow.revisions');
@@ -53,5 +56,10 @@ Route::controller(SceneWorkflowController::class)->prefix('scene-workflow')->mid
     Route::post('projects/{id}/return', 'returnResources')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.return');
     Route::post('projects/{id}/offline-acceptances', 'recordOfflineAcceptance')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.offline-record');
     Route::post('projects/{id}/offline-acceptances/{confirmationId}/review', 'reviewOfflineAcceptance')->where(['id' => '[1-9][0-9]{0,14}', 'confirmationId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.offline-review');
+    Route::post('projects/{id}/changes/{changeId}/evaluate', 'evaluateChange')->where(['id' => '[1-9][0-9]{0,14}', 'changeId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.change-evaluate');
+    Route::post('projects/{id}/changes/{changeId}/review', 'reviewChange')->where(['id' => '[1-9][0-9]{0,14}', 'changeId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.change-review');
+    Route::post('projects/{id}/changes/{changeId}/cancel-execute', 'executeCancellation')->where(['id' => '[1-9][0-9]{0,14}', 'changeId' => '[1-9][0-9]{0,14}'])->name('admin.catalog.scene-workflow.cancel-execute');
+    Route::post('projects/{id}/incident', 'reportIncident')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.incident');
+    Route::post('projects/{id}/resume', 'resumeProject')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.resume');
     Route::post('service-tickets/{id}/resolve', 'resolveTicket')->where('id', '[1-9][0-9]{0,14}')->name('admin.catalog.scene-workflow.ticket');
 });

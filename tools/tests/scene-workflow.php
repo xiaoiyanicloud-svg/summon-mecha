@@ -157,7 +157,11 @@ $schema->create('operation_log', function (Blueprint $t) {
 foreach (glob($base.'/packages/Webkul/Shop/src/Database/Migrations/*scenes_table.php') as $migration) {
     (require $migration)->up();
 }
-foreach (array_merge(glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_10000*.php'), glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_10000*.php')) as $migration) {
+foreach (array_merge(
+    glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_20_10000*.php'),
+    glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_21_10000*.php'),
+    glob($base.'/packages/Webkul/Shop/src/Database/Migrations/2026_10_22_10000*.php')
+) as $migration) {
     (require $migration)->up();
 }
 DB::table('customers')->insert([['id' => 1], ['id' => 2]]);
@@ -819,6 +823,11 @@ if (defined('SCENE_SC3_MODE')) {
 } else {
     require __DIR__.'/scene-acceptance-cases.php';
     require __DIR__.'/scene-sc1-sc2-cases.php';
+    require __DIR__.'/fixtures/scene-skill-after-sale.php';
+    require __DIR__.'/scene-sc4-cases.php';
+    require __DIR__.'/scene-sc5-cases.php';
+    require __DIR__.'/scene-sc45-p1-cases.php';
+    require __DIR__.'/scene-sc45-p2-cases.php';
 }
 
 $failed = count(array_filter($tests, fn ($t) => ! $t['pass']));

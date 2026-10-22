@@ -1,0 +1,310 @@
+TAP version 13
+# Subtest: 服务端快照替换：删除、停用和真实空列表不能保留本地卡片
+ok 1 - 服务端快照替换：删除、停用和真实空列表不能保留本地卡片
+  ---
+  duration_ms: 2.4655
+  type: 'test'
+  ...
+# Subtest: 0、null 和空文本覆盖旧内容，未经核验咨询数不会转成公开指标
+ok 2 - 0、null 和空文本覆盖旧内容，未经核验咨询数不会转成公开指标
+  ---
+  duration_ms: 0.4327
+  type: 'test'
+  ...
+# Subtest: 非法响应、重复 ID 和网络失败清空可操作卡片，立即重试不命中成功缓存
+ok 3 - 非法响应、重复 ID 和网络失败清空可操作卡片，立即重试不命中成功缓存
+  ---
+  duration_ms: 2.7778
+  type: 'test'
+  ...
+# Subtest: TTL 只缓存有效响应，onShow 可强制重新验证，并发请求共享结果
+ok 4 - TTL 只缓存有效响应，onShow 可强制重新验证，并发请求共享结果
+  ---
+  duration_ms: 0.4333
+  type: 'test'
+  ...
+# Subtest: 失效后的旧成功或旧失败均不能覆盖最新快照
+ok 5 - 失效后的旧成功或旧失败均不能覆盖最新快照
+  ---
+  duration_ms: 0.5178
+  type: 'test'
+  ...
+# Subtest: 合法 ID、分类顺序及图片地址处理
+ok 6 - 合法 ID、分类顺序及图片地址处理
+  ---
+  duration_ms: 0.6962
+  type: 'test'
+  ...
+# Subtest: 无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品
+ok 7 - 无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品
+  ---
+  duration_ms: 0.3587
+  type: 'test'
+  ...
+# Subtest: 详情仅在服务端成功后开放选择，导航保留 sceneId；失败清空选择并禁止交易
+ok 8 - 详情仅在服务端成功后开放选择，导航保留 sceneId；失败清空选择并禁止交易
+  ---
+  duration_ms: 3.0497
+  type: 'test'
+  ...
+# Subtest: 详情乱序响应只保留最新，重新进入时刷新已选机型价格
+ok 9 - 详情乱序响应只保留最新，重新进入时刷新已选机型价格
+  ---
+  duration_ms: 1.3627
+  type: 'test'
+  ...
+# Subtest: 详情缺产品协议与非法价格不进入交易；未配置方案保持空态
+ok 10 - 详情缺产品协议与非法价格不进入交易；未配置方案保持空态
+  ---
+  duration_ms: 2.2424
+  type: 'test'
+  ...
+# Subtest: 场景咨询只进入统一需求表单，不创建零元订单或伪造已受理
+ok 11 - 场景咨询只进入统一需求表单，不创建零元订单或伪造已受理
+  ---
+  duration_ms: 1.4537
+  type: 'test'
+  ...
+# Subtest: 首页从真实快照更新，接口失败不保留旧卡片或假咨询人数
+ok 12 - 首页从真实快照更新，接口失败不保留旧卡片或假咨询人数
+  ---
+  duration_ms: 4.5627
+  type: 'test'
+  ...
+# Subtest: 结算失败或没有真实订单确认时，不写本地订单、不跳成功页，保留表单并透传场景身份
+ok 13 - 结算失败或没有真实订单确认时，不写本地订单、不跳成功页，保留表单并透传场景身份
+  ---
+  duration_ms: 5.2982
+  type: 'test'
+  ...
+# Subtest: 自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交前使用当前商品名称和价格
+ok 14 - 自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交前使用当前商品名称和价格
+  ---
+  duration_ms: 4.8971
+  type: 'test'
+  ...
+# Subtest: 测试预检在 bootstrap 前拒绝生产环境、业务库和共享测试库
+ok 15 - 测试预检在 bootstrap 前拒绝生产环境、业务库和共享测试库
+  ---
+  duration_ms: 386.2533
+  type: 'test'
+  ...
+# Subtest: 环境检查模式不加载业务 bootstrap 或连接数据库，不能冒充全量预检
+ok 16 - 环境检查模式不加载业务 bootstrap 或连接数据库，不能冒充全量预检
+  ---
+  duration_ms: 84.5797
+  type: 'test'
+  ...
+# Subtest: 未知参数被拒绝，help 不包含连接凭证
+ok 17 - 未知参数被拒绝，help 不包含连接凭证
+  ---
+  duration_ms: 190.1102
+  type: 'test'
+  ...
+# Subtest: 独立环境路径无效或重复时在 bootstrap 前拒绝
+ok 18 - 独立环境路径无效或重复时在 bootstrap 前拒绝
+  ---
+  duration_ms: 175.3979
+  type: 'test'
+  ...
+# Subtest: 自选环境路径不能绕过 testing 和专用测试库守卫
+ok 19 - 自选环境路径不能绕过 testing 和专用测试库守卫
+  ---
+  duration_ms: 224.9994
+  type: 'test'
+  ...
+# Subtest: P1 accept 回执丢失后重载，沿用原决定、版本、接口及幂等键
+ok 20 - P1 accept 回执丢失后重载，沿用原决定、版本、接口及幂等键
+  ---
+  duration_ms: 7.6597
+  type: 'test'
+  ...
+# Subtest: P1 decline 回执丢失后重载，沿用原决定、版本、接口及幂等键
+ok 21 - P1 decline 回执丢失后重载，沿用原决定、版本、接口及幂等键
+  ---
+  duration_ms: 3.5689
+  type: 'test'
+  ...
+# Subtest: P1 未确认回执阻断新变更决定及取消，不依赖过期的页面 pending 数组
+ok 22 - P1 未确认回执阻断新变更决定及取消，不依赖过期的页面 pending 数组
+  ---
+  duration_ms: 1.2512
+  type: 'test'
+  ...
+# Subtest: P1 普通项目命令恢复仍沿用原接口、原载荷和幂等键
+ok 23 - P1 普通项目命令恢复仍沿用原接口、原载荷和幂等键
+  ---
+  duration_ms: 1.4777
+  type: 'test'
+  ...
+# Subtest: P1 未知操作或跨项目 slot 不转换成数字 action，也不发请求
+ok 24 - P1 未知操作或跨项目 slot 不转换成数字 action，也不发请求
+  ---
+  duration_ms: 0.9853
+  type: 'test'
+  ...
+# Subtest: P1 账号切换时旧回执按主体隔离，异步完成不污染新主体且解除 busy
+ok 25 - P1 账号切换时旧回执按主体隔离，异步完成不污染新主体且解除 busy
+  ---
+  duration_ms: 1.5558
+  type: 'test'
+  ...
+# Subtest: P1 确定的版本冲突刷新最新项目，旧未知回执转为明确拒绝
+ok 26 - P1 确定的版本冲突刷新最新项目，旧未知回执转为明确拒绝
+  ---
+  duration_ms: 1.6691
+  type: 'test'
+  ...
+# Subtest: 提交成功响应丢失后重试复用幂等键与访问能力；无回执不冒充成功
+ok 27 - 提交成功响应丢失后重试复用幂等键与访问能力；无回执不冒充成功
+  ---
+  duration_ms: 6.5218
+  type: 'test'
+  ...
+# Subtest: 无 order_id 的需求回执有效，但缺需求号/编号/确认一律拒绝
+ok 28 - 无 order_id 的需求回执有效，但缺需求号/编号/确认一律拒绝
+  ---
+  duration_ms: 6.4613
+  type: 'test'
+  ...
+# Subtest: 报价及项目动作超时冻结原载荷，重试同键，收到有效状态回执后才清除
+ok 29 - 报价及项目动作超时冻结原载荷，重试同键，收到有效状态回执后才清除
+  ---
+  duration_ms: 1.7824
+  type: 'test'
+  ...
+# Subtest: 报价/项目响应格式不完整时保留待确认记录，不以 HTTP 成功清理
+ok 30 - 报价/项目响应格式不完整时保留待确认记录，不以 HTTP 成功清理
+  ---
+  duration_ms: 5.0073
+  type: 'test'
+  ...
+# Subtest: 明确 4xx 拒绝才允许修正动作；5xx 和网络失败保留同一未知结果
+ok 31 - 明确 4xx 拒绝才允许修正动作；5xx 和网络失败保留同一未知结果
+  ---
+  duration_ms: 4.4958
+  type: 'test'
+  ...
+# Subtest: 项目动作回包前切换账号不清理旧回执，也不写入新账号
+ok 32 - 项目动作回包前切换账号不清理旧回执，也不写入新账号
+  ---
+  duration_ms: 1.1497
+  type: 'test'
+  ...
+# Subtest: 请求中切换账号不把旧账号的凭证、需求内容和回执写给新账号
+ok 33 - 请求中切换账号不把旧账号的凭证、需求内容和回执写给新账号
+  ---
+  duration_ms: 7.6009
+  type: 'test'
+  ...
+# Subtest: 访问能力必须由服务端强随机签发；同账号初始化合并请求
+ok 34 - 访问能力必须由服务端强随机签发；同账号初始化合并请求
+  ---
+  duration_ms: 1.821
+  type: 'test'
+  ...
+# Subtest: 草稿与账号隔离；改变载荷生成新命令；访问能力不进入导航 URL
+ok 35 - 草稿与账号隔离；改变载荷生成新命令；访问能力不进入导航 URL
+  ---
+  duration_ms: 1.3098
+  type: 'test'
+  ...
+# Subtest: 私有上传丢响应只按原标识恢复回执，不重新生成提交或跨账号清理
+ok 36 - 私有上传丢响应只按原标识恢复回执，不重新生成提交或跨账号清理
+  ---
+  duration_ms: 2.1132
+  type: 'test'
+  ...
+# Subtest: 原上传未确认时重选文件仍复用原键；错误回包和内容冲突不能清除待确认状态
+ok 37 - 原上传未确认时重选文件仍复用原键；错误回包和内容冲突不能清除待确认状态
+  ---
+  duration_ms: 1.9615
+  type: 'test'
+  ...
+# Subtest: 上传或下载回包前切号不把旧回执写入新主体、不打开私有文件
+ok 38 - 上传或下载回包前切号不把旧回执写入新主体、不打开私有文件
+  ---
+  duration_ms: 1.1345
+  type: 'test'
+  ...
+# Subtest: 专业字段未知不变零，choice 使用公开标签，非法小数不能进入提交
+ok 39 - 专业字段未知不变零，choice 使用公开标签，非法小数不能进入提交
+  ---
+  duration_ms: 3.5323
+  type: 'test'
+  ...
+# Subtest: H5 PDF 使用鉴权下载后的 Blob，不能直接打开受保护 API 或误调用 openDocument
+ok 40 - H5 PDF 使用鉴权下载后的 Blob，不能直接打开受保护 API 或误调用 openDocument
+  ---
+  duration_ms: 1.2278
+  type: 'test'
+  ...
+# Subtest: 文件选择组件遵守 H5 和微信不同 API/type/后缀协议
+ok 41 - 文件选择组件遵守 H5 和微信不同 API/type/后缀协议
+  ---
+  duration_ms: 3.0168
+  type: 'test'
+  ...
+# Subtest: empty supply is successful empty state, request failure remains retryable
+ok 42 - empty supply is successful empty state, request failure remains retryable
+  ---
+  duration_ms: 3.3393
+  type: 'test'
+  ...
+# Subtest: refresh clears previous cards, trimmed search and filter snapshot reach the server
+ok 43 - refresh clears previous cards, trimmed search and filter snapshot reach the server
+  ---
+  duration_ms: 0.4173
+  type: 'test'
+  ...
+# Subtest: out of order search responses and failures cannot replace the latest results
+ok 44 - out of order search responses and failures cannot replace the latest results
+  ---
+  duration_ms: 0.3887
+  type: 'test'
+  ...
+# Subtest: pagination deduplicates rows and stops at the last page
+ok 45 - pagination deduplicates rows and stops at the last page
+  ---
+  duration_ms: 0.6408
+  type: 'test'
+  ...
+# Subtest: only one load-more runs at a time and refreshing invalidates pending pagination
+ok 46 - only one load-more runs at a time and refreshing invalidates pending pagination
+  ---
+  duration_ms: 0.6942
+  type: 'test'
+  ...
+# Subtest: untrusted supply payloads and malformed pagination never become purchasable cards
+ok 47 - untrusted supply payloads and malformed pagination never become purchasable cards
+  ---
+  duration_ms: 0.6321
+  type: 'test'
+  ...
+# Subtest: unmount or hidden panel invalidates requests
+ok 48 - unmount or hidden panel invalidates requests
+  ---
+  duration_ms: 0.3616
+  type: 'test'
+  ...
+# Subtest: demo and invalid identities have no purchase navigation; real supply uses canonical detail
+ok 49 - demo and invalid identities have no purchase navigation; real supply uses canonical detail
+  ---
+  duration_ms: 0.2472
+  type: 'test'
+  ...
+# Subtest: real zero price stays free, absent/invalid price never becomes free
+ok 50 - real zero price stays free, absent/invalid price never becomes free
+  ---
+  duration_ms: 0.575
+  type: 'test'
+  ...
+1..50
+# tests 50
+# suites 0
+# pass 50
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1188.2802

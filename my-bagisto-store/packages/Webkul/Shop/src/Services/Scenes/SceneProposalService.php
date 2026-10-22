@@ -130,6 +130,9 @@ class SceneProposalService
             }
             if ($policyRecord) {
                 $frozenTerms['policy_record_id'] = $policyRecord['id'];
+                if (isset($policyRecord['content']['cancellation'])) {
+                    $frozenTerms['cancellation'] = app(SceneCancellationPolicy::class)->normalize(array_replace($policyRecord['content']['cancellation'], ['version' => $policyRecord['version']]));
+                }
             }
             $quote = [
                 'quote_no' => (string) Str::uuid(), 'request_id' => $requestId, 'request_revision_no' => $request->revision_no,
@@ -389,6 +392,7 @@ class SceneProposalService
             // 只返回正式客户条款及政策版本，配置内的成本/内部审核资料不进入 DTO。
             'terms' => ['terms' => ['version' => $terms['terms']['version'] ?? null, 'text' => $terms['terms']['text'] ?? null], 'policy_version' => $terms['policy']['version'] ?? null],
             'confirmation' => $terms['confirmation'] ?? null,
+            'cancellation' => $terms['cancellation'] ?? null,
             'terms_hash' => $quote->terms_hash, 'content_hash' => $quote->content_hash,
             'expires_at' => $quote->expires_at, 'schedule' => SceneWorkflow::unpack($quote->schedule),
             'sent_at' => $quote->sent_at, 'is_expired' => strtotime($quote->expires_at.' UTC') <= now('UTC')->timestamp,

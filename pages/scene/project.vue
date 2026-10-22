@@ -11,7 +11,20 @@
         <view v-for="confirmation in (project.offline_confirmations || [])" :key="'offline'+confirmation.id" class="divider"><text>线下确认凭证 #{{ confirmation.id }} · {{ offlineStatus(confirmation.state) }}</text><text class="muted">客户确认：{{ confirmation.occurred_at }} UTC</text><text class="muted">平台代录：{{ confirmation.created_at }} UTC</text><text v-if="confirmation.state === 'pending_review'" class="muted">凭证待独立复核，尚未计入验收结果。您仍可在线按实际情况逐项确认。</text><text v-else-if="confirmation.reviewed_at" class="muted">复核记录：{{ confirmation.reviewed_at }} UTC</text></view>
       </view>
       <view class="card"><text class="section">变更、取消与服务售后</text><picker :range="actionLabels" :value="actionIndex" @change="actionIndex = Number($event.detail.value)"><view class="picker">{{ actionLabels[actionIndex] }} ›</view></picker><textarea v-model="reason" maxlength="10000" placeholder="请说明需要调整的内容或遇到的问题" /><button class="secondary divider" :disabled="busy" @tap="requestAction">提交申请</button><text class="muted">申请提交后需人工评估；不会立即改期、释放资源或标记退款。技能售后仍按既有授权与售后规则处理。</text></view>
-      <view class="card"><text class="section">申请进展</text><view v-for="change in project.changes" :key="'c'+change.id" class="divider"><text>{{ change.kind === 'cancel' ? '取消' : '变更' }} · {{ change.state }}</text><text class="muted">{{ change.reason }}</text></view><view v-for="ticket in project.tickets" :key="'t'+ticket.id" class="divider"><text>服务售后 · {{ ticket.state }}</text><text class="muted">{{ ticket.description }}</text><text>{{ ticket.resolution || '等待服务人员处理' }}</text></view></view>
+      <view class="card"><text class="section">申请进展</text>
+        <view v-for="change in project.changes" :key="'c'+change.id" class="divider">
+          <text>{{ change.kind === 'cancel' ? '取消' : '变更' }} · {{ change.state }}</text>
+          <text class="muted">{{ change.reason }}</text>
+          <view v-if="change.state === 'pending_customer_acceptance'">
+            <text class="notice">方案已核定，调价差额：{{ ((change.price_delta_minor || 0)/100).toFixed(2) }} 元。请确认：</text>
+            <text v-if="changeEvaluation(change).summary" class="muted">{{ changeEvaluation(change).summary }}</text>
+            <text v-if="changeEvaluation(change).schedule_delta" class="muted">新服务时段：{{ changeEvaluation(change).schedule_delta.starts_at }} 至 {{ changeEvaluation(change).schedule_delta.ends_at }} UTC · 服务地 {{ changeEvaluation(change).schedule_delta.timezone }}</text>
+            <button class="primary divider" :disabled="busy" @tap="decideChange(change.id, 'accept')">接受变更并应用</button>
+            <button class="secondary divider" :disabled="busy" @tap="decideChange(change.id, 'decline')">拒绝本次变更</button>
+          </view>
+        </view>
+        <view v-for="ticket in project.tickets" :key="'t'+ticket.id" class="divider"><text>服务售后 · {{ ticket.state }}</text><text class="muted">{{ ticket.description }}</text><text>{{ ticket.resolution || '等待服务人员处理' }}</text></view>
+      </view>
     </view>
   </view>
 </template>
@@ -43,11 +56,21 @@ export default {
       } catch (e) { if (generation === this.generation && scope === sceneAccountScope()) { this.project = null; this.error = e.message || '加载失败' } }
       finally { if (generation === this.generation && scope === sceneAccountScope()) this.loading = false }
     },
-    pendingLabel(slot) { return ({ acceptance: '项目验收', change: '服务变更', cancel: '取消申请', after_sale: '服务售后' })[slot.split(':').pop()] || '项目操作' },
-    retryPending(pending) { this.send(pending.slot.split(':').pop(), null, pending) },
+    changeEvaluation(change) {
+      if (change.evaluation && typeof change.evaluation === 'object') return change.evaluation
+      try { return JSON.parse(change.evaluation || '{}') || {} } catch (_) { return {} }
+    },
+    pendingLabel(slot) { return slot.includes(':change-decision:') ? '变更确认' : ({ acceptance: '项目验收', change: '服务变更', cancel: '取消申请', after_sale: '服务售后' })[slot.split(':').pop()] || '项目操作' },
+    retryPending(pending) {
+      const prefix = 'project:' + this.id + ':', suffix = pending.slot.startsWith(prefix) ? pending.slot.slice(prefix.length) : ''
+      if (['acceptance', 'change', 'cancel', 'after_sale'].includes(suffix)) return this.send(suffix, null, pending)
+      const match = /^change-decision:([1-9][0-9]*)$/.exec(suffix)
+      if (match && Number.isSafeInteger(Number(match[1]))) return this.decideChange(Number(match[1]), null, pending)
+      uni.showToast({ title: '操作类型无法识别，请联系服务人员核实原回执', icon: 'none' })
+    },
     async send(action, data, pending = null) {
       if (this.busy) return
-      if (!pending && this.pendingCommands.length) { uni.showToast({ title: '请先按原内容确认上一条操作回执', icon: 'none' }); return }
+      if (!pending && scenePendingCommands('project:' + this.id + ':').length) { uni.showToast({ title: '请先按原内容确认上一条操作回执', icon: 'none' }); return }
       this.busy = true; const scope = sceneAccountScope(), slot = 'project:' + this.id + ':' + action
       try {
         const payload = pending ? pending.payload : { ...data, row_version: this.project.row_version }
@@ -61,6 +84,27 @@ export default {
       const items = this.project.acceptance_template.filter(item => this.acceptance[item.key]).map(item => ({ key: item.key, result: this.acceptance[item.key] === 1 ? 'pass' : 'fail', evidence_ids: [] }))
       if (!items.length) { uni.showToast({ title: '请逐项选择验收结果', icon: 'none' }); return }
       this.send('acceptance', { items })
+    },
+    async decideChange(changeId, decision, pending = null) {
+      if (this.busy) return
+      if (!Number.isSafeInteger(changeId) || changeId < 1) return
+      if (!pending && scenePendingCommands('project:' + this.id + ':').length) { uni.showToast({ title: '请先按原内容确认上一条操作回执', icon: 'none' }); return }
+      this.busy = true; const scope = sceneAccountScope(), slot = 'project:' + this.id + ':change-decision:' + changeId
+      try {
+        if (pending && pending.slot !== slot) throw new Error('原操作与变更编号不一致，请核实回执')
+        const payload = pending ? pending.payload : { decision, row_version: this.project.row_version }
+        await submitSceneCommand(slot, payload, (body, access, key) => sceneWorkflowApi.projectChangeDecision(this.id, changeId, body, access, key))
+        if (scope !== sceneAccountScope()) return
+        await this.load()
+      } catch (e) {
+        if (scope === sceneAccountScope()) {
+          uni.showToast({ title: e.message || '操作失败，请重试', icon: 'none' })
+          if (e.statusCode === 409) await this.load()
+        }
+      } finally {
+        if (scope === sceneAccountScope()) this.pendingCommands = scenePendingCommands('project:' + this.id + ':')
+        this.busy = false
+      }
     },
     requestAction() { if (!this.reason.trim()) { uni.showToast({ title: '请填写申请原因', icon: 'none' }); return }; this.send(['change','cancel','after_sale'][this.actionIndex], { reason: this.reason }) }
   }

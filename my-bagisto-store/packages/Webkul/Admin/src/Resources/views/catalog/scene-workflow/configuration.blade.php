@@ -11,6 +11,7 @@
         <label>实际签约服务主体<input name="supplier_name" maxlength="255" class="w-full rounded border p-2"></label><label>正式服务联系渠道<input name="supplier_contact" maxlength="255" class="w-full rounded border p-2"></label>
         <label>条款全文<textarea name="text" maxlength="30000" rows="18" class="w-full rounded border p-2" required>{{ $draft['text'] }}</textarea></label>
         <label>必需费用编码（每行一个，可增删，须与正式价目一致）<textarea name="required_price_codes_text" rows="5" class="w-full rounded border p-2" required>{{ implode("\n",$draft['required_price_codes']) }}</textarea></label><p>不适用的费用应在范围和价目中明确处理。</p>
+        <label>取消政策（可选 JSON，须按实际商务约定填写）<textarea name="cancellation_json" maxlength="10000" rows="5" class="w-full rounded border p-2"></textarea></label><p>tiers 为时间档位列表：hours_before 表示距开场小时数，penalty_bps 为万分比费率（100 表示 1%）；default_penalty_bps 须明确填写。扣罚基数为已复核总收款。保存后仍须另一人批准，新报价将冻结该版本；留空时不能自动取消结算，系统不会补造默认费率。</p>
         @elseif ($kind==='retention')
         <label>建议保留天数<input type="number" name="days" min="1" max="3650" value="{{ $draft['days'] }}" required></label>
         @foreach (['purpose'=>'必要处理用途与期限依据','deletion_notice'=>'删除、保全和权利联系说明'] as $key=>$label)<label>{{ $label }}<textarea name="{{ $key }}" maxlength="2000" rows="4" class="w-full rounded border p-2" required>{{ $draft[$key] }}</textarea></label>@endforeach

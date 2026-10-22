@@ -11,6 +11,9 @@ class SceneWorkflow
 {
     public function enabled(string $feature): void
     {
+        if (! config('scenes.workflow_enabled', true)) {
+            throw new SceneWorkflowException('SCENE_WRITES_DISABLED', '场景业务写入已全局停用，请稍后再试。', 503);
+        }
         if (! config('scenes.'.$feature, false)) {
             throw new SceneWorkflowException('SCENE_WRITES_DISABLED', '此项服务暂未开放，请稍后重试。', 503);
         }

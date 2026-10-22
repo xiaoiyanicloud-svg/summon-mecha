@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-10-20T14:25:59.121Z",
+  "patch": "scene-workflow-from-3fd8753.patch",
+  "sha256": "22bf24ea756279aba81ee5ba077a990e80771191b94760eaf6efa18e5d4a458a",
+  "base": "3fd8753c1299fc33062bbc2d275c44cc8d31f280",
+  "branch": "main",
+  "remote_head_available_locally": false,
+  "patch_verified_against_own_base": true,
+  "patch_verified_against_remote_head": false,
+  "files": 94,
+  "source_files": 73,
+  "real_index_preserved": true,
+  "includes_screenshots": false,
+  "includes_backups": false,
+  "includes_env": false,
+  "commit_created": false
+}
