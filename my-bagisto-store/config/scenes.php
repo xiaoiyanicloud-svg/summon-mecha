@@ -1,6 +1,8 @@
 <?php
 
 return [
+    // 全局业务写停用总开关（熔断防线）：为 false 时，所有业务写入入口均被 503 阻断，历史只读详情保持 200 正常查询。
+    'workflow_enabled' => env('SCENE_WORKFLOW_ENABLED', true),
     // Expand 后逐项开放；停止写入不关闭客户历史查询。
     'publication_v2' => env('SCENE_PUBLICATION_V2', false),
     'requests_enabled' => env('SCENE_REQUESTS_ENABLED', false),

@@ -47,6 +47,7 @@ class SceneWorkflowController extends Controller
         $prices = DB::table('scene_price_items')->whereNull('revoked_at')->where('valid_until', '>', now())->orderBy('code')->get();
         $resources = DB::table('scene_resources')->where('state', 'ready')->orderBy('id')->get();
         $projects = DB::table('scene_projects')->where('request_id', $id)->get();
+        $projectChanges = DB::table('scene_project_changes')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
         $offlineConfirmations = collect();
         if (bouncer()->hasPermission('catalog.scene-workflow.acceptance_record') || bouncer()->hasPermission('catalog.scene-workflow.acceptance_review')) {
             $offlineConfirmations = DB::table('scene_offline_acceptances')->whereIn('project_id', $projects->pluck('id'))->orderByDesc('id')->get();
@@ -71,7 +72,7 @@ class SceneWorkflowController extends Controller
         $quoteCommercial = (bouncer()->hasPermission('catalog.scene-workflow.finance') || bouncer()->hasPermission('catalog.scene-workflow.finance_review'))
             ? DB::table('scene_quote_commercial')->whereIn('quote_id', $quotes->pluck('id'))->orderByDesc('id')->get() : collect();
 
-        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets', 'offlineConfirmations', 'surveys', 'solutions', 'clock', 'attachmentRecords', 'holds', 'reservations', 'quoteCommercial'));
+        return view('admin::catalog.scene-workflow.show', compact('record', 'revision', 'facts', 'schema', 'activities', 'assessments', 'quotes', 'decisions', 'prices', 'resources', 'projects', 'tasks', 'attachments', 'admins', 'commercial', 'tickets', 'offlineConfirmations', 'surveys', 'solutions', 'clock', 'attachmentRecords', 'holds', 'reservations', 'quoteCommercial', 'projectChanges'));
     }
 
     public function contact(int $id)
@@ -278,9 +279,49 @@ class SceneWorkflowController extends Controller
 
     public function resolveTicket(Request $r, int $id, SceneProjectService $s)
     {
-        $r->validate(['row_version' => 'required|integer|min:1', 'resolution' => 'required|string|max:10000']);
+        $r->validate(['row_version' => 'required|integer|min:1', 'resolution' => 'required|string|max:10000', 'refund_proposal_minor' => 'nullable|integer|min:0']);
 
-        return $this->result($r, $s->resolveTicket($id, $r->integer('row_version'), $r->input('resolution'), $this->actor()));
+        return $this->result($r, $s->resolveTicket($id, $r->integer('row_version'), $r->input('resolution'), $this->actor(), $r->integer('refund_proposal_minor', 0)));
+    }
+
+    public function evaluateChange(Request $r, int $id, int $changeId, SceneProjectService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        $input = $r->all();
+        if (isset($input['schedule_delta']) && is_array($input['schedule_delta']) && count(array_filter($input['schedule_delta'], fn ($value) => $value !== null && $value !== '')) === 0) {
+            unset($input['schedule_delta']);
+        }
+
+        return $this->result($r, $s->evaluateChange($id, $changeId, $r->integer('row_version'), $input, $this->actor()));
+    }
+
+    public function reviewChange(Request $r, int $id, int $changeId, SceneProjectService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'decision' => 'required|in:approve,reject', 'note' => 'required|string|min:3|max:2000']);
+
+        return $this->result($r, $s->reviewChange($id, $changeId, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function executeCancellation(Request $r, int $id, int $changeId, SceneProjectService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'decision' => 'required|in:approve,reject', 'note' => 'required|string|min:3|max:2000']);
+
+        return $this->result($r, $s->processCancellation($id, $changeId, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function reportIncident(Request $r, int $id, SceneProjectService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1', 'incident_ref' => 'required|string|max:80', 'reason' => 'required|string|max:2000', 'pause_project' => 'required|boolean']);
+
+        return $this->result($r, $s->reportIncident($id, $r->integer('row_version'), $r->all(), $this->actor()));
+    }
+
+    public function resumeProject(Request $r, int $id, SceneProjectService $s)
+    {
+        $r->validate(['row_version' => 'required|integer|min:1']);
+
+        return $this->result($r, $s->resumeProject($id, $r->integer('row_version'), $this->actor()));
     }
 
     public function configuration()
@@ -294,6 +335,10 @@ class SceneWorkflowController extends Controller
 
     public function policyDraft(Request $r, string $kind, \Webkul\Shop\Services\Scenes\ScenePolicyService $s)
     {
+        if ($kind === 'commercial' && $r->filled('cancellation_json')) {
+            $r->validate(['cancellation_json' => 'required|json|max:10000']);
+            $r->merge(['cancellation' => json_decode($r->input('cancellation_json'), true, 512, JSON_THROW_ON_ERROR)]);
+        }
         if ($kind === 'commercial' && $r->has('required_price_codes_text')) {
             $r->validate(['required_price_codes_text' => 'required|string|max:5000']);
             $r->merge(['required_price_codes' => array_values(array_filter(array_map('trim', explode("\n", $r->input('required_price_codes_text')))))]);
@@ -427,6 +472,36 @@ class SceneWorkflowController extends Controller
         $r->validate(['row_version' => 'required|integer|min:1', 'assignee_id' => 'required|integer|min:1', 'reason' => 'required|string|min:3|max:2000']);
 
         return $this->result($r, $s->assignTodo($id, $r->integer('row_version'), $r->integer('assignee_id'), $r->input('reason'), $this->actor()));
+    }
+
+    public function todos(Request $r, SceneOperationsService $s)
+    {
+        $filters = [
+            'kind' => $r->input('kind'),
+            'state' => $r->input('state', 'open'),
+            'assignee_id' => $r->input('assignee_id'),
+            'request_id' => $r->input('request_id'),
+        ];
+        $limit = $r->integer('limit', 50);
+        $offset = $r->integer('offset', 0);
+
+        return $this->result($r, $s->todoList($filters, $limit, $offset));
+    }
+
+    public function resolveTodo(Request $r, int $id, SceneOperationsService $s)
+    {
+        $r->validate([
+            'row_version' => 'required|integer|min:1',
+            'resolution_code' => 'required|string|max:80',
+            'note' => 'required|string|min:3|max:2000',
+        ]);
+
+        return $this->result($r, $s->resolveTodo($id, $r->integer('row_version'), $r->input('resolution_code'), $r->input('note'), $this->actor()));
+    }
+
+    public function metrics(Request $r, SceneOperationsService $s)
+    {
+        return $this->result($r, $s->metrics());
     }
 
     private function actor(): int

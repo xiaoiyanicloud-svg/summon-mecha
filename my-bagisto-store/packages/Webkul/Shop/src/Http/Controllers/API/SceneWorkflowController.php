@@ -157,4 +157,14 @@ class SceneWorkflowController extends APIController
 
         return response()->json(['data' => $result]);
     }
+
+    public function changeDecision(Request $request, int $id, int $changeId, SceneProjectService $service)
+    {
+        $request->validate(['row_version' => 'required|integer|min:1']);
+        $owner = ScenePrincipal::fromRequest($request);
+        $key = (string) $request->header('Idempotency-Key');
+        $result = $service->customerAcceptChange($owner, $id, $changeId, $request->integer('row_version'), $key, $request->all());
+
+        return response()->json(['data' => $result]);
+    }
 }

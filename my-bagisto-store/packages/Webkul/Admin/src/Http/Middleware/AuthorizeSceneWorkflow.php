@@ -21,6 +21,9 @@ class AuthorizeSceneWorkflow
         'resourcesPage' => 'view', 'resourceVerify' => 'supply_review', 'releaseHold' => 'reserve', 'skuRegister' => 'supply', 'skuDecision' => 'supply_review',
         'quoteCommercial' => 'finance', 'quoteCommercialReview' => 'finance_review',
         'resourceLegacy' => 'supply',
+        'evaluateChange' => 'assess', 'reviewChange' => 'approve', 'executeCancellation' => 'approve',
+        'reportIncident' => 'deliver', 'resumeProject' => 'deliver',
+        'todos' => 'operate', 'resolveTodo' => 'operate', 'metrics' => 'view',
     ];
 
     public function handle(Request $request, Closure $next)

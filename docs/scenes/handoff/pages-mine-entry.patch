@@ -1,0 +1,20 @@
+diff --git a/pages/mine/index.vue b/pages/mine/index.vue
+index f2b6e03ca9763c6a127da2fd6c8eca4ff3c85db7..402a1d418e7083181ffb81ba7528bb25877ffd91 100644
+--- a/pages/mine/index.vue
++++ b/pages/mine/index.vue
+@@ -77,6 +77,7 @@
+ 					<text class="module-title">常用功能</text>
+ 				</view>
+ 				<view class="function-grid">
++<view class="func-item" @click="goSceneRequests"><text class="func-icon">📑</text><text class="func-label">服务需求</text></view>
+ 					<view class="func-item" @click="goAddress">
+ 						<text class="func-icon">📍</text>
+ 						<text class="func-label">我的地址</text>
+@@ -956,6 +957,7 @@
+ 				this.loadPartnerFormCache();
+ 			},
+ 			goCustomerService() { uni.navigateTo({ url: '/pages/mine/tickets' }); },
++            goSceneRequests() { uni.navigateTo({ url: '/pages/scene/requests' }); },
+ 			// 事故上报:技能在真实机器人上物理执行,出事需要可追溯的上报链(计划 §4.19)
+ 			goIncidentReport() { uni.navigateTo({ url: '/pages/mine/incidents' }); },
+ 			goSettings() { this.currentPage = 'settings'; },

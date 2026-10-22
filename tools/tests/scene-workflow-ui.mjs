@@ -120,10 +120,32 @@ try{
   await page.waitForFunction(()=>window.sceneVm.busy===false&&window.sceneVm.pendingCommands.length===0)
   if(!await page.evaluate(()=>window.projectCalls.length===2&&window.projectCalls[0].key===window.projectCalls[1].key&&window.projectCalls[1].payload.row_version===1))throw new Error('验收重试没有恢复原版本和幂等键')
   checks.push('验收提交成功但丢响应，刷新后按原载荷和原键恢复回执')
+  await page.evaluate(()=>{
+    window.projectData.state='delivering';window.projectData.row_version=13
+    window.projectData.changes=[{id:7,kind:'change',state:'pending_customer_acceptance',reason:'QA 延长服务',price_delta_minor:30000,evaluation:JSON.stringify({summary:'延长服务并重新核验班次',schedule_delta:{starts_at:'2026-10-22 01:00:00',ends_at:'2026-10-22 10:00:00',timezone:'Asia/Shanghai'}})}]
+    window.changeDecisionCalls=[]
+    window.sceneApiFixture.projectChangeDecision=async(id,changeId,payload,access,key)=>{
+      window.changeDecisionCalls.push({id,changeId,payload:structuredClone(payload),key})
+      window.projectData.row_version=14;window.projectData.changes[0].state='applied'
+      if(window.changeDecisionCalls.length===1)throw new Error('变更已提交，响应丢失')
+      return {data:{id:changeId,state:'applied',effective:true}}
+    }
+    return window.sceneVm.load()
+  })
+  await page.getByText('延长服务并重新核验班次',{exact:true}).waitFor()
+  await page.getByText('新服务时段：2026-10-22 01:00:00 至 2026-10-22 10:00:00 UTC · 服务地 Asia/Shanghai',{exact:true}).waitFor()
+  await page.getByText('接受变更并应用',{exact:true}).dispatchEvent('tap')
+  await page.getByText('按原内容重试变更确认',{exact:true}).waitFor()
+  await page.evaluate(()=>window.mountScene('pages/scene/project.vue',{id:'2'}));await page.waitForFunction(()=>!window.sceneVm.loading)
+  await page.getByText('按原内容重试变更确认',{exact:true}).dispatchEvent('tap')
+  await page.waitForFunction(()=>!window.sceneVm.busy&&window.sceneVm.pendingCommands.length===0)
+  if(!await page.evaluate(()=>window.changeDecisionCalls.length===2&&JSON.stringify(window.changeDecisionCalls[0])===JSON.stringify(window.changeDecisionCalls[1])&&window.changeDecisionCalls[1].payload.row_version===13))throw new Error('变更重试未恢复原接口、编号、载荷和幂等键')
+  checks.push('P1 真实变更确认按钮展示新方案，丢响应重载后原接口、原编号、原版本和原键恢复')
   await page.evaluate(async()=>{
     const record=(await window.sceneApiFixture.detail()).data
     const quote={id:31,version:2,row_version:4,request_revision_no:1,state:'sent',currency:'CNY',total_minor:12721,deposit_minor:10000,discount_minor:0,tax_minor:720,expires_at:'2026-11-01 00:00:00',is_expired:false,terms_hash:'a'.repeat(64),content_hash:'b'.repeat(64),terms:{terms:{version:'test-v1',text:'隔离测试正式服务条款'}},schedule:{starts_at:'2026-11-02T10:00:00+08:00',ends_at:'2026-11-02T18:00:00+08:00',timezone:'Asia/Shanghai'},items:[{name:'人工现场服务',quantity:1,billing_units:1,unit:'day',line_minor:12721}]}
     quote.proposal={title:'受控迎宾实例方案',version:2,scope:'冻结脚本内的迎宾和现场讲解',exclusions:'不包含无人值守和自主跨楼层',components:[{key:'robot',label:'已核验机器人',quantity:1,required:true,selected:true}],acceptance:[{key:'greeting',label:'完成冻结脚本',required:true}]}
+    quote.cancellation={version:'commercial-qa-v1',basis:'verified_paid_total',tiers:[{hours_before:48,penalty_bps:1000}],default_penalty_bps:2000}
     const old={...quote,id:30,version:1,state:'voided',total_minor:11449,discount_minor:1200,tax_minor:648,items:[{...quote.items[0],line_minor:11449}]}
     window.quoteData={...record,quotes:[quote,old]};window.sceneApiFixture.detail=async()=>({data:window.quoteData})
     window.comparisonFixture={left:old,right:quote,same_currency:true,amount_deltas:{total_minor:1272,deposit_minor:0},changes:{terms:false,request_revision:false,schedule:false,items:true}}
@@ -140,6 +162,10 @@ try{
   await page.waitForFunction(()=>window.sceneVm.loading===false)
   await page.getByText('交付范围：冻结脚本内的迎宾和现场讲解',{exact:true}).first().waitFor();await page.getByText('不含范围：不包含无人值守和自主跨楼层',{exact:true}).first().waitFor()
   checks.push('客户报价详情展示冻结方案、排除项、必选数量与验收标准')
+  await page.getByText('取消政策 commercial-qa-v1 · 按已复核总收款计罚',{exact:true}).first().waitFor()
+  await page.getByText('距开场至少 48 小时：扣罚 10%',{exact:true}).first().waitFor()
+  await page.getByText('其他时间：扣罚 20%；已核准应退和实际退款不会重复计费。',{exact:true}).first().waitFor()
+  checks.push('P1 客户接受前展示冻结取消政策版本、计算基数、档位与明确兜底费率')
   await page.evaluate(()=>window.sceneVm.compareQuotes());await page.getByText('服务总额变化 +12.72 CNY；押金变化 0.00',{exact:false}).waitFor()
   checks.push('已发送报价对比展示金额变化、条款/范围/时间差异且保留历史')
   await page.screenshot({path:path.join(out,'quote-comparison.png'),fullPage:true})
@@ -167,12 +193,15 @@ try{
   await page.evaluate(()=>{
     window.storage.set('token','sc3-one');window.storage.set('customer',{id:1})
     window.confirmationData={quote:{id:88,version:1,state:'accepted',currency:'CNY',total_minor:11449,deposit_minor:1000,terms_hash:'a'.repeat(64),content_hash:'b'.repeat(64),
-      terms:{terms:{text:'隔离测试商务条款'}},confirmation:{method:'offline_contract',required_minor:0,deadline:'2026-10-31 10:00:00'},
+      terms:{terms:{text:'隔离测试商务条款'}},cancellation:{version:'commercial-qa-v1',basis:'verified_paid_total',tiers:[{hours_before:48,penalty_bps:1000}],default_penalty_bps:2000},confirmation:{method:'offline_contract',required_minor:0,deadline:'2026-10-31 10:00:00'},
       schedule:{starts_at:'2026-11-01T10:00:00+08:00',ends_at:'2026-11-01T18:00:00+08:00',timezone:'Asia/Shanghai'},items:[{kind:'robot',charge_type:'fee'}],proposal:{scope:'按冻结迎宾脚本完成服务',exclusions:'不含无人值守与自动跨层'}},
       request_id:12,conversion_enabled:true,login_required:true,receipt:null,held_resources:[],hold_group:null,hold_expires_at:null,commercial:{contract_reviewed:false,paid_minor:0}}
     window.sceneApiFixture.confirmation=async()=>({data:structuredClone(window.confirmationData)})
     window.mountScene('pages/scene/confirm.vue',{quoteId:'88'})
   });await page.waitForFunction(()=>!window.sceneVm.loading)
+  await page.getByText('取消政策 commercial-qa-v1 · 按已复核总收款计罚',{exact:true}).waitFor()
+  await page.getByText('其他时间：扣罚 20%。实际退款仍须独立复核。',{exact:true}).waitFor()
+  checks.push('P1 订单确认页再次显示同版取消政策，并区分应退责任与实际退款复核')
   await page.getByText('请登录后，在需求详情使用本机原凭证认领需求，再确认订单。',{exact:true}).waitFor()
   if(!await page.getByText('确认服务订单',{exact:true}).isDisabled())throw new Error('未登录仍可确认')
   await page.evaluate(()=>{window.sceneVm.consent=true;window.sceneVm.record.login_required=false})
