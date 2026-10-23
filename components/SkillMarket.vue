@@ -39,18 +39,8 @@
           </view>
         </view>
       </view>
-      <view class="market-footer">
-        <button v-if="market.hasMore" size="mini" :disabled="market.loading" @click="loadMore">{{ market.loading ? '加载中…' : '加载更多' }}</button>
-        <text v-else class="market-note">已展示全部匹配技能</text>
-      </view>
-    </view>
-    <view class="market-examples">
-      <view class="examples-toggle" @click="showExamples = !showExamples"><text>技能构想示例 · 不可购买</text><text>{{ showExamples ? '收起 −' : '展开 +' }}</text></view>
-      <view v-if="showExamples">
-        <text class="market-note">以下内容用于说明能力方向，不代表已上架、已适配或能够交付。</text>
-        <view v-for="example in examples" :key="example.key" class="example-row" @click="explainExample">
-          <text>{{ example.icon }} {{ example.name }}</text><text class="example-label">构想示例</text>
-        </view>
+      <view v-if="market.hasMore" class="market-footer">
+        <button size="mini" :disabled="market.loading" @click="loadMore">{{ market.loading ? '加载中…' : '加载更多' }}</button>
       </view>
     </view>
     <view v-if="compact" class="market-more" @click="$emit('show-all')">打开完整技能市场 →</view>
@@ -60,7 +50,6 @@
 <script>
 import { skillCatalogApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
-import SKILL_LIST from '@/components/jiqi/skill-data'
 import { createSkillMarketState, loadSkillMarket } from '@/utils/skill-market'
 
 export default {
@@ -71,8 +60,6 @@ export default {
     return {
       query: '', filters: { model: '', channel: '', risk: '', motion: '' }, market: createSkillMarketState(),
       filterLoading: false, filterError: '', options: { models: [], channels: [], risks: [], motions: [] },
-      showExamples: false,
-      examples: SKILL_LIST.slice(0, 3).map((row, i) => ({ key: `example-${i}`, name: row.name, icon: row.icon || '💡' })),
     }
   },
   computed: {
@@ -102,7 +89,6 @@ export default {
     resetFilters() { this.query = ''; Object.keys(this.filters).forEach(key => { this.filters[key] = '' }); this.refresh() },
     onQueryInput(event) { if (!String(event.detail.value || '').trim()) this.refresh() },
     select(item) { if (item.market_eligible === true) this.$emit('select', item) },
-    explainExample() { uni.showModal({ title: '技能构想示例', content: '这是能力方向示例，尚不代表已上架或适配，也不能购买。请以市场中的真实技能与交付说明为准。', showCancel: false }) },
     imageUrl(url) { return String(url).replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?=\/)/, BASE_URL) },
     imageFailed(item) { item.image = '' },
     async loadFilters() {
@@ -139,10 +125,6 @@ export default {
 .market-summary { display: block; font-size: 23rpx; color: #64748b; line-height: 1.6; margin-top: 10rpx; }
 .market-price { display: block; margin: 16rpx 0 6rpx; font-size: 29rpx; color: #165dff; }
 .market-footer { text-align: center; padding: 24rpx 0; }
-.market-examples { margin-top: 22rpx; padding: 20rpx; background: #fff; border: 1rpx dashed #c5cfe1; border-radius: 14rpx; }
-.examples-toggle { display: flex; justify-content: space-between; gap: 12rpx; font-size: 24rpx; padding: 8rpx 0; }
-.example-row { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; font-size: 25rpx; gap: 12rpx; }
-.example-label { font-size: 21rpx; color: #64748b; flex-shrink: 0; }
 .market-more { text-align: center; padding-top: 28rpx; font-size: 26rpx; color: #165dff; }
 .compact { border-radius: 16rpx; padding: 20rpx 10rpx; }
 </style>

@@ -143,7 +143,6 @@ export default {
 
       accessoryCatalog: [],
 
-      // 技能 mock 已抽到 components/jiqi/skill-data.js(与机器页共用一份, 见 skillCards 计算属性)
       // 配件 mock 仅本页使用(机器页配件是纯后台数据)
       accessoryList: [
         { id: 1, name: '合金护甲', price: '299', icon: '🛡️', category: 'fight' },

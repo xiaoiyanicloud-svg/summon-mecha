@@ -5,7 +5,7 @@
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "召唤机甲",
-        "navigationBarBackgroundColor": "ffffff",
+        "navigationBarBackgroundColor": "#ffffff",
         "navigationBarTextStyle": "black"
       }
     },
@@ -274,6 +274,7 @@
     "backgroundColor": "#ffffff"
   },
   "tabBar": {
+    "custom": true,
     "color": "#666666",
     "selectedColor": "#007aff",
     "backgroundColor": "#FFFFFF",
