@@ -106,6 +106,7 @@ Route::controller(SkillController::class)->prefix($devPrefix)->middleware('devel
     Route::post('skills/{id}/versions', 'storeVersion')->whereNumber('id')->name('shop.dev.skills.versions.store');
 
     Route::post('versions/{versionId}/upload', 'upload')->whereNumber('versionId')->name('shop.dev.versions.upload');
+    Route::get('versions/{versionId}/sample', 'sample')->whereNumber('versionId')->name('shop.dev.versions.sample');
     Route::post('versions/{versionId}/submit', 'submit')->whereNumber('versionId')->name('shop.dev.versions.submit');
     Route::post('versions/{versionId}/withdraw', 'withdraw')->whereNumber('versionId')->name('shop.dev.versions.withdraw');
 

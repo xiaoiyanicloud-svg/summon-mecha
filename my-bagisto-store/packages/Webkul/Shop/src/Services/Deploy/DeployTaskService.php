@@ -100,8 +100,10 @@ class DeployTaskService
         /**
          * 一次下发到底交付哪一份字节 —— 多交付物版本的唯一解析点（C2）。
          */
-        protected SkillDeliveryAssetResolver $assets,
-    ) {}
+        protected ?SkillDeliveryAssetResolver $assets = null,
+    ) {
+        $this->assets ??= app(SkillDeliveryAssetResolver::class);
+    }
 
     /**
      * 创建一个下发任务并(尽力)下发。
@@ -650,6 +652,7 @@ class DeployTaskService
             //   · 安装:仅"非空跑"才算真装上了(空跑什么都没装,不发"已下发");
             //   · 回收:回收语义不依赖包,空跑也算完成(试用确实被回收)。
             if ($task->operation === DeployTask::OP_INSTALL && ! $task->isDryRun()) {
+                $this->markEntitlementActivated($task);
                 $this->notifier->deliveryCompleted($task);
             } elseif ($task->operation === DeployTask::OP_RECLAIM) {
                 // 回收成功 = 试用授权的终态。B-3：`expiring`(回收中) → `expired`(已回收)。
@@ -754,6 +757,29 @@ class DeployTaskService
      * 条件更新（`where status = expiring`）：回收任务可能对一条早已被撤销/已终态的
      * 授权迟到回报，此时不该把它**从别的状态**改写成 expired。命中 0 行即视为"不由本次回收收尾"。
      */
+    protected function markEntitlementActivated(DeployTask $task): void
+    {
+        if (! $task->entitlement_id) {
+            return;
+        }
+
+        $entitlement = SkillEntitlement::find($task->entitlement_id);
+        if (! $entitlement || ! in_array($entitlement->status, [SkillEntitlement::STATUS_GRANTED, SkillEntitlement::STATUS_PENDING_BIND], true)) {
+            return;
+        }
+
+        $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
+        $meta['installed_at'] = now()->toDateTimeString();
+        $meta['installed_by'] = 'agent';
+        $meta['installed_did'] = $task->did;
+        $meta['installed_device_confirmed'] = true;
+
+        $entitlement->status = SkillEntitlement::STATUS_ACTIVE;
+        $entitlement->activations = (int) $entitlement->activations + 1;
+        $entitlement->meta = $meta;
+        $entitlement->save();
+    }
+
     protected function markEntitlementExpired(DeployTask $task): void
     {
         if (! $task->entitlement_id) {

@@ -239,6 +239,14 @@ class SkillAsset extends Model
     }
 
     /**
+     * {@see self::fileExists()} 的语义别名。
+     */
+    public function existsOnDisk(): bool
+    {
+        return $this->fileExists();
+    }
+
+    /**
      * 某版本的**文件类**交付物，按 `(carrier_type, sort_order)` 升序 —— **与包指纹同序**。
      *
      * ⚠ 顺序刻意与 {@see \Webkul\Shop\Services\SkillPackage\PackageFingerprint::forVersion()}

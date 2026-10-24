@@ -72,8 +72,8 @@ class AssetUploadService
             );
         }
 
-        if ($carrierType === SkillAsset::CARRIER_FILE && ! $file) {
-            return AssetUploadResult::fail('file 类型载体必须上传文件。', 422);
+        if (in_array($carrierType, SkillAsset::FILE_BACKED_CARRIERS, true) && ! $file) {
+            return AssetUploadResult::fail("{$carrierType} 类型载体必须上传文件。", 422);
         }
 
         $attributes = [

@@ -50,6 +50,10 @@
                     <input id="changelog" type="text" name="changelog" maxlength="2000">
                 </div>
             </div>
+            <div style="margin-top:10px">
+                <label for="install_guide">安装说明（支持手工安装指引 / README）</label>
+                <textarea id="install_guide" name="install_guide" rows="2" maxlength="5000" placeholder="选填：买家手工安装或运行该技能的步骤说明"></textarea>
+            </div>
             <div style="margin-top:14px">
                 <button type="submit">创建版本</button>
             </div>
@@ -101,15 +105,48 @@
                         </select>
                     </div>
                     <div>
-                        <label>技能包文件（.skill / zip）</label>
-                        <input type="file" name="file">
+                        <label>技能包或原始载体文件（.skill / .zip / .bvh / .npz / .csv / .py / .sh / .json / .onnx）</label>
+                        <input type="file" name="file" accept=".skill,.zip,.bvh,.npz,.csv,.fbx,.py,.sh,.js,.json,.yaml,.yml,.onnx,.urdf,.txt,.md">
                     </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                    <div>
+                        <label>技能类型（用于自动合成 manifest.json）</label>
+                        <select name="kind">
+                            <option value="motion" @selected(($version->manifest['kind'] ?? 'motion') === 'motion')>动作数据（motion）</option>
+                            <option value="app" @selected(($version->manifest['kind'] ?? '') === 'app')>应用程序 / 脚本（app）</option>
+                            <option value="params" @selected(($version->manifest['kind'] ?? '') === 'params')>控制参数 / 权重（params）</option>
+                            <option value="composite" @selected(($version->manifest['kind'] ?? '') === 'composite')>复合技能（composite）</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>安全风险分级</label>
+                        <select name="risk_level">
+                            <option value="low" @selected(($version->risk_level ?? 'low') === 'low')>低风险（low）</option>
+                            <option value="medium" @selected(($version->risk_level ?? '') === 'medium')>中风险（medium）</option>
+                            <option value="high" @selected(($version->risk_level ?? '') === 'high')>高风险（high）</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>支持机型（逗号分隔）</label>
+                        <input type="text" name="target_models" value="unitree_g1,agibot_a2,engineai_pm01" placeholder="unitree_g1,agibot_a2">
+                    </div>
+                </div>
+                <div style="margin-top:8px">
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-weight:400">
+                        <input type="checkbox" name="auto_pack" value="1" checked style="width:auto">
+                        自动封装：若上传的是原始动作/脚本/配置文件或不含清单的 ZIP，自动生成符合 <code>zhaohuan.skill/v2</code> 的 <code>manifest.json</code> 并打包为 <code>.skill</code>
+                    </label>
                 </div>
                 <p class="muted" style="margin-top:8px">
                     载体由开发者上传/登记，平台不做自动编译；多机型适配需自行产出后登记。
+                    <a href="{{ route('shop.dev.versions.sample', ['versionId' => $version->id, 'kind' => 'motion']) }}" style="margin-left:8px">下载动作类 .skill 模板</a>
+                    ·
+                    <a href="{{ route('shop.dev.versions.sample', ['versionId' => $version->id, 'kind' => 'app']) }}">下载应用类 .skill 模板</a>
                 </p>
-                <div style="margin-top:12px">
+                <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                     <button type="submit" class="btn small">上传</button>
+                    <button type="submit" name="generate_sample" value="1" class="btn small ghost">一键生成标准演示 .skill 包</button>
                 </div>
             </form>
 

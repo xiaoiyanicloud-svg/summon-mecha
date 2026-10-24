@@ -199,10 +199,19 @@ class SkillController extends Controller
     public function upload(Request $request, int $versionId)
     {
         $payload = $request->validate([
-            'carrier_type' => ['required', 'string', 'in:'.implode(',', SkillAsset::CARRIER_TYPES)],
-            'entrypoint'   => ['nullable', 'string', 'max:191'],
-            'sha256'       => ['nullable', 'string', 'size:64'],
-            'file'         => ['nullable', 'file', 'max:'.$this->maxAssetKb()],
+            'carrier_type'      => ['required', 'string', 'in:'.implode(',', SkillAsset::CARRIER_TYPES)],
+            'entrypoint'        => ['nullable', 'string', 'max:191'],
+            'sha256'            => ['nullable', 'string', 'size:64'],
+            'file'              => ['nullable', 'file', 'max:'.$this->maxAssetKb()],
+            'auto_pack'         => ['nullable', 'boolean'],
+            'generate_sample'   => ['nullable', 'boolean'],
+            'kind'              => ['nullable', 'string', 'max:32'],
+            'risk_level'        => ['nullable', 'string', 'in:low,medium,high'],
+            'delivery_channels' => ['nullable'],
+            'target_models'     => ['nullable'],
+            'permissions'       => ['nullable'],
+            'install_guide'     => ['nullable', 'string', 'max:5000'],
+            'payload_json'      => ['nullable', 'string', 'max:20000'],
         ]);
 
         $result = $this->skills->uploadAsset(
@@ -224,6 +233,25 @@ class SkillController extends Controller
         // 用 service 给的提示语，而不是这里另写一句：在审版本被**换包**时，service 会把版本
         // 退回草稿，提示语里必须带上这件事（静默的状态回退会让开发者以为提审还在）。
         return back()->with('success', $result->message);
+    }
+
+    /**
+     * 下载标准示例 .skill 包（供开发者参考结构或直接改造）。
+     */
+    public function sample(Request $request, int $versionId)
+    {
+        $kind = (string) $request->query('kind', 'motion');
+        $sample = $this->skills->buildSampleForVersion($this->profile($request), $versionId, ['kind' => $kind]);
+
+        if (! $sample) {
+            abort(404);
+        }
+
+        return response()->download(
+            $sample->getRealPath(),
+            $sample->getClientOriginalName(),
+            ['Content-Type' => 'application/zip']
+        )->deleteFileAfterSend(true);
     }
 
     public function submit(Request $request, int $versionId)

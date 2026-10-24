@@ -134,7 +134,7 @@ class SkillController extends APIController
                 'file_name'    => $a->file_name,
                 'file_size'    => $a->file_size,
                 'entrypoint'   => $a->entrypoint,
-                'downloadable' => $a->isFile() && $a->fileExists(),
+                'downloadable' => $a->isFileBacked() && $a->existsOnDisk(),
             ])->values(),
         ]);
     }
@@ -176,7 +176,7 @@ class SkillController extends APIController
 
             $asset = $this->assetsOf($entitlement)->firstWhere('id', $assetId);
 
-            if (! $asset || ! $asset->isFile()) {
+            if (! $asset || ! $asset->isFileBacked()) {
                 return $this->fail(ApiErrorCode::SKILL_ASSET_NOT_FOUND, '该交付物不可下载。', 404);
             }
 

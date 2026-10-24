@@ -15,10 +15,33 @@ class PackageInspector
     /** 清单候选文件名(按优先级)。 */
     public const MANIFEST_FILES = ['manifest.json', 'manifest.yaml', 'manifest.yml'];
 
-    /** 黑名单扩展名(可执行/脚本 —— 不允许出现)。 */
+    /** 黑名单扩展名(可执行/脚本 —— 默认不允许出现)。 */
     public const FORBIDDEN_EXT = [
         'sh', 'bash', 'exe', 'dll', 'bat', 'cmd', 'ps1', 'vbs',
         'py', 'pl', 'rb', 'jar', 'msi', 'scr',
+    ];
+
+    /** 任何技能类型（含 app / composite）一律禁止的二进制/宿主危险扩展名。 */
+    public const ALWAYS_FORBIDDEN_EXT = [
+        'exe', 'dll', 'bat', 'cmd', 'ps1', 'vbs', 'jar', 'msi', 'scr', 'php', 'phar',
+    ];
+
+    /** 仅在 kind=app / composite 时允许携带的脚本扩展名（须通过静态高危指令扫描）。 */
+    public const APP_ALLOWED_SCRIPT_EXT = [
+        'py', 'sh', 'bash', 'js', 'pl', 'rb',
+    ];
+
+    /** 允许包含运行时脚本的技能类型。 */
+    public const SCRIPT_CAPABLE_KINDS = ['app', 'composite'];
+
+    /** 脚本静态安全扫描：高危系统破坏指令特征。 */
+    public const DANGEROUS_SCRIPT_PATTERNS = [
+        '/\brm\s+-[rf]{1,2}\s+\/(?:\s|$|\*)/i',
+        '/\bmkfs(?:\.[a-z0-9]+)?\b/i',
+        '/\bdd\s+if=\/dev\/(?:zero|random|urandom)\s+of=\/dev\//i',
+        '/\/dev\/tcp\//i',
+        '/\b(?:curl|wget)\b[^\n|]*\|\s*(?:ba)?sh\b/i',
+        '/:\(\)\s*\{\s*:\|:&\s*\}\s*;:/',
     ];
 
     public function __construct(
@@ -47,28 +70,60 @@ class PackageInspector
             $errors = [];
             $warnings = [];
 
-            // 黑名单扩展名
-            foreach ($files as $f) {
-                $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
-                if (in_array($ext, self::FORBIDDEN_EXT, true)) {
-                    $errors[] = "包内含禁止的可执行/脚本文件 [{$f}]。";
+            // 先定位并尝试解析清单，判断技能 kind 是否为允许脚本的 app / composite
+            $manifestFile = $this->findManifest($files);
+            $parsed = null;
+            $allowScripts = false;
+
+            if ($manifestFile) {
+                $content = $zip->getFromName($manifestFile);
+                $parsed = $this->parser->parse((string) $content, $manifestFile);
+                if ($parsed['ok']) {
+                    $kind = $parsed['manifest']['kind'] ?? null;
+                    $allowScripts = in_array($kind, self::SCRIPT_CAPABLE_KINDS, true);
                 }
             }
 
-            // 找清单
-            $manifestFile = $this->findManifest($files);
+            // 扩展名与脚本静态安全检查
+            foreach ($files as $f) {
+                $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
+
+                if (in_array($ext, self::ALWAYS_FORBIDDEN_EXT, true)) {
+                    $errors[] = "包内含禁止的可执行/脚本文件 [{$f}]。";
+
+                    continue;
+                }
+
+                if (in_array($ext, self::FORBIDDEN_EXT, true) || in_array($ext, self::APP_ALLOWED_SCRIPT_EXT, true)) {
+                    if (! $allowScripts) {
+                        $errors[] = "包内含禁止的可执行/脚本文件 [{$f}]。";
+
+                        continue;
+                    }
+
+                    // app / composite 允许携带脚本，但须执行静态高危指令扫描
+                    $scriptContent = (string) $zip->getFromName($f);
+                    foreach (self::DANGEROUS_SCRIPT_PATTERNS as $pattern) {
+                        if (preg_match($pattern, $scriptContent) === 1) {
+                            $errors[] = "脚本文件 [{$f}] 含高危系统破坏指令，禁止上传。";
+                            break;
+                        }
+                    }
+
+                    $warnings[] = "应用/复合类技能包含脚本文件 [{$f}]，已纳入安全复核范围。";
+                }
+            }
+
             if (! $manifestFile) {
                 $zip->close();
 
-                return ['ok' => false, 'manifest' => [], 'errors' => ['缺少清单文件(manifest.json / manifest.yaml)。'], 'warnings' => [], 'files' => $files];
+                return ['ok' => false, 'manifest' => [], 'errors' => array_merge($errors, ['缺少清单文件(manifest.json / manifest.yaml)。']), 'warnings' => $warnings, 'files' => $files];
             }
 
-            $content = $zip->getFromName($manifestFile);
             $zip->close();
 
-            $parsed = $this->parser->parse((string) $content, $manifestFile);
             if (! $parsed['ok']) {
-                return ['ok' => false, 'manifest' => [], 'errors' => [$parsed['error']], 'warnings' => [], 'files' => $files];
+                return ['ok' => false, 'manifest' => [], 'errors' => array_merge($errors, [$parsed['error']]), 'warnings' => $warnings, 'files' => $files];
             }
 
             // 契约校验

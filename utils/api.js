@@ -201,6 +201,7 @@ export const reviewApi = {
 // ⚠ 资质未就绪时后端走 mock 网关,返回 { out_trade_no, params:{ mock:true, callback_hint } }
 export const paymentApi = {
   create: (orderId) => http.post(`/api/payment/orders/${orderId}`, {}, { loading: true, loadingText: '创建支付中...' }),
+  mockCallback: (data) => http.post('/api/callback/payment', data, { loading: false }),
 }
 
 // ==================== 下发任务(v3.4 步骤 8) ====================

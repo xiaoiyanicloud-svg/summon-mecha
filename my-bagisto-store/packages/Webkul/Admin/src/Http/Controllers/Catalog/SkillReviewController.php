@@ -225,7 +225,8 @@ class SkillReviewController extends Controller
         }
 
         $asset = $version->assets
-            ->first(fn ($a) => $a->carrier_type === SkillAsset::CARRIER_FILE && $a->file_path);
+            ->first(fn ($a) => $a->carrier_type === SkillAsset::CARRIER_FILE && $a->file_path)
+            ?? $version->assets->first(fn ($a) => $a->isFileBacked() && $a->file_path);
 
         if (! $asset) {
             session()->flash('error', '该版本还没有可读的交付物文件，无法做 L0 机审。请先上传 .skill 包。');

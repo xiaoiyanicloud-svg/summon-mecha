@@ -20,6 +20,7 @@ use Webkul\Shop\Services\SkillAudit\AuditService;
 use Webkul\Shop\Services\SkillAudit\ReviewGate;
 use Webkul\Shop\Services\SkillAudit\SkillVersionState;
 use Webkul\Shop\Services\SkillPackage\PackageInspector;
+use Webkul\Shop\Services\SkillPackage\SkillPackageBuilder;
 use Webkul\Shop\Services\SkillSupply\AssetUploadResult;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 
@@ -365,6 +366,11 @@ class DeveloperSkillService
 
     /**
      * 上传交付物。版本不属于我 → null（控制器 404）。
+     *
+     * 支持两种上传模式：
+     *   1. 直接上传含 `manifest.json` 的标准 `.skill` 归档包；
+     *   2. 上传原始动作/应用/参数文件（.bvh/.npz/.csv/.py/.sh/.json/.zip 等）或勾选 `auto_pack=1`，
+     *      由 {@see SkillPackageBuilder} 自动生成合规 `zhaohuan.skill/v2` 清单并封装为 `.skill` 归档包。
      */
     public function uploadAsset(
         DeveloperProfile $profile,
@@ -378,7 +384,79 @@ class DeveloperSkillService
             return null;
         }
 
-        return $this->uploads->store($version, $fields, $file);
+        if ($version->status === SkillVersion::STATUS_PUBLISHED) {
+            return $this->uploads->store($version, $fields, $file);
+        }
+
+        if (isset($fields['install_guide']) && is_string($fields['install_guide']) && trim($fields['install_guide']) !== '') {
+            $version->install_guide = trim($fields['install_guide']);
+            $version->save();
+        }
+
+        if (empty($fields['payload']) && ! empty($fields['payload_json']) && is_string($fields['payload_json'])) {
+            $decoded = json_decode($fields['payload_json'], true);
+            if (is_array($decoded)) {
+                $fields['payload'] = $decoded;
+            }
+        }
+
+        $builder = app(SkillPackageBuilder::class);
+        $autoPacked = false;
+
+        if (! $file && ! empty($fields['generate_sample'])) {
+            $file = $builder->buildSamplePackage($version, $fields);
+            $fields['sha256'] = null;
+            $autoPacked = true;
+        } elseif ($file && $builder->shouldAutoPack($file, ! empty($fields['auto_pack']))) {
+            $file = $builder->buildFromUploadedFile($version, $file, $fields);
+            $fields['sha256'] = null;
+            $autoPacked = true;
+        }
+
+        $result = $this->uploads->store($version, $fields, $file);
+
+        if (! $result->ok) {
+            return $result;
+        }
+
+        // 若开发者选择的是 motion_data / app_package / vendor_package 且走自动封装，
+        // 同步确保存在一条 canonical file 载体（供包指纹、L0 机审、C 端与 Agent 下发统一读取）
+        if (
+            $autoPacked
+            && $file
+            && ($fields['carrier_type'] ?? '') !== SkillAsset::CARRIER_FILE
+            && ! SkillAsset::where('skill_version_id', $version->id)->where('carrier_type', SkillAsset::CARRIER_FILE)->exists()
+        ) {
+            $this->uploads->store(
+                $version->fresh(),
+                array_merge($fields, ['carrier_type' => SkillAsset::CARRIER_FILE, 'sort_order' => 0]),
+                $file
+            );
+        }
+
+        if ($autoPacked) {
+            $result = AssetUploadResult::ok(
+                $result->asset,
+                $result->message.'（已自动合成 manifest.json 并封装为标准 .skill 技能包）',
+                $result->status
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * 为指定版本生成标准示例 .skill 包（供开发者下载参考）。
+     */
+    public function buildSampleForVersion(DeveloperProfile $profile, int $versionId, array $options = []): ?UploadedFile
+    {
+        $version = $this->findOwnedVersion($profile, $versionId);
+
+        if (! $version) {
+            return null;
+        }
+
+        return app(SkillPackageBuilder::class)->buildSamplePackage($version, $options);
     }
 
     /**
@@ -426,6 +504,7 @@ class DeveloperSkillService
         $asset = SkillAsset::query()
             ->where('skill_version_id', $version->id)
             ->whereNotNull('file_path')
+            ->orderByRaw("CASE WHEN carrier_type = 'file' THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->first();
 

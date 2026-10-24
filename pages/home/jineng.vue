@@ -489,15 +489,17 @@
 			},
 			goCheckout() {
 				if (this.detailLoading || this.loadError || !this.currentVersion) return
-				// 开通 → 进入确认订单（复用商品购买下单逻辑）
+				// 开通 → 进入确认订单（复用商品购买下单逻辑，同时透传已选设备 ID 以便下单即自动绑定设备）
 				const skill = this.skillInfo
+				const deviceParam = this.pickedDeviceId ? `&deviceId=${encodeURIComponent(String(this.pickedDeviceId))}` : ''
 				const url =
 					`/pages/order/checkout?productId=${this.productId}` +
 					`&name=${encodeURIComponent(skill.name)}` +
 					`&price=${encodeURIComponent(String(skill.price || 0))}` +
 					`&icon=${encodeURIComponent('🧠')}` +
 					`&bg=${encodeURIComponent('#E8F0FE')}` +
-					`&scene=${encodeURIComponent('技能服务')}&type=skill&qty=1`
+					`&scene=${encodeURIComponent('技能服务')}&type=skill&qty=1` +
+					deviceParam
 				uni.navigateTo({ url })
 			}
 		}
