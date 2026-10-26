@@ -50,6 +50,10 @@
                     <input id="changelog" type="text" name="changelog" maxlength="2000">
                 </div>
             </div>
+            <div style="margin-top:10px">
+                <label for="install_guide">人工安装指引（可选，人工交付通道时展示给买家）</label>
+                <textarea id="install_guide" name="install_guide" rows="2" style="width:100%" placeholder="如：解压后放置于 /opt/skills/...，适用于 manual 交付通道"></textarea>
+            </div>
             <div style="margin-top:14px">
                 <button type="submit">创建版本</button>
             </div>
@@ -105,8 +109,18 @@
                         <input type="file" name="file">
                     </div>
                 </div>
+                <div class="row" style="margin-top:10px">
+                    <div>
+                        <label for="entrypoint_{{ $version->id }}">启动入口 entrypoint（可选，默认从 manifest.json 自动提取）</label>
+                        <input id="entrypoint_{{ $version->id }}" type="text" name="entrypoint" placeholder="如：runtime/main.py">
+                    </div>
+                    <div>
+                        <label for="payload_json_{{ $version->id }}">载荷 JSON（仅非文件类载体，如 cloud_config）</label>
+                        <input id="payload_json_{{ $version->id }}" type="text" name="payload_json" placeholder='{"key":"value"}'>
+                    </div>
+                </div>
                 <p class="muted" style="margin-top:8px">
-                    载体由开发者上传/登记，平台不做自动编译；多机型适配需自行产出后登记。
+                    上传规范：包内必须包含根级 <code>manifest.json</code> 声明清单；文件类载体将在上传时执行即时安检（Fail-Fast）。
                 </p>
                 <div style="margin-top:12px">
                     <button type="submit" class="btn small">上传</button>

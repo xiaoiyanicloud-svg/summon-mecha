@@ -22,6 +22,94 @@
 
 ## 变更记录
 
+### [技能节点1-校正闭环] 2026-10-26 · DEV-01~03 上传即安检（Fail-Fast）与表单规范对齐
+- 问题：
+  - DEV-01：`PackageInspector` 在扩展缺失时直接调用 `ZipArchive` 可能抛出未捕获错误导致 500；
+  - DEV-02：开发者门户上传交付物时仅落盘无即时安检，非 ZIP 或缺少 `manifest.json` 的包上传成功却在提审时才报错；若在服务端代编清单则破坏 D6 开发者承诺责任；
+  - DEV-03：版本创建表单缺失 `install_guide`（人工通道安装说明），交付物表单无 `payload_json` 输入。
+- 调整：
+  - `PackageInspector.php`：增加 `class_exists(\ZipArchive::class)` 守卫，扩展异常时优雅报错拒绝，杜绝 500 崩溃；
+  - `AssetUploadService.php`：将强制传文件校验放宽至所有 `SkillAsset::FILE_BACKED_CARRIERS`（涵盖 motion_data 等文件型载体）；
+  - `DeveloperSkillService.php`：在 `uploadAsset` 增加即时安检（Fail-Fast），上传时即验证合法 ZIP 与 `manifest.json`，不合规直接 422 拒绝并给出安检明细；自动从 `manifest.json` 提取 `runtime.entrypoint`；
+  - `Dev/SkillController.php` & `show.blade.php`：新建版本支持录入 `install_guide`；上传表单增加 `entrypoint` 提示与 `payload_json` 支持；
+  - `tools/tests/scene-preflight.test.mjs`：修复 Windows 下硬编码 PHP 路径，优先从系统 PATH 解析；
+  - 新增测试 `my-bagisto-store/packages/Webkul/Shop/tests/Feature/Dev/DeveloperAssetUploadFailFastTest.php`。
+- 验证：
+  - PHP 语法 `php -l` 全部通过；
+  - `php artisan view:cache` 编译通过；
+  - `php artisan ecosystem:contract-check` 契约门禁全量通过（113 admin, 45 public, 85 errors, 11 states）；
+  - `node --test tools/tests/*.test.mjs` 86/86 全部通过。
+- 回滚：
+  - 从 `.claude/backup/node1-dev-20261026/` 恢复覆盖 5 个文件，删除新增测试文件即可完全还原。
+
+
+### [配件皮肤-p1] 2026-10-24 · 适配表、配件档案、目录接口与两个入口改版
+- 问题：P0 后页面只剩 4 个真实商品，但没有子分类、没有适配数据、没有专用目录接口；配件无法按机型筛选，详情也没有安装/质保/交期。
+- 调整：
+  - 新增迁移 `2026_10_24_000001_create_accessory_profile_and_fitment_tables.php`：`accessory_profiles`（安装/包装/质保/交期/材质/官方/定制/适配说明/供电）与 `accessory_fitments`（商品 × `device_model.model_code`，直装/需转接/需定制/不适配 + 来源/核验时间）。
+  - 新增模型 `AccessoryProfile`、`AccessoryFitment`。
+  - 新增公开接口 `GET /api/accessory-catalog/filters|search|{id}`：子分类、机型、适配等级、关键词、价格排序、分页；卡片直接带适配/安装/交期；详情带适配矩阵与档案。
+  - 新增 `accessory:install-taxonomy`（默认 dry-run，幂等创建 6 个子分类并归类现有配件）与 `accessory:preflight`（只读上架检查，`--strict` 可做门禁）。
+  - 后台商品编辑页新增「配件档案与适配」面板（`Admin/Catalog/AccessoryController` + blade），只对 accessory 分类商品显示。
+  - `EcoCenter.vue`：首页改为机型选择 + 分类 chips + 真实卡片（适配等级/安装/价格）。
+  - `peijian.vue`：机器页改为服务端搜索/机型/排序/分页，分类侧栏来自后台子分类。
+  - `robot/index.vue`：详情打开后拉 `/api/accessory-catalog/{id}`，展示适配矩阵、安装/质保/交期；定制件显示报价提示并复用企业需求弹窗；主按钮文案按可售/定制切换。
+  - `utils/api.js` 新增 `accessoryCatalogApi`。
+- 验证：PHP 全部新增文件 `php -l` 通过；三个 Vue 与 `utils/api.js` 的 script 块 `node --check` 通过；`node --test tools/tests/product-catalog.test.mjs` 8/8；`php artisan view:cache` 通过；本机 MySQL 启动后已执行迁移、分类安装（6 个子分类 + 4 个商品归类）、三个目录接口与 `accessory:preflight` 实测；旧 `/api/tob-catalog` 不受影响。发现并修复 `cost` 成本字段透出与纯数字摘要两个数据问题。
+- **未验证**：浏览器 e2e（HBuilderX CLI 登录过期）、PHPUnit（独立测试库缺分类种子）。这两项不能算完成。
+- 回滚：迁移 `down()` 删除两张新表（会丢数据，先导出）；分类安装只创建不删除，按 JSON 记录手工清理；后台/接口为新增文件与路由，删除并从 `catalog-routes.php`/`api.php`/`ShopServiceProvider.php` 移除注册。
+
+### [配件皮肤-p0] 2026-10-24 · 停掉假货下单、假原价与死筛选
+- 问题：首页 15 条 mock 配件可进入详情并下单，mock `id=1..15` 与真实商品 id 冲突，可能生成关联错误商品的订单；机器页有真实商品时左侧分类/品牌/机型筛选全部失效；没有真实划线价时前端按现价 ×1.2 编造原价；Bagisto 占位图被当成商品图展示。
+- 调整：
+  - `components/EcoCenter.vue`：移除配件 mock，只展示后台真实商品；新增 loading/error/empty 三态；卡片补 `role/tabindex/keyup` 与名称两行截断。
+  - `components/jiqi/peijian.vue`：移除 20 条 mock、写死品牌/机型与由 mock 反推的机型缓存；分类改为从真实商品数据动态生成，无分类数据时隐藏侧栏；卡片补键盘可达。
+  - `pages/robot/index.vue`：`mapCatalogProduct` 改用 `utils/product-catalog.js`，无真实折扣不输出原价；过滤 `product-placeholder` 占位图；配件详情无 `bagistoId` 时禁止进入；结算前再次拦截无 `bagistoId` 的配件；配件服务文案改为“平台严选/按商品页标注”，不再统一写“官方正品”；配件无适配数据时明确提示“待补充”。
+  - 新增 `utils/product-catalog.js`（价格/图片纯函数）与 `tools/tests/product-catalog.test.mjs`（8 例）。
+  - `TobOrderController.php`：`type=accessory` 时校验商品属于 `accessory` 分类且已上架，否则 422 `ACCESSORY_ORDER_TYPE_MISMATCH`；分类未配置返回 503 `ACCESSORY_UNAVAILABLE`；配件改为一律按服务端目录价计价，不接受客户端改价。
+- 验证：`node --test tools/tests/product-catalog.test.mjs` 8/8；三个 Vue 文件 script 块 `node --check` 通过；PHP `php -l` 通过；tinker 探针确认配件分类 id=4、商品 2 不属于配件、商品 5/17 属于配件。
+- 回滚：从 `.claude/backup/accessory-p0-20261024/` 覆盖 5 个文件；新增的 `utils/product-catalog.js`、`tools/tests/product-catalog.test.mjs` 直接删除。该目录同时保留了改动前版本。
+- 未做：配件子分类、`accessory_fitments` 适配表、专用目录 API、首页机型选择器与寻源入口（P1）。
+
+### [生态中心-ui] 2026-10-24 · 配件皮肤价格改橙色
+- 问题：生态中心「配件皮肤」卡片价格 `.eco-price` 是蓝色 `#165DFF`，与技能市场、机器详情、确认订单的橙色价格不一致（「更多配件」列表本来就是橙色）。
+- 调整：`components/EcoCenter.vue` 的 `.eco-price` 改为 `#FF7820`。
+- 验证：H5 首页切到「配件皮肤」实截（`evidence/eco-accessory-price.png`）。
+- 回滚：把 `.eco-price` 的 `color` 改回 `#165DFF`（该文件另有此前未提交的改动，勿用 git checkout 整文件覆盖）。
+
+### [机器租用-合单] 2026-10-23 · 方案「提交订单」改为进确认订单页
+- 问题：自定义方案栏的「提交订单」实际调用 `openSceneRequest` 打开的是「提交需求」表单，按钮文案与实际落点不符（用户预期是下单页）。
+- 调整：
+  - `pages/robot/index.vue · submitCustomPlanOrder`：改为跳转 `/pages/order/checkout`，复用 checkout 已有的「多机合单」模式，传 `items[]`（每台 product_id/name/price/scene/icon/bg/image）+ `rent_days` + `rentPeriod`/`startDate`；提交前的机型失效校验保留。
+  - `pages/order/checkout.vue`：多机合单时隐藏数量步进器与「产品类型」行（方案里可能是不同机型，写死「人形」会误导）；机型日租价统一为价格橙 `#FF7820`。
+- 验证：H5 走「租用 → +方案 → 选 2 台 → 提交订单」，落到「确认订单」，清单两行、合计 ¥88（2台 × 1天）、租期与服务时间都正确（`evidence/plan-to-checkout.png`）。**未实际点击「确认下单」**，避免落真实订单，需用户确认后再验。
+- 测试：`node --test tools/tests/scene-catalog.test.mjs` 14/14 通过（原用例改为断言跳转 URL 里的 items[] 名称/价格/rent_days）；`scene-request` + `skill-market` 共 38 项全通过。
+- 回滚：用 `.claude/backup/jineng-detail-ui-20261023/{robot-index.vue,checkout.vue}` 覆盖。
+
+### [机器租用-方案] 2026-10-23 · 「+」按钮降为淡灰 + 方案合计数字改橙
+- 问题：自定义方案模式下，每张机型的「＋」是整片蓝底，一屏十几个，抢走了方案栏的注意力；合计行「已选 X 台 · 共 Y 天 ¥Z」整行蓝色加粗，说明文字和数字混在一起看不出重点。
+- 调整（`pages/robot/index.vue`）：
+  - `.product-select-btn` 未选状态：蓝底白字 → 淡灰底 `#E9EDF3` + 灰字 `#6B7280`；选中状态（✓）仍保留蓝底，作为已选反馈（卡片同时有蓝描边）。
+  - 合计行拆成三段：说明文字 `#64748B` 常规字重，台数/天数/金额用价格橙 `#FF7820` 加粗；方案栏内机型单价、已存方案合计也统一为橙色，与全站价格色一致。
+- 验证：H5 实际截图，未选/已选两种状态见 `evidence/robot-plan.png`、`robot-plan-selected.png`。
+- 回滚：用 `.claude/backup/jineng-detail-ui-20261023/robot-index.vue` 覆盖，或 `git checkout -- pages/robot/index.vue`。
+
+### [技能市场-ui] 2026-10-23 · 技能市场卡片价格改为橙色
+- 问题：技能市场卡片价格用 `#165dff`（蓝），与详情页/机器人详情页的橙色价格不一致，价格在蓝色卡片里也不够跳。
+- 调整：`components/SkillMarket.vue` 的 `.market-price` 改为 `#FF7820`，全站价格统一为同一暖色。
+- 验证：H5 首页「生态中心 · 技能市场」实截（`evidence/home-market-price.png`）。
+- 回滚：把 `.market-price` 的 `color` 改回 `#165dff`。
+
+### [技能详情-ui] 2026-10-23 · 技能详情页：正文富文本渲染 + 配色收敛 + 返回键下移
+- 问题：① 功能说明把 Bagisto 的 `description`(HTML)直接绑到 `<text>`，标签原样吐出，页面显示 `<p>7</p><p>【适用场景】…</p>`；② 一页里红(#ff4d4f/#ee3f4d)、橙(#ff6b00)、蓝(#165DFF)、金(#f5a623)混用，与全站「深蓝科技风」不一致；③ 返回键贴着页面最上沿。
+- 调整：
+  - 新增 `utils/rich-html.js`：`normalizeRichHtml` 供 `<rich-text>` 使用（补全 localhost/相对图片地址、图片 100% 宽自适应、剥离 script 与 on* 事件），`htmlToPlainText` 供卡片摘要使用。
+  - `pages/home/jineng.vue`：功能说明改 `<rich-text>` + 空态文案；主色统一 `#165DFF`，价格统一 `#FF7820`（与机器人详情/确认订单一致），语义色只留在风险等级/发布通道小徽标；卡片统一 24rpx 页边距 + 20rpx 圆角；去掉标签页容器的 `flex:1 / min-height`（此前少量文字也会撑出大片空白）；主 CTA 改实心蓝、价格按钮改中性底、试用按钮改蓝色描边；「检查能否安装」降为浅蓝底次级按钮，第一权重只留给底部「立即开通」。
+  - `components/NavBar.vue`：sticky 皮肤顶部 12px → 18px，并叠加安全区。
+- 验证：HBuilderX H5 移动端宽度实际截图（见 `evidence/`）；rich-html 本地脚本验证 URL 重写、脚本剥离、纯文本换行。
+- 数据问题（未改数据）：product 7 的 description 开头有一段 `<p>7</p>`，正文渲染后仍是单独一行「7」——属后台录入内容，需运营在 Bagisto 后台删除。
+- 回滚：用 `.claude/backup/jineng-detail-ui-20261023/{jineng.vue,NavBar.vue}` 覆盖；删除 `utils/rich-html.js`。
+
 ### [AI首屏减负] 2026-10-20 · 收起次要筛选，降低首屏认知负担
 - 问题：首屏同时展示 3 条示例问题和 10 个预算/任务标签，两条路径争抢注意力。
 - 调整：主标题改为“一句话，帮你选对机器人”；保留 3 个代表性示例；预算/任务筛选默认收起，用户明确需要时再展开。

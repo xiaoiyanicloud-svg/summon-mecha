@@ -37,6 +37,10 @@ class PackageInspector
             return $this->fail('包文件不存在。');
         }
 
+        if (! class_exists(\ZipArchive::class)) {
+            return $this->fail('服务器缺少 ZipArchive 扩展支持，无法解包技能包。');
+        }
+
         $zip = new \ZipArchive;
         if ($zip->open($zipPath) !== true) {
             return $this->fail('无法打开技能包(不是有效的 ZIP)。');

@@ -3,9 +3,11 @@ import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import path from 'node:path'
+import fs from 'node:fs'
 
 const exec=promisify(execFile)
-const php=process.env.SCENE_PHP || (process.platform==='win32'?'D:/java/php/php.exe':'php')
+const defaultWinPhp = fs.existsSync('D:/java/php/php.exe') ? 'D:/java/php/php.exe' : (fs.existsSync('D:/php.exe') ? 'D:/php.exe' : 'php')
+const php=process.env.SCENE_PHP || (process.platform==='win32' ? defaultWinPhp : 'php')
 const script=path.resolve('my-bagisto-store/qa/scenes/preflight.php')
 async function run(args,env){
   try { const result=await exec(php,[script,...args],{env:{...process.env,...env},timeout:10000});return {code:0,body:JSON.parse(result.stdout)} }

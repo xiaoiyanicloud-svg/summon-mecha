@@ -378,6 +378,24 @@ class DeveloperSkillService
             return null;
         }
 
+        // DEV-02 上传即安检（Fail-Fast）：
+        // 若上传文件且载体为文件类，在落盘前预检包结构与合法性，
+        // 避免开发者上传非法文件却提示成功，直到提审才报错。
+        if ($file && in_array($fields['carrier_type'] ?? '', SkillAsset::FILE_BACKED_CARRIERS, true)) {
+            $inspected = $this->inspector->inspect($file->getRealPath());
+
+            if (! ($inspected['ok'] ?? false)) {
+                $err = implode('；', $inspected['errors'] ?? ['技能包格式无效或缺失 manifest.json 清单。']);
+
+                return AssetUploadResult::fail("技能包安检失败：{$err}", 422, $inspected);
+            }
+
+            // 若请求未传 entrypoint，但包内 manifest 声明了 runtime.entrypoint，自动回填
+            if (empty($fields['entrypoint']) && ! empty($inspected['manifest']['runtime']['entrypoint'])) {
+                $fields['entrypoint'] = (string) $inspected['manifest']['runtime']['entrypoint'];
+            }
+        }
+
         return $this->uploads->store($version, $fields, $file);
     }
 

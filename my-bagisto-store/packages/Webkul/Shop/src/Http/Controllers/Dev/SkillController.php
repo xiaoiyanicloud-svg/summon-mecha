@@ -201,9 +201,20 @@ class SkillController extends Controller
         $payload = $request->validate([
             'carrier_type' => ['required', 'string', 'in:'.implode(',', SkillAsset::CARRIER_TYPES)],
             'entrypoint'   => ['nullable', 'string', 'max:191'],
+            'payload_json' => ['nullable', 'string', 'max:10000'],
             'sha256'       => ['nullable', 'string', 'size:64'],
             'file'         => ['nullable', 'file', 'max:'.$this->maxAssetKb()],
         ]);
+
+        if (! empty($payload['payload_json'])) {
+            $decoded = json_decode($payload['payload_json'], true);
+            if (is_array($decoded)) {
+                $payload['payload'] = $decoded;
+            } else {
+                return back()->withErrors(['payload_json' => '载荷 JSON 格式无效，必须为合法 JSON 对象。']);
+            }
+            unset($payload['payload_json']);
+        }
 
         $result = $this->skills->uploadAsset(
             $this->profile($request),
