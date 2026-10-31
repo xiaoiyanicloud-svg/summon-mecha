@@ -17,7 +17,14 @@
   "compileType": "miniprogram",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "file", "value": "static/hero.png" },
+      { "type": "file", "value": "static/hero1.jpg" },
+      { "type": "file", "value": "static/dianlixj.jpg" },
+      { "type": "file", "value": "static/zhanguanjd.jpg" },
+      { "type": "file", "value": "static/jiudianfw.jpg" },
+      { "type": "file", "value": "static/微信图片_20260918172229_79_57.jpg" }
+    ],
     "include": []
   },
   "appid": "wx79da365df814e044",

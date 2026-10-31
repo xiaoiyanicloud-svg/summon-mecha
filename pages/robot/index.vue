@@ -132,11 +132,25 @@
 
         <!-- 租用/购买 分类滚动条（与左边栏「全部品牌」同行） -->
         <view class="type-bar" v-if="currentTab === 'rent' || currentTab === 'buy'">
-          <!-- 电商排序：综合 / 价格（在类别左边） -->
-          <view class="sort-group">
-            <text class="sort-item" :class="{ active: currentSort === 'default' }" @tap="setSort('default')">综合</text>
-            <!-- 默认态显示 ↓（真机上 ↕ 会被当 emoji 渲染成大块，故不用那个字符）；正序/倒序都由 ↓/↑ 表示 -->
-            <text class="sort-item price" :class="{ active: currentSort !== 'default' }" @tap="togglePriceSort">价格<text class="sort-arrow">{{ priceSortMark }}</text></text>
+          <!-- 租用 / 购买共用：一个综合排序下拉 -->
+          <view class="sort-picker-wrap">
+            <view class="sort-picker" :class="{ open: showSortPanel }" @tap.stop="toggleSortPanel">
+              <text class="sort-picker-text">{{ sortLabel }}</text>
+              <text class="sort-picker-arrow">{{ showSortPanel ? '▴' : '▾' }}</text>
+            </view>
+
+            <view v-if="showSortPanel" class="sort-panel" @tap.stop>
+              <view
+                v-for="option in sortOptions"
+                :key="option.value"
+                class="sort-option"
+                :class="{ active: currentSort === option.value }"
+                @tap="pickSort(option.value)"
+              >
+                <text>{{ option.label }}</text>
+                <text v-if="currentSort === option.value" class="sort-option-check">✓</text>
+              </view>
+            </view>
           </view>
           <!-- 分类：「分类」标签与类别值合体成一段文字（默认「全部分类」），点开在下方就地展开 -->
           <view class="cat-group">
@@ -169,10 +183,9 @@
             </view>
             <view class="product-card" :class="{ selected: customPlanMode && isPlanSelected(item) }" v-for="item in filteredRentList" :key="item.id" @tap="customPlanMode ? togglePlanItem(item) : goDetail(item)">
               <view class="product-image" :style="{ backgroundColor: item.bg }">
-                <image v-if="item.image" class="product-img" :src="item.image" mode="aspectFill"></image>
-                <text v-else class="product-icon">{{ item.icon }}</text>
+                <image class="product-img" :src="item.image" mode="aspectFill" @error="imageFailed(item)"></image>
               </view>
-              <view v-if="customPlanMode" class="product-select-btn" @tap.stop="togglePlanItem(item)">{{ isPlanSelected(item) ? '✓' : '＋' }}</view>
+              <view v-if="customPlanMode" class="product-select-btn" :class="{ on: isPlanSelected(item) }" @tap.stop="togglePlanItem(item)">{{ isPlanSelected(item) ? '✓' : '＋' }}</view>
               <view class="product-info">
                 <text class="product-name">{{ item.name }}</text>
                 <text class="scene-tag">{{ item.scene }}</text>
@@ -213,8 +226,7 @@
             </view>
             <view class="product-card" v-for="item in filteredBuyList" :key="item.id" @tap="goDetail(item)">
               <view class="product-image" :style="{ backgroundColor: item.bg }">
-                <image v-if="item.image" class="product-img" :src="item.image" mode="aspectFill"></image>
-                <text v-else class="product-icon">{{ item.icon }}</text>
+                <image class="product-img" :src="item.image" mode="aspectFill" @error="imageFailed(item)"></image>
               </view>
               <view class="product-info">
                 <text class="product-name">{{ item.name }}</text>
@@ -251,8 +263,7 @@
             </view>
             <view class="scene-list-item" v-for="scene in filteredSceneList" :key="scene.id" @tap="goSceneDetail(scene)">
               <view class="scene-list-icon" :style="{ backgroundColor: scene.bg || '#E8F0FE' }">
-                <image v-if="scene.banner" class="scene-list-img" :src="scene.banner" mode="aspectFill"></image>
-                <text v-else>{{ scene.icon }}</text>
+                <image class="scene-list-img" :src="sceneImage(scene)" mode="aspectFill" @error="sceneImageFailed(scene)"></image>
               </view>
               <view class="scene-list-info">
                 <text class="scene-list-name">{{ scene.name }}</text>
@@ -273,7 +284,7 @@
       <Jineng ref="skillMarket" v-show="currentTab === 'skill'" :active="currentTab === 'skill'" @item-click="onSkill" />
 
       <!-- 配件组件 -->
-      <Peijian v-show="currentTab === 'accessory'" :items="accessoryCatalog" @item-click="onAccessory" />
+      <Peijian v-show="currentTab === 'accessory'" :active="currentTab === 'accessory'" @item-click="onAccessory" />
       </view>
 
       <!-- 滚动提示：轻微淡入，暗示可继续滑动查看 -->
@@ -294,22 +305,44 @@
           <swiper class="detail-swiper" :style="{ height: detailImgHeight + 'rpx' }" indicator-dots indicator-color="rgba(255,255,255,0.5)" indicator-active-color="#ffffff" autoplay circular>
             <swiper-item v-for="(img, idx) in detailImageList" :key="idx">
               <view class="swiper-slide" :style="{ backgroundColor: selectedProduct.bg }">
-                <image v-if="typeof img === 'string'" class="swiper-img" :src="img" mode="widthFix" @load="onDetailImgLoad"></image>
+                <image v-if="typeof img === 'string'" class="swiper-img" :src="img" :data-src="img" mode="widthFix" @load="onDetailImgLoad"></image>
                 <text v-else class="swiper-icon">{{ selectedProduct.icon }}</text>
               </view>
             </swiper-item>
           </swiper>
           <view class="detail-info-area">
             <view class="detail-price-row">
-              <text class="detail-price"><text class="detail-badge">到手价</text><text class="detail-cur">¥</text>{{ detailPrice }}</text>
+              <text class="detail-price"><text class="detail-badge">{{ detailPriceBadge }}</text><text class="detail-cur">¥</text>{{ detailPrice }}</text>
               <text class="detail-day" v-if="actionType === 'rent'">/天起</text>
               <text class="detail-original" v-if="selectedProduct.originalPrice">¥{{ selectedProduct.originalPrice }}</text>
             </view>
             <text class="detail-name">{{ selectedProduct.name }}</text>
             <!-- [LINK_TAG] 已隐藏"已对接官方商品"状态提示(原: ●已对接官方商品 / ●未对接官方商品) -->
           </view>
-          <!-- 适配机型:技能/配件专用,数据来自后台「关联商品」(GET /api/products/{id}/related) -->
-          <view class="adapt-card" v-if="relatedList.length">
+          <!-- 配件定制：只给报价入口，不显示固定总价 -->
+          <view class="quote-note" v-if="actionType === 'accessory' && selectedProduct.quoteRequired">
+            <text class="quote-title">定制款需先报价</text>
+            <text class="quote-text">请提供机型、图案/材质与期望工期，运营确认后给出报价与交期。</text>
+            <text class="quote-link" @click="requestAccessoryQuote">提交定制需求获取报价 →</text>
+          </view>
+          <!-- 配件适配矩阵：来自 accessory_fitments，按直装/需转接/需定制分级 -->
+          <view class="adapt-card" v-if="actionType === 'accessory'">
+            <text class="adapt-title">适配机型</text>
+            <view class="adapt-list" v-if="selectedProduct.accessoryFitments && selectedProduct.accessoryFitments.length">
+              <view class="adapt-row" v-for="f in selectedProduct.accessoryFitments" :key="f.model_code">
+                <view class="adapt-row-head">
+                  <text class="adapt-name">{{ f.model_name }}</text>
+                  <text class="adapt-level" :class="'lv-' + f.fit_level">{{ f.label }}</text>
+                </view>
+                <text v-if="f.note" class="adapt-detail">{{ f.note }}</text>
+                <text v-if="f.adapter_sku" class="adapt-detail">需转接件：{{ f.adapter_sku }}</text>
+              </view>
+            </view>
+            <text v-else class="adapt-note">适配信息待补充，购买前请咨询客服确认机型与接口。</text>
+            <text v-if="selectedProduct.compatibilityNote" class="adapt-note">{{ selectedProduct.compatibilityNote }}</text>
+          </view>
+          <!-- 技能适配机型：后台关联商品 -->
+          <view class="adapt-card" v-else-if="relatedList.length">
             <text class="adapt-title">适配机型</text>
             <view class="adapt-list">
               <text class="adapt-name" v-for="r in relatedList" :key="r.id">{{ r.name }}</text>
@@ -329,12 +362,21 @@
               <view class="coupon-item" v-for="(coupon, idx) in coupons" :key="idx">{{ coupon }}</view>
             </scroll-view>
           </view> -->
-          <view class="service-area">
-            <text class="service-title">{{ serviceInfo.title }}</text>
-            <view class="service-item" v-for="(svc, idx) in serviceInfo.items" :key="idx">
-              <text class="service-label" v-if="svc.label">{{ svc.label }}</text>
-              <text class="service-value">{{ svc.value }}</text>
-            </view>
+          <view class="service-area" :class="{ 'service-area-cover': actionType === 'rent' || actionType === 'buy' }">
+            <image
+              v-if="actionType === 'rent' || actionType === 'buy'"
+              class="service-cover-img"
+              src="/static/baoxian.png"
+              mode="widthFix"
+              aria-label="全程护航保障"
+            ></image>
+            <template v-else>
+              <text class="service-title">{{ serviceInfo.title }}</text>
+              <view class="service-item" v-for="(svc, idx) in serviceInfo.items" :key="idx">
+                <text class="service-label" v-if="svc.label">{{ svc.label }}</text>
+                <text class="service-value">{{ svc.value }}</text>
+              </view>
+            </template>
           </view>
           <view class="detail-tabs">
             <text class="detail-tab" :class="{ active: detailTab === 'desc' }" @tap="detailTab = 'desc'">商品详情</text>
@@ -356,23 +398,26 @@
               </view>
             </view>
           </view>
-          <view style="height: 140rpx;"></view>
+          <view style="height: 214rpx;"></view>
         </scroll-view>
         <view class="detail-bottom-bar">
-          <view class="bottom-left-icons">
-            <view class="icon-btn" @tap="callService">
-              <text>💬</text>
-              <text class="icon-label">客服</text>
-            </view>
-            <view class="icon-btn" @tap="addCart">
-              <text>🛒</text>
-              <text class="icon-label">购物车</text>
+          <view class="bottom-assist">
+            <view class="assist-btn" role="button" tabindex="0" aria-label="联系在线客服" @tap="callService">
+              <view class="assist-icon service-icon">
+                <view class="service-band"></view>
+                <view class="service-pad service-pad-left"></view>
+                <view class="service-pad service-pad-right"></view>
+                <view class="service-mic"></view>
+              </view>
+              <text class="assist-label">客服</text>
             </view>
           </view>
-          <view class="bottom-right-btns">
-            <view class="bottom-btn secondary" @tap="addCart">加入购物车</view>
-            <view class="bottom-btn primary" @tap="confirmAction(actionType)">
-              {{ actionType === 'rent' ? '立即租用' : (actionType === 'skill' ? '立即开通' : '立即下单') }}
+          <view class="bottom-right-btns" :class="{ 'commerce-actions': actionType === 'rent' || actionType === 'buy' || actionType === 'accessory' }">
+            <view class="bottom-btn secondary favorite-btn" :class="{ active: isFavorited, disabled: wishlistLoading }" role="button" tabindex="0" @tap="toggleFavorite">
+              <text class="action-label">{{ favoriteActionLabel }}</text>
+            </view>
+            <view class="bottom-btn primary" :class="{ disabled: primaryActionDisabled }" role="button" tabindex="0" @tap="confirmAction(actionType)">
+              <text class="action-label">{{ primaryActionLabel }}</text>
             </view>
           </view>
         </view>
@@ -478,7 +523,7 @@
         <view class="date-pill" @tap="planShowEndPicker = !planShowEndPicker">{{ planEndDate || '结束' }}<text class="pv-arrow">⌄</text></view>
       </view>
       <view class="scene-cart-row">
-        <text class="scene-cart-total">已选 {{ selectedPlanItems.length }} 台 · 共 {{ planDays }} 天 ¥{{ planTotal() }}</text>
+        <text class="scene-cart-total">已选 <text class="cart-num">{{ selectedPlanItems.length }}</text> 台 · 共 <text class="cart-num">{{ planDays }}</text> 天<text class="cart-sum">¥{{ planTotal() }}</text></text>
       </view>
       <view class="scene-cart-actions">
         <view class="scene-cart-save" @tap="saveCustomPlan">保存方案</view>
@@ -525,18 +570,18 @@
     <!-- ============================================================ -->
     <!-- ===== 自定义底部导航栏 ===== -->
     <view class="custom-tabbar" v-show="!showDetail && !customPlanMode">
-      <view 
-        class="tab-item" 
-        v-for="(tab, index) in bottomTabs" 
+      <view
+        class="tab-item"
+        v-for="(tab, index) in bottomTabs"
         :key="index"
         :class="{ 'is-center': index === 2 }"
         @click="switchBottomTab(tab.pagePath)"
       >
         <view class="tab-icon-wrapper" :class="{ 'center-active': index === 2 && currentPage === '/pages/ai/index' }">
-          <image 
-            v-if="isImagePath(getIcon(tab))" 
-            class="tab-icon-img" 
-            :src="getIcon(tab)" 
+          <image
+            v-if="isImagePath(getIcon(tab))"
+            class="tab-icon-img"
+            :src="getIcon(tab)"
             mode="aspectFit"
           ></image>
           <text v-else class="tab-icon-text">{{ getIcon(tab) }}</text>
@@ -613,10 +658,11 @@ import Jineng from '@/components/jiqi/jineng.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import Peijian from '@/components/jiqi/peijian.vue'
 import StateView from '@/components/StateView.vue'
-import { cartApi, productApi, categoryApi, catalogApi } from '@/utils/api'
+import { productApi, categoryApi, catalogApi, accessoryCatalogApi, wishlistApi } from '@/utils/api'
 import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing-data.js'
-import { BASE_URL } from '@/utils/config'
+import { normalizeProductPricing, pickBaseImage, pickGalleryImages, catalogFallbackImage } from '@/utils/product-catalog'
+import { BASE_URL, TOKEN_KEY } from '@/utils/config'
 
 // 场景数据统一在 components/jiqi/changjing.vue（见上方 import sceneProducts）
 
@@ -651,7 +697,16 @@ const serviceConfigs = {
     ],
   },
   buy: BUY_SERVICE,
-  accessory: BUY_SERVICE,
+  // 配件不承诺“官方正品”:只有 official=true 的商品才是官方自营,其余是平台严选/第三方。
+  // 安装、质保、交期都以商品页的实际标注为准,没有标注就如实说“以商品页为准”。
+  accessory: {
+    title: '平台严选・服务可追溯',
+    items: [
+      { label: '配送', value: '以商品页标注的交期为准' },
+      { label: '安装', value: '支持预约工程师,是否可上门以详情页标注为准' },
+      { label: '售后', value: '按商品页标注的质保与退换规则执行' },
+    ],
+  },
   skill: {
     title: '大平台・有保障',
     // ⚠ 原第一行是「绑定序列号云端下发」—— 那时后端零实现,是对用户的假承诺。
@@ -719,6 +774,13 @@ let _catalogCachedAt = 0
 // 回来时比对一下,过期的响应直接丢弃(项目的 request.js 不返回 task,没法 abort)
 let _relatedSeq = 0
 
+// 配件详情请求的竞态 token（P1）：卡片先展示，完整适配/档案由详情接口补齐
+let _accessoryDetailSeq = 0
+
+// 详情顶部图没有真实图片时（走图标占位）的固定框架高度（rpx）。
+// 所有带图商品的框架高度都由图片原始宽高比算出，不共用这个值。
+const DETAIL_IMG_DEFAULT_HEIGHT = 777.6
+
 export default {
   components: { Jineng, Peijian, StateView },
   data() {
@@ -735,15 +797,25 @@ export default {
       showTypePicker: false,
       currentBrand: 'all',
       currentSort: 'default',
+      showSortPanel: false,
+      sortOptions: [
+        { value: 'default', label: '综合排序' },
+        { value: 'rating_desc', label: '好评优先' },
+        { value: 'sales_desc', label: '销量优先' },
+        { value: 'lowest', label: '最低价格' },
+        { value: 'highest', label: '最高价格' },
+      ],
       currentSceneCategory: 'all',
       sceneVersion: 0,
       scenesLoading: true, scenesError: '', planSubmitting: false,
 
       showDetail: false,
-      detailImgHeight: 777.6,
+      detailImgHeight: DETAIL_IMG_DEFAULT_HEIGHT,
       selectedProduct: null,
       actionType: 'rent',
       detailTab: 'desc',
+      wishlistProductIds: [],
+      wishlistLoading: false,
       // 适配机型(技能/配件详情页):来自 GET /api/products/{id}/related
       relatedProducts: [],
       // ===== 租用弹窗（价格/商品/数量/产品类型/服务时间/确认） =====
@@ -780,6 +852,7 @@ export default {
       _hintProductTimer: null,
       _hintBrandTimer: null,
       detailImages: [1, 2, 3],
+      brokenSceneImages: {},
       coupons: ['满1000减50', '满5000减300', '首单立减100', '新用户专享'],
       faqList: [
         { q: '如何租用？', a: '点击“立即租用”按钮，填写租用信息，工作人员将在1个工作日内联系您。' },
@@ -791,7 +864,7 @@ export default {
       currentPage: '/pages/robot/index',
       bottomTabs: [
         { pagePath: '/pages/home/index', text: '首页', iconEmoji: '/static/shouye.png', iconActive: '/static/shouye1.png' },
-        { pagePath: '/pages/robot/index', text: '机器', iconEmoji: '/static/jiqi.png', iconActive: '/static/jiqi1.png' },
+        { pagePath: '/pages/robot/index', text: '分类', iconEmoji: '/static/jiqi.png', iconActive: '/static/jiqi1.png' },
         { pagePath: '/pages/ai/index', text: 'AI召唤', iconEmoji: '/static/aizh.png' },
         { pagePath: '/pages/order/index', text: '订单', iconEmoji: '/static/dingdan.png', iconActive: '/static/dingdan1.png' },
         { pagePath: '/pages/mine/index', text: '我的', iconEmoji: '/static/wode.png', iconActive: '/static/wode1.png' }
@@ -820,10 +893,9 @@ export default {
       if (this.currentType === 'all') return '全部分类'
       return (map[this.currentType] || this.currentType) + '分类'
     },
-    // 默认态与「价格↓」都是 ↓（默认态灰色，排序激活后变蓝加粗），「价格↑」为 ↑
-    priceSortMark() {
-      if (this.currentSort === 'lowest') return '↑'
-      return '↓'
+    sortLabel() {
+      const hit = this.sortOptions.find(option => option.value === this.currentSort)
+      return hit ? hit.label : '综合排序'
     },
     filteredRentList() {
       const list = this.rentCatalog.filter(item => {
@@ -862,8 +934,13 @@ export default {
     detailImageList() {
       const p = this.selectedProduct
       if (p) {
-        if (Array.isArray(p.images) && p.images.length) return p.images
-        if (p.image) return [p.image]
+        // 过滤 Bagisto 的 product-placeholder 占位图；没有真实图就走图标占位
+        const gallery = (Array.isArray(p.images) ? p.images : [])
+          .map(url => this.normalizeImageUrl(url))
+          .filter(url => url && !url.includes('product-placeholder'))
+        if (gallery.length) return gallery
+        const cover = this.normalizeImageUrl(p.image)
+        if (cover && !cover.includes('product-placeholder')) return [cover]
       }
       return this.detailImages
     },
@@ -873,12 +950,24 @@ export default {
       const v = (p && p.bagistoPrice != null) ? p.bagistoPrice : (p ? p.price : '0')
       return String(v || '0').replace(/[^\d.]/g, '')
     },
-    // 详情页「产品参数」:取后端透出的自定义属性,过滤系统/冗余字段
+    // 配件没有真实划线价时显示「价格」，不把普通售价写成「到手价」
+    detailPriceBadge() {
+      if (this.actionType === 'accessory') {
+        return this.selectedProduct && this.selectedProduct.originalPrice ? '到手价' : '价格'
+      }
+      return '到手价'
+    },
+    // 详情页「产品参数」:配件优先用详情接口组装好的 specs(含档案字段),
+    // 其余商品继续读后端透出的自定义属性。
     detailSpecs() {
+      if (this.actionType === 'accessory') {
+        const specs = this.selectedProduct && this.selectedProduct.accessorySpecs
+        if (Array.isArray(specs) && specs.length) return specs
+      }
       const attrs = this.selectedProduct && this.selectedProduct.bagistoAttributes
       if (!attrs || typeof attrs !== 'object') return []
       const skip = new Set(['sku', 'name', 'url_key', 'description', 'short_description', 'price',
-        'special_price', 'weight', 'status', 'new', 'featured', 'visible_individually',
+        'special_price', 'cost', 'weight', 'status', 'new', 'featured', 'visible_individually',
         'guest_checkout', 'manage_stock', 'tax_category_id', 'product_number'])
       return Object.keys(attrs)
         .filter(code => !code.startsWith('meta_') && !skip.has(code) && attrs[code] && attrs[code].value != null)
@@ -892,8 +981,67 @@ export default {
     },
     // 详情「服务/售后」区按板块取内容(租赁/购买/配件/技能);未知类型兜底用「购买」
     serviceInfo() {
+      if (this.actionType === 'accessory') {
+        const product = this.selectedProduct || {}
+        const profile = product.accessoryProfile || null
+        const official = !!product.official
+        const items = []
+
+        if (profile && profile.install_label) {
+          items.push({ label: '安装', value: profile.install_label })
+        }
+        if (profile && profile.warranty_label) {
+          items.push({ label: '质保', value: profile.warranty_label })
+        }
+        if (profile && profile.lead_time_label) {
+          items.push({ label: '交期', value: profile.lead_time_label })
+        }
+        if (!items.length) {
+          // 档案未补齐时不编造承诺，沿用“以商品页标注为准”的兜底
+          return official
+            ? { ...serviceConfigs.accessory, title: '官方自营・平台保障' }
+            : serviceConfigs.accessory
+        }
+
+        return {
+          title: official ? '官方自营・平台保障' : '平台严选・服务可追溯',
+          items,
+        }
+      }
       return serviceConfigs[this.actionType] || serviceConfigs.buy
-    }
+    },
+    // 详情底部主按钮文案：定制件走咨询，不可售不伪装成可下单
+    primaryActionLabel() {
+      if (this.actionType === 'accessory') {
+        if (this.selectedProduct && this.selectedProduct.quoteRequired) return '咨询定制'
+        if (this.selectedProduct && this.selectedProduct.orderable === false) return '暂不可在线购买'
+        return '立即购买'
+      }
+      if (this.actionType === 'rent') return '立即租用'
+      if (this.actionType === 'skill') return '立即开通'
+      return '立即购买'
+    },
+    primaryActionDisabled() {
+      if (!this.selectedProduct) return true
+      if (this.actionType !== 'accessory') return false
+      return this.selectedProduct.orderable === false && !this.selectedProduct.quoteRequired
+    },
+    isFavorited() {
+      const product = this.selectedProduct
+      const productId = Number(product && (product.bagistoId || product.id))
+      return productId > 0 && this.wishlistProductIds.includes(productId)
+    },
+    favoriteActionLabel() {
+      return this.isFavorited ? '已收藏' : '收藏'
+    },
+  },
+  watch: {
+    // 没有真实图片、走图标占位的商品用固定框架高度。
+    // 不处理的话会沿用上一件商品的图片比例 —— 同一个 🧩 占位框时大时小，看起来像 bug。
+    detailImageList(list) {
+      const hasRealImage = (list || []).some(item => typeof item === 'string' && item)
+      if (!hasRealImage) this.detailImgHeight = DETAIL_IMG_DEFAULT_HEIGHT
+    },
   },
   methods: {
     async refreshScenes() {
@@ -905,6 +1053,7 @@ export default {
     switchTab(tab) {
       this.currentTab = tab
       this.showTypePicker = false   // 切 Tab 收起类别展开面板
+      this.showSortPanel = false    // 切 Tab 收起排序菜单
       if (tab === 'rent' || tab === 'buy') {
         this.currentType = 'all'
         this.currentBrand = 'all'
@@ -914,16 +1063,25 @@ export default {
       }
     },
     selectType(type) { this.currentType = type },
-    setSort(kind) { this.currentSort = kind },
-    togglePriceSort() {
-      if (this.currentSort === 'default') this.currentSort = 'highest'
-      else if (this.currentSort === 'highest') this.currentSort = 'lowest'
-      else this.currentSort = 'default'
+    toggleSortPanel() {
+      this.showSortPanel = !this.showSortPanel
+      this.showTypePicker = false
+    },
+    pickSort(kind) {
+      this.showSortPanel = false
+      this.currentSort = kind
     },
     sortList(list) {
       const s = this.currentSort
       if (s === 'lowest') return [...list].sort((a, b) => this.priceNum(a) - this.priceNum(b))
       if (s === 'highest') return [...list].sort((a, b) => this.priceNum(b) - this.priceNum(a))
+      if (s === 'rating_desc') {
+        return [...list].sort((a, b) => ((b.rating || 0) - (a.rating || 0))
+          || ((b.reviewCount || 0) - (a.reviewCount || 0)))
+      }
+      if (s === 'sales_desc') {
+        return [...list].sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
+      }
       return list
     },
     priceNum(item) {
@@ -1013,7 +1171,27 @@ export default {
         }
         this.selectedPlanItems = current
         this.showCustomPlanModal = false
-        openSceneRequest(sceneDraftPayload({ source: 'robot', text: '意向机型：' + current.map(m => m.name).join('、') + '；意向服务 ' + this.planDays + ' 天。具体场地、任务和档期待评估。', contact: { name: '', phone: '' } }))
+        // 多机合单直接进「确认订单」,不再走"提交需求"表单 —— 用户点的是"提交订单",
+        // 落点就必须是下单页。checkout 已支持 items[](每台一行) + 全场合用租期 rent_days。
+        const items = current.map(m => ({
+          product_id: m.bagistoId || m.id,
+          name: m.name,
+          price: m.price,
+          scene: m.scene || '机器租用',
+          icon: m.icon || '🤖',
+          bg: m.bg || '#F0F4FA',
+          image: m.image || '',
+        }))
+        let url =
+          `/pages/order/checkout?items=${encodeURIComponent(JSON.stringify(items))}` +
+          `&rent_days=${encodeURIComponent(String(this.planDays))}` +
+          `&type=rent` +
+          `&rentPeriod=${encodeURIComponent(this.planDays + '天')}` +
+          `&name=${encodeURIComponent('自定义方案（' + items.length + '台）')}` +
+          `&price=${encodeURIComponent(String(this.planPerDay()))}` +
+          `&scene=${encodeURIComponent('机器租用 · 自定义方案')}`
+        if (this.planStartDate) url += `&startDate=${encodeURIComponent(this.planStartDate)}`
+        uni.navigateTo({ url })
       } catch (e) {
         uni.showToast({ title: e.message || '目录刷新失败，请重试', icon: 'none' })
       } finally { this.planSubmitting = false }
@@ -1069,14 +1247,14 @@ export default {
       this.loadRelatedProducts()
     },
 
-    // 技能/配件的「适配机型」:读后台关联商品关系(GET /api/products/{id}/related)。
-    // 机器人商品(rent/buy)不走这里 —— 与后台 links.blade.php 切换标题的条件保持一致。
+    // 技能的「适配机型」:读后台关联商品关系(GET /api/products/{id}/related)。
+    // 配件改用 accessory_fitments 的适配矩阵，不再走这里。
     // request.js 失败一律 reject 且不返回 task(没法 abort),所以用 _relatedSeq 比对来丢弃过期响应。
     async loadRelatedProducts() {
       const seq = ++_relatedSeq
       this.relatedProducts = []
       const item = this.selectedProduct
-      if (this.actionType !== 'accessory' && this.actionType !== 'skill') return
+      if (this.actionType !== 'skill') return
       if (!item || !item.bagistoId) return
       try {
         const res = await productApi.getRelatedProducts(item.bagistoId)
@@ -1119,40 +1297,137 @@ export default {
         return
       }
     },
-    // 详情顶部图：按图片实际比例自适应框架高度，整图完整显示（不裁切、不留白）
-    // 详情顶部图：框架高度直接取图片实际渲染高度，保证=图片 —— 无留白、无裁切
+    // 后端图片可能是 localhost / 相对路径；统一改写到 BASE_URL，真机与 H5 都能加载
+    // ⚠ 必须留在 methods：写进 computed 会被当成无参 getter，this.normalizeImageUrl 变成
+    //   非函数值，detailImageList 计算属性直接取不到值 → 详情轮播整块不渲染（2026-10-29 事故）。
+    normalizeImageUrl(url) {
+      let value = String(url || '')
+      if (!value) return ''
+      if (value.startsWith('/')) return BASE_URL + value
+      // Bagisto 生成的 /cache/{size}/... 在部分部署下没有可访问路由；
+      // 原图在 /storage/...，优先回退到原图，避免详情图裂。
+      value = value.replace(/^https?:\/\/[^/]+\/cache\/(?:small|medium|large|original)\//, BASE_URL + '/storage/')
+      return value.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?=\/)/, BASE_URL)
+    },
+    imageFailed(item) {
+      if (!item) return
+      const fallback = catalogFallbackImage(item.catalogKind || 'rent', item.id)
+      if (item.image !== fallback) item.image = fallback
+    },
+    sceneImage(scene) {
+      if (!scene) return catalogFallbackImage('scene', 0)
+      if (this.brokenSceneImages[scene.id]) return catalogFallbackImage('scene', scene.id)
+      return this.normalizeImageUrl(scene.banner) || catalogFallbackImage('scene', scene.id)
+    },
+    sceneImageFailed(scene) {
+      if (!scene || this.brokenSceneImages[scene.id]) return
+      this.$set(this.brokenSceneImages, scene.id, true)
+    },
+    // 详情顶部图：框架高度只按「图片原始宽高比」算（750rpx 宽 → 750 * 高/宽），
+    // 整图完整显示，不裁切、不留白。
+    // ⚠ 不要再用 boundingClientRect 回测渲染高度：图片是 mode="widthFix"，它自己的
+    //   盒子高度本来就由宽高比决定，回测等于拿结果反推输入 —— 一旦 CSS 的 height
+    //   真的生效（百分比/缩放），每次都按同一比例再乘一遍，连开几次就滚雪球。
+    //   （2026-10-29 收口；同日事故是 normalizeImageUrl 写进 computed 导致轮播整块不渲染）
     onDetailImgLoad(e) {
-      // 1) 先用宽高比算个初值兜底（防止加载瞬间框架高度不对/闪一下）
-      const { width, height } = (e && e.detail) || {}
-      if (width && height) this.detailImgHeight = Math.round(750 * height / width)
-      // 2) 再用图片真实渲染高度校准（这是最终准值：框架=图片）
-      this.$nextTick(() => {
-        setTimeout(() => {
-          uni.createSelectorQuery().in(this)
-            .select('.detail-swiper .swiper-img')
-            .boundingClientRect(rect => {
-              if (rect && rect.height) {
-                const winW = uni.getSystemInfoSync().windowWidth || 375
-                this.detailImgHeight = Math.round(rect.height * 750 / winW)
-              }
-            })
-            .exec()
-        }, 80)
-      })
+      const src = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.src) || ''
+      // 只认当前商品图集里的图：详情换商品后，上一张图的迟到 load 不许再改框架高度
+      if (src && this.detailImageList.indexOf(src) < 0) return
+
+      const applySize = (width, height) => {
+        if (!(width > 0) || !(height > 0)) return
+        const rpx = Math.round(750 * height / width)
+        // 夹紧兜底：脏数据（0 宽、极端长图/超宽图）既不能把框架压没，也不能撑爆一屏
+        this.detailImgHeight = Math.min(Math.max(rpx, 240), 1500)
+      }
+
+      // 1) 小程序与 H5 的 load 事件都带原图宽高，最优先
+      const detail = (e && e.detail) || {}
+      if (detail.width && detail.height) return applySize(detail.width, detail.height)
+
+      // 2) H5 兜底：直接读 <img> 的 natural 尺寸
+      const el = e && e.target
+      const native = el && el.tagName === 'IMG' ? el : (el && el.querySelector ? el.querySelector('img') : null)
+      if (native && native.naturalWidth && native.naturalHeight) {
+        return applySize(native.naturalWidth, native.naturalHeight)
+      }
+
+      // 3) 最后兜底：让运行时去取图片信息（异步，回来前先沿用当前高度）
+      if (src) {
+        uni.getImageInfo({
+          src,
+          success: info => {
+            if (this.detailImageList.indexOf(src) < 0) return
+            applySize(info.width, info.height)
+          },
+        })
+      }
     },
 
     onAccessory(item, fromHome = false) {
+      // 只允许真实后台商品进入配件详情/下单。没有 bagistoId 的数据（历史 mock、
+      // 旧缓存、后台已删除商品）一律拦下，避免在结算页生成关联错误商品的订单。
+      if (!item || !item.bagistoId) {
+        uni.showToast({ title: '该配件暂不可在线购买', icon: 'none' })
+        return
+      }
       const accessoryDetail = {
         ...item,
-        scene: accessoryCategoryMap[item.category] || item.category || '配件',
+        scene: item.categoryLabel || accessoryCategoryMap[item.category] || item.category || '配件',
+        icon: item.icon || '🧩',
         bg: '#F0F4FA',
+        accessoryFitments: [],
+        accessoryProfile: null,
+        accessorySpecs: [],
+        compatibilityNote: '',
+        orderable: item.orderable !== false,
+        quoteRequired: !!item.custom_service,
       }
       this.selectedProduct = accessoryDetail
       this.actionType = 'accessory'
       this.detailTab = 'desc'
       this.showDetail = true
       this.fromHome = fromHome
-      this.loadRelatedProducts()
+      // 卡片数据先上屏，再用详情接口补齐适配矩阵 / 安装 / 质保 / 交期
+      this.loadAccessoryDetail(Number(item.bagistoId))
+    },
+
+    // 配件详情：/api/accessory-catalog/{id}
+    async loadAccessoryDetail(id) {
+      const seq = ++_accessoryDetailSeq
+      try {
+        const res = await accessoryCatalogApi.detail(id)
+        const d = res && res.data
+        if (seq !== _accessoryDetailSeq || !d) return
+        const current = this.selectedProduct
+        // 在途期间详情已被换成别的商品 → 丢弃
+        if (!current || Number(current.bagistoId) !== Number(id)) return
+
+        this.selectedProduct = {
+          ...current,
+          id: d.id,
+          bagistoId: d.id,
+          name: d.name || current.name,
+          price: d.price != null ? String(d.price) : current.price,
+          bagistoPrice: d.price != null ? String(d.price) : current.bagistoPrice,
+          originalPrice: d.compare_at_price ? String(d.compare_at_price) : '',
+          image: Array.isArray(d.images) && d.images[0] ? this.normalizeImageUrl(d.images[0]) : current.image,
+          images: Array.isArray(d.images) ? d.images.map(url => this.normalizeImageUrl(url)) : [],
+          bagistoDescription: fixDescUrls(d.description_html || current.bagistoDescription || ''),
+          category: d.category ? d.category.code : current.category,
+          categoryLabel: d.category ? d.category.name : current.categoryLabel,
+          scene: d.category ? d.category.name : current.scene,
+          accessoryFitments: Array.isArray(d.fitments) ? d.fitments : [],
+          accessoryProfile: d.profile || null,
+          accessorySpecs: Array.isArray(d.specs) ? d.specs : [],
+          compatibilityNote: d.compatibility_note || '',
+          orderable: d.orderable !== false,
+          quoteRequired: !!d.quote_required,
+          official: !!d.official,
+        }
+      } catch (e) {
+        // 静默降级：保留卡片已有信息，适配区块会提示“待补充”，不打断用户
+      }
     },
 
     onSkill(item) {
@@ -1173,9 +1448,10 @@ export default {
         this.fromAi = false
         uni.switchTab({ url: '/pages/ai/index' })
       }
-      // 清掉适配机型,并作废在途请求(关了浮层还可能有一个 related 请求在路上)
+      // 清掉适配机型,并作废在途请求(关了浮层还可能有一个 related/accessory 请求在路上)
       this.relatedProducts = []
       _relatedSeq++
+      _accessoryDetailSeq++
     },
 
     confirmAction(type) {
@@ -1191,6 +1467,15 @@ export default {
         return
       }
       if (type === 'accessory') {
+        // 定制件只走需求/报价，不在线建单；不可售商品也不伪装成可下单
+        if (product.quoteRequired) {
+          this.requestAccessoryQuote()
+          return
+        }
+        if (product.orderable === false) {
+          uni.showToast({ title: '该配件暂不可在线购买', icon: 'none' })
+          return
+        }
         // 配件购买：进入确认订单（复用商品购买逻辑），不触发「来自首页」的自动返回
         this.showDetail = false
         this.selectedProduct = null
@@ -1218,6 +1503,12 @@ export default {
     // 组装结算页参数并跳转
     goCheckout(product, type, opts) {
       opts = opts || {}
+      // 配件必须有真实后台商品 id 才能结算：否则 mock/旧缓存的 id 会撞到真实商品，
+      // 生成关联错误商品的订单。宁可不卖，也不能下错单。
+      if (type === 'accessory' && (!product || !product.bagistoId)) {
+        uni.showToast({ title: '该配件暂不可在线购买', icon: 'none' })
+        return
+      }
       const scene = product.scene || ''
       const qty = opts.qty || product.qty || 1
       // 有真实 Bagisto id(已对齐商品)则用真 id 走真下单;否则回退 mock id(意向单)
@@ -1311,23 +1602,98 @@ export default {
       this.rentNow(product, opts)
     },
 
-    callService() { uni.showToast({ title: '正在连接客服...', icon: 'none' }) },
-
-    // 加入购物车（对接购物车 API）
-    addCart() {
-      if (!this.selectedProduct) return
-      const product = this.selectedProduct
-      uni.showLoading({ title: '加入中...', mask: true })
-      cartApi.addToCart({ product_id: product.bagistoId || product.id, quantity: 1 })
-        .then(() => {
-          uni.hideLoading()
-          uni.showToast({ title: '已加入购物车', icon: 'success' })
+    refreshWishlist() {
+      if (!uni.getStorageSync(TOKEN_KEY)) {
+        this.wishlistProductIds = []
+        return
+      }
+      wishlistApi.list()
+        .then((res) => {
+          const rows = res && Array.isArray(res.data) ? res.data : []
+          this.wishlistProductIds = rows
+            .map(row => Number(row && row.product && row.product.id))
+            .filter(id => Number.isInteger(id) && id > 0)
         })
-        .catch((err) => {
-          uni.hideLoading()
-          uni.showToast({ title: (err && err.message) || '加入购物车失败', icon: 'none' })
+        .catch(() => {
+          this.wishlistProductIds = []
         })
     },
+
+    async toggleFavorite() {
+      const product = this.selectedProduct
+      if (!product || this.wishlistLoading) return
+      if (!uni.getStorageSync(TOKEN_KEY)) {
+        uni.showModal({
+          title: '登录后收藏',
+          content: '收藏会与账号绑定，登录后可查看已收藏的商品。',
+          confirmText: '去登录',
+          success: (res) => { if (res.confirm) uni.switchTab({ url: '/pages/mine/index' }) },
+        })
+        return
+      }
+      const productId = Number(product.bagistoId || product.id)
+      if (!productId) {
+        uni.showToast({ title: '该商品暂不可收藏', icon: 'none' })
+        return
+      }
+      const wasFavorited = this.isFavorited
+      this.wishlistLoading = true
+      try {
+        const res = await wishlistApi.toggle(productId)
+        await this.refreshWishlist()
+        uni.showToast({
+          title: (res && res.message) || (wasFavorited ? '已取消收藏' : '已收藏'),
+          icon: 'none',
+        })
+      } catch (e) {
+        uni.showToast({ title: (e && e.message) || '收藏操作失败', icon: 'none' })
+      } finally {
+        this.wishlistLoading = false
+      }
+    },
+
+    callService() {
+      // 登录判断交给客服中心自己处理：游客也应先进入客服页，看到登录引导，
+      // 不能在本页弹窗里把入口拦住。
+      const product = this.selectedProduct || {}
+      const typeText = { rent: '租赁', buy: '购买', accessory: '配件', skill: '技能' }[this.actionType] || '商品'
+      const content = '咨询' + typeText + '「' + (product.name || '') + '」：'
+      const price = product.bagistoPrice != null ? product.bagistoPrice : (product.price || '')
+      const rawImage = product.image || (Array.isArray(product.images) && product.images[0]) || ''
+      const productImage = /^(https?:\/\/|\/storage\/)/i.test(rawImage) ? rawImage : ''
+      uni.setStorageSync('supportProductContext', {
+        type: 'product',
+        product_id: Number(product.bagistoId || product.id) || undefined,
+        name: product.name || typeText,
+        sku: product.sku || '',
+        price: String(price || ''),
+        image: productImage,
+        kind: this.actionType,
+      })
+      uni.navigateTo({
+        url: '/pages/mine/tickets?category=other&content=' + encodeURIComponent(content) + '&productContext=1',
+      })
+    },
+
+    // 定制皮肤：复用页面已有的「企业需求」留资弹窗，由运营报价；不伪造固定价/固定交期
+    requestAccessoryQuote() {
+      const product = this.selectedProduct || {}
+      const models = (product.accessoryFitments || [])
+        .map(f => f.model_name)
+        .filter(Boolean)
+        .join('、')
+      this.enterpriseForm = {
+        mode: 'buy',
+        identity: 'enterprise',
+        name: '',
+        phone: '',
+        wechat: '',
+        company: '',
+        demand: `配件定制：${product.name || '配件'}${models ? '；目标机型：' + models : ''}；请确认图案/材质、工期与报价。`,
+      }
+      this.showEnterpriseModal = true
+    },
+
     goSceneDetail(scene) {
       // 带上 category,供场景详情页判断是否为 TOB(企业商用)场景去拉后端真实图+描述
       uni.navigateTo({ url: `/pages/robot/fangan?sceneId=${scene.id}&category=${scene.category}` })
@@ -1446,10 +1812,10 @@ export default {
     },
     // 原始商品数组 → 四个目录(纯展示映射,缓存命中与首拉共用一条路径)
     applyCatalog(raw) {
-      this.rentCatalog = (raw.rent || []).map(p => this.mapCatalogProduct(p))
-      this.buyCatalog = (raw.buy || []).map(p => this.mapCatalogProduct(p))
-      this.accessoryCatalog = (raw.accessory || []).map(p => ({ ...this.mapCatalogProduct(p), category: '配件' }))
-      this.skillCatalog = (raw.skill || []).map(p => ({ ...this.mapCatalogProduct(p), tag: '技能' }))
+      this.rentCatalog = (raw.rent || []).map(p => this.mapCatalogProduct(p, 'rent'))
+      this.buyCatalog = (raw.buy || []).map(p => this.mapCatalogProduct(p, 'buy'))
+      this.accessoryCatalog = (raw.accessory || []).map(p => this.mapCatalogProduct(p, 'accessory'))
+      this.skillCatalog = (raw.skill || []).map(p => this.mapCatalogProduct(p, 'skill'))
     },
     async fetchProductsByCat(categoryId) {
       try {
@@ -1459,42 +1825,59 @@ export default {
         return []
       }
     },
-    mapCatalogProduct(p) {
-      const regular = (p.prices && p.prices.regular && p.prices.regular.price) || ''
-      const final = (p.prices && p.prices.final && p.prices.final.price) || ''
-      const minPrice = (typeof p.min_price === 'number' ? p.min_price : '0')
-      const effVal = final || regular || minPrice
-      const rawEff = parseFloat(String(effVal).replace(/[^\d.]/g, ''))
-      const rawReg = parseFloat(String(regular).replace(/[^\d.]/g, ''))
-      const num = isNaN(rawEff) ? '0' : String(Math.round(rawEff * 100) / 100) // 去尾随零: 500.0000→500, 12.50→12.5
-      const originalPrice = rawEff > 0 ? String(Math.round(((!isNaN(rawReg) && rawReg > rawEff) ? rawReg : rawEff * 1.2) * 100) / 100) : ''
-      const img = (p.base_image && (p.base_image.medium_image_url || p.base_image.large_image_url || p.base_image.small_image_url)) || ''
+    mapCatalogProduct(p, catalogKind = 'rent') {
+      const pricing = normalizeProductPricing(p)
+      const images = pickGalleryImages(p).map(url => this.normalizeImageUrl(url)).filter(Boolean)
+      const cover = this.normalizeImageUrl(pickBaseImage(p)) || images[0] || catalogFallbackImage(catalogKind, p.id)
+      const iconMap = { rent: '🤖', buy: '🤖', accessory: '🧩', skill: '💡' }
       return {
         id: p.id,
         name: p.name || '商品',
-        price: num,
-        originalPrice,
-        icon: '🤖',
+        price: pricing.price,
+        // 只有真实 regular > final 才有原价;缺价时不再用现价 ×1.2 编造折扣
+        originalPrice: pricing.originalPrice,
+        icon: iconMap[catalogKind] || '🤖',
         bg: '#F0F4FA',
-        scene: '',
+        scene: catalogKind === 'accessory' ? '配件' : (catalogKind === 'skill' ? '技能' : ''),
         sku: p.sku || '',
-        image: img,
+        image: cover,
+        images: images.length ? images : [cover],
+        catalogKind,
         bagistoId: p.id,
-        bagistoPrice: num,
+        bagistoPrice: pricing.price,
         bagistoDescription: fixDescUrls(p.description || ''),
+        // 后台 `official` 属性(boolean)透出为“是/否”；只有明确为“是”才按官方自营表述
+        official: !!(p.custom_attributes && p.custom_attributes.official && String(p.custom_attributes.official.value) === '是'),
         // v1:品牌/类别按商品名推断(见 detectBrandKey/detectTypeKey);后续迁移为后台商品属性驱动
         brand: detectBrandKey(p.name),
         type: detectTypeKey(p.name),
+        rating: Number((p.ratings && p.ratings.average) || 0),
+        reviewCount: Number((p.reviews && p.reviews.total) || 0),
+        salesCount: Number((p.sales && p.sales.total) || 0),
       }
     }
   },
 
   onShow() {
+    this.refreshWishlist()
     this.$nextTick(() => { if (this.currentTab === 'skill' && this.$refs.skillMarket) this.$refs.skillMarket.refresh() })
     const tab = uni.getStorageSync('robotTab')
     if (tab && ['rent', 'scene', 'buy', 'skill', 'accessory'].includes(tab)) {
       this.currentTab = tab
       uni.removeStorageSync('robotTab')
+    }
+
+    const wishlistProduct = uni.getStorageSync('wishlistProductDetail')
+    if (wishlistProduct && wishlistProduct.product) {
+      uni.removeStorageSync('wishlistProductDetail')
+      const kind = ['rent', 'buy', 'accessory', 'skill'].includes(wishlistProduct.catalog_type)
+        ? wishlistProduct.catalog_type
+        : 'buy'
+      const mapped = this.mapCatalogProduct(wishlistProduct.product, kind)
+      this.currentTab = kind
+      if (kind === 'accessory') this.onAccessory(mapped, false)
+      else if (kind === 'skill') this.onSkill(mapped)
+      else this.goDetail(mapped)
     }
 
     const accessoryData = uni.getStorageSync('accessoryDetail')
@@ -1641,7 +2024,7 @@ page {
 .cat-picker {
   display: flex;
   align-items: center;
-  /* 去掉方框：无背景/描边/圆角，与左侧「综合/价格」同款纯文字 */
+  /* 与排序入口保持同一行的轻量文字样式 */
   padding: 6rpx 0;
   font-size: 26rpx;
   color: #6B7280;   /* 与「分类」标签同色深，不再用更深的 #1F2937 */
@@ -1661,27 +2044,61 @@ page {
 .type-item:active {
   opacity: 0.7;
 }
-/* 电商排序：综合 / 价格 */
-.sort-group {
+/* 租用 / 购买：综合排序下拉 */
+.sort-picker-wrap {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 40;
+}
+.sort-picker {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  gap: 8rpx;
+  padding: 8rpx 14rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DBE4F3;
+  border-radius: 12rpx;
+  font-size: 22rpx;
+  color: #102F6E;
+  box-sizing: border-box;
 }
-.sort-item {
-  padding: 4rpx 14rpx;
-  font-size: 26rpx;
-  color: #6B7280;
-  line-height: 1.6;
-  flex-shrink: 0;
-}
-.sort-item.active {
+.sort-picker.open {
+  background: #EEF3FF;
+  border-color: #165DFF;
   color: #165DFF;
-  font-weight: 600;
 }
-.sort-arrow {
-  font-size: 20rpx;
-  margin-left: 4rpx;
+.sort-picker-text {
+  max-width: 150rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.sort-picker-arrow { font-size: 18rpx; color: #94A3B8; }
+.sort-picker.open .sort-picker-arrow { color: #165DFF; }
+.sort-panel {
+  position: absolute;
+  top: calc(100% + 8rpx);
+  left: 0;
+  width: 220rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E7EAF0;
+  border-radius: 16rpx;
+  box-shadow: 0 12rpx 30rpx rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+}
+.sort-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  padding: 20rpx 22rpx;
+  font-size: 24rpx;
+  color: #475569;
+  border-bottom: 1rpx solid #F1F5F9;
+}
+.sort-option:last-child { border-bottom: 0; }
+.sort-option.active { background: #EAF1FF; color: #165DFF; font-weight: 700; }
+.sort-option-check { color: #165DFF; font-size: 22rpx; font-weight: 700; }
 
 /* ===== 主体 ===== */
 .main-body {
@@ -1691,7 +2108,8 @@ page {
   overflow: hidden;
   z-index: 1;
   position: relative;
-  margin-top: 38rpx;
+  /* 顶栏与内容之间只保留内容区自身的一条留白，不再额外叠加外边距 */
+  margin-top: 0;
 }
 
 /* ===== 滚动提示条（轻微淡入，暗示可滑动查看更多） ===== */
@@ -2124,7 +2542,9 @@ page {
 }
 .swiper-img {
   width: 100%;
-  height: 103%;
+  /* 框架高度已按图片原始宽高比算好，这里只要铺满；不要写 103% 之类的放大值 ——
+     H5 下 widthFix 的内联高度会覆盖它，小程序下却可能生效，造成上下各裁一刀 */
+  height: 100%;
 }
 .swiper-icon {
   font-size: 160rpx;
@@ -2222,6 +2642,41 @@ page {
   padding: 8rpx 18rpx;
   margin: 0 12rpx 12rpx 0;
 }
+.adapt-note {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #8A9AA8;
+}
+/* 配件适配矩阵：一行一个机型，等级用小标签 */
+.adapt-row { width: 100%; margin-bottom: 14rpx; }
+.adapt-row:last-child { margin-bottom: 0; }
+.adapt-row-head { display: flex; align-items: center; gap: 10rpx; }
+.adapt-row .adapt-name { margin: 0; }
+.adapt-level {
+  font-size: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  background: #EEF2F6;
+  color: #52607A;
+}
+.adapt-level.lv-direct { background: #E8F7F0; color: #0E7C5A; }
+.adapt-level.lv-adapter { background: #FFF4E5; color: #B45309; }
+.adapt-level.lv-custom { background: #F3E8FF; color: #7E22CE; }
+.adapt-level.lv-unsupported { background: #FDECEC; color: #B91C1C; }
+.adapt-detail { display: block; margin-top: 6rpx; font-size: 21rpx; line-height: 1.5; color: #8A9AA8; }
+/* 定制款报价提示 */
+.quote-note {
+  margin: 0 30rpx 20rpx;
+  background: #F8F5FF;
+  border: 1rpx solid #E9DDFB;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+}
+.quote-title { display: block; font-size: 26rpx; font-weight: 700; color: #6D28D9; margin-bottom: 8rpx; }
+.quote-text { display: block; font-size: 22rpx; line-height: 1.6; color: #6B7280; }
+.quote-link { display: block; margin-top: 10rpx; font-size: 24rpx; font-weight: 600; color: #6D28D9; }
 .spec-card {
   margin: 0 30rpx 20rpx;
   background: #F8FAFC;
@@ -2290,6 +2745,16 @@ page {
   border-radius: 16rpx;
   margin: 0 30rpx 20rpx;
   padding: 16rpx 20rpx;
+}
+.service-area-cover {
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+}
+.service-cover-img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .service-title {
   display: block;
@@ -2407,57 +2872,152 @@ page {
   left: 0;
   right: 0;
   background: #ffffff;
-  padding: 20rpx 24rpx;
+  padding: 18rpx 20rpx;
   /* #ifdef H5 */
-  padding-bottom: 56rpx;
+  padding-bottom: 34rpx;
   /* #endif */
   /* #ifndef H5 */
   padding-bottom: calc(12rpx + env(safe-area-inset-bottom));
   /* #endif */
-  border-top: 2rpx solid #F1F5F9;
+  border-top: 1rpx solid #E8EEF7;
+  box-shadow: 0 -12rpx 34rpx rgba(16, 47, 110, 0.07);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 18rpx;
   z-index: 10;
 }
-.bottom-left-icons {
+.bottom-assist {
   display: flex;
   align-items: center;
-  gap: 24rpx;
+  gap: 16rpx;
+  flex-shrink: 0;
 }
-.icon-btn {
+.assist-btn {
+  position: relative;
+  width: 66rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 32rpx;
-  color: #4B5563;
+  justify-content: center;
+  gap: 7rpx;
 }
-.icon-label {
-  font-size: 20rpx;
-  color: #6B7280;
-  margin-top: 2rpx;
+.assist-btn:active { opacity: 0.62; }
+.assist-icon {
+  position: relative;
+  width: 42rpx;
+  height: 42rpx;
+  color: #165DFF;
+}
+.assist-label {
+  font-size: 19rpx;
+  line-height: 1.2;
+  color: #516078;
+  white-space: nowrap;
+}
+.service-band {
+  position: absolute;
+  left: 6rpx;
+  top: 4rpx;
+  width: 30rpx;
+  height: 26rpx;
+  border: 3rpx solid #165DFF;
+  border-bottom: 0;
+  border-radius: 18rpx 18rpx 0 0;
+  box-sizing: border-box;
+}
+.service-band::after {
+  content: '';
+  position: absolute;
+  left: 12rpx;
+  bottom: -8rpx;
+  width: 4rpx;
+  height: 10rpx;
+  border-radius: 4rpx;
+  background: #165DFF;
+}
+.service-pad {
+  position: absolute;
+  top: 22rpx;
+  width: 9rpx;
+  height: 16rpx;
+  border-radius: 5rpx;
+  background: #165DFF;
+}
+.service-pad-left { left: 2rpx; }
+.service-pad-right { right: 2rpx; }
+.service-mic {
+  position: absolute;
+  left: 17rpx;
+  bottom: 1rpx;
+  width: 15rpx;
+  height: 7rpx;
+  border: 3rpx solid #165DFF;
+  border-top: 0;
+  border-radius: 0 0 10rpx 10rpx;
+  box-sizing: border-box;
 }
 .bottom-right-btns {
   display: flex;
-  gap: 16rpx;
+  flex: 1;
+  justify-content: flex-end;
 }
 .bottom-btn {
-  padding: 16rpx 48rpx;
-  border-radius: 56rpx;
-  font-size: 30rpx;
-  font-weight: 600;
+  width: 220rpx;
+  height: 112rpx;
+  padding: 0 18rpx;
+  border-radius: 20rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
   text-align: center;
+  box-shadow: 0 10rpx 24rpx rgba(16, 47, 110, 0.09);
 }
 .bottom-btn.primary {
-  background: #4291F6;
+  background: linear-gradient(145deg, #165DFF 0%, #2E7BFF 100%);
   color: #fff;
+  box-shadow: 0 12rpx 26rpx rgba(22, 93, 255, 0.26);
 }
 .bottom-btn.secondary {
-  background: #EEF2F6;
-  color: #1F2937;
+  background: #F1F5FB;
+  color: #102F6E;
+  border: 1rpx solid #E1E9F6;
 }
-.bottom-btn:active {
-  opacity: 0.7;
+.favorite-btn.active {
+  background: #FFF1F2;
+  color: #E5484D;
+  border-color: #FFD5D9;
+}
+.bottom-btn.disabled { opacity: 0.45; }
+.bottom-btn:active { transform: scale(0.97); opacity: 0.78; }
+.action-label {
+  display: block;
+  font-size: 30rpx;
+  line-height: 1.2;
+  letter-spacing: 0.2rpx;
+  white-space: nowrap;
+}
+.commerce-actions {
+  gap: 16rpx;
+}
+.commerce-actions .bottom-btn {
+  flex: 1;
+  width: auto;
+  height: 96rpx;
+  padding: 0 12rpx;
+  border-radius: 14rpx;
+}
+.commerce-actions .bottom-btn.secondary {
+  color: #165DFF;
+  border-color: #D6E4FF;
+  background: #F5F9FF;
+}
+.commerce-actions .favorite-btn.active {
+  background: #FFF1F2;
+  color: #E5484D;
+  border-color: #FFD5D9;
 }
 
 /* ============================================================ */
@@ -2808,7 +3368,7 @@ page {
 .custom-plan-header { display: flex; align-items: center; justify-content: center; background: #fff; padding: 88rpx 24rpx 0; border-bottom: 2rpx solid #E8EDF3; flex-shrink: 0; }
 .cpp-btns { display: flex; flex-direction: row; align-items: center; gap: 12rpx; }
 .cpp-btn { font-size: 24rpx; color: #165DFF; background: #EAF1FF; border-radius: 28rpx; padding: 10rpx 30rpx; text-align: center; }
-.type-bar { display: flex; align-items: center; gap: 12rpx; border-bottom: 1rpx solid #E7EAF0; }
+.type-bar { display: flex; align-items: center; gap: 12rpx; border-bottom: 1rpx solid #E7EAF0; position: relative; z-index: 40; }
 .type-bar .type-scroll { flex: 1; }
 .custom-plan-fixed { flex-shrink: 0; margin-left: auto; }
 .type-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
@@ -2839,7 +3399,9 @@ page {
 .type-opt.active { background: #EAF1FF; color: #165DFF; font-weight: 600; }
 .product-card { position: relative; }
 .product-card.selected { border-color: #165DFF; box-shadow: 0 0 0 2rpx rgba(22, 93, 255, 0.35); }
-.product-select-btn { position: absolute; top: 12rpx; right: 12rpx; width: 52rpx; height: 52rpx; border-radius: 50%; background: rgba(22, 93, 255, 0.92); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 34rpx; line-height: 1; z-index: 2; }
+/* 加号按钮:未选为淡灰底(不再用整片蓝抢视觉);选中才亮蓝,留状态反馈 */
+.product-select-btn { position: absolute; top: 12rpx; right: 12rpx; width: 52rpx; height: 52rpx; border-radius: 50%; background: #E9EDF3; color: #6B7280; box-shadow: 0 2rpx 8rpx rgba(17, 24, 39, 0.08); display: flex; align-items: center; justify-content: center; font-size: 34rpx; line-height: 1; z-index: 2; }
+.product-select-btn.on { background: #165DFF; color: #fff; box-shadow: none; }
 .scene-cart-bar { position: fixed; left: 20rpx; right: 20rpx; bottom: calc(env(safe-area-inset-bottom) + 20rpx); background: #fff; border-radius: 20rpx; box-shadow: 0 8rpx 32rpx rgba(15, 23, 42, 0.18); padding: 18rpx 24rpx; z-index: 1100; }
 /* #ifdef MP-WEIXIN */
 .scene-cart-bar { bottom: calc(env(safe-area-inset-bottom) + 2rpx); }
@@ -2853,7 +3415,7 @@ page {
 .cart-item-img-icon { font-size: 52rpx; }
 .cart-item-del { position: absolute; top: -6rpx; right: -6rpx; width: 36rpx; height: 36rpx; border-radius: 50%; background: rgba(15, 23, 42, 0.7); color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
 .cart-item-name { font-size: 24rpx; color: #1F2937; margin-top: 8rpx; max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.cart-item-price { font-size: 22rpx; color: #165DFF; margin-top: 4rpx; }
+.cart-item-price { font-size: 22rpx; color: #FF7820; margin-top: 4rpx; }
 .cart-date-label { font-size: 24rpx; color: #64748B; flex-shrink: 0; }
 .cart-date-end { font-size: 22rpx; color: #94A3B8; }
 .scene-cart-row { display: flex; align-items: center; gap: 16rpx; }
@@ -2861,7 +3423,10 @@ page {
 .scene-cart-days { display: flex; gap: 8rpx; flex: 1; flex-wrap: wrap; }
 .day-chip { font-size: 22rpx; color: #475569; background: #F1F5F9; border-radius: 24rpx; padding: 6rpx 18rpx; }
 .day-chip.active { background: #165DFF; color: #fff; }
-.scene-cart-total { font-size: 32rpx; font-weight: 700; color: #165DFF; flex-shrink: 0; }
+/* 方案合计:说明文字退成中性灰,台数/天数/金额用价格橙,一眼能扫到数 */
+.scene-cart-total { flex-shrink: 0; font-size: 26rpx; font-weight: 500; color: #64748B; }
+.scene-cart-total .cart-num { font-size: 32rpx; font-weight: 700; color: #FF7820; }
+.scene-cart-total .cart-sum { margin-left: 12rpx; font-size: 36rpx; font-weight: 700; color: #FF7820; }
 .scene-cart-actions { display: flex; gap: 16rpx; margin-top: 14rpx; }
 .scene-cart-save { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 40rpx; border: 1px solid #CBD5E1; color: #475569; font-size: 28rpx; }
 .scene-cart-submit { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 40rpx; }
@@ -2874,7 +3439,7 @@ page {
 .plan-item { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 12rpx; border-bottom: 1rpx solid #F1F5F9; }
 .plan-item-info { display: flex; flex-direction: column; gap: 6rpx; }
 .plan-item-name { font-size: 26rpx; color: #1F2937; }
-.plan-item-total { font-size: 24rpx; color: #165DFF; font-weight: 600; }
+.plan-item-total { font-size: 24rpx; color: #FF7820; font-weight: 600; }
 .plan-item-del { font-size: 24rpx; color: #EF4444; padding: 6rpx 16rpx; }
 .plan-empty { text-align: center; color: #94A3B8; font-size: 26rpx; padding: 40rpx 0; }
 .cart-date-label { font-size: 24rpx; color: #64748B; flex-shrink: 0; }

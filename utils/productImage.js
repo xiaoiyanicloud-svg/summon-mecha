@@ -4,7 +4,7 @@
  * 作用:
  *  1) 图片 —— 卡片图 item.image / 详情轮播 item.images(真实图,过滤占位图)
  *  2) 闭环  —— 命中后备注 item.bagistoId(真实商品 id)/ item.bagistoPrice(真实价),
- *              供 addCart / 结算使用,从而打通「加购 → Bagisto 下单」的真闭环。
+ *              供商品详情 / 结算使用，保证展示与下单引用同一个真实商品快照。
  *
  * 用法:前端保持写死数据不变。找不到对应商品、或该商品无真实图、或接口失败时一律静默——
  * 页面照常走原来的 emoji+底色兜底,商品 id 也回退到 mock id(仍走意向单),不会坏。
@@ -96,7 +96,7 @@ export async function enrichWithProductImages(items, opts = {}) {
     // 稳定 sku(已有则沿用),便于运营按它建品、也令重跑幂等
     item.sku = deriveSku(item, prefix)
 
-    // 真实商品 id:购买闭环的关键 —— addCart/结算据此走 Bagisto 真下单
+    // 真实商品 id：详情与结算据此关联后台真实商品
     if (p.id != null) item.bagistoId = p.id
     // 真实价(尽力读取;后端 min_price 是含货币符号的格式化串,需解析成纯数字)
     let realPrice = ''

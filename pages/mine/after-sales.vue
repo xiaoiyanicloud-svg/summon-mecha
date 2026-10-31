@@ -1,7 +1,7 @@
 <template>
 	<view class="as-page">
 		<!-- 导航栏 -->
-		<nav-bar title="售后记录" />
+		<nav-bar title="售后" />
 
 		<view v-if="!loggedIn" class="empty-state">
 			<text class="empty-icon">🔒</text>
@@ -14,6 +14,15 @@
 			<view class="hint-card">
 				<text class="hint-title">售后进度</text>
 				<text class="hint-body">未下发的技能可直接退;已安装的技能需人工审核。审核通过后进入退款流程,到账时间以支付渠道为准。</text>
+			</view>
+
+			<view class="incident-entry" role="button" tabindex="0" @click="goIncidentReport">
+				<view class="incident-entry-icon">🚨</view>
+				<view class="incident-entry-main">
+					<text class="incident-entry-title">事故上报</text>
+					<text class="incident-entry-desc">设备或技能发生安全事件时，从这里提交事故信息并跟踪处理。</text>
+				</view>
+				<text class="incident-entry-arrow">›</text>
 			</view>
 
 			<!-- 三态:加载中 / 故障(带重试) / 真·还没有售后单。故障不再伪装成「还没有」 -->
@@ -110,6 +119,7 @@ export default {
 	methods: {
 		goBack() { uni.navigateBack({ delta: 1 }) },
 		goSkills() { uni.navigateTo({ url: '/pages/mine/skills' }) },
+		goIncidentReport() { uni.navigateTo({ url: '/pages/mine/incidents' }) },
 
 		// 找不到对应授权时**如实显示授权号**,不编一个技能名
 		skillName(a) {
@@ -158,6 +168,22 @@ export default {
 }
 .hint-title { display: block; font-size: 26rpx; font-weight: 600; color: #102F6E; }
 .hint-body { display: block; margin-top: 8rpx; font-size: 24rpx; color: #5A6B87; line-height: 1.6; }
+
+.incident-entry {
+	display: flex; align-items: center; gap: 20rpx;
+	background: #FFFFFF; border-radius: 20rpx; padding: 24rpx;
+	margin-bottom: 20rpx; box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.incident-entry:active { opacity: 0.72; }
+.incident-entry-icon {
+	width: 72rpx; height: 72rpx; border-radius: 18rpx;
+	display: flex; align-items: center; justify-content: center;
+	background: #FFF1F0; font-size: 38rpx; flex-shrink: 0;
+}
+.incident-entry-main { flex: 1; min-width: 0; }
+.incident-entry-title { display: block; font-size: 28rpx; font-weight: 600; color: #1A2A3A; }
+.incident-entry-desc { display: block; margin-top: 6rpx; font-size: 23rpx; color: #8A9AA8; line-height: 1.5; }
+.incident-entry-arrow { font-size: 38rpx; color: #C0C8D4; }
 
 .card {
 	background: #FFFFFF; border-radius: 20rpx; padding: 28rpx;

@@ -35,7 +35,7 @@
 				<view class="about-item" @click="goCustomerService">
 					<view class="about-left">
 						<text class="about-icon">💬</text>
-						<text class="about-label">联系客服</text>
+						<text class="about-label">客服中心</text>
 					</view>
 					<text class="about-arrow">›</text>
 				</view>

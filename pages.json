@@ -5,7 +5,7 @@
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "召唤机甲",
-        "navigationBarBackgroundColor": "ffffff",
+        "navigationBarBackgroundColor": "#ffffff",
         "navigationBarTextStyle": "black"
       }
     },
@@ -109,14 +109,14 @@
       "path": "pages/mine/tickets",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "我的工单"
+        "navigationBarTitleText": "客服中心"
       }
     },
     {
       "path": "pages/mine/ticket-detail",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "工单详情"
+        "navigationBarTitleText": "服务会话"
       }
     },
     {
@@ -130,7 +130,7 @@
       "path": "pages/mine/after-sales",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "售后记录"
+        "navigationBarTitleText": "售后"
       }
     },
     {
@@ -273,6 +273,7 @@
     "backgroundColor": "#ffffff"
   },
   "tabBar": {
+    "custom": true,
     "color": "#666666",
     "selectedColor": "#007aff",
     "backgroundColor": "#FFFFFF",
@@ -282,7 +283,7 @@
     "iconWidth": "0rpx",
     "list": [
       { "pagePath": "pages/home/index", "text": "首页" },
-      { "pagePath": "pages/robot/index", "text": "机器" },
+      { "pagePath": "pages/robot/index", "text": "分类" },
       { "pagePath": "pages/ai/index", "text": "AI召唤" },
       { "pagePath": "pages/order/index", "text": "订单" },
       { "pagePath": "pages/mine/index", "text": "我的" }

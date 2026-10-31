@@ -173,21 +173,30 @@ test('结算失败或没有真实订单确认时，不写本地订单、不跳�
   }
 })
 
-test('自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交前使用当前商品名称和价格', async () => {
+test('自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交到确认订单页时使用当前商品名称和价格', async () => {
   const source = (await readFile(new URL('../../pages/robot/index.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
   const navigation = [], notices = []
   const context = vm.createContext({ Jineng: {}, Peijian: {}, StateView: {}, BASE_URL: 'https://qa.invalid',
-    sceneDraftPayload: value => value, openSceneRequest: payload => navigation.push({ payload }),
     uni: { navigateTo: input => navigation.push(input), showToast: input => notices.push(input) } })
   vm.runInContext(source.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), context)
   const state = context.component.data()
+  // 提交路径会用到 planPerDay 等同组件方法,按 mountDetail 的做法全部绑到 state 上
+  for (const [name, fn] of Object.entries(context.component.methods)) state[name] = fn.bind(state)
   state.reloadCatalog = async () => { state.rentCatalog = [{ id: 11, bagistoId: 11, name: '当前商品', price: 20 }] }
   state.selectedPlanItems = [{ id: 11, name: '旧模拟商品', price: 1 }]
   await context.component.methods.submitCustomPlanOrder.call(state)
   assert.equal(navigation.length, 0); assert.equal(state.planSubmitting, false); assert.match(notices[0].title, /失效/)
   state.selectedPlanItems = [{ id: 11, bagistoId: 11, name: '旧名称', price: 1 }]
   await context.component.methods.submitCustomPlanOrder.call(state)
-  assert.match(navigation[0].payload.text, /当前商品/)
-  assert.doesNotMatch(navigation[0].payload.text, /旧名称/)
+  // 多机合单:提交订单 = 进确认订单页,items[] 用目录里的当前名称/价格,不能用草稿旧值
+  const url = navigation[0].url
+  assert.match(url, /^\/pages\/order\/checkout\?/)
+  const params = new URLSearchParams(url.split('?')[1])
+  const items = JSON.parse(params.get('items'))
+  assert.equal(items.length, 1)
+  assert.equal(items[0].product_id, 11)
+  assert.equal(items[0].name, '当前商品')
+  assert.equal(items[0].price, 20)
+  assert.equal(params.get('rent_days'), '1')
   assert.equal(state.selectedPlanItems[0].price, 20)
 })

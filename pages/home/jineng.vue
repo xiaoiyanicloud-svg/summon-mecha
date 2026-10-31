@@ -31,13 +31,13 @@
 		<view class="info-card">
 			<view class="info-row">
 				<text class="skill-name">{{ skillInfo.name }}</text>
-				<text v-if="skillInfo.rating" class="skill-rating">⭐ {{ skillInfo.rating }}</text>
+				<text v-if="skillInfo.rating" class="skill-rating">★ {{ skillInfo.rating }}</text>
 			</view>
 			<view class="price-row">
 				<text class="price-current">￥{{ skillInfo.price }}</text>
 				<text v-if="skillInfo.originalPrice > skillInfo.price" class="price-original">￥{{ skillInfo.originalPrice }}</text>
 			</view>
-			<text class="skill-desc">{{ skillInfo.desc }}</text>
+			<text v-if="skillInfo.desc" class="skill-desc">{{ skillInfo.desc }}</text>
 		</view>
 
 		<!-- 4. Tab -->
@@ -49,7 +49,10 @@
 		<!-- 5. Tab内容 -->
 		<view class="tab-content">
 			<view v-show="currentTab === 0" class="content-panel">
-				<text class="feature-text">{{ skillInfo.features }}</text>
+				<!-- 后台 description 是 HTML(tinymce),必须交给 rich-text;用 <text> 会把
+				     <p> 原样吐出来,页面上就是一串"奇怪的字符" -->
+				<rich-text v-if="skillInfo.features" class="feature-rich" :nodes="skillInfo.features"></rich-text>
+				<text v-else class="feature-empty">该技能暂未填写功能说明</text>
 			</view>
 			<view v-show="currentTab === 1" class="content-panel">
 				<view class="comment-item" v-for="(item, idx) in skillInfo.comments" :key="idx">
@@ -88,13 +91,13 @@
 				>{{ d.sn }}</text>
 			</view>
 			<text v-else-if="deviceLoginRequired" class="compat-tip" @click="loginForDevices">登录后可选择已绑定设备，点此前往登录</text>
-			<text v-else-if="deviceLoadError" class="compat-tip" style="color:#cf1322" @click="loadDevices">设备列表没加载出来，点此重试</text>
+			<text v-else-if="deviceLoadError" class="compat-tip is-error" @click="loadDevices">设备列表没加载出来，点此重试</text>
 			<text v-else class="compat-tip">还没有登记设备，先去「我的设备」登记</text>
 
 			<view class="compat-btn" @click="checkCompat">{{ compatLoading ? '校验中…' : '检查能否安装' }}</view>
 
 			<view v-if="compat" class="compat-result" :class="{ ok: compat.compatible }">
-				<text class="compat-verdict">{{ compat.compatible ? '✅ 兼容' : '⛔ 不兼容' }}</text>
+				<text class="compat-verdict">{{ compat.compatible ? '兼容' : '不兼容' }}</text>
 				<text class="compat-reason">{{ compat.reason }}</text>
 				<text v-if="compat.channels && compat.channels.length" class="compat-channels">可用通道：{{ compat.channels.join(' / ') }}</text>
 				<text v-for="(n, i) in (compat.notes || [])" :key="i" class="compat-note">· {{ n }}</text>
@@ -183,8 +186,11 @@
 <script>
 	import { productApi, skillApi, deviceApi, reviewApi, riskApi, skillCatalogApi } from '@/utils/api'
 	import { productSkillPrice } from '@/utils/skill-market'
+	// Bagisto 的 description 是 HTML:<text> 不解析,会原样吐标签。正文走 <rich-text>,摘要转纯文本。
+	import { normalizeRichHtml, htmlToPlainText } from '@/utils/rich-html'
 	import { submitSkillReport } from '@/utils/report'
-	import { TOKEN_KEY } from '@/utils/config'
+	import { BASE_URL, TOKEN_KEY } from '@/utils/config'
+	import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
 	import NavBar from '@/components/NavBar.vue'
 	export default {
 		components: { NavBar },
@@ -281,10 +287,12 @@
 						rating: Number(p.ratings?.total) > 0 ? String(p.ratings.average) : '',
 						price,
 						originalPrice: 0,
-						desc: p.short_description || '',
+						// 摘要/正文都是后台富文本字段:摘要转纯文本(卡片里不能出现标签),
+						// 正文交给 rich-text 渲染(见模板 .feature-rich)
+						desc: htmlToPlainText(p.short_description || ''),
 						served: '',
 						images: this.normalizeImages(p.images || []),
-						features: p.description || p.short_description || '',
+						features: normalizeRichHtml(p.description || p.short_description || ''),
 						comments: []
 					}
 					this.loadReviews(pid)
@@ -295,7 +303,15 @@
 				} finally { if (sequence === this.detailSequence) this.detailLoading = false }
 			},
 			normalizeImages(images) {
-				return (images || []).map(i => (typeof i === 'string' ? i : (i && i.url) || '')).filter(Boolean)
+				const normalized = (images || [])
+					.map(i => {
+						const raw = typeof i === 'string'
+							? i
+							: (i && (i.url || i.medium_image_url || i.large_image_url || i.small_image_url || i.original_image_url)) || ''
+						return normalizeCatalogImageUrl(raw, BASE_URL)
+					})
+					.filter(url => url && !url.includes('product-placeholder'))
+				return normalized.length ? normalized : [catalogFallbackImage('skill', this.productId || this.skillId)]
 			},
 			// B-16:发布历史 + 通道标识。拿不到就不展示 —— 版本信息**不能编**。
 
@@ -505,319 +521,253 @@
 </script>
 
 <style lang="scss" scoped>
-	.skill-cover-placeholder { height: 240rpx; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14rpx; background: #eef3ff; color: #64748b; font-size: 24rpx; }
-	.skill-cover-placeholder text:first-child { font-size: 64rpx; }
+	/*
+	  配色:与「我的技能 / 机器人详情 / 确认订单」共用同一套,不再红橙蓝混着用。
+	    · 主色 #165DFF —— 一切可点元素(标签页、主按钮、链接、徽标)
+	    · 价格 #FF7820 —— 与机器人详情 / 确认订单页一致,全站只有价格用暖色
+	    · 中性灰 #1F2937 / #6B7280 / #9CA3AF —— 正文 / 次要信息 / 辅助信息
+	    · 语义色(风险等级、发布通道)只出现在各自的小徽标里,不进入主体视觉
+	  卡片统一:24rpx 页边距、20rpx 圆角、20rpx 竖向间距。
+	*/
+	$primary: #165DFF;
+	$primary-bg: #EEF4FF;
+	$primary-line: #B9D3FF;
+	$price: #FF7820;
+	$text-1: #1F2937;
+	$text-2: #6B7280;
+	$text-3: #9CA3AF;
+	$line: #EEF1F5;
+	$bg: #F5F7FA;
+	$card-radius: 20rpx;
+	$gutter: 24rpx;
+
 	.page-container {
 		display: flex;
 		flex-direction: column;
 		min-height: 100vh;
-		background-color: #f8f8f8;
+		background-color: $bg;
 		padding-bottom: 100px;
 	}
-	.icon-share { font-weight: 300; font-size: 28px; color: #333; }
-	.swiper {
-		width: 100%;
-		height: 400rpx;
-		position: relative;
+
+	/* 顶部:轮播图 / 无图占位 */
+	.swiper { width: 100%; height: 400rpx; position: relative; }
+	.swiper-image { width: 100%; height: 100%; }
+	.skill-cover-placeholder {
+		height: 240rpx;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		gap: 12rpx;
+		background: $primary-bg;
+		color: $text-3;
+		font-size: 24rpx;
 	}
-	.swiper-image {
-		width: 100%;
-		height: 103%;
-	}
+	.skill-cover-placeholder text:first-child { font-size: 60rpx; }
 	.swiper-badge {
 		position: absolute;
 		top: 20rpx;
 		right: 20rpx;
-		background: rgba(0,0,0,0.6);
-		color: #fff;
+		z-index: 2;
 		padding: 6rpx 20rpx;
 		border-radius: 30rpx;
-		font-size: 24rpx;
-		z-index: 2;
-		margin-top: 10px;
+		background: rgba(17, 24, 39, 0.55);
+		color: #fff;
+		font-size: 22rpx;
 	}
+
+	/* 基础信息 */
 	.info-card {
+		margin: 20rpx $gutter;
+		padding: 28rpx;
 		background: #fff;
-		margin: 20rpx 30rpx;
-		padding: 30rpx;
-		border-radius: 20rpx;
-		box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+		border-radius: $card-radius;
 	}
-	.info-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-	.skill-name {
-		font-size: 36rpx;
-		font-weight: 600;
-		color: #1a1a1a;
-	}
-	.skill-rating {
-		font-size: 28rpx;
-		color: #f5a623;
-	}
-	.price-row {
-		margin: 16rpx 0 12rpx;
-	}
-	.price-current {
-		font-size: 40rpx;
-		font-weight: 700;
-		color: #ff4d4f;
-		margin-right: 16rpx;
-	}
-	.price-original {
-		font-size: 28rpx;
-		color: #999;
-		text-decoration: line-through;
-	}
-	.skill-desc {
-		font-size: 28rpx;
-		color: #666;
-		line-height: 1.6;
-		display: block;
-		margin-top: 8rpx;
-	}
+	.info-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; }
+	.skill-name { font-size: 36rpx; font-weight: 600; color: $text-1; line-height: 1.4; }
+	.skill-rating { flex-shrink: 0; font-size: 26rpx; color: $price; }
+	.price-row { display: flex; align-items: baseline; margin: 12rpx 0 8rpx; }
+	.price-current { margin-right: 14rpx; font-size: 44rpx; font-weight: 700; color: $price; }
+	.price-original { font-size: 26rpx; color: $text-3; text-decoration: line-through; }
+	.skill-desc { display: block; margin-top: 6rpx; font-size: 26rpx; color: $text-2; line-height: 1.6; }
+
+	/* 标签页 */
 	.tab-bar {
 		display: flex;
+		margin: 20rpx $gutter 0;
 		background: #fff;
-		margin: 0 30rpx;
-		border-radius: 20rpx 20rpx 0 0;
-		border-bottom: 2rpx solid #f0f0f0;
+		border-radius: $card-radius $card-radius 0 0;
+		border-bottom: 1rpx solid $line;
 	}
 	.tab-item {
-		flex: 1;
-		text-align: center;
-		padding: 28rpx 0 20rpx;
-		font-size: 28rpx;
-		color: #888;
 		position: relative;
+		flex: 1;
+		padding: 26rpx 0 22rpx;
+		text-align: center;
+		font-size: 28rpx;
+		color: $text-2;
 		transition: color 0.2s;
 	}
-	.tab-item.active {
-		color: #ff4d4f;
-		font-weight: 600;
-	}
+	.tab-item.active { color: $primary; font-weight: 600; }
 	.tab-item.active::after {
 		content: '';
 		position: absolute;
 		bottom: 0;
 		left: 50%;
 		transform: translateX(-50%);
-		width: 50rpx;
+		width: 48rpx;
 		height: 6rpx;
-		background: #ff4d4f;
 		border-radius: 6rpx;
+		background: $primary;
 	}
 	.tab-content {
+		margin: 0 $gutter 20rpx;
+		padding: 28rpx;
 		background: #fff;
-		margin: 0 30rpx 30rpx;
-		padding: 30rpx;
-		border-radius: 0 0 20rpx 20rpx;
-		flex: 1;
-		min-height: 300rpx;
+		border-radius: 0 0 $card-radius $card-radius;
 	}
-	.feature-text {
-		font-size: 28rpx;
-		color: #333;
-		line-height: 1.8;
-		white-space: pre-line;
+	/* 后台富文本(HTML):字号/行高落在 rich-text 宿主上,内部节点继承 */
+	.feature-rich { display: block; font-size: 28rpx; color: $text-1; line-height: 1.75; word-break: break-word; }
+	.feature-empty { display: block; padding: 40rpx 0; text-align: center; font-size: 26rpx; color: $text-3; }
+
+	/* 用户评价 */
+	.comment-item { display: flex; align-items: flex-start; padding: 20rpx 0; border-bottom: 1rpx solid $line; }
+	.comment-item:last-child { border-bottom: none; }
+	.comment-avatar { width: 60rpx; height: 60rpx; margin-right: 18rpx; flex-shrink: 0; border-radius: 50%; background: $line; }
+	.comment-body { flex: 1; display: flex; flex-direction: column; }
+	.comment-nick { margin-bottom: 6rpx; font-size: 24rpx; color: $text-3; }
+	.comment-text { font-size: 28rpx; color: $text-1; line-height: 1.6; }
+	.empty-tip { padding: 50rpx 0; text-align: center; font-size: 26rpx; color: $text-3; }
+
+	/* 写评价 */
+	.write-review { margin-top: 24rpx; padding-top: 24rpx; border-top: 1rpx solid $line; }
+	.wr-title { font-size: 28rpx; font-weight: 600; color: $text-1; }
+	.wr-stars { margin-top: 12rpx; }
+	.wr-star { margin-right: 8rpx; font-size: 44rpx; color: #E5E7EB; }
+	.wr-star.on { color: #FFB400; }
+	.wr-input { box-sizing: border-box; width: 100%; min-height: 120rpx; margin-top: 16rpx; padding: 16rpx; background: $bg; border-radius: 12rpx; font-size: 26rpx; }
+	.wr-btn { margin-top: 16rpx; padding: 18rpx 0; text-align: center; background: $primary; color: #fff; border-radius: 40rpx; font-size: 28rpx; font-weight: 600; }
+
+	/* 兼容性校验(v3.4) */
+	.compat-box,
+	.risk-box,
+	.version-box {
+		margin: 0 $gutter 20rpx;
+		padding: 28rpx;
+		background: #fff;
+		border-radius: $card-radius;
 	}
-	.comment-item {
-		display: flex;
-		align-items: flex-start;
-		padding: 20rpx 0;
-		border-bottom: 1rpx solid #f5f5f5;
-	}
-	.comment-item:last-child {
-		border-bottom: none;
-	}
-	.comment-avatar {
-		width: 60rpx;
-		height: 60rpx;
-		border-radius: 50%;
-		margin-right: 20rpx;
-		flex-shrink: 0;
-		background: #eee;
-	}
-	.comment-body {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-	}
-	.comment-nick {
-		font-size: 26rpx;
-		color: #888;
-		margin-bottom: 6rpx;
-	}
-	.comment-text {
-		font-size: 28rpx;
-		color: #333;
-		line-height: 1.5;
-	}
-	.empty-tip {
-		text-align: center;
-		color: #bbb;
-		padding: 60rpx 0;
-	}
+	.compat-title { font-size: 28rpx; font-weight: 600; color: $text-1; }
+	.compat-devices { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
+	.compat-device { margin: 0 16rpx 12rpx 0; padding: 10rpx 24rpx; border: 1rpx solid #E5E8EF; border-radius: 32rpx; font-size: 24rpx; color: $text-2; }
+	.compat-device.on { border-color: $primary; color: $primary; background: $primary-bg; }
+	.compat-tip { display: block; margin-top: 16rpx; font-size: 24rpx; color: $text-3; line-height: 1.6; }
+	.compat-tip.is-error { color: #CF1322; }
+	/* 兼容性校验收敛为次级动作:浅蓝底 + 蓝字,不与底部「立即开通」抢第一权重 */
+	.compat-btn { margin-top: 20rpx; padding: 20rpx 0; text-align: center; background: $primary-bg; color: $primary; border: 1rpx solid $primary-line; border-radius: 44rpx; font-size: 28rpx; font-weight: 600; }
+	.compat-btn:active { opacity: 0.85; }
+	.compat-result { margin-top: 20rpx; padding: 20rpx; border-radius: 12rpx; background: #FEF2F2; }
+	.compat-result.ok { background: #F0F9F3; }
+	.compat-verdict { display: block; font-size: 28rpx; font-weight: 600; color: #CF1322; }
+	.compat-result.ok .compat-verdict { color: #1A9C50; }
+	.compat-reason { display: block; margin-top: 8rpx; font-size: 24rpx; color: $text-2; line-height: 1.6; }
+	.compat-channels { display: block; margin-top: 8rpx; font-size: 24rpx; color: $primary; }
+	.compat-note { display: block; margin-top: 6rpx; font-size: 22rpx; color: $text-3; }
+
+	/* 风险告知(B-5):分档色只用在标签上 */
+	.risk-head { display: flex; align-items: center; }
+	.risk-label { margin-right: 12rpx; padding: 4rpx 16rpx; border-radius: 24rpx; font-size: 22rpx; font-weight: 600; }
+	.risk-label.lv-low { background: #EAF7EE; color: #1A9C50; }
+	.risk-label.lv-medium { background: #FFF5E6; color: #D48806; }
+	.risk-label.lv-high { background: #FEF2F2; color: #CF1322; }
+	.risk-label.lv-unknown { background: #F2F4F7; color: $text-2; }
+	.risk-title { font-size: 28rpx; font-weight: 600; color: $text-1; }
+	.risk-summary { display: block; margin-top: 12rpx; font-size: 24rpx; color: $text-2; line-height: 1.6; }
+	.risk-items { margin-top: 10rpx; }
+	.risk-item { display: block; margin-top: 4rpx; font-size: 22rpx; color: $text-3; line-height: 1.6; }
+
+	.risk-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(17, 24, 39, 0.5); }
+	.risk-modal { box-sizing: border-box; width: 660rpx; padding: 40rpx 32rpx 24rpx; background: #fff; border-radius: 24rpx; }
+	.risk-modal-title { display: block; text-align: center; font-size: 32rpx; font-weight: 600; color: $text-1; }
+	.risk-modal-summary { display: block; margin-top: 16rpx; font-size: 26rpx; color: $text-2; line-height: 1.6; }
+	.risk-modal-items { margin-top: 20rpx; }
+	.risk-check-row { display: flex; align-items: flex-start; padding: 16rpx 0; }
+	.risk-check-box { box-sizing: border-box; width: 40rpx; height: 40rpx; margin-right: 16rpx; flex-shrink: 0; border: 1rpx solid #D5DAE3; border-radius: 8rpx; line-height: 40rpx; text-align: center; font-size: 26rpx; color: #fff; }
+	.risk-check-box.on { border-color: $primary; background: $primary; }
+	.risk-check-text { flex: 1; font-size: 26rpx; color: $text-1; line-height: 1.5; }
+	.risk-modal-footer { display: flex; gap: 20rpx; margin-top: 28rpx; }
+	.risk-cancel { flex: 1; padding: 20rpx 0; text-align: center; border: 1rpx solid #E5E8EF; border-radius: 40rpx; font-size: 28rpx; color: $text-2; }
+	.risk-confirm { flex: 2; padding: 20rpx 0; text-align: center; background: $primary; color: #fff; border-radius: 40rpx; font-size: 28rpx; font-weight: 600; }
+
+	/* 版本历史 + 通道标识(B-16) */
+	.version-head { display: flex; align-items: center; justify-content: space-between; }
+	.version-title { font-size: 28rpx; font-weight: 600; color: $text-1; }
+	.chan-badge { padding: 4rpx 16rpx; border-radius: 24rpx; font-size: 22rpx; font-weight: 600; }
+	.chan-badge.chan-stable { background: #EAF7EE; color: #1A9C50; }
+	.chan-badge.chan-beta { background: #FFF5E6; color: #D48806; }
+	.chan-row { display: flex; align-items: center; flex-wrap: wrap; margin-top: 14rpx; }
+	.chan-title { margin-right: 12rpx; font-size: 22rpx; color: $text-3; }
+	.chan-chip { margin: 0 12rpx 8rpx 0; padding: 4rpx 18rpx; border: 1rpx solid $primary-line; border-radius: 24rpx; font-size: 22rpx; color: $primary; background: $primary-bg; }
+	.version-item { margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid $line; }
+	.vi-top { display: flex; align-items: center; }
+	.vi-ver { font-size: 26rpx; font-weight: 600; color: $text-1; }
+	.vi-badge { margin-left: 12rpx; padding: 2rpx 12rpx; border-radius: 20rpx; font-size: 20rpx; font-weight: 600; }
+	.vi-badge.chan-stable { background: #EAF7EE; color: #1A9C50; }
+	.vi-badge.chan-beta { background: #FFF5E6; color: #D48806; }
+	.vi-current { margin-left: 12rpx; padding: 2rpx 12rpx; border-radius: 20rpx; font-size: 20rpx; color: #fff; background: $primary; }
+	.vi-date { margin-left: auto; font-size: 22rpx; color: $text-3; }
+	.vi-log { display: block; margin-top: 8rpx; font-size: 24rpx; color: $text-2; line-height: 1.6; }
+
 	/* 举报入口(B-7):低干扰的小字入口,放在页尾、底部操作栏之上 */
-	.report-entry {
-		display: flex;
-		justify-content: center;
-		padding: 10rpx 0 30rpx;
-	}
-	.report-link {
-		font-size: 24rpx;
-		color: #9CA3AF;
-		text-decoration: underline;
-	}
+	.report-entry { display: flex; justify-content: center; padding: 10rpx 0 30rpx; }
+	.report-link { font-size: 24rpx; color: $text-3; text-decoration: underline; }
+
+	/* 底部操作栏 */
 	.footer-bar {
 		position: fixed;
-		bottom: 0;
 		left: 0;
 		right: 0;
-		background: #ffffff;
-		padding: 20rpx 30rpx;
-		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+		bottom: 0;
+		z-index: 20;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.06);
-		z-index: 20;
-	}
-	.footer-left {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		margin-right: 20rpx;
-	}
-	.icon-service {
-		font-size: 40rpx;
-	}
-	.service-label {
-		font-size: 22rpx;
-		color: #666;
-		margin-top: 4rpx;
-	}
-	.footer-actions {
-		display: flex;
-		flex: 1;
-		gap: 20rpx;
-	}
-	.btn-price, .btn-buy {
-		flex: 1;
-		height: 76rpx;
-		line-height: 76rpx;
-		border-radius: 40rpx;
-		font-size: 28rpx;
-		font-weight: 500;
-		border: none;
-		text-align: center;
-		padding: 0;
-	}
-	.btn-price {
-		background: #fff7f7;
-		color: #ff4d4f;
-		border: 1rpx solid #ffd6d6;
-		font-weight: 600;
-	}
-	.btn-buy {
-		background: linear-gradient(135deg, #ff6b6b, #ee3f4d);
-		color: #fff;
-		box-shadow: 0 4rpx 12rpx rgba(238, 63, 77, 0.3);
-	}
-	/* 试用按钮(B-3):与"立即开通"区分,用页面既有的橙色描边样式,不与主买断按钮抢视觉 */
-	.btn-trial {
-		flex: 0.9;
-		height: 76rpx;
-		line-height: 76rpx;
-		border-radius: 40rpx;
-		font-size: 28rpx;
-		font-weight: 600;
-		text-align: center;
-		padding: 0;
+		padding: 16rpx $gutter;
+		padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 		background: #fff;
-		color: #ff6b00;
-		border: 1rpx solid #ffd9b8;
+		box-shadow: 0 -2rpx 16rpx rgba(17, 24, 39, 0.06);
 	}
-	.btn-trial:active { opacity: 0.7; }
-	.btn-price:active { opacity: 0.7; }
-	.btn-buy:active { opacity: 0.8; }
+	.footer-left { display: flex; flex-direction: column; align-items: center; width: 88rpx; margin-right: 16rpx; }
+	.icon-service { font-size: 36rpx; line-height: 1.2; }
+	.service-label { margin-top: 2rpx; font-size: 20rpx; color: $text-2; }
+	.footer-actions { display: flex; flex: 1; gap: 16rpx; }
+	.btn-price,
+	.btn-trial,
+	.btn-buy {
+		flex: 1;
+		height: 84rpx;
+		line-height: 84rpx;
+		padding: 0;
+		border-radius: 42rpx;
+		font-size: 28rpx;
+		font-weight: 600;
+		text-align: center;
+	}
+	/* 价格是说明性的,用中性底;主行动留给「立即开通」 */
+	.btn-price { border: 1rpx solid #E5E8EF; background: $bg; color: $text-1; }
+	/* 试用(B-3):次级动作,蓝色描边,不与买断抢视觉 */
+	.btn-trial { flex: 0.95; border: 1rpx solid $primary-line; background: #fff; color: $primary; }
+	.btn-buy { background: $primary; color: #fff; box-shadow: 0 6rpx 16rpx rgba(22, 93, 255, 0.24); }
+	.btn-price:active,
+	.btn-trial:active,
+	.btn-buy:active { opacity: 0.85; }
 
-	/* 兼容性校验(v3.4) */
-	.compat-box { margin: 20rpx 24rpx; padding: 24rpx; background: #fff; border-radius: 16rpx; }
-	.compat-title { font-size: 28rpx; font-weight: 600; color: #222; }
-	.compat-devices { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
-	.compat-device { margin: 0 16rpx 12rpx 0; padding: 10rpx 24rpx; border: 1rpx solid #ddd; border-radius: 32rpx; font-size: 24rpx; color: #555; }
-	.compat-device.on { border-color: #ff6b00; color: #ff6b00; background: #fff5ee; }
-	.compat-tip { display: block; margin-top: 16rpx; font-size: 24rpx; color: #999; }
-	.compat-btn { margin-top: 16rpx; text-align: center; padding: 18rpx 0; background: #ff6b00; color: #fff; border-radius: 40rpx; font-size: 28rpx; }
-	.compat-result { margin-top: 20rpx; padding: 20rpx; border-radius: 12rpx; background: #fdecec; }
-	.compat-result.ok { background: #eaf7ee; }
-	.compat-verdict { display: block; font-size: 28rpx; font-weight: 600; color: #333; }
-	.compat-reason { display: block; margin-top: 8rpx; font-size: 24rpx; color: #666; }
-	.compat-channels { display: block; margin-top: 8rpx; font-size: 24rpx; color: #ff6b00; }
-	.compat-note { display: block; margin-top: 6rpx; font-size: 22rpx; color: #999; }
+	.icon-share { font-size: 28px; font-weight: 300; color: $text-1; }
 
-	/* 写评价(v3.4) */
-	.write-review { margin-top: 28rpx; padding-top: 24rpx; border-top: 1rpx solid #eee; }
-	.wr-title { font-size: 28rpx; font-weight: 600; color: #222; }
-	.wr-stars { margin-top: 12rpx; }
-	.wr-star { font-size: 44rpx; color: #ddd; margin-right: 8rpx; }
-	.wr-star.on { color: #ffb400; }
-	.wr-input { margin-top: 16rpx; width: 100%; min-height: 120rpx; padding: 16rpx; background: #f7f8fa; border-radius: 12rpx; font-size: 26rpx; box-sizing: border-box; }
-	.wr-btn { margin-top: 16rpx; text-align: center; padding: 18rpx 0; background: #ff6b00; color: #fff; border-radius: 40rpx; font-size: 28rpx; }
-
-	/* 风险告知(B-5) */
-	.risk-box { margin: 20rpx 24rpx; padding: 24rpx; background: #fff; border-radius: 16rpx; }
-	.risk-head { display: flex; align-items: center; }
-	.risk-label { font-size: 24rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 24rpx; margin-right: 12rpx; }
-	.risk-label.lv-low { background: #eaf7ee; color: #1a9c50; }
-	.risk-label.lv-medium { background: #fff5e6; color: #d48806; }
-	.risk-label.lv-high { background: #fdecec; color: #cf1322; }
-	.risk-label.lv-unknown { background: #f2f2f2; color: #888; }
-	.risk-title { font-size: 28rpx; font-weight: 600; color: #222; }
-	.risk-summary { display: block; margin-top: 12rpx; font-size: 24rpx; color: #666; line-height: 1.5; }
-	.risk-items { margin-top: 10rpx; }
-	.risk-item { display: block; margin-top: 4rpx; font-size: 22rpx; color: #999; }
-
-	.risk-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-	.risk-modal { width: 660rpx; background: #fff; border-radius: 24rpx; padding: 40rpx 32rpx 24rpx; box-sizing: border-box; }
-	.risk-modal-title { display: block; font-size: 32rpx; font-weight: 600; color: #222; text-align: center; }
-	.risk-modal-summary { display: block; margin-top: 16rpx; font-size: 26rpx; color: #666; line-height: 1.5; }
-	.risk-modal-items { margin-top: 20rpx; }
-	.risk-check-row { display: flex; align-items: flex-start; padding: 16rpx 0; }
-	.risk-check-box { width: 40rpx; height: 40rpx; line-height: 40rpx; text-align: center; border: 1rpx solid #ccc; border-radius: 8rpx; font-size: 26rpx; color: #fff; flex-shrink: 0; margin-right: 16rpx; box-sizing: border-box; }
-	.risk-check-box.on { background: #ff6b00; border-color: #ff6b00; }
-	.risk-check-text { flex: 1; font-size: 26rpx; color: #333; line-height: 1.4; }
-	.risk-modal-footer { display: flex; gap: 20rpx; margin-top: 28rpx; }
-	.risk-cancel { flex: 1; text-align: center; padding: 20rpx 0; border: 1rpx solid #ddd; border-radius: 40rpx; font-size: 28rpx; color: #666; }
-	.risk-confirm { flex: 2; text-align: center; padding: 20rpx 0; background: linear-gradient(135deg, #ff6b6b, #ee3f4d); color: #fff; border-radius: 40rpx; font-size: 28rpx; }
-
-	/* 版本历史 + 通道标识(B-16) */
-	.version-box { margin: 20rpx 24rpx; padding: 24rpx; background: #fff; border-radius: 16rpx; }
-	.version-head { display: flex; align-items: center; justify-content: space-between; }
-	.version-title { font-size: 28rpx; font-weight: 600; color: #222; }
-	.chan-badge { font-size: 22rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 24rpx; }
-	.chan-badge.chan-stable { background: #eaf7ee; color: #1a9c50; }
-	.chan-badge.chan-beta { background: #fff5e6; color: #d48806; }
-	.chan-row { display: flex; align-items: center; flex-wrap: wrap; margin-top: 14rpx; }
-	.chan-title { font-size: 22rpx; color: #999; margin-right: 12rpx; }
-	.chan-chip { font-size: 22rpx; color: #165DFF; background: #F0F7FF; border: 1rpx solid #cfe0ff; border-radius: 24rpx; padding: 4rpx 18rpx; margin: 0 12rpx 8rpx 0; }
-	.version-item { margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid #f2f2f2; }
-	.vi-top { display: flex; align-items: center; }
-	.vi-ver { font-size: 26rpx; font-weight: 600; color: #333; }
-	.vi-badge { font-size: 20rpx; font-weight: 600; padding: 2rpx 12rpx; border-radius: 20rpx; margin-left: 12rpx; }
-	.vi-badge.chan-stable { background: #eaf7ee; color: #1a9c50; }
-	.vi-badge.chan-beta { background: #fff5e6; color: #d48806; }
-	.vi-current { font-size: 20rpx; color: #fff; background: #165DFF; border-radius: 20rpx; padding: 2rpx 12rpx; margin-left: 12rpx; }
-	.vi-date { margin-left: auto; font-size: 22rpx; color: #bbb; }
-	.vi-log { display: block; margin-top: 8rpx; font-size: 24rpx; color: #666; line-height: 1.5; }
-
-	/* 加载失败态(B-16) */
+	/* 加载 / 异常态(B-16) */
 	.load-error { display: flex; flex-direction: column; align-items: center; padding: 160rpx 60rpx; }
-	.le-icon { font-size: 90rpx; }
-	.le-text { margin-top: 24rpx; font-size: 30rpx; font-weight: 600; color: #333; }
-	.le-sub { margin-top: 12rpx; font-size: 24rpx; color: #999; text-align: center; }
-	.le-btn { margin-top: 40rpx; padding: 18rpx 70rpx; background: #165DFF; color: #fff; border-radius: 40rpx; font-size: 28rpx; }
+	.le-icon { font-size: 80rpx; }
+	.le-text { margin-top: 20rpx; font-size: 30rpx; font-weight: 600; color: $text-1; }
+	.le-sub { margin-top: 10rpx; font-size: 24rpx; color: $text-3; text-align: center; line-height: 1.5; }
+	.le-btn { margin-top: 36rpx; padding: 18rpx 64rpx; background: $primary; color: #fff; border-radius: 42rpx; font-size: 28rpx; }
 </style>

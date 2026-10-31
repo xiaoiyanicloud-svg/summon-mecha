@@ -125,8 +125,10 @@ export default {
 .nav-variant-pill .nav-right { width: 72rpx; }
 
 /* ===== sticky：吸顶（jineng，原样式用 px） ===== */
+/* 顶部留 18px（原 12px）：返回键原来贴着页面最上沿，视觉上太顶；
+   再加安全区，刘海屏/小程序状态栏下不会被压住。 */
 .nav-variant-sticky {
-	padding: 12px 20px;
+	padding: calc(18px + env(safe-area-inset-top)) 20px 12px;
 	background-color: #ffffff;
 	position: sticky;
 	top: 0;

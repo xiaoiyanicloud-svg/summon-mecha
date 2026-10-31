@@ -50,12 +50,12 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx79da365df814e044",
         "setting" : {
             "urlCheck" : false
         },
         "usingComponents" : true
-        /* ===== 语音插件:微信「同声传译」 =====
+    /* ===== 语音插件:微信「同声传译」 =====
          * 朗读在小程序端**优先走这个插件**(免费、不经后端);插件不可用时自动回退到
          * 后端 /api/tts。分支逻辑见 utils/tts.js 的 getTtsPlugin / pluginSynthesize。
          *

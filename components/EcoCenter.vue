@@ -16,24 +16,68 @@
     <view class="eco-content">
       <!-- ========== 技能市场 ========== -->
       <view v-show="currentTab === 'skill'" class="tab-panel">
-        <SkillMarket ref="skillMarket" compact :active="currentTab === 'skill'" @select="onSkill" @show-all="goMoreSkills" />
+        <SkillMarket ref="skillMarket" compact :active="currentTab === 'skill'" :show-filters="false" @select="onSkill" @show-all="goMoreSkills" />
       </view>
 
       <!-- ========== 配件皮肤 ========== -->
       <view v-show="currentTab === 'accessory'" class="tab-panel">
-        <view class="grid-3col">
-          <view class="eco-card accessory-card" v-for="item in accessoryCards" :key="item.uid" @click="onAccessoryClick(item)">
-            <view class="eco-img accessory-img" :style="{ backgroundColor: item.bg || '#F0F4FA' }">
-              <image v-if="item.image" class="eco-img-img" :src="item.image" mode="aspectFill"></image>
-              <text v-else class="eco-icon">{{ item.icon }}</text>
-            </view>
-            <text class="eco-name">{{ item.name }}</text>
-            <text class="eco-price" v-if="item.price && String(item.price) !== '0'">¥{{ item.price }}</text>
+        <!-- 首页配件只保留关键词搜索，分类和机型筛选留给完整配件目录 -->
+        <view class="acc-search">
+          <view class="acc-search-icon" aria-hidden="true">
+            <view class="acc-search-icon-ring"></view>
+            <view class="acc-search-icon-handle"></view>
           </view>
+          <input
+            class="acc-search-input"
+            v-model="accessoryQuery"
+            confirm-type="search"
+            placeholder="搜索配件名称 / SKU"
+            placeholder-style="color: #94A3B8"
+            @input="onAccessoryQueryInput"
+            @confirm="searchAccessories"
+          />
+          <text v-if="accessoryQuery" class="acc-search-clear" @click="clearAccessorySearch">✕</text>
         </view>
-        <view class="more-entry" @click="goMoreAccessoriesList">
-          <text class="more-text">更多配件 →</text>
-        </view>
+
+        <state-view
+          :loading="accessoryLoading && accessoryCards.length === 0"
+          :error="accessoryError"
+          :empty="!accessoryLoading && !accessoryError && accessoryCards.length === 0"
+          empty-icon="🧩"
+          :empty-text="accessoryEmptyText"
+          :empty-hint="accessoryEmptyHint"
+          :empty-action="hasAccessoryQuery"
+          empty-action-text="清空搜索"
+          compact
+          @retry="loadAccessory(true)"
+          @empty-action="clearAccessorySearch"
+        >
+          <view class="acc-grid">
+            <view
+              class="acc-card"
+              v-for="item in accessoryCards"
+              :key="item.id"
+              role="button"
+              tabindex="0"
+              @click="onAccessoryClick(item)"
+              @keyup.enter="onAccessoryClick(item)"
+            >
+              <view class="acc-img">
+                <image class="acc-img-img" :src="displayAccessoryImage(item)" mode="aspectFill" @error="accessoryImageFailed(item)"></image>
+              </view>
+              <view class="acc-card-body">
+                <text class="acc-name">{{ item.name }}</text>
+                <text class="acc-fit" :class="'fit-' + fitLevelOf(item)">{{ fitLabelOf(item) }}</text>
+                <text class="acc-price" v-if="item.price && Number(item.price) > 0">¥{{ item.price }}</text>
+                <text class="acc-quote" v-else-if="item.custom_service">定制需报价</text>
+                <text class="acc-install" v-if="item.install && item.install.label">{{ item.install.label }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="more-entry" @click="goMoreAccessoriesList">
+            <text class="more-text">查看更多配件 →</text>
+          </view>
+        </state-view>
       </view>
 
       <!-- ========== 赛事活动（G1 公开只读预览） ========== -->
@@ -83,7 +127,7 @@
 
       <!-- ========== 动态资讯（Dongtai 真实预览） ========== -->
       <view v-show="currentTab === 'feed'" class="tab-panel">
-        <Dongtai />
+        <Dongtai :active="currentTab === 'feed'" />
       </view>
     </view>
   </view>
@@ -92,7 +136,7 @@
 <script>
 import Dongtai from '@/components/shouye/dongtai.vue'
 import StateView from '@/components/StateView.vue'
-import { productApi, categoryApi, eventApi } from '@/utils/api'
+import { eventApi, accessoryCatalogApi } from '@/utils/api'
 import {
   normalizeEventPage,
   errorState,
@@ -105,9 +149,7 @@ import {
 import SkillMarket from '@/components/SkillMarket.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import { BASE_URL } from '@/utils/config'
-
-// tab 数据刷新节流: 5 分钟内重复切 tab 不重拉(与机器页 loadCatalog 的 TTL 策略一致)
-const CATALOG_TTL = 5 * 60 * 1000;
+import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
 
 export default {
   name: 'EcoCenter',
@@ -118,6 +160,7 @@ export default {
       // 赛事预览:只消费 G1-10 公开 DTO;空/错/格式异常分别交给 StateView
       eventList: [],
       eventLoading: false,
+      eventLoaded: false,
       eventError: '',
       eventErrorInfo: null,
 
@@ -130,26 +173,12 @@ export default {
 
 
       accessoryCatalog: [],
-
-      // 技能 mock 已抽到 components/jiqi/skill-data.js(与机器页共用一份, 见 skillCards 计算属性)
-      // 配件 mock 仅本页使用(机器页配件是纯后台数据)
-      accessoryList: [
-        { id: 1, name: '合金护甲', price: '299', icon: '🛡️', category: 'fight' },
-        { id: 2, name: '格斗铲', price: '199', icon: '🔧', category: 'fight' },
-        { id: 3, name: '高速电机', price: '599', icon: '⚡', category: 'fight' },
-        { id: 4, name: '机甲炫彩皮肤', price: '159', icon: '🎨', category: 'skin' },
-        { id: 5, name: '碳纤维外壳', price: '399', icon: '🛡️', category: 'skin' },
-        { id: 6, name: '夜光涂装', price: '259', icon: '✨', category: 'skin' },
-        { id: 7, name: '智能电池', price: '399', icon: '🔋', category: 'battery' },
-        { id: 8, name: '激光雷达', price: '899', icon: '📡', category: 'sensor' },
-        { id: 9, name: '防撞轮', price: '149', icon: '🔄', category: 'sensor' },
-        { id: 10, name: '机械臂', price: '1,299', icon: '🦾', category: 'arm' },
-        { id: 11, name: '钛合金关节', price: '699', icon: '🦿', category: 'arm' },
-        { id: 12, name: '石墨烯电池', price: '899', icon: '🔋', category: 'battery' },
-        { id: 13, name: '磁悬浮模组', price: '1,099', icon: '🧲', category: 'sensor' },
-        { id: 14, name: '迷彩涂装', price: '329', icon: '🎨', category: 'skin' },
-        { id: 15, name: '重装护甲', price: '799', icon: '🛡️', category: 'fight' }
-      ],
+      accessoryLoading: false,
+      accessoryLoaded: false,
+      accessoryError: '',
+      accessoryQuery: '',
+      accessorySearchTimer: null,
+      _accessorySeq: 0,
     };
   },
   computed: {
@@ -163,91 +192,96 @@ export default {
 
     // 有搜索词或任一筛选维度 → 走服务端搜索(否则显示全部)
 
-    // 配件皮肤: 后台真实商品 + 静态 mock 共存(同样按名称去重)
+    // 配件皮肤:只展示后台真实商品。没有数据就进入空态,不再用 mock 补位 ——
+    // mock 会与真实商品 id 冲突,并让用户对买不到的东西下单。
+    // 配件皮肤：P1 目录接口返回的卡片 DTO（已带适配、安装、交期）
     accessoryCards() {
-      const real = this.accessoryCatalog.map(p => ({ ...p, uid: 'r' + p.id }));
-      const realNames = new Set(real.map(p => String(p.name || '').trim()));
-      const mock = this.accessoryList
-        .filter(m => !realNames.has(m.name))
-        .map(m => ({ ...m, uid: 'm' + m.id }));
-      return real.concat(mock);
+      return this.accessoryCatalog;
+    },
+    hasAccessoryQuery() {
+      return !!this.accessoryQuery.trim();
+    },
+    accessoryEmptyText() {
+      return this.hasAccessoryQuery ? '没有符合条件的配件' : '配件正在上架';
+    },
+    accessoryEmptyHint() {
+      return this.hasAccessoryQuery
+        ? '换个关键词试试。'
+        : '新配件上架后会在这里展示；需要特定配件可联系客服登记需求。';
     },
   },
-  mounted() {
-    this.loadAccessory();
-    this.loadEvents();
+  // 首屏只加载可见的「技能市场」;配件/赛事/资讯切到对应 Tab 再拉(见 switchTab),
+  // 不再一进首页就并发 4 个请求 —— 本机单进程后端会串行排队,拖慢首屏。
+  beforeUnmount() {
+    this._accessorySeq++;
+    if (this.accessorySearchTimer) clearTimeout(this.accessorySearchTimer);
   },
   methods: {
     switchTab(tab) {
       if (['skill', 'accessory', 'event', 'feed'].includes(tab)) {
         this.currentTab = tab;
       }
-      if (tab === 'accessory') this.loadAccessory();
+      if (tab === 'accessory' && !this.accessoryLoaded && !this.accessoryLoading) this.loadAccessory();
+      if (tab === 'event' && !this.eventLoaded && !this.eventLoading) this.loadEvents();
     },
-    // 富文本图片地址修复(与机器人页一致): 后台描述里的 localhost/相对路径统一重写为 BASE_URL, 图片可加载
-    fixDescUrls(html) {
-      if (!html) return html;
-      const base = String(BASE_URL);
-      let out = String(html)
-        .replace(/(src|href)=["']https?:\/\/[^\/"']+(?=\/)/gi, (_m, a) => `${a}="${base}`)
-        .replace(/(src|href)=["'](\/(?!\/)[^"']*)/g, (_m, a, p) => `${a}="${base}${p}`);
-      out = out.replace(/<img([^>]*)>/gi, (_m, attrs) => {
-        let a = String(attrs)
-          .replace(/\s+(?:width|height|style)=("[^"]*"|'[^']*'|\S+)/gi, '')
-          .replace(/\s*\/\s*$/, '');
-        return `<img${a} width="100%" style="height:auto;display:block;max-width:100%">`;
-      });
-      return out;
+    // 配件图片可能来自 localhost/相对路径，统一改写到 BASE_URL
+    imageUrl(url) {
+      return normalizeCatalogImageUrl(url, BASE_URL);
     },
-    // 后台商品 → 卡片/详情所用字段(与机器人页 mapCatalogProduct 对齐)
-    mapProduct(p) {
-      const regular = (p.prices && p.prices.regular && p.prices.regular.price) || '';
-      const final = (p.prices && p.prices.final && p.prices.final.price) || '';
-      const minPrice = (typeof p.min_price === 'number' ? p.min_price : '0');
-      const effVal = final || regular || minPrice;
-      const rawEff = parseFloat(String(effVal).replace(/[^\d.]/g, ''));
-      const rawReg = parseFloat(String(regular).replace(/[^\d.]/g, ''));
-      const num = isNaN(rawEff) ? '0' : String(Math.round(rawEff * 100) / 100);
-      const originalPrice = rawEff > 0 ? String(Math.round(((!isNaN(rawReg) && rawReg > rawEff) ? rawReg : rawEff * 1.2) * 100) / 100) : '';
-      const img = (p.base_image && (p.base_image.medium_image_url || p.base_image.large_image_url || p.base_image.small_image_url)) || '';
-      return {
-        id: p.id,
-        name: p.name || '商品',
-        sku: p.sku || '',
-        price: num,
-        bagistoPrice: num,
-        originalPrice,
-        image: img,
-        icon: '🤖',
-        bg: '#F0F4FA',
-        scene: '',
-        bagistoId: p.id,
-        bagistoDescription: this.fixDescUrls(p.description || ''),
-        brand: 'all',
-        type: 'all',
-      };
+    displayAccessoryImage(item) {
+      return this.imageUrl(item && item.image) || catalogFallbackImage('accessory', item && item.id);
     },
-
-    async loadAccessory() {
-      if (Date.now() - (this._accessoryLoadedAt || 0) < CATALOG_TTL) return;
+    accessoryImageFailed(item) {
+      if (item) item.image = catalogFallbackImage('accessory', item.id);
+    },
+    async loadAccessory(force = false) {
+      const seq = ++this._accessorySeq;
+      this.accessoryLoading = true;
+      this.accessoryLoaded = false;
+      this.accessoryError = '';
       try {
-        const catsRes = await categoryApi.getCategories({ limit: 200 });
-        const cats = (catsRes && Array.isArray(catsRes.data)) ? catsRes.data : [];
-        const sc = cats.find(c => c.slug === 'accessory' || c.name === '配件');
-        if (!sc) {
-          console.warn('[EcoCenter] 后台未找到「配件」分类(slug=accessory), 配件皮肤仅显示兜底 mock');
-          return;
-        }
-        const res = await productApi.getProducts({ limit: 200, page: 1, category_id: sc.id });
-        const items = (res && Array.isArray(res.data)) ? res.data : [];
-        this.accessoryCatalog = items.map(p => ({ ...this.mapProduct(p), category: '配件' }));
-        this._accessoryLoadedAt = Date.now();
+        const params = { limit: 6, page: 1, sort: 'default' };
+        const query = this.accessoryQuery.trim();
+        if (query) params.q = query;
+        const res = await accessoryCatalogApi.search(params);
+        if (seq !== this._accessorySeq) return;
+        const rows = (res && Array.isArray(res.data)) ? res.data : [];
+        this.accessoryCatalog = rows.map(row => ({ ...row, image: this.imageUrl(row.image) }));
+        this.accessoryLoaded = true;
       } catch (e) {
-        // 后台拉取失败时保留 mock 兜底, 不置空
-        console.warn('[EcoCenter] 配件商品拉取失败, 使用 mock 兜底', e);
+        if (seq !== this._accessorySeq) return;
+        this.accessoryCatalog = [];
+        this.accessoryError = (e && e.message) || '配件加载失败';
+      } finally {
+        if (seq === this._accessorySeq) this.accessoryLoading = false;
       }
     },
-    refreshSkills() { return this.$refs.skillMarket && this.$refs.skillMarket.refresh() },
+    onAccessoryQueryInput() {
+      if (this.accessorySearchTimer) clearTimeout(this.accessorySearchTimer);
+      this.accessorySearchTimer = setTimeout(() => {
+        this.accessorySearchTimer = null;
+        this.loadAccessory(true);
+      }, 350);
+    },
+    searchAccessories() {
+      if (this.accessorySearchTimer) clearTimeout(this.accessorySearchTimer);
+      this.accessorySearchTimer = null;
+      this.loadAccessory(true);
+    },
+    clearAccessorySearch() {
+      if (this.accessorySearchTimer) clearTimeout(this.accessorySearchTimer);
+      this.accessorySearchTimer = null;
+      if (!this.accessoryQuery) return;
+      this.accessoryQuery = '';
+      this.loadAccessory(true);
+    },
+    fitLevelOf(item) {
+      return (item && item.fitment && item.fitment.level) || 'unknown';
+    },
+    fitLabelOf(item) {
+      return (item && item.fitment && item.fitment.label) || '适配待确认';
+    },
+    refreshSkills() { return this.$refs.skillMarket && this.$refs.skillMarket.refreshIfStale() },
     onSkill(item) {
       const url = skillDetailUrl(item)
       if (url) uni.navigateTo({ url })
@@ -264,15 +298,29 @@ export default {
       uni.setStorageSync('robotTab', 'skill');
       uni.switchTab({ url: '/pages/robot/index' });
     },
-    goMoreAccessories() {
-      uni.showToast({ title: '查看全部配件分类', icon: 'none' });
-    },
     goMoreAccessoriesList() {
+      // 把首页当前搜索词带到完整配件目录，避免用户进去后重新输入
+      uni.setStorageSync('accessoryInitialFilters', {
+        q: this.accessoryQuery.trim(),
+      });
       uni.setStorageSync('robotTab', 'accessory');
       uni.switchTab({ url: '/pages/robot/index' });
     },
     onAccessoryClick(item) {
-      const data = { ...item, fromHome: true };
+      const id = Number(item && item.id);
+      if (!item || !Number.isSafeInteger(id) || id <= 0) {
+        uni.showToast({ title: '该配件暂不可在线购买', icon: 'none' });
+        return;
+      }
+      // 统一成机器页详情能消费的字段；完整详情由 /api/accessory-catalog/{id} 再拉一次
+      const data = {
+        ...item,
+        bagistoId: id,
+        bagistoPrice: item.price,
+        icon: '🧩',
+        bg: '#F0F4FA',
+        fromHome: true,
+      };
       uni.setStorageSync('accessoryDetail', data);
       uni.setStorageSync('robotTab', 'accessory');
       uni.switchTab({ url: '/pages/robot/index' });
@@ -288,6 +336,7 @@ export default {
         const res = await eventApi.getEvents({ page: 1, per_page: 5 });
         const page = normalizeEventPage(res, 1);
         this.eventList = page.items;
+        this.eventLoaded = true;
       } catch (e) {
         const info = errorState(e);
         this.eventList = [];
@@ -333,7 +382,8 @@ export default {
 .eco-sticky {
   position: sticky;
   top: calc(env(safe-area-inset-top) + 149rpx);
-  z-index: 850;
+  /* ⚠ 必须低于底部自定义 tabBar(.custom-tabbar z-index:200), 否则吸顶条会盖住主导航 */
+  z-index: 100;
   /* ⚠ 必须与 .eco-bg 同色: 吸顶滚动时这层会盖在卡片上, 颜色不一致会看出接缝 */
   background: #ffffff;
   margin: -20rpx -20rpx 0;
@@ -407,11 +457,22 @@ export default {
   font-weight: 600;
   color: #1F2937;
   margin-bottom: 8rpx;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 2.7em;
+  word-break: break-all;
+}
+.accessory-card:focus-visible {
+  outline: 3rpx solid #165DFF;
+  outline-offset: 2rpx;
 }
 .eco-price {
   font-size: 22rpx;
   font-weight: 700;
-  color: #165DFF;
+  color: #FF7820;
   margin-bottom: 6rpx;
 }
 .more-entry {
@@ -544,4 +605,116 @@ export default {
 .sf-chip { padding: 6rpx 20rpx; margin: 0 12rpx 12rpx 0; font-size: 22rpx; color: #6B7280; background: #fff; border: 1px solid #E5E7EB; border-radius: 30rpx; }
 .sf-chip.on { background: #165DFF; color: #fff; border-color: #165DFF; }
 .skill-empty { text-align: center; color: #9CA3AF; font-size: 24rpx; padding: 40rpx 0; }
+
+/* ===== 配件皮肤（P1） ===== */
+.acc-search {
+  display: flex;
+  align-items: center;
+  height: 72rpx;
+  margin: 8rpx 0 20rpx;
+  padding: 0 14rpx 0 22rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5F2;
+  border-radius: 18rpx;
+  box-shadow: 0 4rpx 14rpx rgba(16, 47, 110, 0.05);
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.acc-search:focus-within {
+  border-color: #94B8FF;
+  box-shadow: 0 4rpx 16rpx rgba(22, 93, 255, 0.10);
+}
+.acc-search-icon {
+  position: relative;
+  width: 26rpx;
+  height: 26rpx;
+  flex: 0 0 26rpx;
+}
+.acc-search-icon-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18rpx;
+  height: 18rpx;
+  border: 3rpx solid #6E8AB8;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.acc-search-icon-handle {
+  position: absolute;
+  left: 16rpx;
+  top: 16rpx;
+  width: 10rpx;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: #6E8AB8;
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
+.acc-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 12rpx;
+  font-size: 25rpx;
+  color: #1F2937;
+}
+.acc-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  flex: 0 0 40rpx;
+  border-radius: 50%;
+  background: #F1F5F9;
+  font-size: 22rpx;
+  color: #64748B;
+}
+.acc-search-clear:active { background: #E2E8F0; }
+.acc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16rpx; }
+.acc-card {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.acc-card:focus-visible { outline: 3rpx solid #165DFF; outline-offset: 2rpx; }
+.acc-img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #F0F4FA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.acc-img-img { width: 100%; height: 100%; }
+.acc-icon { font-size: 72rpx; }
+.acc-card-body { padding: 12rpx 14rpx 16rpx; display: flex; flex-direction: column; gap: 6rpx; }
+.acc-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1F2937;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+.acc-fit {
+  align-self: flex-start;
+  font-size: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 20rpx;
+  background: #EEF2F6;
+  color: #52607A;
+}
+.acc-fit.fit-direct { background: #E8F7F0; color: #0E7C5A; }
+.acc-fit.fit-adapter { background: #FFF4E5; color: #B45309; }
+.acc-fit.fit-custom { background: #F3E8FF; color: #7E22CE; }
+.acc-price { font-size: 30rpx; font-weight: 700; color: #FF7820; }
+.acc-quote { font-size: 24rpx; font-weight: 600; color: #7E22CE; }
+.acc-install { font-size: 20rpx; color: #8A9AA8; }
 </style>

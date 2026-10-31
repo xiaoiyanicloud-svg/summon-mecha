@@ -296,12 +296,16 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 				this.currentIndex = e.detail.current;
 			},
 			async refreshScenes() {
-                this.scenesLoading = true; this.scenesError = '';
+                // 有已展示内容时不切加载态:场景目录本身有 5 分钟 TTL,
+                // 命中缓存时这里同步返回,不会闪一下「加载中…」。
+                if (!this.schemes.length) this.scenesLoading = true;
+                this.scenesError = '';
                 try {
-                    await loadBackendScenes({ force: true });
+                    await loadBackendScenes();
                     const hot = sceneProducts.filter(s => s.is_hot);
                     this.schemes = [...(hot.length ? hot : sceneProducts)];
                 } catch (e) {
+                    // 接口失败不保留旧卡片(避免把过期快照当成当前可交易场景)
                     this.schemes = []; this.scenesError = e.message || '场景加载失败，请重试';
                 } finally { this.scenesLoading = false; }
             },
@@ -309,10 +313,9 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 				uni.showToast({ title: '回到首页', icon: 'none' });
 			}
 		},
-		onLoad() {
-			this.refreshScenes();
-		},
 		onShow() {
+			// onLoad 不再单独拉一次(会与 onShow 重复)。场景走 5 分钟 TTL:
+			// 5 分钟内切回首页零请求,过期后后台静默刷新、旧卡片保持显示。
 			this.refreshScenes();
 			this.$nextTick(() => { if (this.$refs.ecoCenter) this.$refs.ecoCenter.refreshSkills() });
 		},

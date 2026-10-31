@@ -1,35 +1,36 @@
 <template>
   <view class="skill-market" :class="{ compact }">
     <view class="market-search">
-      <input v-model="query" placeholder="搜索已上架技能" confirm-type="search" @confirm="refresh" @input="onQueryInput" />
-      <button size="mini" @click="refresh">搜索</button>
+      <input v-model="query" placeholder="搜索已上架技能" confirm-type="search" @confirm="refreshNow" @input="onQueryInput" />
+      <button size="mini" @click="refreshNow">搜索</button>
     </view>
-    <view v-if="filterLoading" class="market-note">筛选条件加载中…</view>
-    <view v-else-if="filterError" class="market-state">
-      <text>{{ filterError }}</text><button size="mini" @click="loadFilters">重试筛选条件</button>
-    </view>
-    <view v-else class="market-filters">
-      <picker v-for="group in filterGroups" :key="group.key" :range="group.options" range-key="label"
-        :value="filterIndex(group)" @change="pickFilter(group, $event)">
-        <view class="market-filter">{{ group.title }}：{{ group.options[filterIndex(group)].label }} ▾</view>
-      </picker>
+    <view v-if="showFilters">
+      <view v-if="filterLoading" class="market-note">筛选条件加载中…</view>
+      <view v-else-if="filterError" class="market-state">
+        <text>{{ filterError }}</text><button size="mini" @click="loadFilters">重试筛选条件</button>
+      </view>
+      <view v-else class="market-filters">
+        <picker v-for="group in filterGroups" :key="group.key" :range="group.options" range-key="label"
+          :value="filterIndex(group)" @change="pickFilter(group, $event)">
+          <view class="market-filter">{{ group.title }}：{{ group.options[filterIndex(group)].label }} ▾</view>
+        </picker>
+      </view>
     </view>
     <view v-if="market.error" class="market-state market-error">
       <text>技能加载失败</text><text class="market-note">{{ market.error }}</text>
-      <button size="mini" @click="refresh">重新加载</button>
+      <button size="mini" @click="refreshNow">重新加载</button>
     </view>
-    <view v-else-if="market.loading && market.page === 0" class="market-state"><text>正在加载技能…</text></view>
+    <view v-else-if="market.loading && market.page === 0 && !market.rows.length" class="market-state"><text>正在加载技能…</text></view>
     <view v-else-if="!market.rows.length" class="market-state">
       <text>{{ hasFilters ? '没有符合条件的技能' : '暂无已上架技能' }}</text>
       <text class="market-note">{{ hasFilters ? '试试其它筛选条件' : '开发者完成审核上架后，技能将在这里展示。' }}</text>
       <button v-if="hasFilters" size="mini" @click="resetFilters">清空筛选</button>
-      <button v-else size="mini" @click="refresh">刷新</button>
+      <button v-else size="mini" @click="refreshNow">刷新</button>
     </view>
     <view v-else>
       <view class="market-grid">
         <view v-for="item in market.rows" :key="item.id" class="market-card" @click="select(item)">
-          <image v-if="item.image" class="market-image" :src="imageUrl(item.image)" mode="aspectFill" @error="imageFailed(item)" />
-          <view v-else class="market-image market-placeholder">🤖</view>
+          <image class="market-image" :src="displayImage(item)" mode="aspectFill" @error="imageFailed(item)" />
           <view class="market-card-body">
             <text class="market-name">{{ item.name }}</text>
             <text v-if="item.summary && !compact" class="market-summary">{{ item.summary }}</text>
@@ -38,18 +39,8 @@
           </view>
         </view>
       </view>
-      <view class="market-footer">
-        <button v-if="market.hasMore" size="mini" :disabled="market.loading" @click="loadMore">{{ market.loading ? '加载中…' : '加载更多' }}</button>
-        <text v-else class="market-note">已展示全部匹配技能</text>
-      </view>
-    </view>
-    <view class="market-examples">
-      <view class="examples-toggle" @click="showExamples = !showExamples"><text>技能构想示例 · 不可购买</text><text>{{ showExamples ? '收起 −' : '展开 +' }}</text></view>
-      <view v-if="showExamples">
-        <text class="market-note">以下内容用于说明能力方向，不代表已上架、已适配或能够交付。</text>
-        <view v-for="example in examples" :key="example.key" class="example-row" @click="explainExample">
-          <text>{{ example.icon }} {{ example.name }}</text><text class="example-label">构想示例</text>
-        </view>
+      <view v-if="market.hasMore" class="market-footer">
+        <button size="mini" :disabled="market.loading" @click="loadMore">{{ market.loading ? '加载中…' : '加载更多' }}</button>
       </view>
     </view>
     <view v-if="compact" class="market-more" @click="$emit('show-all')">打开完整技能市场 →</view>
@@ -59,19 +50,27 @@
 <script>
 import { skillCatalogApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
-import SKILL_LIST from '@/components/jiqi/skill-data'
 import { createSkillMarketState, loadSkillMarket } from '@/utils/skill-market'
+import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
+
+// 首页/机器页共用:2 分钟内重复进入不再请求技能列表。
+// 返回首页(onShow)只做「过期才刷新」,且刷新期间保留旧卡片,避免闪成加载态。
+const SKILL_MARKET_TTL = 120000
 
 export default {
   name: 'SkillMarket',
-  props: { compact: Boolean, active: { type: Boolean, default: true } },
+  props: {
+    compact: Boolean,
+    active: { type: Boolean, default: true },
+    // 首页生态中心内嵌时不展示机型/交付/动作分类筛选；机器页技能分类页保持展示
+    showFilters: { type: Boolean, default: true },
+  },
   emits: ['select', 'show-all'],
   data() {
     return {
       query: '', filters: { model: '', channel: '', motion: '' }, market: createSkillMarketState(),
       filterLoading: false, filterError: '', options: { models: [], channels: [], risks: [], motions: [] },
-      showExamples: false,
-      examples: SKILL_LIST.slice(0, 3).map((row, i) => ({ key: `example-${i}`, name: row.name, icon: row.icon || '💡' })),
+      _loadedKey: '', _loadedAt: 0, _pending: null, _pendingKey: '',
     }
   },
   computed: {
@@ -86,23 +85,52 @@ export default {
   },
   watch: {
     active(value) {
-      if (value) { this.refresh(); if (this.filterError) this.loadFilters() }
-      else { this.market.sequence++; this.market.loading = false }
+      // 已拿到首屏结果的 Tab 不再重复清空内容；避免每次切回都先收缩成加载态
+      if (value) {
+        this.refreshIfStale()
+        if (this.showFilters && this.filterError) this.loadFilters()
+      } else { this.market.sequence++; this.market.loading = false }
     },
   },
-  mounted() { this.loadFilters(); if (this.active) this.refresh() },
+  mounted() { if (this.showFilters) this.loadFilters(); if (this.active) this.refreshIfStale() },
   beforeUnmount() { this.market.sequence++ },
   methods: {
-    refresh() { return loadSkillMarket(this.market, skillCatalogApi.search, { query: this.query, filters: this.filters }) },
+    // 用户显式动作(搜索/筛选/重试):强制走网络;同条件刷新时保留旧卡片直到新结果返回
+    refreshNow() { return this.refresh({ force: true, keepRows: true }) },
+    // 进入页面/切回 Tab:缓存未过期就不发请求
+    refreshIfStale() { return this.refresh({ force: false, keepRows: true }) },
+    refresh({ force = false, keepRows = true } = {}) {
+      const key = JSON.stringify([this.query.trim(), this.filters])
+      if (!force && this._loadedKey === key && this._loadedAt && Date.now() - this._loadedAt < SKILL_MARKET_TTL) {
+        return Promise.resolve()
+      }
+      // 同一组条件已有请求在飞:直接复用,避免 mounted 与首页 onShow 各打一次
+      if (!force && this._pending && this._pendingKey === key) return this._pending
+      const sameKey = this._loadedKey === key
+      const seq = this.market.sequence + 1
+      this._loadedKey = key
+      // 同一组条件下静默刷新保留旧列表;查询/筛选变了才清空,避免旧结果冒充新条件
+      const request = loadSkillMarket(this.market, skillCatalogApi.search, {
+        query: this.query, filters: this.filters, keepRows: keepRows && sameKey && this.market.rows.length > 0,
+      }).then(() => {
+        if (this.market.sequence !== seq) return
+        if (this.market.error) { this._loadedKey = ''; this._loadedAt = 0 }
+        else this._loadedAt = Date.now()
+      }).finally(() => {
+        if (this._pending === request) { this._pending = null; this._pendingKey = '' }
+      })
+      this._pending = request; this._pendingKey = key
+      return request
+    },
     loadMore() { return loadSkillMarket(this.market, skillCatalogApi.search, { query: this.query, filters: this.filters, append: true }) },
     filterIndex(group) { return Math.max(0, group.options.findIndex(x => x.value === this.filters[group.key])) },
-    pickFilter(group, event) { this.filters[group.key] = group.options[Number(event.detail.value)]?.value || ''; this.refresh() },
-    resetFilters() { this.query = ''; Object.keys(this.filters).forEach(key => { this.filters[key] = '' }); this.refresh() },
-    onQueryInput(event) { if (!String(event.detail.value || '').trim()) this.refresh() },
+    pickFilter(group, event) { this.filters[group.key] = group.options[Number(event.detail.value)]?.value || ''; this.refreshNow() },
+    resetFilters() { this.query = ''; Object.keys(this.filters).forEach(key => { this.filters[key] = '' }); this.refreshNow() },
+    onQueryInput(event) { if (!String(event.detail.value || '').trim()) this.refreshNow() },
     select(item) { if (item.market_eligible === true) this.$emit('select', item) },
-    explainExample() { uni.showModal({ title: '技能构想示例', content: '这是能力方向示例，尚不代表已上架或适配，也不能购买。请以市场中的真实技能与交付说明为准。', showCancel: false }) },
-    imageUrl(url) { return String(url).replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?=\/)/, BASE_URL) },
-    imageFailed(item) { item.image = '' },
+    imageUrl(url) { return normalizeCatalogImageUrl(url, BASE_URL) },
+    displayImage(item) { return this.imageUrl(item.image) || catalogFallbackImage('skill', item.id) },
+    imageFailed(item) { item.image = catalogFallbackImage('skill', item.id) },
     async loadFilters() {
       if (this.filterLoading) return
       this.filterLoading = true; this.filterError = ''
@@ -135,12 +163,8 @@ export default {
 .market-card-body { padding: 18rpx; }
 .market-name { display: block; font-weight: 600; font-size: 28rpx; line-height: 1.5; }
 .market-summary { display: block; font-size: 23rpx; color: #64748b; line-height: 1.6; margin-top: 10rpx; }
-.market-price { display: block; margin: 16rpx 0 6rpx; font-size: 29rpx; color: #165dff; }
+.market-price { display: block; margin: 16rpx 0 6rpx; font-size: 29rpx; color: #FF7820; }
 .market-footer { text-align: center; padding: 24rpx 0; }
-.market-examples { margin-top: 22rpx; padding: 20rpx; background: #fff; border: 1rpx dashed #c5cfe1; border-radius: 14rpx; }
-.examples-toggle { display: flex; justify-content: space-between; gap: 12rpx; font-size: 24rpx; padding: 8rpx 0; }
-.example-row { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; font-size: 25rpx; gap: 12rpx; }
-.example-label { font-size: 21rpx; color: #64748b; flex-shrink: 0; }
 .market-more { text-align: center; padding-top: 28rpx; font-size: 26rpx; color: #165dff; }
 .compact { border-radius: 16rpx; padding: 20rpx 10rpx; }
 </style>

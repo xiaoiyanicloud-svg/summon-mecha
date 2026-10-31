@@ -51,7 +51,7 @@
 
       <!-- ===== 租用信息 & 租期选择（产品类型/天数/开始/结束日期）租用或多机显示 ===== -->
       <view class="info-card" v-if="product.type === 'rent' || multiItems.length">
-        <view class="rent-info-row">
+        <view class="rent-info-row" v-if="!multiItems.length">
           <text class="rent-info-label">产品类型</text>
           <text class="rent-info-value">{{ productTypeLabel }}</text>
         </view>
@@ -65,8 +65,8 @@
         </view>
       </view>
 
-      <!-- ===== 数量选择 ===== -->
-      <view class="qty-section">
+      <!-- ===== 数量选择（多机合单时每台各 1 件，不显示数量步进器） ===== -->
+      <view class="qty-section" v-if="!multiItems.length">
         <text class="qty-label">购买数量</text>
         <view class="stepper">
           <view class="step-btn" @tap="decreaseQty">−</view>
@@ -176,7 +176,7 @@
       </view>
 
       <!-- ===== 优惠码(仅技能单 · B-18) ===== -->
-      <!-- 技能单走 tob-order、不经购物车,原生券入口在购物车页 —— 这里给它一个。 -->
+      <!-- 技能单直接走 tob-order，因此在这里提供优惠码入口。 -->
       <!-- 无预览接口:券在**提交时**由后端校验并折抵;无效会在提交处弹出原因,不会静默吞掉 -->
       <view class="summary-card" v-if="isSkillOrder">
         <view class="card-title">优惠码</view>
@@ -210,7 +210,7 @@
 </template>
 
 <script>
-import { cartApi, tobOrderApi, addressApi, paymentApi } from '@/utils/api'
+import { tobOrderApi, addressApi, paymentApi } from '@/utils/api'
 import { serverToLocal, localToServerPayload } from '@/utils/address'
 import { TOKEN_KEY } from '@/utils/config'
 
@@ -227,7 +227,6 @@ export default {
         type: 'buy',
       },
       qty: 1,
-      intentMode: false,
       submitting: false,
       // B-18:技能单优惠码(提交时由后端校验折抵;仅在技能单展示该输入)
       couponCode: '',
@@ -533,25 +532,6 @@ export default {
       uni.setStorageSync('addressList', JSON.stringify(list))
     },
 
-    // ================ 确保入购物车 ================
-    async ensureInCart() {
-      try {
-        const res = await cartApi.getCart()
-        const cart = res && (res.data || null)
-        const items = (cart && cart.items) ? cart.items : []
-        const exists = items.find(i => i.name === this.product.name)
-        if (!exists) {
-          await cartApi.addToCart({ product_id: this.product.id, quantity: this.qty, is_buy_now: 1 })
-        } else if (Number(exists.quantity) !== this.qty) {
-          await cartApi.updateCart({ qty: { [exists.id]: this.qty } })
-        }
-      } catch (e) {
-        // 后端无法入购物车（商品 id 未同步 / 服务未启动）→ 转意向下单模式
-        this.intentMode = true
-        this._cartError = (e && e.message) || ''
-      }
-    },
-
     // ================ 提交订单（完整购买路径） ================
     async submitOrder() {
       if (this.submitting) return
@@ -581,7 +561,7 @@ export default {
       this.submitting = true
       uni.showLoading({ title: '提交订单中...', mask: true })
 
-      // 租/买/配件/技能统一走 TOB 统一下单:直接创建真实后台订单(不依赖购物车/配送/支付/登录)
+      // 租/买/配件/技能统一走 TOB 统一下单：直接创建真实后台订单（不依赖配送、支付、登录）
       try {
         const payload = {
           product_id: this.product.id || 0,
@@ -1242,7 +1222,7 @@ export default {
 .multi-name { font-size: 28rpx; font-weight: 600; color: #1F2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .multi-scene { font-size: 22rpx; color: #6B7280; }
 .multi-price-box { display: flex; align-items: baseline; flex-shrink: 0; }
-.multi-price { font-size: 30rpx; font-weight: 700; color: #165DFF; }
+.multi-price { font-size: 30rpx; font-weight: 700; color: #FF7820; }
 .multi-unit { font-size: 22rpx; color: #6B7280; }
 .rent-day-chips { display: flex; gap: 12rpx; flex-wrap: wrap; }
 .day-chip { font-size: 24rpx; color: #475569; background: #F1F5F9; border-radius: 24rpx; padding: 8rpx 22rpx; }

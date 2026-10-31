@@ -93,6 +93,24 @@
             <text class="quick-start-arrow">→</text>
           </view>
         </view>
+
+        <!-- 人工客服入口：AI 解决不了的装机、设备、退款问题，直接转人工。
+             常驻在空态卡片里，避免用户在一轮对话结束后找不到人。 -->
+        <view
+          class="human-service"
+          role="button"
+          tabindex="0"
+          aria-label="联系人工客服"
+          @tap="goHumanService"
+          @keydown.enter.prevent="goHumanService"
+        >
+          <text class="human-service-icon">🎧</text>
+          <view class="human-service-copy">
+            <text class="human-service-title">需要人工客服？</text>
+            <text class="human-service-sub">技能安装、设备故障、退款问题，直接找人工</text>
+          </view>
+          <text class="human-service-arrow">›</text>
+        </view>
       </view>
 
       <!-- ===== 消息流:一问一答 ===== -->
@@ -249,6 +267,18 @@
 
     <!-- ===== 底部输入区域 ===== -->
     <view class="input-area">
+      <!-- 人工客服常驻入口：无论对话进行到哪一步，都能一键转人工 -->
+      <view
+        class="human-entry"
+        role="button"
+        tabindex="0"
+        aria-label="联系人工客服"
+        @tap="goHumanService"
+        @keydown.enter.prevent="goHumanService"
+      >
+        <text class="human-entry-icon">🎧</text>
+        <text class="human-entry-text">人工</text>
+      </view>
       <!-- 用 textarea + auto-height:长句会随行数把输入框撑高,而不是挤在一行看不到 -->
       <view class="input-main">
         <textarea
@@ -1643,6 +1673,12 @@ export default {
       trackAiEvent('ai_recommendation_click', { recommendation_type: 'scene', target_id: String(scene.id || '') })
       uni.navigateTo({ url: `/pages/robot/fangan?sceneId=${scene.id}` })
     },
+    // 转人工客服：AI 解决不了的装机、设备、退款问题，直接去客服中心。
+    // 客服中心未登录时会自己给登录引导，这里不拦截。
+    goHumanService() {
+      trackAiEvent('ai_human_service_click', { source: 'ai' })
+      uni.navigateTo({ url: '/pages/mine/tickets' })
+    },
     createSceneRequest(index) {
       const question=this.messages.slice(0,index).reverse().find(message=>message.role==='user')
       if(!question?.text)return
@@ -2244,6 +2280,24 @@ page {
 }
 
 /* ===== 底部输入区域 ===== */
+.human-service {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  padding: 20rpx 24rpx;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1rpx solid #D6E4FF;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+.human-service:active { background: rgba(255, 255, 255, 0.92); }
+.human-service-icon { flex-shrink: 0; font-size: 32rpx; }
+.human-service-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.human-service-title { font-size: 26rpx; font-weight: 600; color: #1a2a3a; }
+.human-service-sub { margin-top: 6rpx; font-size: 21rpx; line-height: 1.45; color: #607080; }
+.human-service-arrow { flex-shrink: 0; font-size: 34rpx; color: #7b8fa5; }
+
 .input-area {
   flex-shrink: 0;
   padding: 16rpx 28rpx 12rpx 28rpx;
@@ -2260,6 +2314,24 @@ page {
   padding-bottom: calc(12rpx + env(safe-area-inset-bottom));
   padding-bottom: calc(12rpx + constant(safe-area-inset-bottom));
 }
+.human-entry {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1rpx solid rgba(255, 255, 255, 0.7);
+  color: #165DFF;
+  line-height: 1.1;
+  box-shadow: 0 4rpx 16rpx rgba(66, 145, 246, 0.18);
+}
+.human-entry:active { transform: scale(0.92); }
+.human-entry-icon { font-size: 26rpx; }
+.human-entry-text { font-size: 16rpx; font-weight: 600; }
 .input-main {
   flex: 1;
   min-width: 0;

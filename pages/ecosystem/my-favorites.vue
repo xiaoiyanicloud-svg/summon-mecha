@@ -21,6 +21,13 @@
         tabindex="0"
         @click="switchTab('content')"
       >动态资讯</text>
+      <text
+        class="tab"
+        :class="{ on: tab === 'product' }"
+        role="button"
+        tabindex="0"
+        @click="switchTab('product')"
+      >商品</text>
     </view>
 
     <state-view
@@ -32,7 +39,7 @@
       :empty="!loading && !errorMessage && items.length === 0 && staleCount === 0"
       empty-icon="⭐"
       empty-text="还没有收藏"
-      :empty-hint="tab === 'event' ? '在活动详情页点「收藏」后会出现在这里。' : '在资讯详情页点「收藏」后会出现在这里。'"
+      :empty-hint="emptyHint"
       @retry="reload"
     >
       <view class="list">
@@ -70,7 +77,7 @@
 
 <script>
 import StateView from '@/components/StateView.vue'
-import { favoriteApi } from '@/utils/api'
+import { favoriteApi, wishlistApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
 import {
   errorState,
@@ -97,6 +104,14 @@ export default {
       staleCount: 0,
       requestSeq: 0,
     }
+  },
+  computed: {
+    emptyHint() {
+      if (this.tab === 'product') return '在商品详情页点「收藏」后会出现在这里。'
+      return this.tab === 'event'
+        ? '在活动详情页点「收藏」后会出现在这里。'
+        : '在资讯详情页点「收藏」后会出现在这里。'
+    },
   },
   onLoad() {
     this.reload()
@@ -135,6 +150,43 @@ export default {
       }
 
       try {
+        if (this.tab === 'product') {
+          const response = await wishlistApi.list()
+          if (seq !== this.requestSeq) return
+          const rows = Array.isArray(response && response.data) ? response.data : null
+          if (!rows) throw new Error('商品收藏列表格式异常')
+          this.items = rows.map((row) => {
+            const product = row && row.product
+            const productId = Number(product && product.id)
+            if (!productId || !product.name) return null
+            const cover = product.base_image && (
+              product.base_image.medium_image_url
+              || product.base_image.large_image_url
+              || product.base_image.small_image_url
+              || product.base_image.original_image_url
+            )
+            const price = (product.prices && product.prices.final && product.prices.final.formatted_price)
+              || product.min_price
+              || ''
+            return {
+              type: 'product',
+              key: String(row.id),
+              wishlist_id: Number(row.id),
+              product_id: productId,
+              catalog_type: ['rent', 'buy', 'accessory', 'skill'].includes(row.catalog_type) ? row.catalog_type : 'buy',
+              title: product.name,
+              cover: cover || '',
+              price,
+              summary: product.sku ? 'SKU ' + product.sku : '商品收藏',
+              raw_product: product,
+            }
+          }).filter(Boolean)
+          this.hasMore = false
+          this.nextCursor = null
+          this.staleCount = 0
+          return
+        }
+
         const response = await favoriteApi.list(this.tab, {
           cursor: append && this.nextCursor ? this.nextCursor : '',
           perPage: PER_PAGE,
@@ -197,7 +249,8 @@ export default {
     },
     async remove(item) {
       try {
-        await favoriteApi.remove(item.type, item.key)
+        if (item.type === 'product') await wishlistApi.remove(item.wishlist_id)
+        else await favoriteApi.remove(item.type, item.key)
         this.items = this.items.filter((row) => !(row.type === item.type && row.key === item.key))
         uni.showToast({ title: '已取消收藏', icon: 'none' })
       } catch (error) {
@@ -205,7 +258,13 @@ export default {
       }
     },
     openItem(item) {
-      if (item.type === 'event') {
+      if (item.type === 'product') {
+        uni.setStorageSync('wishlistProductDetail', {
+          product: item.raw_product,
+          catalog_type: item.catalog_type,
+        })
+        uni.switchTab({ url: '/pages/robot/index' })
+      } else if (item.type === 'event') {
         uni.navigateTo({ url: `/pages/ecosystem/event-detail?id=${item.id}` })
       } else {
         uni.navigateTo({ url: `/pages/ecosystem/content-detail?slug=${encodeURIComponent(item.key)}` })
@@ -215,6 +274,10 @@ export default {
       return resolveMediaUrl(url, BASE_URL)
     },
     metaLine(item) {
+      if (item.type === 'product') {
+        const kind = { rent: '租赁', buy: '购买', accessory: '配件', skill: '技能' }[item.catalog_type] || '商品'
+        return [kind, item.price].filter(Boolean).join(' · ')
+      }
       if (item.type === 'event') {
         return [formatEventWhen({ startsAt: item.starts_at, endsAt: item.ends_at }), item.city]
           .filter(Boolean)

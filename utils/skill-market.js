@@ -3,13 +3,14 @@ export function createSkillMarketState() {
   return { rows: [], loading: false, error: '', page: 0, hasMore: false, sequence: 0 }
 }
 
-export async function loadSkillMarket(state, search, { query = '', filters = {}, append = false } = {}) {
+export async function loadSkillMarket(state, search, { query = '', filters = {}, append = false, keepRows = false } = {}) {
   if (append && (state.loading || !state.hasMore)) return
   const sequence = ++state.sequence
   const page = append ? state.page + 1 : 1
   state.loading = true
   state.error = ''
-  if (!append) { state.rows = []; state.page = 0; state.hasMore = false }
+  // keepRows: 静默刷新时保留上一份已上架列表,避免先清空再加载导致「正在加载技能…」闪烁
+  if (!append && !keepRows) { state.rows = []; state.page = 0; state.hasMore = false }
   try {
     const res = await search(query.trim(), { ...filters }, { page, limit: 12 })
     if (sequence !== state.sequence) return

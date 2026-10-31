@@ -76,12 +76,7 @@
 				<view class="module-header">
 					<text class="module-title">常用功能</text>
 				</view>
-				<view class="function-grid">
-<view class="func-item" @click="goSceneRequests"><text class="func-icon">📑</text><text class="func-label">服务需求</text></view>
-					<view class="func-item" @click="goAddress">
-						<text class="func-icon">📍</text>
-						<text class="func-label">我的地址</text>
-					</view>
+				<view class="function-grid function-grid-primary">
 					<view class="func-item" @click="goDevices">
 						<text class="func-icon">🔧</text>
 						<text class="func-label">我的设备</text>
@@ -90,45 +85,50 @@
 						<text class="func-icon">✨</text>
 						<text class="func-label">我的技能</text>
 					</view>
-					<view class="func-item" @click="goDeveloperPortal">
-						<text class="func-icon">🧑‍💻</text>
-						<text class="func-label">开发者后台</text>
+					<view class="func-item" @click="goSceneRequests">
+						<text class="func-icon">📑</text>
+						<text class="func-label">我的定制</text>
+					</view>
+					<view class="func-item" @click="goCustomerService">
+						<text class="func-icon">💬</text>
+						<text class="func-label">客服中心</text>
 					</view>
 					<view class="func-item" @click="goMyRegistrations">
 						<text class="func-icon">🎟️</text>
-						<text class="func-label">我的报名</text>
-					</view>
-					<view class="func-item" @click="goMyFavorites">
-						<text class="func-icon">⭐</text>
-						<text class="func-label">我的收藏</text>
+						<text class="func-label">赛事</text>
 					</view>
 					<view class="func-item" @click="goAfterSales">
 						<text class="func-icon">🧾</text>
-						<text class="func-label">售后记录</text>
+						<text class="func-label">售后</text>
 					</view>
 					<view class="func-item" @click="goNotifications">
 						<text class="func-icon">🔔</text>
-						<text class="func-label">消息通知</text>
+						<text class="func-label">消息</text>
 					</view>
+					<view class="func-item" @click="goMyFavorites">
+						<text class="func-icon">⭐</text>
+						<text class="func-label">收藏</text>
+					</view>
+				</view>
+
+				<view class="function-divider"></view>
+
+				<view class="function-grid function-grid-partner">
 					<view class="func-item" @click="goCooperate">
 						<text class="func-icon">🤝</text>
 						<text class="func-label">合作申请</text>
-					</view>
-					<view class="func-item" @click="goSupplierCode">
-						<text class="func-icon">🔑</text>
-						<text class="func-label">供应商邀请码</text>
 					</view>
 					<view class="func-item" @click="goPartnerRecommend">
 						<text class="func-icon">🌟</text>
 						<text class="func-label">合伙人推荐</text>
 					</view>
-					<view class="func-item" @click="goCustomerService">
-						<text class="func-icon">💬</text>
-						<text class="func-label">客服</text>
+					<view class="func-item" @click="goSupplierCode">
+						<text class="func-icon">🔑</text>
+						<text class="func-label">供应商邀请</text>
 					</view>
-					<view class="func-item" @click="goIncidentReport">
-						<text class="func-icon">🚨</text>
-						<text class="func-label">事故上报</text>
+					<view class="func-item" @click="goDeveloperPortal">
+						<text class="func-icon">🧑‍💻</text>
+						<text class="func-label">开发者后台</text>
 					</view>
 					<view class="func-item" @click="goSettings">
 						<text class="func-icon">⚙️</text>
@@ -1625,9 +1625,17 @@
 	/* ===== 常用功能 ===== */
 	.function-grid {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(4, 1fr);
 		gap: 20rpx 0;
 		margin-top: 4rpx;
+	}
+	.function-divider {
+		height: 1rpx;
+		background: #EEF2F7;
+		margin: 18rpx 0 22rpx;
+	}
+	.function-grid-partner {
+		margin-top: 0;
 	}
 	.func-item {
 		display: flex;

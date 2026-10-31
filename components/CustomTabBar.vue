@@ -44,7 +44,7 @@ export default {
         },
         { 
           pagePath: '/pages/robot/index', 
-          text: '机器', 
+          text: '分类',
           iconEmoji: '/static/jiqi.png',
           iconActive: '/static/jiqi1.png'
         },

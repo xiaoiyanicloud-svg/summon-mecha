@@ -1,7 +1,7 @@
 /**
  * API 模块集合 —— 对接 Bagisto（Laravel）后端 REST API
  *
- * 覆盖：认证 / 商品 / 分类 / 购物车 / 结算下单 / 订单 / 地址
+ * 覆盖：认证 / 商品 / 分类 / TOB 下单 / 订单 / 地址
  * 全部请求经过 utils/request.js 统一封装（自动带 Bearer token）
  */
 import { http } from './request'
@@ -27,19 +27,20 @@ export const productApi = {
   getRelatedProducts: (id) => http.get(`/api/products/${id}/related`, { loading: false }),
 }
 
+// ==================== 配件皮肤目录（P1） ====================
+// 与 /api/products?category_id= 的区别：只返回配件分类下可售商品，支持
+// 子分类 / 机型 / 适配等级 / 关键词 / 排序，卡片直接带适配与安装信息。
+export const accessoryCatalogApi = {
+  filters: () => http.get('/api/accessory-catalog/filters', { loading: false }),
+  // params: { q, category, model, fit, sort, page, limit }
+  search: (params = {}) => http.get('/api/accessory-catalog/search', { data: params, loading: false }),
+  detail: (id) => http.get(`/api/accessory-catalog/${id}`, { loading: false }),
+}
+
 // ==================== 分类 ====================
 export const categoryApi = {
   getCategories: (params = {}) => http.get('/api/categories', { data: params, loading: false }),
   getCategoryTree: () => http.get('/api/categories/tree', { loading: false }),
-}
-
-// ==================== 购物车 ====================
-export const cartApi = {
-  getCart: () => http.get('/api/checkout/cart', { loading: false }),
-  // data: { product_id, quantity, is_buy_now }
-  addToCart: (data) => http.post('/api/checkout/cart', data, { loading: false }),
-  updateCart: (data) => http.put('/api/checkout/cart', data, { loading: false }),
-  removeCartItem: (cartItemId) => http.delete('/api/checkout/cart', { cart_item_id: cartItemId }, { loading: false }),
 }
 
 // ==================== 结算 / 下单 ====================
@@ -54,6 +55,14 @@ export const checkoutApi = {
   storePayment: (payment) => http.post('/api/checkout/onepage/payment-methods', { payment: { method: payment } }, { loading: false }),
   // 提交订单
   storeOrder: () => http.post('/api/checkout/onepage/orders', {}, { loading: false }),
+}
+
+// ==================== 商品收藏（Bagisto Wishlist） ====================
+export const wishlistApi = {
+  list: () => http.get('/api/customer/wishlist', { loading: false }),
+  // BFF 是切换语义：已收藏再次提交会取消收藏。
+  toggle: (productId) => http.post('/api/customer/wishlist', { product_id: productId }, { loading: false }),
+  remove: (wishlistId) => http.delete(`/api/customer/wishlist/${encodeURIComponent(wishlistId)}`, {}, { loading: false }),
 }
 
 // ==================== TOB 统一下单（租/买/配件/技能，真实后台订单） ====================
@@ -128,9 +137,22 @@ export const notificationApi = {
 // ==================== 客服工单(v3.4 步骤 7) ====================
 export const ticketApi = {
   list: () => http.get('/api/tickets', { loading: false }),
+  onlineStatus: () => http.get('/api/tickets/online-status', { loading: false }),
   // data: { content(必填), category?, skill_id? }
   create: (data) => http.post('/api/tickets', data, { loading: true, loadingText: '提交中...' }),
+  createOnline: (data) => http.post('/api/tickets/online', data, { loading: true, loadingText: '正在接入...' }),
   detail: (id) => http.get(`/api/tickets/${id}`, { loading: false }),
+  updates: (id, afterMessageId = 0) => http.get(`/api/tickets/${id}/updates`, {
+    data: { after_message_id: afterMessageId },
+    loading: false,
+  }),
+  reply: (id, data) => http.post(`/api/tickets/${id}/messages`, data, { loading: false }),
+  // 输入中心跳（4 秒一次），仅在客服会话页输入框有内容时调用
+  typing: (id) => http.post(`/api/tickets/${id}/typing`, {}, { loading: false }),
+  markRead: (id) => http.post(`/api/tickets/${id}/read`, {}, { loading: false }),
+  end: (id) => http.post(`/api/tickets/${id}/end`, {}, { loading: false }),
+  // 满意度评价：{ rating:1-5, tags?:string[], comment?:string }，一张会话只能评一次
+  rate: (id, data) => http.post(`/api/tickets/${id}/rate`, data, { loading: true, loadingText: '提交评价...' }),
 }
 
 // ==================== 事故上报(v3.4 步骤 10 / 计划 §4.19) ====================

@@ -48,6 +48,16 @@ test('pagination deduplicates rows and stops at the last page', async () => {
   await loadSkillMarket(state, search, { append: true }); assert.equal(calls, 2)
 })
 
+test('keepRows 静默刷新:旧卡片保留到新结果返回,期间不闪加载态', async () => {
+  const state = createSkillMarketState()
+  await loadSkillMarket(state, async () => response([row(1)], 1, true))
+  const pending = deferred()
+  const refresh = loadSkillMarket(state, () => pending.promise, { keepRows: true })
+  assert.deepEqual(state.rows, [row(1)]); assert.equal(state.page, 1); assert.equal(state.loading, true)
+  pending.resolve(response([row(2)])); await refresh
+  assert.deepEqual(state.rows, [row(2)]); assert.equal(state.page, 1); assert.equal(state.hasMore, false)
+})
+
 test('only one load-more runs at a time and refreshing invalidates pending pagination', async () => {
   const state = createSkillMarketState(), pending = deferred()
   await loadSkillMarket(state, async () => response([row(1)], 1, true))

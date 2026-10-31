@@ -61,19 +61,31 @@ const PREVIEW_SIZE = 5
 export default {
   name: 'Dongtai',
   components: { StateView },
+  props: {
+    // 首页生态中心里只在切到「动态资讯」Tab 时才加载;独立使用(不传)保持原有立即加载
+    active: { type: Boolean, default: true },
+  },
   data() {
     return {
       feedList: [],
+      loaded: false,
       loading: false,
       errorMessage: '',
       errorInfo: null,
       requestSeq: 0,
     }
   },
+  watch: {
+    active(value) { if (value) this.loadIfNeeded() },
+  },
   mounted() {
-    this.load()
+    if (this.active) this.loadIfNeeded()
   },
   methods: {
+    loadIfNeeded() {
+      if (this.loaded || this.loading) return
+      this.load()
+    },
     async load() {
       const seq = ++this.requestSeq
       this.loading = true
@@ -86,6 +98,7 @@ export default {
 
         const page = normalizeContentPage(response, 1)
         this.feedList = page.items
+        this.loaded = true
       } catch (error) {
         if (seq !== this.requestSeq) return
         const info = errorState(error)
