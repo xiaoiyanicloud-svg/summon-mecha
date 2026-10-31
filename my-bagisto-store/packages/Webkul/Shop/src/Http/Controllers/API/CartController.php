@@ -11,6 +11,7 @@ use Illuminate\Http\Response;
 use Webkul\CartRule\Repositories\CartRuleCouponRepository;
 use Webkul\Checkout\Facades\Cart;
 use Webkul\Checkout\Models\CartAddress;
+use Webkul\Checkout\Repositories\CartRepository;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shipping\Facades\Shipping;
 use Webkul\Shop\Http\Resources\CartResource;
@@ -25,7 +26,8 @@ class CartController extends APIController
      */
     public function __construct(
         protected ProductRepository $productRepository,
-        protected CartRuleCouponRepository $cartRuleCouponRepository
+        protected CartRuleCouponRepository $cartRuleCouponRepository,
+        protected CartRepository $cartRepository
     ) {}
 
     /**
@@ -33,6 +35,8 @@ class CartController extends APIController
      */
     public function index(): JsonResource
     {
+        $this->resolveCart();
+
         Cart::collectTotals();
 
         $response = [
@@ -51,10 +55,17 @@ class CartController extends APIController
      */
     public function store()
     {
+        $this->resolveCart();
+
         $this->validate(request(), [
             'product_id' => 'required|integer|exists:products,id',
             'is_buy_now' => 'integer|in:0,1',
             'quantity'   => 'integer|min:1',
+            'order_type' => 'nullable|in:rent,buy,accessory,skill',
+            'rent_days'  => 'nullable|integer|min:1|max:3650',
+            'rent_period'=> 'nullable|string|max:64',
+            'start_date' => 'nullable|date_format:Y-m-d',
+            'product_type' => 'nullable|string|max:64',
         ]);
 
         $problem = DB::transaction(fn () => app(SkillMarketService::class)->purchaseProblem(
@@ -81,6 +92,9 @@ class CartController extends APIController
 
             $cart = Cart::addProduct($product, request()->all());
 
+            $this->stampCartIdentity();
+            $this->stampItemMetadata((int) $product->id);
+
             return new JsonResource(array_merge([
                 'data'    => new CartResource($cart),
                 'message' => trans('shop::app.checkout.cart.item-add-to-cart'),
@@ -98,9 +112,13 @@ class CartController extends APIController
      */
     public function destroy(): JsonResource
     {
+        $this->resolveCart();
+
         $this->validate(request(), [
             'cart_item_id' => 'required|exists:cart_items,id',
         ]);
+
+        $this->assertCartItemBelongsToCurrentCart((int) request()->input('cart_item_id'));
 
         Cart::removeItem(request()->input('cart_item_id'));
 
@@ -117,7 +135,10 @@ class CartController extends APIController
      */
     public function destroySelected(): JsonResource
     {
-        foreach (request()->input('ids') as $id) {
+        $this->resolveCart();
+
+        foreach ((array) request()->input('ids') as $id) {
+            $this->assertCartItemBelongsToCurrentCart((int) $id);
             Cart::removeItem($id);
         }
 
@@ -132,6 +153,8 @@ class CartController extends APIController
      */
     public function moveToWishlist(): JsonResource
     {
+        $this->resolveCart();
+
         foreach (request()->input('ids') as $index => $id) {
             $qty = request()->input('qty')[$index];
 
@@ -149,7 +172,13 @@ class CartController extends APIController
      */
     public function update(): JsonResource
     {
+        $this->resolveCart();
+
         try {
+            foreach (array_keys((array) request()->input('qty', [])) as $itemId) {
+                $this->assertCartItemBelongsToCurrentCart((int) $itemId);
+            }
+
             Cart::updateItems(request()->input());
 
             return new JsonResource([
@@ -168,6 +197,8 @@ class CartController extends APIController
      */
     public function estimateShippingMethods(): JsonResource
     {
+        $this->resolveCart();
+
         $this->validate(request(), [
             'country'         => 'required',
             'state'           => 'required',
@@ -211,6 +242,8 @@ class CartController extends APIController
      */
     public function storeCoupon()
     {
+        $this->resolveCart();
+
         $validatedData = $this->validate(request(), [
             'code' => 'required',
         ]);
@@ -258,6 +291,8 @@ class CartController extends APIController
      */
     public function destroyCoupon(): JsonResource
     {
+        $this->resolveCart();
+
         Cart::removeCouponCode()->collectTotals();
 
         return new JsonResource([
@@ -273,6 +308,8 @@ class CartController extends APIController
      */
     public function crossSellProducts()
     {
+        $this->resolveCart();
+
         $cart = Cart::getCart();
 
         if (! $cart) {
@@ -293,5 +330,114 @@ class CartController extends APIController
             ->get();
 
         return ProductResource::collection($products);
+    }
+    /**
+     * API 请求没有稳定 PHP Session，游客购物车必须以 X-Guest-Key 归属。
+     * 登录用户则以 customer_id 归属，避免“加购成功、刷新即空”。
+     */
+    private function resolveCart(): void
+    {
+        $customer = auth()->guard('customer')->user();
+
+        if ($customer) {
+            $cart = $this->cartRepository->findOneWhere([
+                'customer_id' => $customer->id,
+                'is_active'   => 1,
+            ]);
+
+            if ($cart) {
+                Cart::setCart($cart);
+            }
+
+            return;
+        }
+
+        $guestKey = $this->guestKey(request());
+
+        if (! $guestKey) {
+            return;
+        }
+
+        $cart = $this->cartRepository->findOneWhere([
+            'guest_key' => $guestKey,
+            'is_active' => 1,
+        ]);
+
+        if ($cart) {
+            Cart::setCart($cart);
+        } else {
+            Cart::resetCart();
+        }
+    }
+
+    private function stampCartIdentity(): void
+    {
+        $cart = Cart::getCart();
+
+        if (! $cart) {
+            return;
+        }
+
+        $customer = auth()->guard('customer')->user();
+        $identity = $customer
+            ? [
+                'is_guest'            => 0,
+                'customer_id'         => $customer->id,
+                'customer_first_name' => $customer->first_name,
+                'customer_last_name'  => $customer->last_name,
+                'customer_email'      => $customer->email,
+                'guest_key'           => null,
+            ]
+            : [
+                'is_guest'   => 1,
+                'customer_id'=> null,
+                'guest_key'  => $this->guestKey(request()),
+            ];
+
+        if (! $customer && ! $identity['guest_key']) {
+            return;
+        }
+
+        $updated = $this->cartRepository->update($identity, $cart->id);
+
+        Cart::setCart($updated);
+    }
+
+    private function stampItemMetadata(int $productId): void
+    {
+        $cart = Cart::getCart();
+
+        if (! $cart) {
+            return;
+        }
+
+        $item = $cart->items()
+            ->where('product_id', $productId)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $item) {
+            return;
+        }
+
+        $additional = is_array($item->additional) ? $item->additional : [];
+        $summon = array_filter([
+            'order_type'   => request()->input('order_type'),
+            'rent_days'    => request()->input('rent_days'),
+            'rent_period'  => request()->input('rent_period'),
+            'start_date'   => request()->input('start_date'),
+            'product_type' => request()->input('product_type'),
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $additional['summon'] = array_merge($additional['summon'] ?? [], $summon);
+        $item->additional = $additional;
+        $item->save();
+    }
+
+    private function assertCartItemBelongsToCurrentCart(int $itemId): void
+    {
+        $cart = Cart::getCart();
+
+        abort_if(! $cart || ! $cart->items()->whereKey($itemId)->exists(), 404, '购物车条目不存在');
     }
 }

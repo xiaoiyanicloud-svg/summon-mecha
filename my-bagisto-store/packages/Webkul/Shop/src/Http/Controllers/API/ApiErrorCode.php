@@ -205,6 +205,10 @@ final class ApiErrorCode
     public const GUEST_KEY_REQUIRED = 'GUEST_KEY_REQUIRED';
     public const LEAD_ANCHOR_MISSING = 'LEAD_ANCHOR_MISSING';
     public const PRODUCT_NOT_FOUND = 'PRODUCT_NOT_FOUND';
+    /** 配件下单:商品不属于配件分类 / 未上架 / 不是可售配件。 */
+    public const ACCESSORY_ORDER_TYPE_MISMATCH = 'ACCESSORY_ORDER_TYPE_MISMATCH';
+    /** 配件下单:配件目录当前不可用(分类未配置)。 */
+    public const ACCESSORY_UNAVAILABLE = 'ACCESSORY_UNAVAILABLE';
     public const PAYMENT_FAILED = 'PAYMENT_FAILED';
     public const PAYMENT_GATEWAY_UNAVAILABLE = 'PAYMENT_GATEWAY_UNAVAILABLE';
     /** 回调金额与订单应付不一致(M3)。 */

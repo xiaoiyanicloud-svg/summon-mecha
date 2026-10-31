@@ -236,6 +236,9 @@
                         <!-- 技能包(仅 skill 分类的商品显示):版本 / 交付物 / 安装指引 -->
                         @include('admin::catalog.products.edit.skill-package')
 
+                        <!-- 配件档案与适配(仅 accessory 分类的商品显示) -->
+                        @include('admin::catalog.products.edit.accessory-profile')
+
                         <!-- Include Product Type Additional Blade Files If Any -->
                         @foreach ($product->getTypeInstance()->getAdditionalViews() as $view)
                             @includeIf($view)
@@ -266,6 +269,9 @@
 
                             <!-- 技能包(仅 skill 分类的商品显示) -->
                             @include('admin::catalog.products.edit.skill-package')
+
+                            <!-- 配件档案与适配(仅 accessory 分类的商品显示) -->
+                            @include('admin::catalog.products.edit.accessory-profile')
 
                             <!-- Include Product Type Additional Blade Files If Any -->
                             @foreach ($product->getTypeInstance()->getAdditionalViews() as $view)

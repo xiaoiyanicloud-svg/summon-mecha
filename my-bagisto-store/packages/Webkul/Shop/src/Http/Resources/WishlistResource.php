@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,9 +18,11 @@ class WishlistResource extends JsonResource
     public function toArray($request)
     {
         return [
-            'id'      => $this->id,
-            'product' => new ProductResource($this->product),
-            'options' => $this->formatAdditionalAttributes(),
+            'id'           => $this->id,
+            'product'      => new ProductResource($this->product),
+            'catalog_type' => $this->catalogType(),
+            'added_at'     => optional($this->created_at)->toDateTimeString(),
+            'options'      => $this->formatAdditionalAttributes(),
         ];
     }
 
@@ -48,5 +51,41 @@ class WishlistResource extends JsonResource
         }
 
         return $additional;
+    }
+    /**
+     * 商品详情页需要知道收藏项属于租用、购买、配件还是技能，
+     * 以便从“我的收藏”回到正确的详情模式。
+     */
+    private function catalogType(): string
+    {
+        $product = $this->product;
+
+        if (! $product) {
+            return 'buy';
+        }
+
+        $allowed = ['rent', 'buy', 'accessory', 'skill'];
+        $categoryIds = collect();
+
+        foreach ($product->categories as $category) {
+            $categoryIds->push($category->id);
+            $categoryIds = $categoryIds->merge($category->ancestors()->pluck('id'));
+        }
+
+        $slugs = $categoryIds->isEmpty()
+            ? []
+            : DB::table('category_translations')
+                ->whereIn('category_id', $categoryIds->unique()->all())
+                ->pluck('slug')
+                ->filter()
+                ->all();
+
+        foreach ($allowed as $type) {
+            if (in_array($type, $slugs, true)) {
+                return $type;
+            }
+        }
+
+        return 'buy';
     }
 }

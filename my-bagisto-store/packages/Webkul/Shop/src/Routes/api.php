@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Webkul\Shop\Http\Controllers\API\AddressController;
+use Webkul\Shop\Http\Controllers\API\AccessoryCatalogController;
 use Webkul\Shop\Http\Controllers\API\AiAnalyticsController;
 use Webkul\Shop\Http\Controllers\API\AiConversationController;
 use Webkul\Shop\Http\Controllers\API\AfterSaleController;
@@ -453,6 +454,15 @@ Route::group(['prefix' => 'api'], function () {
     });
 
     /**
+     * 配件皮肤 · 公开目录(公开读取)。
+     */
+    Route::controller(AccessoryCatalogController::class)->prefix('accessory-catalog')->group(function () {
+        Route::get('filters', 'filters')->name('shop.api.accessory-catalog.filters');
+        Route::get('search', 'search')->name('shop.api.accessory-catalog.search');
+        Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.accessory-catalog.show');
+    });
+
+    /**
      * v3.4 步骤 6 · 技能类目/标签(公开读取)。
      */
     Route::controller(SkillCatalogController::class)->prefix('skill-catalog')->group(function () {
@@ -492,9 +502,18 @@ Route::group(['prefix' => 'api'], function () {
      */
     Route::controller(TicketController::class)->prefix('tickets')->middleware(['customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.tickets.index');
+        Route::get('online-status', 'onlineStatus')->name('shop.api.tickets.online-status');
         // X3:写入口挂 write 档(按 customer,30/分);同组 GET 不限流
         Route::post('', 'store')->middleware('throttle:write')->name('shop.api.tickets.store');
-        Route::get('{id}', 'show')->name('shop.api.tickets.show');
+        Route::post('online', 'online')->middleware('throttle:write')->name('shop.api.tickets.online');
+        Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.tickets.show');
+        Route::get('{id}/updates', 'updates')->whereNumber('id')->name('shop.api.tickets.updates');
+        Route::post('{id}/messages', 'reply')->whereNumber('id')->middleware('throttle:write')->name('shop.api.tickets.messages.store');
+        // 输入中心跳：前端约 4 秒一次，单独一档（30/分的 write 档会被正常打字限死）
+        Route::post('{id}/typing', 'typing')->whereNumber('id')->middleware('throttle:typing')->name('shop.api.tickets.typing');
+        Route::post('{id}/read', 'read')->whereNumber('id')->middleware('throttle:write')->name('shop.api.tickets.read');
+        Route::post('{id}/rate', 'rate')->whereNumber('id')->middleware('throttle:write')->name('shop.api.tickets.rate');
+        Route::post('{id}/end', 'end')->whereNumber('id')->middleware('throttle:write')->name('shop.api.tickets.end');
     });
 
     /**

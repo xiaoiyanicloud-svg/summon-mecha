@@ -180,11 +180,38 @@ Route::prefix('customers')->group(function () {
         Route::get('', 'index')->name('admin.customers.tickets.index');
         Route::get('{id}', 'show')->whereNumber('id')->name('admin.customers.tickets.show');
 
+        Route::get('{id}/updates', 'updates')->whereNumber('id')->name('admin.customers.tickets.updates');
         Route::post('{id}/reply', 'reply')->whereNumber('id')->name('admin.customers.tickets.reply');
+        Route::post('{id}/read', 'read')->whereNumber('id')->name('admin.customers.tickets.read');
+        Route::post('{id}/claim', 'claim')->whereNumber('id')->name('admin.customers.tickets.claim');
+        Route::post('{id}/release', 'release')->whereNumber('id')->name('admin.customers.tickets.release');
+        // 协作三件套：转接 / 挂起恢复 / 内部备注
+        Route::post('{id}/transfer', 'transfer')->whereNumber('id')->name('admin.customers.tickets.transfer');
+        Route::post('{id}/hold', 'hold')->whereNumber('id')->name('admin.customers.tickets.hold');
+        Route::post('{id}/resume', 'resume')->whereNumber('id')->name('admin.customers.tickets.resume');
+        Route::post('{id}/notes', 'note')->whereNumber('id')->name('admin.customers.tickets.notes.store');
+        // 输入中：每 4 秒一次心跳，60/分 足够且能拦住脚本刷写
+        Route::post('{id}/typing', 'typing')->whereNumber('id')->middleware('throttle:60,1')->name('admin.customers.tickets.typing');
         Route::post('{id}/status', 'updateStatus')->whereNumber('id')->name('admin.customers.tickets.status');
         // B-10:定性为事故 —— 工单 → incident 的唯一入口
         Route::post('{id}/escalate', 'escalate')->whereNumber('id')->name('admin.customers.tickets.escalate');
     });
+
+    Route::get('support/workbench', [SupportTicketController::class, 'workbench'])
+        ->name('admin.customers.support.workbench');
+
+    Route::get('support/conversations', [SupportTicketController::class, 'conversations'])
+        ->name('admin.customers.support.conversations');
+
+    Route::get('support/workbench.js', [SupportTicketController::class, 'workbenchScript'])
+        ->name('admin.customers.support.workbench-script');
+
+    Route::post('support/presence', [SupportTicketController::class, 'presence'])
+        ->name('admin.customers.support.presence');
+
+    // 快捷话术使用事件（insert=点击插入 / send=发出），供话术采纳率统计
+    Route::post('support/quick-replies/event', [SupportTicketController::class, 'quickReplyEvent'])
+        ->name('admin.customers.support.quick-replies.event');
 
     /**
      * 事故受理台（计划 §4.19）。

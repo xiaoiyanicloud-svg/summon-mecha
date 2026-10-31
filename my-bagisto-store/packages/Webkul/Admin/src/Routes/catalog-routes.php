@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeController;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeFamilyController;
+use Webkul\Admin\Http\Controllers\Catalog\AccessoryController;
 use Webkul\Admin\Http\Controllers\Catalog\CategoryController;
 use Webkul\Admin\Http\Controllers\Catalog\CompetitionAdminController;
 use Webkul\Admin\Http\Controllers\Catalog\CompetitionAppealAdminController;
@@ -534,6 +535,15 @@ Route::prefix('catalog')->group(function () {
      * Sync route.
      */
     Route::get('/sync', [ProductController::class, 'sync']);
+
+    /**
+     * 配件皮肤：档案与适配关系维护。
+     */
+    Route::controller(AccessoryController::class)->prefix('accessories')->group(function () {
+        Route::post('{productId}/profile', 'updateProfile')->whereNumber('productId')->name('admin.catalog.accessories.profile.update');
+        Route::post('{productId}/fitments', 'storeFitment')->whereNumber('productId')->name('admin.catalog.accessories.fitments.store');
+        Route::delete('{productId}/fitments/{fitmentId}', 'destroyFitment')->whereNumber('productId')->whereNumber('fitmentId')->name('admin.catalog.accessories.fitments.delete');
+    });
 
     /**
      * Products routes.

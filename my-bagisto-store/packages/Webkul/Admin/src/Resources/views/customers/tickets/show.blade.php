@@ -1,147 +1,179 @@
 <x-admin::layouts>
-    <x-slot:title>工单 {{ $ticket->ticket_no }}</x-slot:title>
+    <x-slot:title>客服工作台 {{ $ticket->ticket_no }}</x-slot:title>
 
-    <div class="flex items-center justify-between gap-4 max-sm:flex-wrap">
-        <div class="py-3">
-            <p class="text-xl font-bold text-gray-800 dark:text-white">
-                工单 {{ $ticket->ticket_no }}
-            </p>
-            <p class="mt-1 text-xs text-gray-500">
-                用户: {{ $customer?->email ?? '—' }}　类别: {{ $ticket->category ?? '—' }}
-                　开单: {{ $ticket->created_at?->format('Y-m-d H:i') }}
-                　SLA: {{ $ticket->sla_due_at?->format('Y-m-d H:i') ?? '—' }}
-                　受理人: {{ $ticket->assignee_id ? '#'.$ticket->assignee_id : '未指派' }}
-            </p>
-        </div>
-        <a href="{{ route('admin.customers.tickets.index') }}">
-            <span class="cursor-pointer text-sm text-blue-600 hover:underline">← 回工单列表</span>
-        </a>
-    </div>
+    @include('admin::customers.tickets.partials.workspace')
 
-    <x-admin::flash />
+    <div id="workspace-toast" class="support-dark-pill pointer-events-none fixed bottom-6 left-1/2 z-50 hidden -translate-x-1/2 rounded-lg px-4 py-2 text-xs font-medium shadow-lg"></div>
 
-    <div class="grid gap-4 lg:grid-cols-3">
-        {{-- 消息流 --}}
-        <div class="box-shadow rounded bg-white p-4 dark:bg-gray-900 lg:col-span-2">
-            <p class="mb-3 font-semibold text-gray-800 dark:text-white">对话</p>
+    @push('styles')
+        {{-- 后台 Tailwind 是预编译的，产物里没有 bg-gray-900 / bg-emerald-600 等类。
+             工作台的关键颜色与按钮在这里显式定义，避免“按钮透明、徽标掉色”。 --}}
+        <style>
+            .support-console-grid { display: grid; gap: 1rem; }
+            @media (min-width: 1280px) {
+                .support-console-grid {
+                    grid-template-columns: 320px minmax(0, 1fr) 330px;
+                    height: calc(100vh - 118px);
+                    min-height: 640px;
+                }
+            }
+            @media (min-width: 1024px) and (max-width: 1279px) {
+                .support-console-grid { grid-template-columns: 300px minmax(0, 1fr); }
+                .support-console-right {
+                    grid-column: 1 / -1;
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 1rem;
+                }
+            }
+            @media (max-width: 1023px) {
+                .support-console-grid { grid-template-columns: minmax(0, 1fr); }
+                .support-console-left { max-height: 360px; }
+                .support-console-center { height: 72vh; }
+            }
 
-            <div class="space-y-3">
-                @forelse ($ticket->messages as $message)
-                    @php
-                        $isAdmin = $message->actor_type === 'admin';
-                    @endphp
-                    <div class="rounded-lg border px-3 py-2 {{ $isAdmin
-                        ? 'border-blue-200 bg-blue-50'
-                        : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800' }}">
-                        <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
-                            <span>
-                                {{ $isAdmin ? '平台' : '用户' }}
-                                @if ($message->actor_id) #{{ $message->actor_id }} @endif
-                            </span>
-                            <span>{{ $message->created_at?->format('Y-m-d H:i') }}</span>
-                        </div>
-                        <div class="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-100">{{ $message->content }}</div>
-                    </div>
-                @empty
-                    <p class="text-sm text-gray-500">还没有消息。</p>
-                @endforelse
-            </div>
+            .support-tone { display: inline-flex; align-items: center; border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: 500; line-height: 1.5; white-space: nowrap; }
+            .support-tone-open { background: #f0f9ff; color: #0369a1; box-shadow: inset 0 0 0 1px #bae6fd; }
+            .support-tone-processing { background: #eff6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1px #bfdbfe; }
+            .support-tone-resolved { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px #a7f3d0; }
+            .support-tone-closed { background: #f3f4f6; color: #4b5563; box-shadow: inset 0 0 0 1px #e5e7eb; }
+            .support-tone-online { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px #a7f3d0; }
+            .support-tone-async { background: #f3f4f6; color: #4b5563; box-shadow: inset 0 0 0 1px #e5e7eb; }
+            .support-tone-overdue { background: #fff1f2; color: #be123c; box-shadow: inset 0 0 0 1px #fecdd3; }
+            .support-tone-urgent { background: #fff7ed; color: #c2410c; box-shadow: inset 0 0 0 1px #fed7aa; }
+            .support-tone-rating { background: #fffbeb; color: #b45309; box-shadow: inset 0 0 0 1px #fde68a; }
+            .support-tone-held { background: #fffbeb; color: #b45309; box-shadow: inset 0 0 0 1px #fde68a; }
+            /* .support-tone 自带 display:inline-flex，会盖掉 Tailwind 的 .hidden；
+               徽标类元素要显式让 hidden 生效，否则「挂起」徽标会一直挂在头上。 */
+            .support-tone.hidden { display: none; }
 
-            <form method="POST" action="{{ route('admin.customers.tickets.reply', $ticket->id) }}" class="mt-4">
-                @csrf
-                <textarea name="content" rows="3" required
-                          placeholder="回复用户（会显示在用户的工单详情里）"
-                          class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800"></textarea>
-                <button type="submit" class="mt-2 rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
-                    回复
-                </button>
-                <p class="mt-1 text-xs text-gray-500">
-                    首次回复会自动把状态推到「处理中」，并在无人认领时把你记为受理人。
-                </p>
-            </form>
-        </div>
+            .support-note-bubble { display: flex; flex-direction: column; gap: 3px; max-width: 32rem; padding: 10px 14px; border-radius: 12px; background: #fffbeb; color: #92400e; box-shadow: inset 0 0 0 1px #fde68a; text-align: left; }
+            .support-note-kicker { font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #b45309; }
+            .support-note-body { font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+            .support-note-time { font-size: 9px; color: #b45309; opacity: .8; }
+            .dark .support-note-bubble { background: #451a03; color: #fcd34d; box-shadow: inset 0 0 0 1px #92400e; }
+            .dark .support-note-kicker, .dark .support-note-time { color: #fbbf24; }
 
-        {{-- 处置 --}}
-        <div class="box-shadow rounded bg-white p-4 dark:bg-gray-900">
-            <p class="mb-3 font-semibold text-gray-800 dark:text-white">处置</p>
+            .support-receipt { font-size: 10px; color: #9ca3af; }
+            .support-receipt-read { color: #059669; }
 
-            <form method="POST" action="{{ route('admin.customers.tickets.status', $ticket->id) }}" class="space-y-3">
-                @csrf
+            .support-mode { border-radius: 9999px; padding: 3px 10px; font-size: 11px; font-weight: 500; line-height: 1.5; color: #6b7280; background: #fff; box-shadow: inset 0 0 0 1px #e5e7eb; cursor: pointer; }
+            .support-mode-active { background: #2563eb; color: #fff; box-shadow: none; }
+            .dark .support-mode { background: #1f2937; color: #d1d5db; box-shadow: inset 0 0 0 1px #374151; }
+            .dark .support-mode-active { background: #2563eb; color: #fff; box-shadow: none; }
 
-                <div>
-                    <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">状态</label>
-                    <select name="status" class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-                        <option value="open" @selected($ticket->status === 'open')>待受理</option>
-                        <option value="processing" @selected($ticket->status === 'processing')>处理中</option>
-                        <option value="resolved" @selected($ticket->status === 'resolved')>已解决</option>
-                        <option value="closed" @selected($ticket->status === 'closed')>已关闭</option>
-                    </select>
-                </div>
+            .support-filter { display: inline-flex; align-items: center; gap: 3px; border-radius: 9999px; padding: 2px 8px; font-size: 10px; font-weight: 500; line-height: 1.6; color: #6b7280; background: #fff; box-shadow: inset 0 0 0 1px #e5e7eb; cursor: pointer; flex-shrink: 0; }
+            .support-filter-row { display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; padding-bottom: 2px; }
+            .support-filter-row::-webkit-scrollbar { display: none; }
 
-                <div>
-                    <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">优先级</label>
-                    <select name="priority" class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-                        <option value="low" @selected($ticket->priority === 'low')>低</option>
-                        <option value="normal" @selected($ticket->priority === 'normal')>普通</option>
-                        <option value="high" @selected($ticket->priority === 'high')>高</option>
-                        <option value="urgent" @selected($ticket->priority === 'urgent')>紧急</option>
-                    </select>
-                </div>
+            .support-toggle { border-radius: 9999px; padding: 1px 7px; font-size: 10px; line-height: 1.7; color: #6b7280; background: #fff; box-shadow: inset 0 0 0 1px #e5e7eb; cursor: pointer; white-space: nowrap; }
+            .support-toggle-on { color: #047857; box-shadow: inset 0 0 0 1px #a7f3d0; background: #ecfdf5; }
+            .support-toggle:disabled { opacity: .5; cursor: not-allowed; }
+            .dark .support-toggle { background: #1f2937; color: #d1d5db; box-shadow: inset 0 0 0 1px #374151; }
+            .dark .support-toggle-on { background: #022c22; color: #6ee7b7; box-shadow: inset 0 0 0 1px #065f46; }
+            .support-filter b { font-weight: 600; color: #374151; }
+            .support-filter-active { background: #2563eb; color: #fff; box-shadow: none; }
+            .support-filter-active b { color: #fff; }
+            .dark .support-filter { background: #1f2937; color: #d1d5db; box-shadow: inset 0 0 0 1px #374151; }
+            .dark .support-filter b { color: #e5e7eb; }
+            .dark .support-filter-active { background: #2563eb; color: #fff; box-shadow: none; }
+            .support-inbox-row.hidden { display: none; }
 
-                <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-900">
-                    保存
-                </button>
-            </form>
+            .support-unread { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 9999px; background: #e11d48; color: #fff; font-size: 10px; font-weight: 600; line-height: 1; }
 
-            <p class="mt-3 text-xs leading-relaxed text-amber-700">
-                ⚠ 直接改成「已解决」而不回复，用户只会看到状态变了、没有任何说明。
-                结单前请先在左边回一句。
-            </p>
+            .support-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 500; line-height: 1.2; cursor: pointer; transition: background-color .15s, opacity .15s; }
+            .support-btn:disabled { opacity: .5; cursor: not-allowed; }
+            .support-btn-primary { background: #111827; color: #fff; }
+            .support-btn-primary:hover:not(:disabled) { background: #1f2937; }
+            .support-btn-success { background: #059669; color: #fff; }
+            .support-btn-success:hover:not(:disabled) { background: #047857; }
+            .support-btn-warning { background: #d97706; color: #fff; }
+            .support-btn-warning:hover:not(:disabled) { background: #b45309; }
+            .support-btn-ghost { background: #fff; color: #4b5563; box-shadow: inset 0 0 0 1px #e5e7eb; }
+            .support-btn-ghost:hover:not(:disabled) { background: #f9fafb; }
+            .dark .support-btn-primary { background: #fff; color: #111827; }
+            .dark .support-btn-primary:hover:not(:disabled) { background: #f3f4f6; }
+            .dark .support-btn-ghost { background: #1f2937; color: #e5e7eb; box-shadow: inset 0 0 0 1px #374151; }
+            .dark .support-btn-ghost:hover:not(:disabled) { background: #374151; }
 
-            {{-- B-10:工单 ↔ 事故互链 --}}
-            <div class="mt-4 border-t pt-4 dark:border-gray-800">
-                <p class="mb-2 font-semibold text-gray-800 dark:text-white">事故定性</p>
+            .support-presence { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 8px 10px; font-size: 11px; font-weight: 500; cursor: pointer; }
+            .support-presence-online { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px #a7f3d0; }
+            .support-presence-offline { background: #f9fafb; color: #4b5563; box-shadow: inset 0 0 0 1px #e5e7eb; }
+            .support-dot { width: 6px; height: 6px; border-radius: 9999px; flex-shrink: 0; }
+            .support-dot-online { background: #10b981; }
+            .support-dot-offline { background: #9ca3af; }
+            .support-dot-warn { background: #f59e0b; }
+            .support-dot-sky { background: #0ea5e9; }
 
-                @if ($incident)
-                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                        <p>本工单已定性为事故：<b>{{ $incident->incident_no }}</b>
-                            （{{ $incident->severityLabel() }} · {{ $incident->statusLabel() }}）</p>
-                        <a href="{{ route('admin.customers.incidents.show', $incident->id) }}"
-                           class="mt-1 inline-block text-blue-600 hover:underline">查看事故记录 →</a>
-                    </div>
-                @elseif (! $ticket->customer_id)
-                    <p class="text-xs text-gray-500">该工单没有关联客户，无法定性为事故。</p>
-                @else
-                    <form method="POST" action="{{ route('admin.customers.tickets.escalate', $ticket->id) }}" class="space-y-2">
-                        @csrf
-                        <div>
-                            <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">严重程度</label>
-                            <select name="severity" class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-                                @foreach (\Webkul\Shop\Models\Incident::SEVERITY_LABELS as $val => $label)
-                                    <option value="{{ $val }}" @selected($val === 'minor')>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">事故描述（必填）</label>
-                            <textarea name="description" rows="3" required
-                                      class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800"
-                                      placeholder="定性依据 / 经过"></textarea>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs text-gray-600 dark:text-gray-300">发生时间（可选，默认现在）</label>
-                            <input type="datetime-local" name="occurred_at"
-                                   class="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-                        </div>
-                        <button type="submit" class="rounded bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700">
-                            定性为事故
-                        </button>
-                        <p class="text-xs text-gray-500">
-                            会走与用户报案同一个事故服务（证据链在定性这一刻固化），并在本工单留一条系统留言。
-                        </p>
-                    </form>
-                @endif
-            </div>
-        </div>
-    </div>
+            .support-avatar { display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 11px; font-weight: 600; }
+            .support-avatar-admin { background: #2563eb; color: #fff; }
+            .support-avatar-customer { background: #f3f4f6; color: #4b5563; }
+            .support-avatar-dev { background: #e0e7ff; color: #4f46e5; }
+
+            .support-bubble { white-space: pre-wrap; border-radius: 16px; padding: 10px 16px; font-size: 14px; line-height: 1.75; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+            .support-bubble-admin { background: #2563eb; color: #fff; border-radius: 16px 4px 16px 16px; }
+            .support-bubble-customer { background: #fff; color: #374151; box-shadow: inset 0 0 0 1px #e5e7eb; border-radius: 4px 16px 16px 16px; }
+            .support-product-attachment { display: flex; width: min(100%, 390px); gap: 12px; padding: 10px; border-radius: 12px; background: #fff; color: #374151; box-shadow: inset 0 0 0 1px #dbeafe, 0 4px 12px rgba(37, 99, 235, .06); text-align: left; text-decoration: none; transition: box-shadow .16s ease, transform .16s ease; }
+            a.support-product-attachment:hover { box-shadow: inset 0 0 0 1px #93c5fd, 0 8px 20px rgba(37, 99, 235, .12); transform: translateY(-1px); }
+            .support-product-thumb { width: 58px; height: 58px; flex: 0 0 58px; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #eff6ff; color: #2563eb; font-size: 16px; font-weight: 700; }
+            .support-product-thumb img { width: 100%; height: 100%; object-fit: cover; }
+            .support-product-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+            .support-product-kicker { color: #2563eb; font-size: 10px; font-weight: 600; }
+            .support-product-name { overflow: hidden; color: #111827; font-size: 13px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+            .support-product-meta { display: flex; flex-wrap: wrap; gap: 3px 10px; color: #6b7280; font-size: 10px; }
+            .support-product-link { color: #2563eb; font-weight: 600; }
+            .dark .support-product-attachment { background: #1f2937; color: #e5e7eb; box-shadow: inset 0 0 0 1px #1e40af; }
+            .dark .support-product-name { color: #f3f4f6; }
+            .dark .support-product-thumb { background: #172554; color: #93c5fd; }
+            .dark .support-product-meta { color: #9ca3af; }
+            .dark .support-bubble-customer { background: #1f2937; color: #f3f4f6; box-shadow: inset 0 0 0 1px #374151; }
+
+            .support-note { border-radius: 8px; padding: 8px 12px; font-size: 11px; line-height: 1.6; }
+            .support-note-success { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px #a7f3d0; }
+            .support-note-info { background: #eff6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1px #bfdbfe; }
+            .support-note-warning { background: #fffbeb; color: #92400e; box-shadow: inset 0 0 0 1px #fde68a; }
+            .support-note-muted { background: #f9fafb; color: #6b7280; box-shadow: inset 0 0 0 1px #e5e7eb; }
+            .dark .support-note-success { background: #022c22; color: #6ee7b7; box-shadow: inset 0 0 0 1px #065f46; }
+            .dark .support-note-info { background: #172554; color: #93c5fd; box-shadow: inset 0 0 0 1px #1e3a8a; }
+            .dark .support-note-warning { background: #451a03; color: #fcd34d; box-shadow: inset 0 0 0 1px #92400e; }
+            .dark .support-note-muted { background: #1f2937; color: #9ca3af; box-shadow: inset 0 0 0 1px #374151; }
+
+            .support-active { background: #eff6ff; border-left-color: #3b82f6; }
+            .dark .support-active { background: rgba(23, 37, 84, .45); }
+            .support-brand-mark { background: #111827; color: #fff; }
+            .dark .support-brand-mark { background: #fff; color: #111827; }
+            .support-warn-text { color: #d97706; }
+            .support-danger-text { color: #e11d48; }
+            .support-rating-card { background: #fffbeb; box-shadow: inset 0 0 0 1px #fde68a; border-radius: 8px; padding: 10px; }
+            .support-rating-title { color: #b45309; font-weight: 600; }
+            .support-rating-tags { color: #92400e; }
+            .dark .support-rating-card { background: #451a03; box-shadow: inset 0 0 0 1px #92400e; }
+            .dark .support-rating-title { color: #fcd34d; }
+            .dark .support-rating-tags { color: #fbbf24; }
+            .support-chip { display: inline-flex; align-items: center; border-radius: 9999px; background: #fff; color: #4b5563; box-shadow: inset 0 0 0 1px #e5e7eb; white-space: nowrap; }
+            .support-chip:hover { background: #f9fafb; }
+            .dark .support-chip { background: #1f2937; color: #d1d5db; box-shadow: inset 0 0 0 1px #374151; }
+            .dark .support-chip:hover { background: #374151; }
+            .support-dark-pill { background: #111827; color: #fff; }
+            .dark .support-dark-pill { background: #fff; color: #111827; }
+            .dark .support-tone-open,
+            .dark .support-tone-processing,
+            .dark .support-tone-resolved,
+            .dark .support-tone-closed,
+            .dark .support-tone-online,
+            .dark .support-tone-async,
+            .dark .support-tone-overdue,
+            .dark .support-tone-urgent,
+            .dark .support-tone-rating,
+            .dark .support-tone-held {
+                background: #1f2937;
+                color: #e5e7eb;
+                box-shadow: inset 0 0 0 1px #374151;
+            }
+        </style>
+    @endpush
+
+    @push('scripts')
+        <script src="{{ route('admin.customers.support.workbench-script', ['v' => '20261030-product-card-1']) }}"></script>
+    @endpush
 </x-admin::layouts>

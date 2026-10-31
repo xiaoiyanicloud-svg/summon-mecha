@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -11,6 +12,30 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class SupportTicket extends Model
 {
     protected $table = 'support_ticket';
+
+    protected $attributes = [
+        'service_mode' => self::SERVICE_ASYNC,
+    ];
+
+    public const SERVICE_ASYNC = 'async';
+
+    public const SERVICE_ONLINE = 'online';
+
+    /**
+     * 输入中状态的 TTL（秒）。客服/用户两端共用同一个口径：
+     * 客户端约每 4 秒补一次心跳，停手后最多 8 秒对方就不再看到「正在输入」。
+     */
+    public const TYPING_TTL_SECONDS = 8;
+
+    /**
+     * 输入中缓存的 key（side: staff | customer）。
+     *
+     * 不落库是有意的：输入中是瞬时信号，写表意味着每次按键都打一次数据库。
+     */
+    public static function typingCacheKey(int $ticketId, string $side): string
+    {
+        return "support:typing:{$ticketId}:{$side}";
+    }
 
     public const STATUS_OPEN = 'open';
 
@@ -62,6 +87,21 @@ class SupportTicket extends Model
         self::CATEGORY_OTHER    => '其他',
     ];
 
+    /**
+     * 满意度评价标签（CSAT）。
+     *
+     * 评分是数字，标签才是「为什么」—— 只有星级的话，4 分和 4 分之间的差别
+     * 全被抹平了。标签固定成枚举，避免又变成自由文本。
+     */
+    public const RATING_TAG_LABELS = [
+        'solved'     => '问题已解决',
+        'fast'       => '回复及时',
+        'polite'     => '态度好',
+        'clear'      => '说明清楚',
+        'unresolved' => '仍未解决',
+        'slow'       => '等待太久',
+    ];
+
     protected $fillable = [
         'ticket_no',
         'idempotency_key',
@@ -69,25 +109,57 @@ class SupportTicket extends Model
         'developer_id',
         'skill_id',
         'channel',
+        'service_mode',
         'category',
         'priority',
         'status',
         'assignee_id',
         'related_deploy_task_id',
         'sla_due_at',
+        'queued_at',
+        'accepted_at',
+        'last_customer_message_at',
+        'last_staff_message_at',
+        'ended_at',
+        'held_at',
+        'held_reason',
+        'rating',
+        'rating_tags',
+        'rating_comment',
+        'rated_at',
     ];
 
     protected $casts = [
-        'customer_id'  => 'integer',
-        'developer_id' => 'integer',
-        'skill_id'     => 'integer',
-        'assignee_id'  => 'integer',
-        'sla_due_at'   => 'datetime',
+        'customer_id'             => 'integer',
+        'developer_id'            => 'integer',
+        'skill_id'                => 'integer',
+        'assignee_id'             => 'integer',
+        'sla_due_at'              => 'datetime',
+        'queued_at'               => 'datetime',
+        'accepted_at'             => 'datetime',
+        'last_customer_message_at'=> 'datetime',
+        'last_staff_message_at'   => 'datetime',
+        'ended_at'                => 'datetime',
+        'held_at'                 => 'datetime',
+        'rating'                  => 'integer',
+        'rating_tags'             => 'array',
+        'rated_at'                => 'datetime',
     ];
 
-    public function messages()
+    public function messages(): HasMany
     {
         return $this->hasMany(TicketMessage::class, 'ticket_id')->orderBy('id');
+    }
+
+    /**
+     * 列表页只需要最后一条消息，避免为了展示摘要把整段对话全部读出来。
+     *
+     * ⚠ 用户侧**不能**直接用这个关系（内部备注也会被取到）。用户侧请用
+     *   `TicketController::index()` 里按 actor_type 过滤后的查询。
+     */
+    public function lastMessage(): HasOne
+    {
+        return $this->hasOne(TicketMessage::class, 'ticket_id')->latestOfMany('id');
     }
 
     /**
@@ -106,9 +178,78 @@ class SupportTicket extends Model
         return self::STATUS_LABELS[$this->status] ?? $this->status;
     }
 
+    /**
+     * 用户端状态文案：在线会话的 open/processing 应显示“排队中/已接入”，
+     * 不能把异步工单的“待受理/处理中”原样暴露给正在等待的人。
+     */
+    public function serviceStatusLabel(): string
+    {
+        // 挂起对用户只有一个含义：客服在等你的补充，而不是没人管。
+        // 已结单的单不会被挂起（服务端 hold 接口会拒绝），这里仍加状态判断兜住历史脏数据。
+        if ($this->isHeld() && ! in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED], true)) {
+            return '等待补充';
+        }
+
+        if ($this->service_mode === self::SERVICE_ONLINE) {
+            if ($this->status === self::STATUS_OPEN) {
+                return '排队中';
+            }
+
+            if ($this->status === self::STATUS_PROCESSING) {
+                return '已接入';
+            }
+        }
+
+        return $this->statusLabel();
+    }
+
+    /**
+     * 后台视角的状态文案。
+     *
+     * 与 `serviceStatusLabel()` 的唯一差别：**不把挂起显示成状态**。
+     * 后台用单独的琥珀色「挂起」徽标表达挂起，状态徽标继续显示真实的
+     * 待受理/已接入/已解决 —— 两个徽标各说一件事，不重复。
+     */
+    public function agentStatusLabel(): string
+    {
+        if ($this->service_mode === self::SERVICE_ONLINE) {
+            if ($this->status === self::STATUS_OPEN) {
+                return '排队中';
+            }
+
+            if ($this->status === self::STATUS_PROCESSING) {
+                return '已接入';
+            }
+        }
+
+        return $this->statusLabel();
+    }
+
+    /**
+     * 是否处于挂起（等待客户补充）状态。
+     *
+     * 挂起与 status 正交：`held_at` 非空即表示「已挂起」，
+     * 不需要再新增一个会波及 DataGrid / SLA / 结单判断的状态值。
+     */
+    public function isHeld(): bool
+    {
+        return $this->held_at !== null;
+    }
+
     public function priorityLabel(): string
     {
         return self::PRIORITY_LABELS[$this->priority] ?? $this->priority;
+    }
+
+    /**
+     * 能否评价：结单之后（已解决/已关闭）且尚未评价过。
+     *
+     * 不在处理中开放评价 —— 那时用户还没等到结果，打分只会打给「等待」本身。
+     */
+    public function isRateable(): bool
+    {
+        return in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED], true)
+            && $this->rated_at === null;
     }
 
     public function categoryLabel(): string
@@ -125,6 +266,11 @@ class SupportTicket extends Model
     public function isOverdue(): bool
     {
         if (in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED], true)) {
+            return false;
+        }
+
+        // 挂起 = 球在客户那边，SLA 不该继续压在客服头上。
+        if ($this->isHeld()) {
             return false;
         }
 

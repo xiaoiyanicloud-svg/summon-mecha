@@ -23,17 +23,23 @@ class SupportTicketDataGrid extends DataGrid
             ->select(
                 'support_ticket.id',
                 'support_ticket.ticket_no',
+                'support_ticket.service_mode',
+                'support_ticket.queued_at',
                 'support_ticket.category',
                 'support_ticket.priority',
                 'support_ticket.status',
                 'support_ticket.assignee_id',
+                'support_ticket.held_at',
                 'support_ticket.sla_due_at',
                 'support_ticket.created_at',
                 'customers.email'
             )
-            ->orderBy('support_ticket.id', 'desc');
+            ->orderByRaw("CASE WHEN support_ticket.service_mode = 'online' AND support_ticket.status = 'open' THEN 0 ELSE 1 END")
+            ->orderByDesc('support_ticket.updated_at')
+            ->orderByDesc('support_ticket.id');
 
         $this->addFilter('id', 'support_ticket.id');
+        $this->addFilter('service_mode', 'support_ticket.service_mode');
         $this->addFilter('status', 'support_ticket.status');
         $this->addFilter('priority', 'support_ticket.priority');
 
@@ -48,6 +54,22 @@ class SupportTicketDataGrid extends DataGrid
             'type'       => 'string',
             'searchable' => true,
             'sortable'   => true,
+        ]);
+
+        $this->addColumn([
+            'index'      => 'service_mode',
+            'label'      => '模式',
+            'type'       => 'string',
+            'filterable' => true,
+            'filterable_options' => [
+                ['label' => '在线客服', 'value' => SupportTicket::SERVICE_ONLINE],
+                ['label' => '留言工单', 'value' => SupportTicket::SERVICE_ASYNC],
+            ],
+            'closure'    => function ($row) {
+                return $row->service_mode === SupportTicket::SERVICE_ONLINE
+                    ? '<span class="badge badge-md badge-active">在线</span>'
+                    : '<span class="badge badge-md">留言</span>';
+            },
         ]);
 
         $this->addColumn([
@@ -103,15 +125,20 @@ class SupportTicketDataGrid extends DataGrid
             'sortable'   => true,
             'closure'    => function ($row) {
                 $map = [
-                    SupportTicket::STATUS_OPEN       => ['待受理', 'badge-danger'],
-                    SupportTicket::STATUS_PROCESSING => ['处理中', 'badge-pending'],
+                    SupportTicket::STATUS_OPEN       => [$row->service_mode === SupportTicket::SERVICE_ONLINE ? '排队中' : '待受理', 'badge-danger'],
+                    SupportTicket::STATUS_PROCESSING => [$row->service_mode === SupportTicket::SERVICE_ONLINE ? '已接入' : '处理中', 'badge-pending'],
                     SupportTicket::STATUS_RESOLVED   => ['已解决', 'badge-success'],
                     SupportTicket::STATUS_CLOSED     => ['已关闭', ''],
                 ];
 
                 [$label, $tone] = $map[$row->status] ?? [$row->status, ''];
 
-                return '<span class="badge badge-md '.$tone.'">'.e($label).'</span>';
+                // 挂起与状态正交：状态列照常显示真实状态，后面再跟一个「挂起」徽标。
+                $held = ! empty($row->held_at)
+                    ? ' <span class="badge badge-md badge-pending">挂起</span>'
+                    : '';
+
+                return '<span class="badge badge-md '.$tone.'">'.e($label).'</span>'.$held;
             },
         ]);
 
@@ -126,7 +153,8 @@ class SupportTicketDataGrid extends DataGrid
                 }
 
                 $due = \Illuminate\Support\Carbon::parse($row->sla_due_at);
-                $settled = in_array($row->status, [SupportTicket::STATUS_RESOLVED, SupportTicket::STATUS_CLOSED], true);
+                $settled = in_array($row->status, [SupportTicket::STATUS_RESOLVED, SupportTicket::STATUS_CLOSED], true)
+                    || ! empty($row->held_at);
 
                 // 已结单的不再报超时 —— 超时只对"还欠着用户"的单有意义
                 if (! $settled && $due->isPast()) {

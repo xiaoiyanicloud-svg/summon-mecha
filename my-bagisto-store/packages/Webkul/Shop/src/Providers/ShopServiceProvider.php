@@ -50,6 +50,8 @@ class ShopServiceProvider extends ServiceProvider
             $this->commands([
                 \Webkul\Shop\Console\Commands\AiAnalyticsReport::class,
                 \Webkul\Shop\Console\Commands\BackfillVersionStatus::class,
+                // 客服：同一客户多张进行中工单的存量整理（默认 dry-run）
+                \Webkul\Shop\Console\Commands\MergeDuplicateActiveTickets::class,
                 \Webkul\Shop\Console\Commands\RedeliverSkills::class,
                 \Webkul\Shop\Console\Commands\ScanSkillDeliveryRetries::class,
                 \Webkul\Shop\Console\Commands\AuditSkillDelivery::class,
@@ -76,6 +78,9 @@ class ShopServiceProvider extends ServiceProvider
                 \Webkul\Shop\Console\Commands\EcosystemDataPreflight::class,
                 \Webkul\Shop\Console\Commands\SceneOperations::class,
                 \Webkul\Shop\Console\Commands\SceneAttachmentRetention::class,
+                // 配件皮肤 P1：分类树安装（默认 dry-run）与上架前置校验（只读）
+                \Webkul\Shop\Console\Commands\AccessoryInstallTaxonomy::class,
+                \Webkul\Shop\Console\Commands\AccessoryDataPreflight::class,
             ]);
         }
     }
@@ -202,8 +207,20 @@ class ShopServiceProvider extends ServiceProvider
                 ], 429));
         });
 
-        // 举报档(加固 §四 A1) —— 比 write 更紧:5/分。
-        //   举报是**唯一**的用户侧违规通道,但它同时也是一条能把任意文本送进后台的入口,
+        // 输入中心跳档：前端约 4 秒一次（15/分），20/分留出重试余量。
+        // 不能复用 write 档 —— 正常打字会被 30/分 直接限死。
+        RateLimiter::for('typing', function (Request $request) {
+            $customerId = $request->user('customer')?->id;
+
+            return Limit::perMinute(20)
+                ->by($customerId ? 'customer:'.$customerId : 'ip:'.$request->ip())
+                ->response(fn () => response()->json([
+                    'code'    => 'RATE_LIMITED',
+                    'message' => '请稍后再试。',
+                ], 429));
+        });
+
+        // 举报档(加固 §四 A1) —— 比 write 更紧:5/分。        //   举报是**唯一**的用户侧违规通道,但它同时也是一条能把任意文本送进后台的入口,
         //   且举报对象是任意技能(不像工单只对自己的东西)。30/分 对滥用太松,
         //   而正常用户一分钟报 5 条违禁技能已经远超日常;去重(同对象只受理一条)
         //   挡的是重复,这一档挡的是"换个对象接着刷"。

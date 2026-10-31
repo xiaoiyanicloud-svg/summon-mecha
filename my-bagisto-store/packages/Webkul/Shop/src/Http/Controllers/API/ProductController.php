@@ -4,6 +4,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 use Webkul\Category\Repositories\CategoryRepository;
 use Webkul\Marketing\Jobs\UpdateCreateSearchTerm as UpdateCreateSearchTermJob;
 use Webkul\Product\Repositories\ProductRepository;
@@ -54,6 +55,8 @@ class ProductController extends APIController
                 'exclude_ids'          => app(SkillMarketService::class)->unavailableProductIds(),
             ]));
 
+        $this->attachSalesCounts($products);
+
         if (! empty($query)) {
             /**
              * Update or create search term only if
@@ -70,6 +73,37 @@ class ProductController extends APIController
         }
 
         return ProductResource::collection($products);
+    }
+
+    /**
+     * 给商品列表补充真实销量，供前端“销量优先”排序。
+     *
+     * 口径与后台商品报表一致：已开票 - 已退款，排除取消订单；没有订单的商品记 0。
+     */
+    protected function attachSalesCounts($products): void
+    {
+        $items = method_exists($products, 'getCollection') ? $products->getCollection() : collect($products);
+        $ids = $items->pluck('id')->filter()->map(fn ($id) => (int) $id)->values()->all();
+
+        if ($ids === []) {
+            return;
+        }
+
+        $counts = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->whereIn('order_items.product_id', $ids)
+            ->where('orders.status', '<>', 'canceled')
+            ->selectRaw(
+                'order_items.product_id, '.
+                'SUM(CASE WHEN COALESCE(order_items.qty_invoiced, 0) - COALESCE(order_items.qty_refunded, 0) > 0 '.
+                'THEN COALESCE(order_items.qty_invoiced, 0) - COALESCE(order_items.qty_refunded, 0) ELSE 0 END) AS sales_count'
+            )
+            ->groupBy('order_items.product_id')
+            ->pluck('sales_count', 'order_items.product_id');
+
+        foreach ($items as $product) {
+            $product->setAttribute('sales_count', (int) ($counts[$product->id] ?? 0));
+        }
     }
 
     /**

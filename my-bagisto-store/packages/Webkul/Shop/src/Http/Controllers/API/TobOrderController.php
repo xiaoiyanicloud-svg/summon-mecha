@@ -136,6 +136,20 @@ class TobOrderController extends APIController
             $rentPeriod = (string) $request->input('rentPeriod', '');
             $sceneName = (string) $request->input('scene', '');
 
+            // 配件单的类型安全:只接受「配件」分类下、已上架的商品。
+            // 前端曾把 mock/旧缓存商品的 id 传进来,而 products 表里恰好存在同 id 的
+            // 租用/购买商品 —— 不校验分类就会把订单挂到完全不同的商品上。
+            $accessoryCategoryId = null;
+            if ($type === 'accessory') {
+                $accessoryCategoryId = \Webkul\Category\Models\Category::query()
+                    ->whereHas('translations', fn ($q) => $q->where('slug', 'accessory'))
+                    ->value('id');
+
+                if (! $accessoryCategoryId) {
+                    return $this->fail(ApiErrorCode::ACCESSORY_UNAVAILABLE, '配件目录暂不可用，请稍后再试。', 503);
+                }
+            }
+
             $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制', 'skill' => '技能', 'accessory' => '配件'];
 
             // 统一归一化成「行」:多机合单来自 items[],单商品来自顶层参数
@@ -194,14 +208,26 @@ class TobOrderController extends APIController
                     return $this->fail(ApiErrorCode::PRODUCT_NOT_FOUND, '商品不存在(ID: '.$line['product_id'].')', 422);
                 }
 
+                if ($type === 'accessory') {
+                    $isSellableAccessory = (int) $product->status === 1
+                        && $product->categories()->where('categories.id', $accessoryCategoryId)->exists();
+
+                    if (! $isSellableAccessory) {
+                        return $this->fail(
+                            ApiErrorCode::ACCESSORY_ORDER_TYPE_MISMATCH,
+                            '该商品不是可售配件，不能按配件下单。',
+                            422
+                        );
+                    }
+                }
+
                 $days = $type === 'rent' ? $line['rent_days'] : 1;
 
-                // 单价:技能是**标准商品**,一律用服务端目录价,不接受客户端改价(M1)。
-                // 此前任何登录用户都能给技能开任意价 —— 技能单不该走议价。
-                // 其余类型(租/买/配件)沿用"前端确认价优先"(询价/议价流,设计如此);
-                // 客户端价 <=0 时同样回退到服务端目录价,下限由上面的 min/max 校验兜住。
+                // 单价:技能与配件都是**标准商品**,一律用服务端目录价,不接受客户端改价。
+                // 技能此前已有 M1 约束;配件是固定价电商,若沿用“前端确认价优先”,
+                // 任何客户端都能把配件改成任意价。其余类型(租/买)沿用既有议价流。
                 $catalogPrice = (float) ($product->getTypeInstance()->getMinimalPrice() ?: $product->price);
-                $unitPrice = ($type === 'skill' || ! ($line['price'] > 0))
+                $unitPrice = (in_array($type, ['skill', 'accessory'], true) || ! ($line['price'] > 0))
                     ? $catalogPrice
                     : $line['price'];
 
