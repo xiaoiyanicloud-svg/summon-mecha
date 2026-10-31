@@ -84,6 +84,8 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
           php artisan key:generate --no-interaction
           php artisan migrate --force
+          # 测试用例使用 DatabaseTransactions，不会自行 seed；干净库必须先落默认 channel/locale。
+          php artisan db:seed --force
 
       - name: Run ecosystem gate
         run: bash tools/ecosystem-gate.sh
