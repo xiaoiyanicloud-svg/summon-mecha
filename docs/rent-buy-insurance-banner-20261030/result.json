@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "label": "rent-detail",
+      "src": "http://127.0.0.1:8099/assets/baoxian-DkqOK6kR.png",
+      "loaded": true,
+      "text": "",
+      "height": 154,
+      "width": 359
+    },
+    {
+      "label": "buy-detail",
+      "src": "http://127.0.0.1:8099/assets/baoxian-DkqOK6kR.png",
+      "loaded": true,
+      "text": "",
+      "height": 154,
+      "width": 359
+    },
+    {
+      "label": "accessory-detail",
+      "hasBanner": false,
+      "text": "平台严选・服务可追溯\n配送\n以商品页标注的交期为准\n安装\n支持预约工程师,是否可上门以详情页标注为准\n售后\n按商品页标注的质保与退换规则执行"
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "networkFailures": []
+}

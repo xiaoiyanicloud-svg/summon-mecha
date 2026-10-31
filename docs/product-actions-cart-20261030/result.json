@@ -1,0 +1,131 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "label": "rent-detail",
+      "buttons": [
+        {
+          "width": 114,
+          "height": 58,
+          "radius": "10.4px",
+          "text": "加入购物车"
+        },
+        {
+          "width": 114,
+          "height": 58,
+          "radius": "10.4px",
+          "text": "立即租用"
+        }
+      ],
+      "assist": [
+        {
+          "width": 34,
+          "height": 37,
+          "radius": "0px",
+          "text": "客服"
+        },
+        {
+          "width": 34,
+          "height": 37,
+          "radius": "0px",
+          "text": "购物车"
+        }
+      ],
+      "overflowX": false
+    },
+    {
+      "label": "buy-detail",
+      "buttons": [
+        {
+          "width": 114,
+          "height": 58,
+          "radius": "10.4px",
+          "text": "加入购物车"
+        },
+        {
+          "width": 114,
+          "height": 58,
+          "radius": "10.4px",
+          "text": "立即购买"
+        }
+      ],
+      "assist": [
+        {
+          "width": 34,
+          "height": 37,
+          "radius": "0px",
+          "text": "客服"
+        },
+        {
+          "width": 34,
+          "height": 37,
+          "radius": "0px",
+          "text": "购物车"
+        }
+      ],
+      "overflowX": false
+    },
+    {
+      "label": "accessory-detail",
+      "buttons": [
+        {
+          "width": 114,
+          "height": 58,
+          "radius": "10.4px",
+          "text": "加入购物车"
+        },
+        {
+          "width": 114,
+          "height": 58,
+          "radius": "10.4px",
+          "text": "立即购买"
+        }
+      ],
+      "assist": [
+        {
+          "width": 34,
+          "height": 37,
+          "radius": "0px",
+          "text": "客服"
+        },
+        {
+          "width": 34,
+          "height": 37,
+          "radius": "0px",
+          "text": "购物车"
+        }
+      ],
+      "overflowX": false
+    },
+    {
+      "label": "service-context",
+      "hash": "#/pages/mine/tickets?category=other&content=%25E5%2592%25A8%25E8%25AF%25A2%25E9%2585%258D%25E4%25BB%25B6%25E3%2580%258C%25E6%259C%25BA%25E5%2599%25A8%25E4%25BA%25BA%25E5%25A4%2587%25E7%2594%25A8%25E7%2594%25B5%25E6%25B1%25A0%25E5%258C%2585%252048V%252F20Ah%25E3%2580%258D%25EF%25BC%259A&productContext=1",
+      "text": "咨询配件「机器人备用电池包 48V/20Ah」：",
+      "pageText": true,
+      "productCard": true,
+      "productCardText": "商\n随消息发送商品\n机器人备用电池包 48V/20Ah\n配件 · TEST-ACC-BATTERY · ¥899\n×"
+    },
+    {
+      "label": "cart-page",
+      "hash": "#/pages/order/cart",
+      "items": 1,
+      "text": "✓\n配件\n删除\n机器人备用电池包 48V/20Ah\nSKU TEST-ACC-BATTERY\n¥\n899\n−\n1\n＋",
+      "checkoutVisible": true,
+      "overflowX": false
+    },
+    {
+      "label": "checkout-page",
+      "hash": "#/pages/order/checkout?cartMode=1",
+      "hasCartCard": true,
+      "itemCount": 1,
+      "total": "商品合计\n¥899",
+      "submitVisible": true
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "networkFailures": []
+}

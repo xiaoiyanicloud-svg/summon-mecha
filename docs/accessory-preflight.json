@@ -1,0 +1,52 @@
+{
+    "parent_id": 4,
+    "checked": 4,
+    "issues": 5,
+    "rows": [
+        {
+            "id": 5,
+            "name": "3D视觉相机",
+            "sku": "666",
+            "status": 1,
+            "price": 500,
+            "fitments": 0,
+            "issues": [
+                "缺少配件档案",
+                "没有可售适配关系，且未填写通用适配说明"
+            ]
+        },
+        {
+            "id": 17,
+            "name": "机器人备用电池包 48V/20Ah",
+            "sku": "TEST-ACC-BATTERY",
+            "status": 1,
+            "price": 899,
+            "fitments": 2,
+            "issues": [
+                "没有真实商品图"
+            ]
+        },
+        {
+            "id": 18,
+            "name": "智能快充充电桩",
+            "sku": "TEST-ACC-CHARGER",
+            "status": 1,
+            "price": 1299,
+            "fitments": 1,
+            "issues": [
+                "没有真实商品图"
+            ]
+        },
+        {
+            "id": 19,
+            "name": "通用机械臂夹爪套装",
+            "sku": "TEST-ACC-GRIPPER",
+            "status": 1,
+            "price": 1599,
+            "fitments": 1,
+            "issues": [
+                "没有真实商品图"
+            ]
+        }
+    ]
+}

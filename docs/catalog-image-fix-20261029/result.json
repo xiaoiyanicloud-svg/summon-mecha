@@ -1,0 +1,137 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "tab": "租用",
+      "cardCount": 6,
+      "imageCount": 6,
+      "loadedCount": 6,
+      "failed": [],
+      "samples": [
+        {
+          "name": "宇树u2 / 到手价¥66",
+          "src": "http://127.0.0.1:8000/storage/product/6/4nRrEpodrQguUSXSnUqZPQeO6ySPYp4MyLn57CR6.webp",
+          "loaded": true
+        },
+        {
+          "name": "2 / 到手价¥22",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        },
+        {
+          "name": "11 / 到手价¥11",
+          "src": "http://127.0.0.1:8000/storage/product/9/ojPIsy8ozKVSuV9xzYXYZcRbFG65forijGYb5Vus.webp",
+          "loaded": true
+        },
+        {
+          "name": "宇树 Go2 四足机器人 · 日租 / 到手价¥399",
+          "src": "http://127.0.0.1:8000/storage/product/14/TypszBWDApxHfnDEHJXMzlI5xCIV8gAifBoB3qW6.webp",
+          "loaded": true
+        },
+        {
+          "name": "智元 灵犀X2 人形机器人 · 日租 / 到手价¥1299",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        },
+        {
+          "name": "展厅迎宾机器人 · 日租 / 到手价¥599",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        }
+      ]
+    },
+    {
+      "tab": "购买",
+      "cardCount": 2,
+      "imageCount": 2,
+      "loadedCount": 2,
+      "failed": [],
+      "samples": [
+        {
+          "name": "众擎T800 / 到手价¥521",
+          "src": "http://127.0.0.1:8000/storage/product/3/NJn2udN7Tw1YziYmiIH91KDJTWAsTfcesB4o0Ga1.webp",
+          "loaded": true
+        },
+        {
+          "name": "猎户星空 / 到手价¥99",
+          "src": "http://127.0.0.1:8000/storage/product/2/Co2EzpiMNuk90nmneFCcfseIXtXK72C87k7yxAEu.webp",
+          "loaded": true
+        }
+      ]
+    },
+    {
+      "tab": "技能",
+      "cardCount": 4,
+      "imageCount": 4,
+      "loadedCount": 4,
+      "failed": [],
+      "samples": [
+        {
+          "name": "导览讲解技能包 / 按点位讲解与路线引导，支持中英双语切换，讲解内容可在后台维护。",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        },
+        {
+          "name": "舞蹈表演技能包 / 三套预设舞蹈动作，支持音乐触发与节拍同步，适用于商场、年会、展会暖场。",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        },
+        {
+          "name": "迎宾接待技能包 / 主动迎宾、问候、指引与合影 pose，含常用话术模板，可在后台替换文案。",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        },
+        {
+          "name": "灵巧手机器臂 / 7",
+          "src": "http://127.0.0.1:8000/storage/product/7/KWXD7AB6xVlyLBWAULIplx3NvuL53gxoUAPUuRBx.webp",
+          "loaded": true
+        }
+      ]
+    },
+    {
+      "tab": "配件",
+      "cardCount": 4,
+      "imageCount": 4,
+      "loadedCount": 4,
+      "failed": [],
+      "samples": [
+        {
+          "name": "3D视觉相机 / 适配待确认",
+          "src": "http://127.0.0.1:8000/storage/product/5/tnQIWM0EFYoXY7kwT3kYEw8rb18Hxlo2knsGXaXx.webp",
+          "loaded": true
+        },
+        {
+          "name": "通用机械臂夹爪套装 / 需转接",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        },
+        {
+          "name": "智能快充充电桩 / 直装",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        },
+        {
+          "name": "机器人备用电池包 48V/20Ah / 直装",
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        }
+      ]
+    },
+    {
+      "tab": "技能详情",
+      "cardCount": 1,
+      "imageCount": 1,
+      "loadedCount": 1,
+      "failed": [],
+      "samples": [
+        {
+          "src": "http://127.0.0.1:8099/static/summon-mecha-logo.webp",
+          "loaded": true
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "networkFailures": []
+}

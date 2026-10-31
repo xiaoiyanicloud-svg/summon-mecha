@@ -1,0 +1,79 @@
+{
+    "apply": true,
+    "parent_id": 4,
+    "categories": [
+        {
+            "code": "skin",
+            "name": "外观皮肤",
+            "slug": "accessory-skin",
+            "id": 6,
+            "action": "created"
+        },
+        {
+            "code": "armor",
+            "name": "防护结构",
+            "slug": "accessory-armor",
+            "id": 7,
+            "action": "created"
+        },
+        {
+            "code": "power",
+            "name": "动力续航",
+            "slug": "accessory-power",
+            "id": 8,
+            "action": "created"
+        },
+        {
+            "code": "sensor",
+            "name": "感知导航",
+            "slug": "accessory-sensor",
+            "id": 9,
+            "action": "created"
+        },
+        {
+            "code": "end-effector",
+            "name": "执行末端",
+            "slug": "accessory-end-effector",
+            "id": 10,
+            "action": "created"
+        },
+        {
+            "code": "tools",
+            "name": "工具耗材",
+            "slug": "accessory-tools",
+            "id": 11,
+            "action": "created"
+        }
+    ],
+    "products": [
+        {
+            "id": 5,
+            "name": "3D视觉相机",
+            "action": "assigned",
+            "category": "sensor",
+            "category_id": 9
+        },
+        {
+            "id": 17,
+            "name": "机器人备用电池包 48V/20Ah",
+            "action": "assigned",
+            "category": "power",
+            "category_id": 8
+        },
+        {
+            "id": 18,
+            "name": "智能快充充电桩",
+            "action": "assigned",
+            "category": "power",
+            "category_id": 8
+        },
+        {
+            "id": 19,
+            "name": "通用机械臂夹爪套装",
+            "action": "assigned",
+            "category": "end-effector",
+            "category_id": 10
+        }
+    ],
+    "warnings": []
+}
