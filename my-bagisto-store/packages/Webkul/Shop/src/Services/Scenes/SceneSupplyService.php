@@ -127,6 +127,7 @@ class SceneSupplyService
             'resource_no' => 'required|string|max:80|unique:scene_resources,resource_no', 'kind' => 'required|in:robot,operator,accessory',
             'product_id' => 'nullable|integer|exists:products,id', 'binding_id' => 'nullable|integer|exists:device_binding,id|unique:scene_resources,binding_id',
             'external_reference' => 'required|string|max:255', 'city' => 'required|string|max:100', 'timezone' => 'required|string|max:80',
+            'identity_reference' => 'required|string|min:3|max:255',
             'verification_expires_at' => 'required|date|after:now',
         ])->validate();
         if (! in_array($data['timezone'], DateTimeZone::listIdentifiers(), true)) {
@@ -135,6 +136,11 @@ class SceneSupplyService
         if ($data['kind'] === 'robot' && (empty($data['binding_id']) || empty($data['product_id']))) {
             throw new SceneWorkflowException('SCENE_BINDING_REQUIRED', '可确认的机器人资源必须引用真实 binding 和商品。');
         }
+        if ($data['kind'] !== 'robot' && ! empty($data['binding_id'])) {
+            throw new SceneWorkflowException('SCENE_RESOURCE_IDENTITY_INVALID', '人员和配件不能占用机器人 binding。');
+        }
+        $data['identity_hash'] = SceneWorkflow::hash([$data['kind'], mb_strtolower(trim($data['identity_reference']))]);
+        unset($data['identity_reference']);
         $data['verification_expires_at'] = SceneWorkflow::utc($data['verification_expires_at']);
 
         return DB::transaction(function () use ($data, $actor) {
@@ -144,10 +150,10 @@ class SceneSupplyService
                     throw new SceneWorkflowException('SCENE_BINDING_UNAVAILABLE', '设备绑定尚未生效。');
                 }
             }
-            $id = DB::table('scene_resources')->insertGetId($data + ['state' => 'ready', 'verified_by' => $actor, 'verified_at' => now('UTC'), 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
-            $this->flow->record('admin', $actor, 'scene_resource', $id, 1, 'scene.resource.verified');
+            $id = DB::table('scene_resources')->insertGetId($data + ['state' => 'unverified', 'created_by' => $actor, 'created_at' => now('UTC'), 'updated_at' => now('UTC')]);
+            $this->flow->record('admin', $actor, 'scene_resource', $id, 1, 'scene.resource.registered');
 
-            return ['id' => $id, 'row_version' => 1, 'state' => 'ready'];
+            return ['id' => $id, 'row_version' => 1, 'state' => 'unverified'];
         }, 3);
     }
 

@@ -16,6 +16,10 @@ class Order extends Base
      */
     public function afterCreated(OrderContract $order)
     {
+        if (($order->items->first()?->additional['scene']['protocol'] ?? null) === 'scene-sc3-v1') {
+            // 场景确认通知由同事务 outbox 在完整项目提交后投递，避免回滚前发送邮件。
+            return;
+        }
         try {
             if (! core()->getConfigData('emails.general.notifications.emails.general.notifications.new_order')) {
                 return;

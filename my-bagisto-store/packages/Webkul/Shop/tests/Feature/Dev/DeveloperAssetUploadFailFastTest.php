@@ -34,7 +34,7 @@ function makeValidSkillZip(string $entrypoint = 'runtime/main.py'): string
 {
     $manifest = json_encode([
         'schema'            => 'zhaohuan.skill/v2',
-        'kind'              => 'motion',
+        'kind'              => 'app',
         'name'              => ['zh_CN' => '测试即时安检技能'],
         'version'           => '1.0.0',
         'delivery_channels' => ['manual'],

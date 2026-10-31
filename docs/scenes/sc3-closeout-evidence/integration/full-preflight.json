@@ -1,0 +1,231 @@
+{
+    "ok": true,
+    "stage": "schema_routes_only",
+    "mode": "read_only",
+    "app_env": "testing",
+    "database": "summon_mecha_scenes_test",
+    "database_version": "5.7.30",
+    "database_identity_verified": true,
+    "missing_tables": [],
+    "missing_columns": [],
+    "non_transactional_tables": [],
+    "pending_migrations": [],
+    "required_unique_indexes": {
+        "scene_quotes": true,
+        "scene_quote_decisions": true,
+        "scene_order_links": true,
+        "scene_offline_acceptances": true,
+        "scene_proposals": true,
+        "scene_service_clocks": true,
+        "scene_policy_versions": true,
+        "scene_sku_mappings": true,
+        "scene_quote_commercial": true,
+        "scene_order_parts": true,
+        "scene_resources": true
+    },
+    "routes": {
+        "shop.api.scene-workflow.capabilities": {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "api/scene-workflow/capabilities"
+        },
+        "shop.api.scene-requests.store": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "api/scene-requests"
+        },
+        "shop.api.scene-requests.compare": {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "api/scene-requests/{id}/quote-comparison"
+        },
+        "shop.api.scene-quotes.accept": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "api/scene-quotes/{id}/accept"
+        },
+        "shop.api.scene-quotes.reject": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "api/scene-quotes/{id}/reject"
+        },
+        "shop.api.scene-projects.action": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "api/scene-projects/{id}/{action}"
+        },
+        "admin.catalog.scene-workflow.quote-action": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/quotes/{id}/{action}"
+        },
+        "admin.catalog.scene-workflow.offline-record": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/projects/{id}/offline-acceptances"
+        },
+        "admin.catalog.scene-workflow.offline-review": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/projects/{id}/offline-acceptances/{confirmationId}/review"
+        },
+        "shop.api.scene-workflow.ai-draft": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "api/scene-workflow/ai-draft"
+        },
+        "shop.api.scene-requests.upload-receipt": {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "api/scene-requests/{id}/attachment-receipt"
+        },
+        "admin.catalog.scene-workflow.survey": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/requests/{id}/surveys/create"
+        },
+        "admin.catalog.scene-workflow.solution": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/requests/{id}/solutions/create"
+        },
+        "admin.catalog.scene-workflow.solution-decision": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/solutions/{id}/{action}"
+        },
+        "admin.catalog.scene-workflow.evidence-review": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/evidence/{id}/review"
+        },
+        "admin.catalog.scene-workflow.policy-draft": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/policies/{kind}"
+        },
+        "admin.catalog.scene-workflow.policy-decision": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/policy-versions/{id}/{action}"
+        },
+        "admin.catalog.scene-workflow.preserved-attachment": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/requests/{id}/preserved-attachments/{attachmentId}"
+        },
+        "shop.api.scene-quotes.convert": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "api/scene-quotes/{id}/convert"
+        },
+        "shop.api.scene-quotes.confirmation": {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "api/scene-quotes/{id}/confirmation"
+        },
+        "admin.catalog.scene-workflow.resources": {
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "uri": "admin/catalog/scene-workflow/resources"
+        },
+        "admin.catalog.scene-workflow.resource-verify": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/resources/{id}/verify"
+        },
+        "admin.catalog.scene-workflow.resource-legacy": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/resources/{id}/legacy-source"
+        },
+        "admin.catalog.scene-workflow.sku-register": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/sku-mappings"
+        },
+        "admin.catalog.scene-workflow.sku-decision": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/sku-mappings/{id}/{action}"
+        },
+        "admin.catalog.scene-workflow.quote-commercial": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/quotes/{id}/commercial/record"
+        },
+        "admin.catalog.scene-workflow.quote-commercial-review": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/quotes/{id}/commercial/{recordId}/review"
+        },
+        "admin.catalog.scene-workflow.release-hold": {
+            "methods": [
+                "POST"
+            ],
+            "uri": "admin/catalog/scene-workflow/quotes/{id}/reservations/release"
+        }
+    },
+    "flags": {
+        "publication_v2": true,
+        "requests_enabled": true,
+        "quotes_enabled": true,
+        "reservations_enabled": true,
+        "project_actions_enabled": true,
+        "operations_enabled": true,
+        "order_conversion_enabled": true
+    },
+    "order_conversion_available": true,
+    "approved_policies": {
+        "commercial": {
+            "id": 1,
+            "version": "commercial-v1",
+            "state": "approved"
+        },
+        "retention": {
+            "id": 2,
+            "version": "retention-v1",
+            "state": "approved"
+        },
+        "service_calendar": {
+            "state": "not_approved"
+        }
+    },
+    "commercial_configuration_present": true,
+    "attachment_scanner_configured": false,
+    "business_fixtures_verified": false,
+    "mysql_concurrency_verified": false,
+    "writes_performed": false
+}

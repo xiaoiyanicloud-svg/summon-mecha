@@ -21,10 +21,12 @@
         <view v-for="quote in record.quotes" :key="quote.id" class="divider"><view class="row"><text>第 {{ quote.version }} 版</text><text class="state">{{ status(quote.state) }}</text></view><text class="price">{{ quote.currency }} {{ money(quote.total_minor) }}</text><text class="muted">押金另列 {{ money(quote.deposit_minor) }} · 有效期 {{ quote.expires_at }}</text>
           <view v-for="(item,index) in quote.items" :key="index" class="row"><text>{{ item.name }} × {{ item.quantity }} × {{ item.billing_units }} {{ item.unit }}</text><text>{{ money(item.line_minor) }}</text></view>
           <text class="muted">折扣 {{ money(quote.discount_minor) }} · 税额 {{ money(quote.tax_minor) }}</text><text class="original">{{ quote.terms.terms.text }}</text>
+          <view v-if="quote.cancellation" class="divider"><text>取消政策 {{ quote.cancellation.version }} · 按已复核总收款计罚</text><text v-for="tier in quote.cancellation.tiers" :key="tier.hours_before" class="muted">距开场至少 {{ tier.hours_before }} 小时：扣罚 {{ tier.penalty_bps / 100 }}%</text><text class="muted">其他时间：扣罚 {{ quote.cancellation.default_penalty_bps / 100 }}%；已核准应退和实际退款不会重复计费。</text></view>
           <view v-if="quote.proposal" class="card"><text class="section">{{ quote.proposal.title }} · 方案 v{{ quote.proposal.version }}</text><text class="original">交付范围：{{ quote.proposal.scope }}</text><text class="original">不含范围：{{ quote.proposal.exclusions }}</text><view v-for="part in quote.proposal.components" :key="part.key" class="row"><text>{{ part.label }} · {{ part.selected ? '选用' : '未选' }} · {{ part.required ? '必选' : '选配' }}</text><text>数量 {{ part.quantity }} {{ componentUnit(part.unit) }}</text></view><view v-for="item in quote.proposal.acceptance" :key="item.key"><text>{{ item.label }}{{ item.required ? '（必需）' : '' }}</text></view></view>
           <text class="muted">{{ quote.schedule.starts_at }} 至 {{ quote.schedule.ends_at }} · {{ quote.schedule.timezone }}</text>
           <view v-if="quote.state === 'sent'"><view v-if="!quote.is_expired"><view class="consent" @tap="consents[quote.id] = !consents[quote.id]"><text>{{ consents[quote.id] ? '☑' : '☐' }} 我已阅读并确认本版服务范围、金额和条款</text></view><button class="primary" :disabled="busy || pendingCommands.length > 0" @tap="accept(quote)">接受本版报价</button></view><text v-else class="notice">本版已过有效期，请联系服务人员重新出具报价。</text><label>拒绝本版的原因<textarea v-model="rejectionReasons[quote.id]" maxlength="2000" placeholder="请说明需要重新调整的范围、安排或费用" /></label><button class="secondary divider" :disabled="busy || pendingCommands.length > 0" @tap="reject(quote)">拒绝本版并请求重新沟通</button></view>
-          <view v-if="quote.state === 'accepted'" class="notice">报价接受已记录，资源、商务条件与项目仍待分别确认。</view>
+          <view v-if="quote.state === 'accepted'" class="notice"><text>{{ quote.delivery_status === 'confirmed' ? '服务订单与交付项目已确认，请查看具体安排和款项状态。' : '报价接受已记录，资源、商务条件与项目仍待分别确认。' }}</text><button class="secondary divider" @tap="openConfirmation(quote.id)">查看资源与订单确认</button></view>
+          <text v-if="quote.confirmation" class="muted">商务与资源确认截止 {{ quote.confirmation.deadline }} UTC · {{ quote.confirmation.method === 'offline_contract' ? '须独立核验线下合同或授信' : '须独立核验实际预收款 ' + money(quote.confirmation.required_minor) + ' 元' }}</text>
           <text v-if="quote.customer_rejection" class="notice">本次拒绝原因：{{ quote.customer_rejection.reason }}</text>
         </view>
       </view>
@@ -56,6 +58,7 @@ export default {
       catch(e) { if (scope===sceneAccountScope()) uni.showToast({title:e.message||'新版表单加载失败',icon:'none'}) }
     },
     status: sceneStatusLabel, back() { uni.navigateBack() }, list() { uni.navigateTo({ url: '/pages/scene/requests' }) }, openProject(id) { uni.navigateTo({ url: '/pages/scene/project?id=' + id }) },
+    openConfirmation(id) { uni.navigateTo({ url: '/pages/scene/confirm?quoteId=' + id }) },
     money(value) { return (Number(value) / 100).toFixed(2) }, factLabel(v) { return v === true ? '是' : (v === false ? '否' : (v === null || v === undefined || v === '' ? '待补充' : String(v))) },
     activityLabel(kind) { return ({ submitted: '需求已提交', supplemented: '需求已补充' })[kind] || '服务进展已更新' },
     signedMoney(v) { return (v > 0 ? '+' : '') + this.money(v) }, compareLabel(key) { return ({ terms: '正式条款', request_revision: '需求修订', schedule: '服务时段与缓冲', items: '服务明细', proposal: '方案范围、组件与验收' })[key] },

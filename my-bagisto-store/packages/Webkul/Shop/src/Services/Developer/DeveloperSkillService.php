@@ -20,6 +20,7 @@ use Webkul\Shop\Services\SkillAudit\AuditService;
 use Webkul\Shop\Services\SkillAudit\ReviewGate;
 use Webkul\Shop\Services\SkillAudit\SkillVersionState;
 use Webkul\Shop\Services\SkillPackage\PackageInspector;
+use Webkul\Shop\Services\SkillPackage\SkillPackageBuilder;
 use Webkul\Shop\Services\SkillSupply\AssetUploadResult;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 
@@ -396,7 +397,26 @@ class DeveloperSkillService
             }
         }
 
+        if (isset($fields['install_guide']) && is_string($fields['install_guide']) && trim($fields['install_guide']) !== '') {
+            $version->install_guide = trim($fields['install_guide']);
+            $version->save();
+        }
+
         return $this->uploads->store($version, $fields, $file);
+    }
+
+    /**
+     * 为指定版本生成标准示例 .skill 包（供开发者下载参考）。
+     */
+    public function buildSampleForVersion(DeveloperProfile $profile, int $versionId, array $options = []): ?UploadedFile
+    {
+        $version = $this->findOwnedVersion($profile, $versionId);
+
+        if (! $version) {
+            return null;
+        }
+
+        return app(SkillPackageBuilder::class)->buildSamplePackage($version, $options);
     }
 
     /**
@@ -444,6 +464,7 @@ class DeveloperSkillService
         $asset = SkillAsset::query()
             ->where('skill_version_id', $version->id)
             ->whereNotNull('file_path')
+            ->orderByRaw("CASE WHEN carrier_type = 'file' THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->first();
 

@@ -208,15 +208,25 @@ import argparse
 import base64
 import hashlib
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
 import time
 import urllib.error
 import urllib.request
+import zipfile
 
 # 参考 Agent 自身版本(§4.22 F1 自更新 / B-13)。真机 Agent 应把它随心跳上报。
 AGENT_VERSION = "0.1.0"
+
+OP_INSTALL = 1
+OP_UNINSTALL = 2
+OP_ROLLBACK = 3
+OP_ENABLE = 4
+OP_DISABLE = 5
+OP_RECLAIM = 6
 
 
 def http(method, url, payload=None, headers=None):
@@ -278,8 +288,8 @@ def verify(cmd, pubkey_pem):
         return False
 
 
-def fetch_sha256(url, headers):
-    """下载 package_url 指向的技能包,流式复算 sha256(不整包读进内存)。
+def fetch_sha256(url, headers, dest_path=None):
+    """下载 package_url 指向的技能包,流式复算 sha256 并落盘(不整包读进内存)。
 
     ⚠ 取包要带**与指令相同的 agent 凭据**:下载端点同时要求签名 URL 与 agent 身份,
       缺一不可(见服务端 `api/agent/packages/{versionId}` 的双重中间件)。
@@ -291,14 +301,145 @@ def fetch_sha256(url, headers):
         req.add_header(k, v)
 
     h = hashlib.sha256()
-    with urllib.request.urlopen(req, timeout=60) as r:
-        while True:
-            chunk = r.read(65536)
-            if not chunk:
-                break
-            h.update(chunk)
+    out_file = open(dest_path, "wb") if dest_path else None
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            while True:
+                chunk = r.read(65536)
+                if not chunk:
+                    break
+                h.update(chunk)
+                if out_file:
+                    out_file.write(chunk)
+    finally:
+        if out_file:
+            out_file.close()
 
     return h.hexdigest()
+
+
+def load_installed_state(install_dir):
+    state_path = os.path.join(install_dir, "state", "installed.json")
+    if not os.path.isfile(state_path):
+        return {"skills": {}}
+    try:
+        with open(state_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) and "skills" in data else {"skills": {}}
+    except Exception:
+        return {"skills": {}}
+
+
+def save_installed_state(install_dir, state):
+    state_dir = os.path.join(install_dir, "state")
+    os.makedirs(state_dir, exist_ok=True)
+    state_path = os.path.join(state_dir, "installed.json")
+    tmp_path = state_path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, state_path)
+
+
+def install_skill_package(pkg_path, install_dir, skill_id, version, package_sha256, operation=OP_INSTALL):
+    """将已通过 sha256 校验的 .skill 包解压落盘并登记到 state/installed.json。"""
+    skill_key = str(skill_id)
+    ver_str = str(version or "1.0.0")
+    skill_dir = os.path.join(install_dir, "skills", skill_key)
+    version_dir = os.path.join(skill_dir, "v" + ver_str)
+    os.makedirs(version_dir, exist_ok=True)
+
+    manifest = {}
+    extracted_files = []
+
+    if zipfile.is_zipfile(pkg_path):
+        with zipfile.ZipFile(pkg_path, "r") as zf:
+            abs_target_root = os.path.abspath(version_dir)
+            for member in zf.infolist():
+                member_dest = os.path.abspath(os.path.join(version_dir, member.filename))
+                if not (member_dest == abs_target_root or member_dest.startswith(abs_target_root + os.sep)):
+                    raise RuntimeError("技能包内存在越界路径: %s" % member.filename)
+            zf.extractall(version_dir)
+            extracted_files = zf.namelist()
+
+        manifest_candidate = os.path.join(version_dir, "manifest.json")
+        if os.path.isfile(manifest_candidate):
+            with open(manifest_candidate, "r", encoding="utf-8") as mf:
+                manifest = json.load(mf)
+    else:
+        raw_dest = os.path.join(version_dir, "package.skill")
+        shutil.copyfile(pkg_path, raw_dest)
+        extracted_files = ["package.skill"]
+
+    state = load_installed_state(install_dir)
+    prev = state["skills"].get(skill_key) or {}
+    prev_ver = prev.get("current_version")
+    status_val = "rolled_back" if operation == OP_ROLLBACK else ("updated" if prev_ver and prev_ver != ver_str else "installed")
+
+    state["skills"][skill_key] = {
+        "skill_id": skill_id,
+        "current_version": ver_str,
+        "previous_version": prev_ver if prev_ver != ver_str else prev.get("previous_version"),
+        "status": status_val,
+        "enabled": True,
+        "install_path": version_dir,
+        "package_sha256": package_sha256,
+        "manifest": manifest,
+        "files": extracted_files,
+        "updated_at": int(time.time()),
+    }
+    save_installed_state(install_dir, state)
+    return state["skills"][skill_key]
+
+
+def apply_lifecycle_operation(install_dir, skill_id, version, operation):
+    """处理卸载 / 回收 / 本地回滚 / 启用 / 禁用操作并同步更新 state/installed.json。"""
+    skill_key = str(skill_id)
+    state = load_installed_state(install_dir)
+    entry = state["skills"].get(skill_key) or {
+        "skill_id": skill_id,
+        "current_version": str(version or "1.0.0"),
+        "status": "installed",
+        "enabled": True,
+    }
+
+    if operation in (OP_UNINSTALL, OP_RECLAIM):
+        skill_dir = os.path.join(install_dir, "skills", skill_key)
+        if os.path.isdir(skill_dir):
+            shutil.rmtree(skill_dir, ignore_errors=True)
+        entry["status"] = "expired" if operation == OP_RECLAIM else "uninstalled"
+        entry["enabled"] = False
+        entry["updated_at"] = int(time.time())
+        state["skills"][skill_key] = entry
+        save_installed_state(install_dir, state)
+        return entry
+
+    if operation == OP_ROLLBACK:
+        target_ver = str(version or entry.get("previous_version") or entry.get("current_version") or "1.0.0")
+        entry["current_version"] = target_ver
+        entry["status"] = "rolled_back"
+        entry["enabled"] = True
+        entry["updated_at"] = int(time.time())
+        state["skills"][skill_key] = entry
+        save_installed_state(install_dir, state)
+        return entry
+
+    if operation == OP_ENABLE:
+        entry["enabled"] = True
+        entry["status"] = "installed"
+        entry["updated_at"] = int(time.time())
+        state["skills"][skill_key] = entry
+        save_installed_state(install_dir, state)
+        return entry
+
+    if operation == OP_DISABLE:
+        entry["enabled"] = False
+        entry["status"] = "disabled"
+        entry["updated_at"] = int(time.time())
+        state["skills"][skill_key] = entry
+        save_installed_state(install_dir, state)
+        return entry
+
+    return entry
 
 
 def evt(base, payload, headers):
@@ -351,9 +492,10 @@ def check_self_update(base, did, headers):
         print("[agent] Agent 自更新:%s" % data.get("reason"), flush=True)
 
 
-def run(config):
+def run(config, once=False, install_dir=None):
     base = config["server_url"].rstrip("/")
     did = config["did"]
+    install_dir = install_dir or config.get("install_dir") or "/opt/zhjj-agent"
 
     # 鉴权:优先 per-device 凭据(§4.22 F1 / B-12),否则退回共享密钥(过渡)。
     # ⚠ 证书形态(用设备私钥对每个请求签名)是目标形态 —— 待真机 Agent 实现。
@@ -368,7 +510,7 @@ def run(config):
             pubkey_pem = f.read()
 
     interval = int(config.get("poll_interval", 5))
-    print("[agent] 启动 did=%s server=%s version=%s" % (did, base, AGENT_VERSION), flush=True)
+    print("[agent] 启动 did=%s server=%s version=%s dir=%s" % (did, base, AGENT_VERSION, install_dir), flush=True)
 
     check_self_update(base, did, headers)
 
@@ -377,15 +519,22 @@ def run(config):
             resp = http("GET", "%s/api/agent/commands?did=%s" % (base, did), headers=headers)
         except urllib.error.HTTPError as e:
             print("[agent] 拉取失败 HTTP %s;%ss 后重试" % (e.code, interval), flush=True)
+            if once:
+                break
             time.sleep(interval)
             continue
         except Exception as e:
             print("[agent] 拉取异常 %s;%ss 后重试" % (e, interval), flush=True)
+            if once:
+                break
             time.sleep(interval)
             continue
 
         for cmd in resp.get("data") or []:
             task_no = cmd.get("task_id")
+            operation = int(cmd.get("operation") or OP_INSTALL)
+            skill_id = cmd.get("skill_id")
+            version = cmd.get("version") or "1.0.0"
 
             if not verify(cmd, pubkey_pem):
                 print("[agent] %s 验签失败,拒绝安装" % task_no, flush=True)
@@ -394,14 +543,14 @@ def run(config):
                     headers)
                 continue
 
-            print("[agent] %s 验签通过 op=%s" % (task_no, cmd.get("operation")), flush=True)
+            print("[agent] %s 验签通过 op=%s" % (task_no, operation), flush=True)
 
             evt(base, {"task_no": task_no, "did": did, "phase": "downloading"}, headers)
 
             # 「有没有包」的判据取**签住的** package_sha256，**不取未签名的 package_url**：
             #   · 有哈希   → 下载，且字节必须匹配（哈希已被签名覆盖，改它即失签）；
             #   · 只有地址 → 指令自相矛盾 / 被人挂了个地址 → 拒装；
-            #   · 两者皆无 → 无包 dry install。
+            #   · 两者皆无 → 非安装操作执行本地卸载/回收/启停/回滚；安装操作则为无包 dry install。
             expected = (cmd.get("package_sha256") or "").lower()
             url = cmd.get("package_url")
 
@@ -414,10 +563,16 @@ def run(config):
                     continue
 
                 print("[agent] 下载 %s" % url, flush=True)
+                tmp_fd, tmp_pkg_path = tempfile.mkstemp(prefix="zhskill_", suffix=".skill")
+                os.close(tmp_fd)
 
                 try:
-                    got = fetch_sha256(url, headers)
+                    got = fetch_sha256(url, headers, tmp_pkg_path)
                 except Exception as e:
+                    try:
+                        os.remove(tmp_pkg_path)
+                    except Exception:
+                        pass
                     # 没拿到包 = 可重试的下载失败，不是安装失败（两者处置不同）。
                     print("[agent] %s 下载失败:%s" % (task_no, e), flush=True)
                     evt(base, {"task_no": task_no, "did": did, "phase": "download_failed",
@@ -427,16 +582,33 @@ def run(config):
                 # ⚠ 拿到了，但**不是我该装的那一份** → 不安装，如实上报（不可重试）。
                 #   静默装下一份来路不明的字节，是这条链路上最危险的一步。
                 if got != expected:
+                    try:
+                        os.remove(tmp_pkg_path)
+                    except Exception:
+                        pass
                     print("[agent] %s 包哈希不符:期望 %s 实际 %s → 拒绝安装"
                           % (task_no, expected, got), flush=True)
                     evt(base, {"task_no": task_no, "did": did, "phase": "failed",
                                "error_code": "__ERR_PKG_HASH_MISMATCH__",
-                               "error_msg": "下载到的技能包 sha256 与指令声明不一致"}, headers)
+                               "error_msg": "下载到的技能包 sha256 与指令不一致"}, headers)
                     continue
 
                 print("[agent] %s 已取包(sha256=%s)，进入安装" % (task_no, got), flush=True)
                 evt(base, {"task_no": task_no, "did": did, "phase": "installing"}, headers)
-                # 这里没有真实安装器的位置 —— 真机 Agent 在此把包装进机器，失败上报 failed。
+                try:
+                    install_skill_package(tmp_pkg_path, install_dir, skill_id, version, got, operation)
+                except Exception as e:
+                    print("[agent] %s 本地解压安装失败:%s" % (task_no, e), flush=True)
+                    evt(base, {"task_no": task_no, "did": did, "phase": "failed",
+                               "error_code": "INSTALL_ERR",
+                               "error_msg": "本地安装技能包失败:%s" % e}, headers)
+                    continue
+                finally:
+                    try:
+                        os.remove(tmp_pkg_path)
+                    except Exception:
+                        pass
+
                 evt(base, {"task_no": task_no, "did": did, "phase": "done"}, headers)
             elif url:
                 # ⚠ 有地址却没有**签住的**哈希 —— 平台绝不会这样发，只可能是指令被改过
@@ -446,6 +618,18 @@ def run(config):
                 evt(base, {"task_no": task_no, "did": did, "phase": "failed",
                            "error_code": "__ERR_SIG_INVALID__",
                            "error_msg": "指令带有包地址却没有可复算的哈希，无法验证，拒绝安装"}, headers)
+            elif operation in (OP_UNINSTALL, OP_ROLLBACK, OP_ENABLE, OP_DISABLE, OP_RECLAIM):
+                # 卸载 / 回收 / 本地回滚 / 启用 / 禁用原本就不下发包 URL，属于真实运维动作，不能误报 PKG_MISSING
+                print("[agent] %s 执行本地运维动作 op=%s" % (task_no, operation), flush=True)
+                evt(base, {"task_no": task_no, "did": did, "phase": "installing"}, headers)
+                try:
+                    apply_lifecycle_operation(install_dir, skill_id, version, operation)
+                except Exception as e:
+                    evt(base, {"task_no": task_no, "did": did, "phase": "failed",
+                               "error_code": "OP_FAILED",
+                               "error_msg": "运维操作执行失败:%s" % e}, headers)
+                    continue
+                evt(base, {"task_no": task_no, "did": did, "phase": "done"}, headers)
             else:
                 print("[agent] 无包 → dry install(只走状态机，不拉真实包)", flush=True)
                 evt(base, {"task_no": task_no, "did": did, "phase": "installing"}, headers)
@@ -457,15 +641,20 @@ def run(config):
 
             print("[agent] %s 完成" % task_no, flush=True)
 
+        if once:
+            break
         time.sleep(interval)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True, help="install.sh 生成的 config.json")
+    ap.add_argument("--once", action="store_true", help="仅执行一轮拉取处理即退出")
     args = ap.parse_args()
-    with open(args.config) as f:
-        run(json.load(f))
+    cfg_abs = os.path.abspath(args.config)
+    install_dir = os.path.dirname(cfg_abs)
+    with open(cfg_abs, "r", encoding="utf-8") as f:
+        run(json.load(f), once=args.once, install_dir=install_dir)
 
 
 if __name__ == "__main__":

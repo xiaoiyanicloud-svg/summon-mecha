@@ -52,6 +52,9 @@ class EventServiceProvider extends ServiceProvider
         /**
          * Sales related events.
          */
+        'checkout.order.save.before' => [
+            [\Webkul\Shop\Listeners\SceneOrderTransactionGuard::class, 'beforeCreated'],
+        ],
         'checkout.order.save.after' => [
             [Order::class, 'afterCreated'],
 
@@ -66,6 +69,9 @@ class EventServiceProvider extends ServiceProvider
 
             // 订单取消 → 对称撤销技能授权
             [SkillDelivery::class, 'afterOrderCanceled'],
+        ],
+        'sales.order.cancel.before' => [
+            [\Webkul\Shop\Listeners\SceneOrderTransactionGuard::class, 'beforeCancelled'],
         ],
 
         'sales.order.comment.create.after' => [

@@ -287,6 +287,14 @@ export default {
 
   onLoad(options) {
     const q = options || {}
+    if (q.scene_quote_id || q.quoteId) {
+      uni.redirectTo({ url: '/pages/scene/confirm?quoteId=' + encodeURIComponent(q.scene_quote_id || q.quoteId) })
+      return
+    }
+    if (q.sceneId || q.scene_id || q.scene || q.from === 'scene' || q.from === 'custom_plan' || q.type === 'plan') {
+      uni.redirectTo({ url: '/pages/scene/request?source=scene' + (q.sceneId || q.scene_id ? '&sceneId=' + encodeURIComponent(q.sceneId || q.scene_id) : '') })
+      return
+    }
     this.product = {
       id: Number(q.productId) || 0,
       name: q.name ? decodeURIComponent(q.name) : '机器人',
@@ -299,6 +307,7 @@ export default {
       image: q.image ? decodeURIComponent(q.image) : '',
       from: q.from || '',
       sceneId: q.sceneId || '',
+      deviceId: q.deviceId ? Number(q.deviceId) || null : null,
     }
     if (q.qty) this.qty = Number(q.qty) || 1
 
@@ -590,6 +599,9 @@ export default {
         if (this.isSkillOrder && this.couponCode.trim()) {
           payload.coupon_code = this.couponCode.trim()
         }
+        if (this.isSkillOrder && this.product.deviceId) {
+          payload.device_id = this.product.deviceId
+        }
         // 多机合单:整包 items[],后端按行计价建单(共用租期)
         if (this.multiItems.length) {
           payload.items = this.multiItems.map(it => ({
@@ -646,7 +658,12 @@ export default {
         const res = await paymentApi.create(orderId)
         const params = (res && res.data && res.data.params) || {}
         if (params.mock) {
-          uni.showToast({ title: '支付资质未就绪（当前为模拟支付）', icon: 'none' })
+          const outTradeNo = (res && res.data && res.data.out_trade_no) || ''
+          const amount = (res && res.data && res.data.amount) || this.productTotal
+          if (outTradeNo) {
+            await paymentApi.mockCallback({ out_trade_no: outTradeNo, mock_paid: 1, amount })
+          }
+          uni.showToast({ title: '模拟支付已完成（本地联调）', icon: 'none' })
           return
         }
         // 真实微信支付(资质就绪后生效)

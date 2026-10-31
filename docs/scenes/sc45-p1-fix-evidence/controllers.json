@@ -1,0 +1,77 @@
+{
+    "environment": "real controller inheritance + Laravel Router, no business bootstrap\/database",
+    "tests": [
+        {
+            "name": "全部场景路由控制器及父类实际装载，处理方法必须公开且可调用",
+            "pass": true
+        },
+        {
+            "name": "真实控制器能力接口可执行；订单转换始终关闭",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 business_event，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 enterprise，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 culture_tourism，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 education，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 security，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 warehouse_logistics，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 industry，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 medical，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "真实 Router 分发表单 home，无数据库访问",
+            "pass": true
+        },
+        {
+            "name": "schema 参数避开 Bagisto 全局 category 模型绑定",
+            "pass": true
+        },
+        {
+            "name": "未知表单类别为稳定 422；不是无路由 404",
+            "pass": true
+        },
+        {
+            "name": "未登录不读私有记录 \/api\/scene-requests\/1",
+            "pass": true
+        },
+        {
+            "name": "未登录不读私有记录 \/api\/scene-projects\/1",
+            "pass": true
+        },
+        {
+            "name": "未登录不读私有记录 \/api\/scene-requests\/1\/attachments\/1",
+            "pass": true
+        },
+        {
+            "name": "未登录不读私有记录 \/api\/scene-quotes\/1\/confirmation",
+            "pass": true
+        }
+    ],
+    "passed": 17,
+    "failed": 0,
+    "business_database_accessed": false,
+    "full_application_http_verified": false
+}

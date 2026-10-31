@@ -1,0 +1,48 @@
+{
+    "compiled": 10,
+    "failed": 0,
+    "checks": [
+        {
+            "template": "assessment-proposal.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "attachment-preservation.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "configuration.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "evidence.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "index.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "quote-transaction.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "repeater.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "resources.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "revision.blade.php",
+            "syntax_ok": true
+        },
+        {
+            "template": "show.blade.php",
+            "syntax_ok": true
+        }
+    ],
+    "component_layout_rendered": false,
+    "output": "D:\\main-scene-integration\/.claude\/backup\/scene-sc1-sc5-20261020\/blade-qa"
+}

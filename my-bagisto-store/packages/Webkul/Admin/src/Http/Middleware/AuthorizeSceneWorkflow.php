@@ -18,6 +18,12 @@ class AuthorizeSceneWorkflow
         'revisionEditor' => 'revision_write', 'contentEvidencePage' => 'evidence_view', 'contentEvidenceCreate' => 'revision_write', 'contentEvidenceDecision' => 'evidence_review',
         'survey' => 'assess', 'solution' => 'assess', 'solutionDecision' => 'solution_review', 'evidenceReview' => 'supply_review',
         'supplyRevoke' => 'supply_review', 'attachmentAction' => 'preserve', 'todoAssign' => 'operate', 'preservedAttachment' => 'preserve_read',
+        'resourcesPage' => 'view', 'resourceVerify' => 'supply_review', 'releaseHold' => 'reserve', 'skuRegister' => 'supply', 'skuDecision' => 'supply_review',
+        'quoteCommercial' => 'finance', 'quoteCommercialReview' => 'finance_review',
+        'resourceLegacy' => 'supply',
+        'evaluateChange' => 'assess', 'reviewChange' => 'approve', 'executeCancellation' => 'approve',
+        'reportIncident' => 'deliver', 'resumeProject' => 'deliver',
+        'todos' => 'operate', 'resolveTodo' => 'operate', 'metrics' => 'view',
     ];
 
     public function handle(Request $request, Closure $next)

@@ -223,6 +223,7 @@ export const reviewApi = {
 // ⚠ 资质未就绪时后端走 mock 网关,返回 { out_trade_no, params:{ mock:true, callback_hint } }
 export const paymentApi = {
   create: (orderId) => http.post(`/api/payment/orders/${orderId}`, {}, { loading: true, loadingText: '创建支付中...' }),
+  mockCallback: (data) => http.post('/api/callback/payment', data, { loading: false }),
 }
 
 // ==================== 下发任务(v3.4 步骤 8) ====================
@@ -271,9 +272,12 @@ export const sceneWorkflowApi = {
   downloadAttachment: (id, attachmentId, access) => scenePrivateFile('/api/scene-requests/' + Number(id) + '/attachments/' + Number(attachmentId), { access }),
   accept: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/accept', data, sceneHeaders(access, key)),
   reject: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/reject', data, sceneHeaders(access, key)),
+  confirmation: (id, access) => http.get('/api/scene-quotes/' + Number(id) + '/confirmation', sceneHeaders(access)),
+  convert: (id, data, access, key) => http.post('/api/scene-quotes/' + Number(id) + '/convert', data, sceneHeaders(access, key)),
   compareQuotes: (id, leftId, rightId, access) => http.get('/api/scene-requests/' + Number(id) + '/quote-comparison', { ...sceneHeaders(access), data: { left_id: leftId, right_id: rightId } }),
   project: (id, access) => http.get('/api/scene-projects/' + Number(id), sceneHeaders(access)),
   projectAction: (id, action, data, access, key) => http.post('/api/scene-projects/' + Number(id) + '/' + action, data, sceneHeaders(access, key)),
+  projectChangeDecision: (id, changeId, data, access, key) => http.post('/api/scene-projects/' + Number(id) + '/changes/' + Number(changeId) + '/decision', data, sceneHeaders(access, key)),
 }
 
 // 上传和下载同样只在 API 入口发起；访问能力只放请求头，不放 URL 或本地文件名。

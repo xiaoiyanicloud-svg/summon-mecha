@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-10-21T16:45:48.289Z",
+  "runtime": "D:\\main-scene-integration\\.claude\\runtime\\sc3-http-4047ddff8ee778f47795",
+  "environment": "Complete Laravel/Bagisto providers + real EAV, sessions, CSRF, Sanctum, actual HTTP and MySQL",
+  "ok": true,
+  "stages": [
+    {
+      "name": "mysql-initialize",
+      "exit_code": 0
+    },
+    {
+      "name": "database-create",
+      "exit_code": 0
+    },
+    {
+      "name": "migrate",
+      "exit_code": 0
+    },
+    {
+      "name": "seed",
+      "exit_code": 0
+    },
+    {
+      "name": "preflight",
+      "exit_code": 0
+    },
+    {
+      "name": "http",
+      "exit_code": 0
+    },
+    {
+      "name": "recovery",
+      "exit_code": 0
+    },
+    {
+      "name": "runtime",
+      "exit_code": 0
+    },
+    {
+      "name": "h5",
+      "exit_code": 0
+    },
+    {
+      "name": "cleanup",
+      "exit_code": 0
+    }
+  ],
+  "cleanup": {
+    "own_instance_shutdown": true,
+    "own_database_removed": true,
+    "identity": {
+      "datadir": "D:\\main-scene-integration\\.claude\\runtime\\sc3-http-4047ddff8ee778f47795\\mysql\\",
+      "version": "5.7.30",
+      "port": 51187
+    }
+  },
+  "business_database_touched": false,
+  "production_flags_changed": false,
+  "external_notification_or_device_calls": false,
+  "migrations": 255,
+  "http_checks": 107,
+  "worker_checks": 8,
+  "runtime_checks": 10,
+  "h5_checks": 6,
+  "preflight_ok": true
+}

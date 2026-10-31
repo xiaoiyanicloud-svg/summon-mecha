@@ -1,0 +1,432 @@
+{
+  "checks": [
+    {
+      "name": "完整应用健康检查",
+      "pass": true
+    },
+    {
+      "name": "author 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "author 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "资源后台完整布局渲染",
+      "pass": true
+    },
+    {
+      "name": "reviewer 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "reviewer 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "未登录不能读取后台资源",
+      "pass": true
+    },
+    {
+      "name": "真实 HTTP 缺 CSRF token 拒绝写入",
+      "pass": true
+    },
+    {
+      "name": "viewer 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "viewer 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "supply 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "supply 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "supply_review 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "supply_review 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "reserve 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "reserve 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "finance 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "finance 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "finance_review 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "finance_review 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "none 登录页真实渲染及 CSRF token",
+      "pass": true
+    },
+    {
+      "name": "none 真实会话登录",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → supply /supply/resources",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → supply_review /resources/999999/verify",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → supply /sku-mappings",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → supply_review /sku-mappings/999999/approve",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → reserve /quotes/1/reservations/hold",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → reserve /quotes/1/reservations/release",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → reserve /resources/999999/pause",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → finance /quotes/1/commercial/record",
+      "pass": true
+    },
+    {
+      "name": "ACL viewer → finance_review /quotes/1/commercial/999999/review",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → supply /supply/resources",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → supply_review /resources/999999/verify",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → supply /sku-mappings",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → supply_review /sku-mappings/999999/approve",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → reserve /quotes/1/reservations/hold",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → reserve /quotes/1/reservations/release",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → reserve /resources/999999/pause",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → finance /quotes/1/commercial/record",
+      "pass": true
+    },
+    {
+      "name": "ACL supply → finance_review /quotes/1/commercial/999999/review",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → supply /supply/resources",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → supply_review /resources/999999/verify",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → supply /sku-mappings",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → supply_review /sku-mappings/999999/approve",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → reserve /quotes/1/reservations/hold",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → reserve /quotes/1/reservations/release",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → reserve /resources/999999/pause",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → finance /quotes/1/commercial/record",
+      "pass": true
+    },
+    {
+      "name": "ACL supply_review → finance_review /quotes/1/commercial/999999/review",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → supply /supply/resources",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → supply_review /resources/999999/verify",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → supply /sku-mappings",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → supply_review /sku-mappings/999999/approve",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → reserve /quotes/1/reservations/hold",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → reserve /quotes/1/reservations/release",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → reserve /resources/999999/pause",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → finance /quotes/1/commercial/record",
+      "pass": true
+    },
+    {
+      "name": "ACL reserve → finance_review /quotes/1/commercial/999999/review",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → supply /supply/resources",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → supply_review /resources/999999/verify",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → supply /sku-mappings",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → supply_review /sku-mappings/999999/approve",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → reserve /quotes/1/reservations/hold",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → reserve /quotes/1/reservations/release",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → reserve /resources/999999/pause",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → finance /quotes/1/commercial/record",
+      "pass": true
+    },
+    {
+      "name": "ACL finance → finance_review /quotes/1/commercial/999999/review",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → supply /supply/resources",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → supply_review /resources/999999/verify",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → supply /sku-mappings",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → supply_review /sku-mappings/999999/approve",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → reserve /quotes/1/reservations/hold",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → reserve /quotes/1/reservations/release",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → reserve /resources/999999/pause",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → finance /quotes/1/commercial/record",
+      "pass": true
+    },
+    {
+      "name": "ACL finance_review → finance_review /quotes/1/commercial/999999/review",
+      "pass": true
+    },
+    {
+      "name": "ACL none → supply /supply/resources",
+      "pass": true
+    },
+    {
+      "name": "ACL none → supply_review /resources/999999/verify",
+      "pass": true
+    },
+    {
+      "name": "ACL none → supply /sku-mappings",
+      "pass": true
+    },
+    {
+      "name": "ACL none → supply_review /sku-mappings/999999/approve",
+      "pass": true
+    },
+    {
+      "name": "ACL none → reserve /quotes/1/reservations/hold",
+      "pass": true
+    },
+    {
+      "name": "ACL none → reserve /quotes/1/reservations/release",
+      "pass": true
+    },
+    {
+      "name": "ACL none → reserve /resources/999999/pause",
+      "pass": true
+    },
+    {
+      "name": "ACL none → finance /quotes/1/commercial/record",
+      "pass": true
+    },
+    {
+      "name": "ACL none → finance_review /quotes/1/commercial/999999/review",
+      "pass": true
+    },
+    {
+      "name": "HTTP 资源登记为待核验",
+      "pass": true
+    },
+    {
+      "name": "资源登记人自审被拒",
+      "pass": true
+    },
+    {
+      "name": "另一 Admin 核验资源成功",
+      "pass": true
+    },
+    {
+      "name": "robot HTTP SKU 登记",
+      "pass": true
+    },
+    {
+      "name": "robot 映射不能自审",
+      "pass": true
+    },
+    {
+      "name": "robot EAV 商品映射独立批准",
+      "pass": true
+    },
+    {
+      "name": "transport HTTP SKU 登记",
+      "pass": true
+    },
+    {
+      "name": "transport 映射不能自审",
+      "pass": true
+    },
+    {
+      "name": "transport EAV 商品映射独立批准",
+      "pass": true
+    },
+    {
+      "name": "真实 Sanctum 跨客户读取报价拒绝",
+      "pass": true
+    },
+    {
+      "name": "客户通过真实 API 接受报价",
+      "pass": true
+    },
+    {
+      "name": "未满足商务条件不能转单",
+      "pass": true
+    },
+    {
+      "name": "真实 HTTP 商务凭证登记",
+      "pass": true
+    },
+    {
+      "name": "商务凭证录入人不能复核",
+      "pass": true
+    },
+    {
+      "name": "商务凭证独立复核",
+      "pass": true
+    },
+    {
+      "name": "真实 HTTP 占用完整资源组",
+      "pass": true
+    },
+    {
+      "name": "真实 EAV + 控制器 + 监听器转单",
+      "pass": true
+    },
+    {
+      "name": "原键重试同单",
+      "pass": true
+    },
+    {
+      "name": "跨键丢响应恢复同单",
+      "pass": true
+    },
+    {
+      "name": "实际项目与冻结资源可读",
+      "pass": true
+    },
+    {
+      "name": "报价/交易/项目后台完整页面渲染",
+      "pass": true
+    },
+    {
+      "name": "停写后实际 HTTP 可恢复原单",
+      "pass": true
+    }
+  ]
+}

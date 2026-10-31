@@ -150,11 +150,20 @@ class DeveloperSkillController extends APIController
     public function storeAsset(Request $request, int $versionId): JsonResponse
     {
         $payload = $request->validate([
-            'carrier_type' => ['required', 'string', 'in:'.implode(',', SkillAsset::CARRIER_TYPES)],
-            'entrypoint'   => ['nullable', 'string', 'max:191'],
-            'sha256'       => ['nullable', 'string', 'size:64'],
-            'payload'      => ['nullable', 'array'],
-            'file'         => ['nullable', 'file', 'max:'.(int) config('skill_delivery.max_asset_kb', 51200)],
+            'carrier_type'      => ['required', 'string', 'in:'.implode(',', SkillAsset::CARRIER_TYPES)],
+            'entrypoint'        => ['nullable', 'string', 'max:191'],
+            'sha256'            => ['nullable', 'string', 'size:64'],
+            'payload'           => ['nullable', 'array'],
+            'payload_json'      => ['nullable', 'string', 'max:20000'],
+            'file'              => ['nullable', 'file', 'max:'.(int) config('skill_delivery.max_asset_kb', 51200)],
+            'auto_pack'         => ['nullable', 'boolean'],
+            'generate_sample'   => ['nullable', 'boolean'],
+            'kind'              => ['nullable', 'string', 'max:32'],
+            'risk_level'        => ['nullable', 'string', 'in:low,medium,high'],
+            'delivery_channels' => ['nullable'],
+            'target_models'     => ['nullable'],
+            'permissions'       => ['nullable'],
+            'install_guide'     => ['nullable', 'string', 'max:5000'],
         ]);
 
         $result = $this->skills->uploadAsset(

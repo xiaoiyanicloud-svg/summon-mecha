@@ -237,6 +237,25 @@ class SkillController extends Controller
         return back()->with('success', $result->message);
     }
 
+    /**
+     * 下载标准示例 .skill 包（供开发者参考结构或直接改造）。
+     */
+    public function sample(Request $request, int $versionId)
+    {
+        $kind = (string) $request->query('kind', 'motion');
+        $sample = $this->skills->buildSampleForVersion($this->profile($request), $versionId, ['kind' => $kind]);
+
+        if (! $sample) {
+            abort(404);
+        }
+
+        return response()->download(
+            $sample->getRealPath(),
+            $sample->getClientOriginalName(),
+            ['Content-Type' => 'application/zip']
+        )->deleteFileAfterSend(true);
+    }
+
     public function submit(Request $request, int $versionId)
     {
         $result = $this->skills->submitForReview($this->profile($request), $versionId);

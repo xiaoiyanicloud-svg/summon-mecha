@@ -33,6 +33,17 @@ class AfterSaleService
         protected LifecycleNotifier $notifier,
     ) {}
 
+    /** D10 的唯一政策判定；场景报障只读取此结论，不在场景工单中另行退款。 */
+    public static function policyFor(SkillEntitlement $entitlement): array
+    {
+        if ($entitlement->isTrial()) {
+            return ['ok' => false, 'message' => '试用技能不支持退款。'];
+        }
+        $activated = $entitlement->status === SkillEntitlement::STATUS_ACTIVE || $entitlement->activations > 0;
+
+        return ['ok' => true, 'policy_basis' => $activated ? 'activated' : 'not_installed', 'requires_manual_review' => $activated];
+    }
+
     /**
      * 用户发起售后。返回结果 + 政策依据。
      *
@@ -57,18 +68,12 @@ class AfterSaleService
                 return ['ok' => false, 'message' => '技能授权不存在。'];
             }
 
-            $meta = is_array($entitlement->meta) ? $entitlement->meta : [];
-
-            // 试用不退
-            if (! empty($meta['trial'])) {
-                return ['ok' => false, 'message' => '试用技能不支持退款。'];
+            $policy = self::policyFor($entitlement);
+            if (! $policy['ok']) {
+                return $policy;
             }
-
-            // 判定政策依据:未下发可退 / 已激活需人工审
-            $isActivated = $entitlement->status === SkillEntitlement::STATUS_ACTIVE
-                || $entitlement->activations > 0;
-
-            $policyBasis = $isActivated ? 'activated' : 'not_installed';
+            $isActivated = $policy['requires_manual_review'];
+            $policyBasis = $policy['policy_basis'];
 
             // 防重复申请(在行锁内重查:并发下第二个请求这时才看得到第一个建的单)
             $existing = AfterSale::query()
@@ -82,22 +87,22 @@ class AfterSaleService
             }
 
             $afterSale = AfterSale::create([
-                'order_id'        => $entitlement->order_id,
-                'order_item_id'   => $entitlement->order_item_id,
-                'entitlement_id'  => $entitlementId,
-                'customer_id'     => $customerId,
-                'type'            => AfterSale::TYPE_REFUND,
+                'order_id' => $entitlement->order_id,
+                'order_item_id' => $entitlement->order_item_id,
+                'entitlement_id' => $entitlementId,
+                'customer_id' => $customerId,
+                'type' => AfterSale::TYPE_REFUND,
                 'reason_category' => $reasonCategory,
-                'detail'          => $detail,
-                'policy_basis'    => $policyBasis,
+                'detail' => $detail,
+                'policy_basis' => $policyBasis,
                 // 未下发的可自动通过;已激活的进人工审
-                'status'          => $isActivated ? AfterSale::STATUS_REVIEWING : AfterSale::STATUS_APPLIED,
+                'status' => $isActivated ? AfterSale::STATUS_REVIEWING : AfterSale::STATUS_APPLIED,
             ]);
 
             return [
-                'ok'      => true,
+                'ok' => true,
                 'message' => $isActivated ? '已提交,等待人工审核(已激活技能原则上不退)。' : '已受理,可退款(未下发)。',
-                'data'    => ['id' => $afterSale->id, 'policy_basis' => $policyBasis, 'status' => $afterSale->status],
+                'data' => ['id' => $afterSale->id, 'policy_basis' => $policyBasis, 'status' => $afterSale->status],
             ];
         });
     }
@@ -161,10 +166,10 @@ class AfterSaleService
             $afterSale->save();
 
             $refund = RefundRequest::create([
-                'after_sale_id'    => $afterSale->id,
+                'after_sale_id' => $afterSale->id,
                 'wechat_refund_no' => $outRefundNo,
-                'amount'           => $amount,
-                'status'           => RefundRequest::STATUS_PENDING, // 退款中,等网关回执
+                'amount' => $amount,
+                'status' => RefundRequest::STATUS_PENDING, // 退款中,等网关回执
             ]);
 
             // M8 · 退款/售后审批留痕。此前 Shop 侧资金动作一处都不写 operation_log。
@@ -177,20 +182,20 @@ class AfterSaleService
                 'after_sale',
                 $afterSale->id,
                 [
-                    'phase'          => 'initiated',
+                    'phase' => 'initiated',
                     'entitlement_id' => $afterSale->entitlement_id,
-                    'order_item_id'  => $afterSale->order_item_id,
-                    'amount'         => $amount,
-                    'refund_no'      => $outRefundNo,
-                    'refund_id'      => $refund->id,
+                    'order_item_id' => $afterSale->order_item_id,
+                    'amount' => $amount,
+                    'refund_no' => $outRefundNo,
+                    'refund_id' => $refund->id,
                 ]
             );
 
             return [
-                'ok'            => true,
-                'refund_id'     => $refund->id,
+                'ok' => true,
+                'refund_id' => $refund->id,
                 'after_sale_id' => $afterSale->id,
-                'amount'        => $amount,
+                'amount' => $amount,
                 'out_refund_no' => $outRefundNo,
             ];
         });
@@ -262,12 +267,12 @@ class AfterSaleService
             // 幂等:已是终态 → 按既有结果返回,不重复改
             if ($refund->status !== RefundRequest::STATUS_PENDING) {
                 return [
-                    'ok'      => true,
+                    'ok' => true,
                     'message' => '该退款单已是终态,按幂等返回。',
-                    'data'    => [
-                        'id'            => $afterSale?->id,
-                        'status'        => $afterSale?->status,
-                        'amount'        => $amount,
+                    'data' => [
+                        'id' => $afterSale?->id,
+                        'status' => $afterSale?->status,
+                        'amount' => $amount,
                         'refund_status' => $refund->status,
                     ],
                 ];
@@ -289,23 +294,23 @@ class AfterSaleService
                 'after_sale',
                 $afterSale?->id,
                 [
-                    'refund_id'     => $refund->id,
-                    'refund_no'     => $refund->wechat_refund_no,
-                    'amount'        => $amount,
+                    'refund_id' => $refund->id,
+                    'refund_no' => $refund->wechat_refund_no,
+                    'amount' => $amount,
                     'refund_status' => $refund->status,
-                    'message'       => $message,
+                    'message' => $message,
                 ]
             );
 
             return [
-                'ok'      => true,
+                'ok' => true,
                 'message' => $ok
                     ? '已退款并冻结授权。'
                     : '已冻结授权,退款未成功(待支付资质就绪后重打款)。',
-                'data'    => [
-                    'id'            => $afterSale?->id,
-                    'status'        => $afterSale?->status,
-                    'amount'        => $amount,
+                'data' => [
+                    'id' => $afterSale?->id,
+                    'status' => $afterSale?->status,
+                    'amount' => $amount,
                     'refund_status' => $refund->status,
                 ],
             ];

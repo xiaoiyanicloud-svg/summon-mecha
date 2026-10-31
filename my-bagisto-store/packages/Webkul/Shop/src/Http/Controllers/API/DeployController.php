@@ -53,7 +53,9 @@ class DeployController extends APIController
             return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在或不属于你。', 404);
         }
 
-        // 技能授权必须属于本人(防止给别人的技能下发)
+        $operation = (int) ($payload['operation'] ?? DeployTask::OP_INSTALL);
+
+        // 技能授权必须属于本人(防止给别人的技能下发或未购/未付白嫖下发)
         $entitlement = null;
         if (! empty($payload['entitlement_id'])) {
             $entitlement = SkillEntitlement::query()
@@ -63,6 +65,30 @@ class DeployController extends APIController
 
             if (! $entitlement) {
                 return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在或不属于你。', 404);
+            }
+
+            if ((int) $entitlement->product_id !== (int) $payload['skill_id']) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权与目标技能不匹配。', 404);
+            }
+        } else {
+            $entitlement = SkillEntitlement::query()
+                ->where('customer_id', $customer->id)
+                ->where('product_id', (int) $payload['skill_id'])
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        if ($operation === DeployTask::OP_INSTALL) {
+            if ($entitlement) {
+                if (! $entitlement->isUsable()) {
+                    return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '该技能授权已失效，无法下发。', 403);
+                }
+
+                if (! $entitlement->isTrial() && ! $entitlement->isOrderPaid()) {
+                    return $this->fail(ApiErrorCode::ENTITLEMENT_UNPAID, '订单尚未支付，请完成支付后再下发技能。', 409);
+                }
+            } elseif (\Illuminate\Support\Facades\DB::table('products')->where('id', (int) $payload['skill_id'])->exists()) {
+                return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '您尚未获取该技能的授权，请先购买或申请试用后再下发。', 403);
             }
         }
 

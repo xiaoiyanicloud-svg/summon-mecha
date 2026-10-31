@@ -64,6 +64,9 @@ class PaymentCallbackController extends APIController
         if (! $order) {
             return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单未找到。', 404);
         }
+        if (app(\Webkul\Shop\Services\Scenes\SceneLinkedOrderService::class)->context((int) $order->id)) {
+            return response()->json(['code' => 'SCENE_OFFLINE_ONLY', 'message' => '场景服务不从此回调确认收款或交付，请由授权商务人员核查线下事实。'], 409);
+        }
 
         // 金额核对(M3):回调金额必须等于订单应付。
         // 此前 `PaymentResult::amount` 拿到了却从未参与判定 —— 任何人可以自报任意金额。
@@ -82,14 +85,14 @@ class PaymentCallbackController extends APIController
         if (! $transaction) {
             try {
                 $transaction = PaymentTransaction::create([
-                    'order_id'       => $order->id,
-                    'out_trade_no'   => $result->outTradeNo,
+                    'order_id' => $order->id,
+                    'out_trade_no' => $result->outTradeNo,
                     'transaction_id' => $result->transactionId,
-                    'gateway'        => $gateway->key(),
-                    'amount'         => $result->amount,
-                    'status'         => PaymentTransaction::STATUS_PAID,
-                    'paid_at'        => now(),
-                    'raw'            => $result->raw,
+                    'gateway' => $gateway->key(),
+                    'amount' => $result->amount,
+                    'status' => PaymentTransaction::STATUS_PAID,
+                    'paid_at' => now(),
+                    'raw' => $result->raw,
                 ]);
             } catch (\Illuminate\Database\QueryException $e) {
                 // 并发重复回调:唯一键冲突 = 另一半已落库 → 取回并按幂等处理
@@ -168,9 +171,9 @@ class PaymentCallbackController extends APIController
         if ($outcome['review_required'] ?? false) {
             // 回调已接收；资金后续处置交人工，不能把它回复成授权已发放。
             return $this->fail(ApiErrorCode::CONFLICT, '支付流水已登记，订单状态不允许继续处理，请人工核查。', 200, [
-                'order_id'        => $order->id,
-                'order_status'    => $order->status,
-                'payment_status'  => PaymentTransaction::STATUS_PAID,
+                'order_id' => $order->id,
+                'order_status' => $order->status,
+                'payment_status' => PaymentTransaction::STATUS_PAID,
                 'delivery_status' => 'not_attempted',
                 'review_required' => true,
             ]);
@@ -193,18 +196,18 @@ class PaymentCallbackController extends APIController
             'order',
             $order->id,
             [
-                'out_trade_no'   => $result->outTradeNo,
+                'out_trade_no' => $result->outTradeNo,
                 'transaction_id' => $result->transactionId,
-                'amount'         => $result->amount,
-                'gateway'        => $gateway->key(),
+                'amount' => $result->amount,
+                'gateway' => $gateway->key(),
                 // M9:本次支付顺带登记的开票记录(游客单为 null,见 InvoiceService)
-                'invoice_id'     => $outcome['invoice']?->id,
+                'invoice_id' => $outcome['invoice']?->id,
             ],
             $request->ip()
         );
 
         return response()->json([
-            'message'  => '支付成功，订单已受理。技能交付状态请查看我的技能。',
+            'message' => '支付成功，订单已受理。技能交付状态请查看我的技能。',
             'order_id' => $order->id,
         ]);
     }
@@ -216,10 +219,10 @@ class PaymentCallbackController extends APIController
     {
         $payload = [
             'payment_transaction_id' => $transaction->id,
-            'order_status'           => $order->status,
-            'amount'                 => $transaction->amount,
-            'gateway'                => $transaction->gateway,
-            'reason_code'            => 'order_state_blocks_payment',
+            'order_status' => $order->status,
+            'amount' => $transaction->amount,
+            'gateway' => $transaction->gateway,
+            'reason_code' => 'order_state_blocks_payment',
         ];
 
         // 所有同一订单的回调均持有订单行锁，串行完成查重和写入。

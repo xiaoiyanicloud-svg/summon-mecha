@@ -461,11 +461,44 @@ export default {
 			submitSkillReport({ targetType: 'skill', targetId: skill.product_id, name: skill.name })
 		},
 		// 下载走鉴权接口(文件在 private 盘,没有公开 URL),所以必须自己带 Authorization 头
-		download(skill, asset) {
+		async download(skill, asset) {
 			const token = uni.getStorageSync(TOKEN_KEY)
 			const url = `${BASE_URL}/api/skills/entitlements/${skill.id}/assets/${asset.id}/download`
 
 			uni.showLoading({ title: '下载中...', mask: true })
+
+			if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof window.fetch === 'function') {
+				try {
+					const resp = await window.fetch(url, {
+						method: 'GET',
+						headers: token ? { Authorization: `Bearer ${token}`, Accept: 'application/json, application/octet-stream, */*' } : {},
+					})
+					uni.hideLoading()
+					if (!resp.ok) {
+						let errMsg = '下载失败，请重试'
+						try {
+							const errJson = await resp.json()
+							if (errJson && errJson.message) errMsg = errJson.message
+						} catch (e) {}
+						uni.showToast({ title: errMsg, icon: 'none' })
+						return
+					}
+					const blob = await resp.blob()
+					const blobUrl = window.URL.createObjectURL(blob)
+					const a = document.createElement('a')
+					a.href = blobUrl
+					a.download = (asset && asset.file_name) || `${skill.name || 'skill'}.skill`
+					document.body.appendChild(a)
+					a.click()
+					document.body.removeChild(a)
+					window.URL.revokeObjectURL(blobUrl)
+					uni.showToast({ title: '已开始下载技能包', icon: 'success' })
+				} catch (e) {
+					uni.hideLoading()
+					uni.showToast({ title: (e && e.message) || '下载失败，请检查网络', icon: 'none' })
+				}
+				return
+			}
 
 			uni.downloadFile({
 				url,

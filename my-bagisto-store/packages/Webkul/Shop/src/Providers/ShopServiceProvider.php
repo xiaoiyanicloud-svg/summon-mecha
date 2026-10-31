@@ -34,6 +34,7 @@ class ShopServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(\Webkul\Shop\Services\Scenes\SceneOrderWriteContext::class);
         $this->registerConfig();
 
         $this->registerCommands();
@@ -180,7 +181,7 @@ class ShopServiceProvider extends ServiceProvider
             return Limit::perMinute(20)
                 ->by($email.'|'.$request->ip())
                 ->response(fn () => response()->json([
-                    'code'    => 'RATE_LIMITED',
+                    'code' => 'RATE_LIMITED',
                     'message' => '尝试过于频繁,请稍后再试。',
                 ], 429));
         });
@@ -189,7 +190,7 @@ class ShopServiceProvider extends ServiceProvider
             return Limit::perMinute(60)
                 ->by($request->ip())
                 ->response(fn () => response()->json([
-                    'code'    => 'RATE_LIMITED',
+                    'code' => 'RATE_LIMITED',
                     'message' => '请求过于频繁,请稍后再试。',
                 ], 429));
         });
@@ -202,7 +203,7 @@ class ShopServiceProvider extends ServiceProvider
             return Limit::perMinute(30)
                 ->by($customerId ? 'customer:'.$customerId : 'ip:'.$request->ip())
                 ->response(fn () => response()->json([
-                    'code'    => 'RATE_LIMITED',
+                    'code' => 'RATE_LIMITED',
                     'message' => '提交过于频繁,请稍后再试。',
                 ], 429));
         });
@@ -230,7 +231,7 @@ class ShopServiceProvider extends ServiceProvider
             return Limit::perMinute(5)
                 ->by($customerId ? 'customer:'.$customerId : 'ip:'.$request->ip())
                 ->response(fn () => response()->json([
-                    'code'    => 'RATE_LIMITED',
+                    'code' => 'RATE_LIMITED',
                     'message' => '举报提交过于频繁,请稍后再试。',
                 ], 429));
         });

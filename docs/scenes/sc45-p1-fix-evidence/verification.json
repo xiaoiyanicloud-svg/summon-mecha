@@ -1,0 +1,236 @@
+{
+  "generated_at": "2026-10-22T05:03:06.756Z",
+  "review_baseline": "68df6da26515603e6c926218a2258074098e560f",
+  "scope": "仅关闭上一轮 Q01–Q07 七项 P1；保留其他 AI 的既有工作区变更",
+  "verdict": "seven_p1_fixed_and_regression_verified",
+  "fixes": [
+    {
+      "id": "Q01",
+      "priority": 1,
+      "state": "fixed",
+      "title": "后台六个表单的路由、ACL 与字段契约",
+      "proof": [
+        "真实详情 Blade 六分支渲染及有限权限守卫矩阵",
+        "从渲染后的事故表单提取字段并通过真实 Controller 提交",
+        "真实评估 Controller 空改期表单和部分填写校验"
+      ]
+    },
+    {
+      "id": "Q02",
+      "priority": 1,
+      "state": "fixed",
+      "title": "应退责任与实退事实重复扣除",
+      "proof": [
+        "已收 10000、已核准应退 4000，实退 0/2000/4000 时均新增应退 6000",
+        "未复核应退、异常账目与既有应退超过取消结算范围均阻断自动计算",
+        "实际退款继续独立复核，取消不伪造已退款"
+      ]
+    },
+    {
+      "id": "Q03",
+      "priority": 1,
+      "state": "fixed",
+      "title": "已取消项目无法返库",
+      "proof": [
+        "保留 confirmed 的未返库取消项目可留证返库",
+        "检查实际时序、重复提交、维护缓冲、提前返库和损坏争议",
+        "强审计失败回滚取消资金及资源、返库事实；不自动恢复 ready"
+      ]
+    },
+    {
+      "id": "Q04",
+      "priority": 1,
+      "state": "fixed",
+      "title": "未冻结政策回退到当前默认费率",
+      "proof": [
+        "删除全局默认扣罚阶梯，缺少冻结政策直接拒绝自动结算",
+        "实际后台创建、独立批准、真实报价冻结规则及 hash，新政策不改旧约定",
+        "客户详情及订单确认页显示同版费率、基数、档位和兜底；使用整数基点计算分币"
+      ]
+    },
+    {
+      "id": "Q05",
+      "priority": 1,
+      "state": "fixed",
+      "title": "改期遗漏资源履约资格核验",
+      "proof": [
+        "复用统一资源资格与班次检查，maintenance、到期、班次不足、异地和解绑均拒绝",
+        "保留原运输维护缓冲；有效占用冲突拒绝，失效 hold 不误阻断",
+        "失败全事务回滚，成功冻结新的排期和资源核验事实，保留历史快照"
+      ]
+    },
+    {
+      "id": "Q06",
+      "priority": 1,
+      "state": "fixed",
+      "title": "正价差事件无法消费",
+      "proof": [
+        "将真实生产事件 scene.project.receivable_increased 纳入消费白名单",
+        "真实生产者到消费者完整处理成功，重投仅保留一份 receipt 和应收增量"
+      ]
+    },
+    {
+      "id": "Q07",
+      "priority": 1,
+      "state": "fixed",
+      "title": "变更决定未知回执重试错接口并换键",
+      "proof": [
+        "按命令类型分发变更专用接口，使用原 slot、载荷、row_version 和幂等键",
+        "接受和拒绝丢响应、页面重载、普通命令恢复、账号切换和确定版本冲突",
+        "真实 Vue 按钮点击、丢响应后重新挂载页面，再点原内容重试确认成功"
+      ]
+    }
+  ],
+  "checks": {
+    "workflow": {
+      "passed": 128,
+      "failed": 0,
+      "new_p1_cases": 22,
+      "environment": "isolated SQLite :memory:",
+      "transaction_level": 0
+    },
+    "node": {
+      "tests": 41,
+      "passed": 41,
+      "failed": 0
+    },
+    "controllers": {
+      "passed": 17,
+      "failed": 0
+    },
+    "blade": {
+      "compiled": 10,
+      "failed": 0
+    },
+    "browser": {
+      "compiled_sfc": 17,
+      "checks": 26,
+      "page_errors": [],
+      "environment": "Chrome headless + Vue 3.5.13，隔离 API 夹具；非 HBuilderX H5/小程序构建"
+    },
+    "php_lint": [
+      {
+        "file": "my-bagisto-store/config/scenes.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/config/scenes.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/ScenePolicyService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/ScenePolicyService.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/configuration.blade.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/configuration.blade.php"
+      },
+      {
+        "file": "tools/tests/scene-sc4-cases.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-sc4-cases.php"
+      },
+      {
+        "file": "tools/tests/scene-workflow.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-workflow.php"
+      },
+      {
+        "file": "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneCancellationPolicy.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneCancellationPolicy.php"
+      },
+      {
+        "file": "tools/tests/scene-sc45-p1-cases.php",
+        "exit_code": 0,
+        "output": "No syntax errors detected in tools/tests/scene-sc45-p1-cases.php"
+      }
+    ],
+    "pint": {
+      "files": 10,
+      "passed": true
+    },
+    "git_diff_check": {
+      "passed": true
+    },
+    "uni_build": {
+      "compiler": "5.26.2026091411.1611",
+      "mode": "HBuilderX bundled Vue3 compiler in isolated CLI directory, no publish",
+      "frontend_hashes_match_current": true,
+      "platforms": [
+        {
+          "platform": "h5",
+          "exit_code": 0,
+          "complete": true,
+          "artifact_count": 98,
+          "missing": []
+        },
+        {
+          "platform": "mp-weixin",
+          "exit_code": 0,
+          "complete": true,
+          "artifact_count": 192,
+          "missing": []
+        }
+      ]
+    }
+  },
+  "remaining_p2": [
+    "Q08",
+    "Q09",
+    "Q10",
+    "Q11"
+  ],
+  "limitations": [
+    "本轮后端回归使用真实迁移及服务、SQLite 内存事务；未把它作为 MySQL 并发证明",
+    "浏览器交互使用真实 Vue 组件与隔离 API 夹具；本轮未重新执行完整应用 HTTP/MySQL 联调",
+    "完整 H5 和 mp-weixin 构建已通过；未部署到生产或使用微信真机验收"
+  ],
+  "git": {
+    "committed": false,
+    "pushed": false
+  },
+  "source_sha256": {
+    "my-bagisto-store/config/scenes.php": "1be5fe0f4144b023f657cdb2d0969650bb1707eb343945aa04c16181e6fb38e1",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProjectService.php": "230348ae08a37a0ee99f4d4ce6105da12d1e8586ac0b2cdd2ad60bf68f60354b",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneOperationsService.php": "3791923dc122fef3a440f235eaea0a56e1c3bf25ec2b327b917b11e61c0e08cc",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/ScenePolicyService.php": "258394feb2856a110f4474ea4cd48d93ed7fd1d6959afaca1f502faf5708c263",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneProposalService.php": "4578abe07063b1e38731a4ef395d4c72c080f1733754d96430921c0a100e1d34",
+    "my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/SceneWorkflowController.php": "ebf8c99958c9ac725826e71462b7c3c07b49cd1f9a786a36b462287e16ffd7fb",
+    "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/show.blade.php": "c4efdec6f7454fd9b39b9964a420a2e8b2d80a32fbf13a3d35999c4357f6db97",
+    "my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/scene-workflow/configuration.blade.php": "8b279d0debd2ccc3190c1f9a8528909aa38b4c7c37b950a768e379d14d48a9ce",
+    "pages/scene/project.vue": "27c59865c42f20a7b5b4a397389f92dc3979f4254edab6a6751a94fe75ca725c",
+    "pages/scene/detail.vue": "e228c200abe47f11479b6b891701834a11c13ec97d9f28e9a0fc60973adc7d84",
+    "tools/tests/scene-sc4-cases.php": "0062dee84673ebb754e05f36a02df66a423fca23f6aebc6258c5ddc3066f905f",
+    "tools/tests/scene-workflow.php": "b82f8280a6cd30e5479e22fe8d6609566ebc2a82a25d3587f665a8a74354b288",
+    "pages/scene/confirm.vue": "85181de9eb179721b84ba14ec2aa072ab5a1bb1715a787e80c63849594e21d56",
+    "my-bagisto-store/packages/Webkul/Shop/src/Services/Scenes/SceneCancellationPolicy.php": "a5af5cc846ed60f8257dd2e001493655a7c1140bf88538aacd0d6330dc302ee9",
+    "tools/tests/scene-sc45-p1-cases.php": "14acf680b90ba0931bce9a79e5d9738a0a4b64bdd7937a046c2481fb11321fdc",
+    "tools/tests/scene-project-recovery.test.mjs": "be7c19eb8cca39f2bbfab0bf4c52c27ec13758f78ff1484eb47da48a3bef21b5",
+    "tools/tests/scene-workflow-ui.mjs": "b39806223e9d570d15249974b0235d5678e799117445926910d680fc73e03589"
+  }
+}
