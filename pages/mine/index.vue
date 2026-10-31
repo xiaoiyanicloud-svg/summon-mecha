@@ -383,8 +383,282 @@
 						</view>
 					</view>
 				</view>
+
+				<!-- 我的合作申请记录 -->
+				<view class="coop-history-section">
+					<view class="coop-history-header">
+						<text class="coop-history-title">我的申请记录</text>
+						<text class="coop-history-refresh" @tap="loadCooperations">刷新</text>
+					</view>
+					<view v-if="cooperateLoading" class="coop-history-empty">加载中...</view>
+					<view v-else-if="cooperateApplications.length === 0" class="coop-history-empty">
+						暂无合作申请记录，点击上方对应通道按钮即可提交申请
+					</view>
+					<view v-else class="coop-history-list">
+						<view class="coop-record-card" v-for="app in cooperateApplications" :key="app.id">
+							<view class="coop-record-top">
+								<view class="coop-record-tags">
+									<text class="coop-type-tag">{{ app.type_label }}</text>
+									<text class="coop-dir-tag" v-if="app.coop_direction">{{ app.coop_direction }}</text>
+									<text class="coop-verified-tag" v-if="app.invite_verified">✓ 已验码</text>
+								</view>
+								<text class="coop-status-badge" :class="'status-' + app.status">{{ app.status_label }}</text>
+							</view>
+							<text class="coop-record-org">{{ app.org_name }}</text>
+							<view class="coop-record-meta">
+								<text>单号：{{ app.application_no }}</text>
+								<text>{{ app.created_at }}</text>
+							</view>
+							<view v-if="app.follower_name" class="coop-record-submeta">
+								<text>跟进负责人：{{ app.follower_name }}{{ app.follower_contact ? '（' + app.follower_contact + '）' : '' }}</text>
+							</view>
+							<view v-if="app.issued_invite_code" class="coop-issued-code-box">
+								<view class="coop-issued-code-main">
+									<text class="coop-issued-label">🔑 平台已签发专属邀请码：</text>
+									<text class="coop-issued-code">{{ app.issued_invite_code }}</text>
+								</view>
+								<view class="coop-issued-actions">
+									<text class="coop-issued-btn" @tap="copyInviteCode(app.issued_invite_code)">复制邀请码</text>
+									<text class="coop-issued-btn primary" @tap="goDeveloperPortalWithCode(app.issued_invite_code)">去门户激活 ›</text>
+								</view>
+							</view>
+							<view v-if="app.admin_note" class="coop-record-note">
+								<text class="coop-note-label">商务反馈：</text>
+								<text class="coop-note-content">{{ app.admin_note }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
 				<view style="height: 40rpx;"></view>
 			</scroll-view>
+
+			<!-- 合作申请表单弹窗（本体厂商 / RaaS合伙人 / 网红达人） -->
+			<view v-if="showCooperateModal && activeCoopItem" class="coop-modal-mask" @tap="closeCooperateModal">
+				<view class="coop-modal-sheet" @tap.stop="noop">
+					<view class="coop-modal-header">
+						<view class="coop-modal-title-wrap">
+							<text class="coop-modal-emoji">{{ activeCoopItem.avatar }}</text>
+							<view>
+								<text class="coop-modal-title">{{ activeCoopItem.name }} · 合作申请</text>
+								<text class="coop-modal-subtitle">{{ activeCoopItem.desc }}</text>
+							</view>
+						</view>
+						<text class="coop-modal-close" @tap="closeCooperateModal">✕</text>
+					</view>
+
+					<scroll-view class="coop-modal-body" scroll-y="true" show-scrollbar="false">
+						<!-- RaaS合伙人快捷引导 -->
+						<view v-if="activeCoopItem.key === 'raas'" class="coop-raas-banner" @tap="goDeveloperPortal">
+							<view class="coop-raas-banner-left">
+								<text class="coop-raas-banner-title">已有现成技能包？可直接入驻开发者门户</text>
+								<text class="coop-raas-banner-desc">也可以填写下方表单，预约平台 RaaS 解决方案顾问对接</text>
+							</view>
+							<text class="coop-raas-banner-link">去门户 ›</text>
+						</view>
+
+						<!-- 1. 本体厂商专属字段 -->
+						<template v-if="activeCoopItem.key === 'manufacturer'">
+							<view class="coop-field">
+								<text class="coop-label required">厂商/品牌名称</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.org_name" placeholder="请输入机器人本体企业或品牌名称" maxlength="120" />
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">主营本体型号/产品线</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.robot_models" placeholder="如：双足人形机器人、四足机器狗、轮式服务机器人" maxlength="200" />
+								<view class="quick-chip-row">
+									<text class="quick-chip-label">快捷机型：</text>
+									<text
+										v-for="r in coopHotRobots"
+										:key="r"
+										class="quick-chip"
+										@tap="appendCoopRobot(r)"
+									>+ {{ r }}</text>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">合作方向</text>
+								<view class="coop-chips">
+									<view
+										v-for="dir in activeCoopItem.directions"
+										:key="dir"
+										class="coop-chip"
+										:class="{ active: cooperateForm.coop_direction === dir }"
+										@tap="cooperateForm.coop_direction = dir"
+									>{{ dir }}</view>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label">所在城市/地区</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.region" placeholder="例如：深圳 / 杭州 / 上海" maxlength="80" />
+								<view class="quick-chip-row">
+									<text class="quick-chip-label">热门城市：</text>
+									<text
+										v-for="c in coopHotCities"
+										:key="c"
+										class="quick-chip"
+										@tap="fillCoopCity(c)"
+									>+ {{ c }}</text>
+								</view>
+							</view>
+						</template>
+
+						<!-- 2. RaaS合伙人专属字段 -->
+						<template v-else-if="activeCoopItem.key === 'raas'">
+							<view class="coop-field">
+								<text class="coop-label required">主体类型</text>
+								<view class="coop-chips">
+									<view
+										class="coop-chip"
+										:class="{ active: cooperateForm.entity_type === 'company' }"
+										@tap="cooperateForm.entity_type = 'company'"
+									>企业 / 工作室团队</view>
+									<view
+										class="coop-chip"
+										:class="{ active: cooperateForm.entity_type === 'individual' }"
+										@tap="cooperateForm.entity_type = 'individual'"
+									>个人开发者</view>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">团队/主体名称</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.org_name" placeholder="请输入公司、工作室或开发者团队名称" maxlength="120" />
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">擅长技术与合作方向</text>
+								<view class="coop-chips">
+									<view
+										v-for="dir in activeCoopItem.directions"
+										:key="dir"
+										class="coop-chip"
+										:class="{ active: cooperateForm.coop_direction === dir }"
+										@tap="cooperateForm.coop_direction = dir"
+									>{{ dir }}</view>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">适配目标机型</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.robot_models" placeholder="如：宇树 G1 / 宇树 Go2 / 智元远征 / 通用 ROS2" maxlength="200" />
+								<view class="quick-chip-row">
+									<text class="quick-chip-label">快捷机型：</text>
+									<text
+										v-for="r in coopHotRobots"
+										:key="r"
+										class="quick-chip"
+										@tap="appendCoopRobot(r)"
+									>+ {{ r }}</text>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label">代表作 / GitHub / 演示链接（选填）</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.portfolio_url" placeholder="https://github.com/... 或视频演示链接" maxlength="255" />
+							</view>
+							<view class="coop-field">
+								<text class="coop-label">定向邀请码（选填）</text>
+								<view class="coop-inline-verify">
+									<input class="coop-input" type="text" v-model="cooperateForm.invite_code" placeholder="如有平台发放的邀请码请填写" maxlength="40" />
+									<view class="coop-verify-btn" @tap="verifyModalInviteCode">核验</view>
+								</view>
+							</view>
+						</template>
+
+						<!-- 3. 网红达人专属字段 -->
+						<template v-else-if="activeCoopItem.key === 'influencer'">
+							<view class="coop-field">
+								<text class="coop-label required">达人昵称 / MCN 机构</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.org_name" placeholder="请输入账号昵称或 MCN 机构名称" maxlength="120" />
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">主营内容平台</text>
+								<view class="coop-chips">
+									<view
+										v-for="plat in influencerPlatforms"
+										:key="plat"
+										class="coop-chip"
+										:class="{ active: cooperateForm.platform === plat }"
+										@tap="cooperateForm.platform = plat"
+									>{{ plat }}</view>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">粉丝量级</text>
+								<view class="coop-chips">
+									<view
+										v-for="tier in influencerFollowersTiers"
+										:key="tier"
+										class="coop-chip"
+										:class="{ active: cooperateForm.followers_tier === tier }"
+										@tap="cooperateForm.followers_tier = tier"
+									>{{ tier }}</view>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label required">期望合作形式</text>
+								<view class="coop-chips">
+									<view
+										v-for="dir in activeCoopItem.directions"
+										:key="dir"
+										class="coop-chip"
+										:class="{ active: cooperateForm.coop_direction === dir }"
+										@tap="cooperateForm.coop_direction = dir"
+									>{{ dir }}</view>
+								</view>
+							</view>
+							<view class="coop-field">
+								<text class="coop-label">主页链接或平台账号 ID（选填）</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.account_url" placeholder="粘贴主页分享链接或平台号" maxlength="255" />
+							</view>
+							<view class="coop-field">
+								<text class="coop-label">所在城市（选填）</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.region" placeholder="便于协调就近样机与拍摄场地" maxlength="80" />
+							</view>
+						</template>
+
+						<!-- 公共联系方式与补充说明 -->
+						<view class="coop-contact-header">
+							<text class="coop-contact-title">商务联系人</text>
+							<view class="btn-quick-autofill-sm" @tap="fillCurrentAccountToCoop">
+								<text>⚡ 填入当前账号</text>
+							</view>
+						</view>
+
+						<view class="coop-field-row">
+							<view class="coop-field half">
+								<text class="coop-label required">联系人姓名</text>
+								<input class="coop-input" type="text" v-model="cooperateForm.contact_name" placeholder="您的称呼" maxlength="60" />
+							</view>
+							<view class="coop-field half">
+								<text class="coop-label required">手机号码</text>
+								<input class="coop-input font-mono" type="number" v-model="cooperateForm.contact_phone" placeholder="11 位手机号" maxlength="11" />
+							</view>
+						</view>
+
+						<view class="coop-field">
+							<text class="coop-label">微信号 / 联系邮箱（选填）</text>
+							<input class="coop-input" type="text" v-model="cooperateForm.contact_wechat" placeholder="方便商务顾问添加微信或发送资料" maxlength="80" />
+						</view>
+
+						<view class="coop-field">
+							<view class="coop-label-row">
+								<text class="coop-label">合作意向与补充说明（选填）</text>
+								<text class="char-count-pill">{{ (cooperateForm.summary || '').length }}/500</text>
+							</view>
+							<textarea
+								class="coop-textarea"
+								v-model="cooperateForm.summary"
+								placeholder="请简述您的合作诉求、资源优势、期望档期或具体问题（上限 500 字）"
+								maxlength="500"
+							/>
+						</view>
+					</scroll-view>
+
+					<view class="coop-modal-footer">
+						<view class="coop-btn-cancel" @tap="closeCooperateModal">取消</view>
+						<view class="coop-btn-submit" :class="{ disabled: cooperateSubmitting }" @tap="submitCooperateForm">
+							{{ cooperateSubmitting ? '提交中...' : '提交合作申请' }}
+						</view>
+					</view>
+				</view>
+			</view>
 		</view>
 
 		<!-- ============================================================ -->
@@ -455,6 +729,15 @@
 						<view class="form-item">
 							<text class="form-label required">意向签约城市</text>
 							<input class="form-input" type="text" v-model="partnerForm.region" placeholder="请输入省份-城市，如：北京市-北京市" />
+							<view class="quick-chip-row" style="margin-top: 12rpx;">
+								<text class="quick-chip-label">快捷城市：</text>
+								<text
+									v-for="c in partnerHotCities"
+									:key="c"
+									class="quick-chip"
+									@tap="fillPartnerCity(c)"
+								>+ {{ c }}</text>
+							</view>
 						</view>
 
 						<!-- 情况简介 -->
@@ -499,6 +782,457 @@
 						</view>
 					</view>
 				</view>
+			</scroll-view>
+		</view>
+
+		<!-- ============================================================ -->
+		<!-- 子页面：供应商邀请（供应链受邀入驻 & 邀请码核验闭环） -->
+		<!-- ============================================================ -->
+		<view v-else-if="currentPage === 'supplier'" class="sub-page supplier-page">
+			<view class="sub-nav">
+				<view class="nav-back" @click="goBack">
+					<text class="back-icon">‹</text>
+					<text class="back-text">返回</text>
+				</view>
+				<text class="nav-title">供应链受邀入驻</text>
+				<view class="nav-placeholder"></view>
+			</view>
+			<scroll-view 
+				class="sub-content" 
+				scroll-y="true" 
+				show-scrollbar="false"
+				:style="{ paddingBottom: (safeBottom + 40) + 'px' }"
+			>
+				<!-- 顶部供应链专属权益横幅 -->
+				<view class="supplier-hero-card">
+					<view class="supplier-hero-top">
+						<view>
+							<text class="supplier-hero-badge">SUPPLY CHAIN INVITATION</text>
+							<text class="supplier-hero-title">召唤机甲 · 核心供应链邀约通道</text>
+						</view>
+						<text class="supplier-hero-icon">🔑</text>
+					</view>
+					<text class="supplier-hero-desc">
+						面向机器人整机货源、核心零配件/机甲皮肤、城市驻场运维及 RaaS 技能供应商开放。持官方邀请码可即时核验归属并进入优先审核或直通门户激活；暂无邀请码亦可提交资质申请定向签发。
+					</text>
+					<view class="supplier-hero-tags">
+						<text class="supplier-hero-tag">✓ 邀请码实时核验</text>
+						<text class="supplier-hero-tag">✓ 专属采购与分成对接</text>
+						<text class="supplier-hero-tag">✓ 审核通过在线签发邀请码</text>
+					</view>
+				</view>
+
+				<!-- 模块 1：邀请码即时核验与直通激活器 -->
+				<view class="supplier-section-card">
+					<view class="supplier-section-header">
+						<text class="supplier-section-title">1. 邀请码核验与直通激活</text>
+						<text class="supplier-section-sub">支持 10 位平台定向邀请码实时校验</text>
+					</view>
+					<view class="supplier-verify-bar">
+						<input
+							class="supplier-verify-input"
+							type="text"
+							v-model="supplierVerifyCode"
+							placeholder="请输入平台或商务发放的邀请码（如 8F3K9M2X7Q）"
+							maxlength="40"
+						/>
+						<view class="supplier-verify-btn" @tap="verifySupplierInviteCode">立即核验</view>
+					</view>
+
+					<!-- 核验结果反馈卡 -->
+					<view
+						v-if="supplierVerifyResult"
+						class="supplier-verify-result"
+						:class="supplierVerifyResult.redeemable ? 'is-valid' : 'is-invalid'"
+					>
+						<view class="supplier-verify-result-top">
+							<text class="supplier-verify-status">
+								{{ supplierVerifyResult.redeemable ? '✓ 邀请码有效（可兑换）' : '✕ 邀请码不可用' }}
+							</text>
+							<text class="supplier-verify-code-pill">{{ supplierVerifyResult.code }}</text>
+						</view>
+						<template v-if="supplierVerifyResult.redeemable">
+							<text class="supplier-verify-note">邀约备注：{{ supplierVerifyResult.note || '平台官方生态/供应链邀约' }}</text>
+							<text class="supplier-verify-meta">
+								剩余可用次数：{{ supplierVerifyResult.remaining_uses }} / {{ supplierVerifyResult.max_uses }}
+								{{ supplierVerifyResult.expires_at ? (' · 有效期至 ' + supplierVerifyResult.expires_at.slice(0, 10)) : ' · 长期有效' }}
+							</text>
+							<view class="supplier-verify-actions">
+								<view class="supplier-action-btn outline" @tap="useVerifiedCodeForSupplierForm">
+									带入下方供应链入驻表
+								</view>
+								<view class="supplier-action-btn primary" @tap="goDeveloperPortalWithCode(supplierVerifyResult.code)">
+									带码前往开发者门户 (/dev) ›
+								</view>
+							</view>
+						</template>
+						<template v-else>
+							<text class="supplier-verify-reason">{{ supplierVerifyResult.reason }}</text>
+							<text class="supplier-verify-fallback" @tap="switchSupplierEntryMode('apply_code')">
+								没有可用邀请码？点击切换为「无码申请供应链邀约」由后台审核签发 ›
+							</text>
+						</template>
+					</view>
+				</view>
+
+				<!-- 模块 2：供应链受邀入驻 / 申请邀约码表单 -->
+				<view class="supplier-section-card">
+					<view class="supplier-section-header">
+						<view class="supplier-header-flex">
+							<view>
+								<text class="supplier-section-title">2. 供应链入驻建档与邀约申请</text>
+								<text class="supplier-section-sub">提交后进入 Admin 运营台审核，通过后将在本页下发专属邀请码</text>
+							</view>
+							<view class="supplier-progress-badge" :class="{ ready: supplierProgress.isReady }">
+								{{ supplierProgress.percent }}% 已完成
+							</view>
+						</view>
+					</view>
+
+					<!-- 实时填写进度提示条 -->
+					<view class="supplier-progress-bar-wrap">
+						<view class="supplier-progress-bar-track">
+							<view class="supplier-progress-bar-fill" :style="{ width: supplierProgress.percent + '%' }"></view>
+						</view>
+						<text class="supplier-progress-hint">{{ supplierProgress.hint }}</text>
+					</view>
+
+					<!-- 模式切换 Tab -->
+					<view class="supplier-mode-tabs">
+						<view
+							class="supplier-mode-tab"
+							:class="{ active: supplierForm.entry_mode === 'with_code' }"
+							@tap="switchSupplierEntryMode('with_code')"
+						>
+							<text class="mode-tab-title">持邀请码极速入驻</text>
+							<text class="mode-tab-desc">已获商务/生态邀请码</text>
+						</view>
+						<view
+							class="supplier-mode-tab"
+							:class="{ active: supplierForm.entry_mode === 'apply_code' }"
+							@tap="switchSupplierEntryMode('apply_code')"
+						>
+							<text class="mode-tab-title">无码申请供应链邀约</text>
+							<text class="mode-tab-desc">提交资质由平台签发</text>
+						</view>
+					</view>
+
+					<!-- 持码模式填写邀请码 -->
+					<view class="coop-field form-focus-highlight" v-if="supplierForm.entry_mode === 'with_code'">
+						<view class="coop-label-row">
+							<text class="coop-label required">受邀入驻邀请码</text>
+							<text class="coop-label-tip">输入 10 位邀请码验证有效性</text>
+						</view>
+						<view class="coop-inline-verify">
+							<input
+								class="coop-input font-mono"
+								type="text"
+								v-model="supplierForm.invite_code"
+								placeholder="请输入 10 位邀请码（如 8F3K9M2X7Q）"
+								maxlength="40"
+							/>
+							<view class="coop-verify-btn" @tap="verifyFormInviteCode">核验有效性</view>
+						</view>
+					</view>
+
+					<!-- 分组一：企业主体与资质档案 -->
+					<view class="form-fieldset-card">
+						<view class="form-fieldset-header">
+							<text class="form-fieldset-icon">🏢</text>
+							<view>
+								<text class="form-fieldset-title">企业主体与供应资质</text>
+								<text class="form-fieldset-sub">请根据工商登记信息与核心经营范围如实填写</text>
+							</view>
+						</view>
+
+						<!-- 供应品类方向 -->
+						<view class="coop-field">
+							<text class="coop-label required">核心供应品类</text>
+							<view class="coop-chips">
+								<view
+									v-for="cat in supplierCategories"
+									:key="cat"
+									class="coop-chip"
+									:class="{ active: supplierForm.coop_direction === cat }"
+									@tap="supplierForm.coop_direction = cat"
+								>{{ cat }}</view>
+							</view>
+						</view>
+
+						<!-- 供应商企业名称 -->
+						<view class="coop-field">
+							<text class="coop-label required">供应商企业/机构全称</text>
+							<input
+								class="coop-input"
+								type="text"
+								v-model="supplierForm.org_name"
+								placeholder="请输入营业执照上的公司全称，如：深圳灵巧智能科技有限公司"
+								maxlength="120"
+							/>
+						</view>
+
+						<!-- 统一社会信用代码 -->
+						<view class="coop-field">
+							<view class="coop-label-row">
+								<text class="coop-label">统一社会信用代码（选填）</text>
+								<text class="coop-label-tip">18 位大写字母与数字，有助于提速审核</text>
+							</view>
+							<input
+								class="coop-input font-mono"
+								type="text"
+								v-model="supplierForm.credit_code"
+								placeholder="如：91440300MA5XXXXXX1"
+								maxlength="64"
+								@input="supplierForm.credit_code = (supplierForm.credit_code || '').toUpperCase()"
+							/>
+						</view>
+
+						<!-- 营业执照 / 资质证明凭证（优化支持上传选择） -->
+						<view class="coop-field">
+							<view class="coop-label-row">
+								<text class="coop-label">营业执照 / 资质证明附件（选填）</text>
+								<text class="coop-label-tip">支持上传营业执照或授权资质凭证</text>
+							</view>
+							<view class="supplier-license-uploader" @tap="chooseSupplierLicense">
+								<view v-if="supplierLicenseFileName" class="supplier-license-picked">
+									<text class="license-picked-icon">📄</text>
+									<view class="license-picked-info">
+										<text class="license-picked-name">{{ supplierLicenseFileName }}</text>
+										<text class="license-picked-tip">已就绪，提交时随申请单留存</text>
+									</view>
+									<text class="license-picked-del" @tap.stop="removeSupplierLicense">移除</text>
+								</view>
+								<view v-else class="supplier-license-empty">
+									<text class="license-upload-icon">📷</text>
+									<text class="license-upload-text">点击拍摄或从相册选择营业执照/资质材料</text>
+									<text class="license-upload-sub">支持 JPG / PNG 格式，仅用于企业入驻审核</text>
+								</view>
+							</view>
+						</view>
+
+						<!-- 仓储覆盖城市 + 快捷标签 -->
+						<view class="coop-field">
+							<text class="coop-label">仓储所在地 / 核心覆盖城市</text>
+							<input
+								class="coop-input"
+								type="text"
+								v-model="supplierForm.region"
+								placeholder="如：深圳 / 苏州 / 杭州（支持全国发货）"
+								maxlength="80"
+							/>
+							<view class="quick-chip-row">
+								<text class="quick-chip-label">热门城市：</text>
+								<text
+									v-for="c in supplierHotCities"
+									:key="c"
+									class="quick-chip"
+									@tap="fillSupplierCity(c)"
+								>+ {{ c }}</text>
+							</view>
+						</view>
+					</view>
+
+					<!-- 分组二：供货产品、产能与履约质保 -->
+					<view class="form-fieldset-card">
+						<view class="form-fieldset-header">
+							<text class="form-fieldset-icon">⚙️</text>
+							<view>
+								<text class="form-fieldset-title">供货清单与履约质保</text>
+								<text class="form-fieldset-sub">明确核心优势机型、产能规模与售后支持标准</text>
+							</view>
+						</view>
+
+						<!-- 主营供应产品与型号 + 快捷追加标签 -->
+						<view class="coop-field">
+							<text class="coop-label required">主营供应产品 / 适配机型 / 服务范围</text>
+							<input
+								class="coop-input"
+								type="text"
+								v-model="supplierForm.supply_items"
+								placeholder="请输入主营产品，可点击下方常用项快捷填充"
+								maxlength="200"
+							/>
+							<view class="quick-chip-block">
+								<text class="quick-chip-label">快捷填充热门供应清单（点击加入）：</text>
+								<view class="quick-chips-wrap">
+									<text
+										v-for="item in supplierQuickSupplyItems"
+										:key="item"
+										class="quick-chip"
+										@tap="appendSupplierItem(item)"
+									>+ {{ item }}</text>
+								</view>
+							</view>
+						</view>
+
+						<!-- 供货产能 / 覆盖量级 -->
+						<view class="coop-field">
+							<text class="coop-label required">月供货能力 / 服务覆盖量级</text>
+							<view class="coop-chips">
+								<view
+									v-for="scale in supplierCapacityScales"
+									:key="scale"
+									class="coop-chip"
+									:class="{ active: supplierForm.capacity_scale === scale }"
+									@tap="supplierForm.capacity_scale = scale"
+								>{{ scale }}</view>
+							</view>
+						</view>
+
+						<!-- 质保与履约响应承诺 -->
+						<view class="coop-field">
+							<text class="coop-label required">履约与售后质保承诺</text>
+							<view class="coop-chips">
+								<view
+									v-for="w in supplierWarrantyOptions"
+									:key="w"
+									class="coop-chip"
+									:class="{ active: supplierForm.warranty_commitment === w }"
+									@tap="supplierForm.warranty_commitment = w"
+								>{{ w }}</view>
+							</view>
+						</view>
+
+						<!-- 标杆案例与补充说明 -->
+						<view class="coop-field">
+							<view class="coop-label-row">
+								<text class="coop-label">过往标杆案例与合作诉求（选填）</text>
+								<text class="char-count-pill">{{ (supplierForm.summary || '').length }}/500</text>
+							</view>
+							<textarea
+								class="coop-textarea"
+								v-model="supplierForm.summary"
+								placeholder="可简述合作品牌客户、账期结算支持、权威检测报告、专利资质或具体合作诉求（上限 500 字）"
+								maxlength="500"
+							/>
+						</view>
+					</view>
+
+					<!-- 分组三：商务对接人联络 -->
+					<view class="form-fieldset-card">
+						<view class="form-fieldset-header justify-between">
+							<view class="flex items-center gap-2">
+								<text class="form-fieldset-icon">👤</text>
+								<view>
+									<text class="form-fieldset-title">商务对接负责人</text>
+									<text class="form-fieldset-sub">采购对接人与签约顾问将优先通过此信息联络</text>
+								</view>
+							</view>
+							<view class="btn-quick-autofill" @tap="fillCurrentAccountToSupplier">
+								<text class="autofill-icon">⚡</text>
+								<text>填入当前账号</text>
+							</view>
+						</view>
+
+						<view class="coop-field-row">
+							<view class="coop-field half">
+								<text class="coop-label required">负责人姓名</text>
+								<input
+									class="coop-input"
+									type="text"
+									v-model="supplierForm.contact_name"
+									placeholder="您的称呼（如：王总监）"
+									maxlength="60"
+								/>
+							</view>
+							<view class="coop-field half">
+								<text class="coop-label required">联系手机号</text>
+								<input
+									class="coop-input font-mono"
+									type="number"
+									v-model="supplierForm.contact_phone"
+									placeholder="11 位手机号码"
+									maxlength="11"
+								/>
+							</view>
+						</view>
+
+						<view class="coop-field">
+							<view class="coop-label-row">
+								<text class="coop-label">微信号 / 商务邮箱（选填）</text>
+								<text class="coop-label-tip">用于发送采购框架协议与产品询价单</text>
+							</view>
+							<input
+								class="coop-input"
+								type="text"
+								v-model="supplierForm.contact_wechat"
+								placeholder="便于供应链运营添加微信或发送采购合同"
+								maxlength="80"
+							/>
+						</view>
+					</view>
+
+					<view class="supplier-submit-wrap">
+						<view
+							class="supplier-submit-btn"
+							:class="{ disabled: supplierSubmitting || !supplierProgress.isReady }"
+							@tap="submitSupplierForm"
+						>
+							<template v-if="supplierSubmitting">正在提交申请中...</template>
+							<template v-else-if="supplierProgress.isReady">
+								{{ supplierForm.entry_mode === 'with_code' ? '✓ 核验邀请码并提交供应链建档' : '✓ 提交资质并申请专属邀请码' }}
+							</template>
+							<template v-else>
+								请完善必填信息（还差 {{ supplierProgress.missingCount }} 项未填）
+							</template>
+						</view>
+						<text class="supplier-submit-privacy-tip">
+							🔒 平台严格保护供应商企业及商业信息安全，仅用于本次生态供应链准入与商务对接。
+						</text>
+					</view>
+				</view>
+
+				<!-- 模块 3：我的供应链入驻与合作申请进度（含后台签发邀请码卡片） -->
+				<view class="coop-history-section">
+					<view class="coop-history-header">
+						<text class="coop-history-title">我的供应链入驻与邀约进度</text>
+						<text class="coop-history-refresh" @tap="loadCooperations">刷新状态</text>
+					</view>
+					<view v-if="cooperateLoading" class="coop-history-empty">加载中...</view>
+					<view v-else-if="supplierApplications.length === 0" class="coop-history-empty">
+						暂无供应链入驻记录。提交上方表单后，可在此实时追踪审核进度并领取平台签发的专属邀请码。
+					</view>
+					<view v-else class="coop-history-list">
+						<view class="coop-record-card" v-for="app in supplierApplications" :key="app.id">
+							<view class="coop-record-top">
+								<view class="coop-record-tags">
+									<text class="coop-type-tag">{{ app.type_label }}</text>
+									<text class="coop-dir-tag" v-if="app.coop_direction">{{ app.coop_direction }}</text>
+									<text class="coop-verified-tag" v-if="app.invite_verified">✓ 持有效码入驻</text>
+								</view>
+								<text class="coop-status-badge" :class="'status-' + app.status">{{ app.status_label }}</text>
+							</view>
+							<text class="coop-record-org">{{ app.org_name }}</text>
+							<view class="coop-record-meta">
+								<text>单号：{{ app.application_no }}</text>
+								<text>{{ app.created_at }}</text>
+							</view>
+							<view v-if="app.follower_name" class="coop-record-submeta">
+								<text>跟进负责人：{{ app.follower_name }}{{ app.follower_contact ? '（' + app.follower_contact + '）' : '' }}</text>
+							</view>
+							<view v-if="app.invite_code" class="coop-record-submeta">
+								<text>申报邀请码：{{ app.invite_code }}（{{ app.invite_verified ? '已通过平台核验' : '待核验' }}）</text>
+							</view>
+							<!-- 后台运营签发的专属邀请码展示与一键激活 -->
+							<view v-if="app.issued_invite_code" class="coop-issued-code-box">
+								<view class="coop-issued-code-main">
+									<text class="coop-issued-label">🎉 平台已为您签发专属邀请码：</text>
+									<text class="coop-issued-code">{{ app.issued_invite_code }}</text>
+									<text class="coop-issued-exp" v-if="app.issued_invite_expires_at">有效期：{{ app.issued_invite_expires_at }}</text>
+								</view>
+								<view class="coop-issued-actions">
+									<text class="coop-issued-btn" @tap="copyInviteCode(app.issued_invite_code)">复制邀请码</text>
+									<text class="coop-issued-btn primary" @tap="goDeveloperPortalWithCode(app.issued_invite_code)">去门户激活 ›</text>
+								</view>
+							</view>
+							<view v-if="app.admin_note" class="coop-record-note">
+								<text class="coop-note-label">供应链审核反馈：</text>
+								<text class="coop-note-content">{{ app.admin_note }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				<view style="height: 40rpx;"></view>
 			</scroll-view>
 		</view>
 
@@ -658,7 +1392,7 @@
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import StateView from '@/components/StateView.vue';
-	import { authApi, addressApi, invoiceApi, orderApi } from '@/utils/api';
+	import { authApi, addressApi, invoiceApi, orderApi, cooperationApi } from '@/utils/api';
 	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION, BASE_URL } from '@/utils/config';
 	import { serverToLocal, localToServerPayload } from '@/utils/address';
 
@@ -713,33 +1447,116 @@
 				// ===== 合作申请数据 =====
 				cooperateList: [
 					{
+						key: 'manufacturer',
 						name: '本体厂商',
 						avatar: '🏭',
 						avatarBg: '#E8F4FD',
 						btnText: '洽谈合作',
 						desc: '制造 / 渠道 / 技术协同',
 						benefits: ['品牌联合推广', '渠道资源共享', '技术方案协同'],
+						directions: ['品牌联合推广', '租赁与销售渠道共建', '技能SDK与生态适配', '赛事与展会联合冠名'],
 						formPath: '/pages/cooperate/manufacturer'
 					},
 					{
+						key: 'raas',
 						name: 'RaaS合伙人',
 						avatar: '🤝',
 						avatarBg: '#E8F4FD',
 						btnText: '立即加入',
 						desc: '技能售卖 / 分成 / 技术社区',
 						benefits: ['技能服务上架', '高额分成收益', '社区技术交流'],
+						directions: ['动作捕捉与重定向', 'ROS2与运控算法', '视觉与多模态交互', '场景全栈解决方案'],
 						formPath: '/pages/cooperate/raas'
 					},
 					{
+						key: 'influencer',
 						name: '网红达人',
 						avatar: '📱',
 						avatarBg: '#E8F4FD',
 						btnText: '演出合作',
 						desc: '免费用机 / 商单 / 流量扶持',
 						benefits: ['免费用机体验', '品牌商单合作', '平台流量扶持'],
+						directions: ['免费用机评测', '商业演出合拍', '赛事探馆直播', '带货分佣合作'],
 						formPath: '/pages/cooperate/influencer'
 					}
 				],
+				influencerPlatforms: ['抖音', '小红书', 'B站', '视频号', '快手'],
+				influencerFollowersTiers: ['1万-10万', '10万-50万', '50万-100万', '100万+'],
+				showCooperateModal: false,
+				activeCoopItem: null,
+				cooperateSubmitting: false,
+				cooperateLoading: false,
+				cooperateApplications: [],
+				cooperateForm: {
+					coop_type: '',
+					org_name: '',
+					contact_name: '',
+					contact_phone: '',
+					contact_wechat: '',
+					region: '',
+					coop_direction: '',
+					summary: '',
+					robot_models: '',
+					entity_type: 'company',
+					portfolio_url: '',
+					invite_code: '',
+					platform: '抖音',
+					followers_tier: '10万-50万',
+					account_url: '',
+				},
+				partnerSubmitting: false,
+
+				// ===== 供应链受邀入驻数据 =====
+				supplierVerifyCode: '',
+				supplierVerifyResult: null,
+				supplierSubmitting: false,
+				supplierLicenseFile: null,
+				supplierLicenseFileName: '',
+				supplierHotCities: ['深圳', '苏州', '杭州', '上海', '东莞', '北京', '武汉', '成都'],
+				supplierQuickSupplyItems: [
+					'宇树 G1 关节模组与核心部件',
+					'宇树 Go2 传感器与整机零备件',
+					'智元远征系列适配结构件',
+					'钛合金外骨骼与定制机甲外壳',
+					'驻场工程师日常巡检与维护',
+					'ROS2运控算法与动作包供给'
+				],
+				coopHotRobots: ['宇树 G1', '宇树 Go2', '智元远征 A1/A2', '开普勒人形', '四足机器狗', '通用 ROS2'],
+				coopHotCities: ['深圳', '杭州', '上海', '北京', '苏州', '广州'],
+				partnerHotCities: ['北京市', '上海市', '深圳市', '广州市', '杭州市', '苏州市', '成都市', '武汉市'],
+				supplierCategories: [
+					'整机与本体货源',
+					'配件皮肤与核心部件',
+					'城市交付与驻场运维',
+					'RaaS技能与算法供给'
+				],
+				supplierCapacityScales: [
+					'1-10台/月 (初创试跑)',
+					'10-50台/月 (成熟供货)',
+					'50-200台/月 (规模产能)',
+					'200台+/月 或 全国多城覆盖'
+				],
+				supplierWarrantyOptions: [
+					'7天换新 + 1年原厂质保',
+					'2小时现场响应 + 24小时备件换修',
+					'全流程原厂巡检与维保运维支持',
+					'协议定制SLA服务保障'
+				],
+				supplierForm: {
+					entry_mode: 'with_code', // 'with_code' | 'apply_code'
+					invite_code: '',
+					coop_direction: '整机与本体货源',
+					org_name: '',
+					credit_code: '',
+					supply_items: '',
+					capacity_scale: '10-50台/月 (成熟供货)',
+					warranty_commitment: '7天换新 + 1年原厂质保',
+					region: '',
+					contact_name: '',
+					contact_phone: '',
+					contact_wechat: '',
+					summary: '',
+				},
 
 				// ===== 合伙人推荐表单数据 =====
 				partnerForm: {
@@ -782,6 +1599,34 @@
 				if (!id) return '';
 				const o = (this.paidOrders || []).find(x => x.id === id);
 				return o ? `${o.increment_id || o.id}  ¥${o.grand_total}` : '';
+			},
+			supplierApplications() {
+				return (this.cooperateApplications || []).filter(app => app.coop_type === 'supplier_invite');
+			},
+			supplierProgress() {
+				const f = this.supplierForm || {};
+				const items = [
+					{ name: '供应商企业全称', ok: !!(f.org_name && f.org_name.trim().length >= 2) },
+					{ name: '供应产品明细', ok: !!(f.supply_items && f.supply_items.trim().length > 0) },
+					{ name: '联系人姓名', ok: !!(f.contact_name && f.contact_name.trim().length >= 2) },
+					{ name: '11位手机号', ok: !!(/^1\d{10}$/.test(String(f.contact_phone || '').trim())) },
+				];
+				if (f.entry_mode === 'with_code') {
+					items.unshift({ name: '受邀邀请码', ok: !!(f.invite_code && f.invite_code.trim().length > 0) });
+				}
+				const total = items.length;
+				const finished = items.filter(i => i.ok).length;
+				const missing = items.filter(i => !i.ok).map(i => i.name);
+				const percent = Math.round((finished / total) * 100);
+				return {
+					total,
+					finished,
+					percent,
+					isReady: finished === total,
+					missingCount: total - finished,
+					missingNames: missing.join('、'),
+					hint: finished === total ? '必填项已就绪，可直接提交' : `还差 ${total - finished} 项：${missing.join('、')}`
+				};
 			},
 			isFormValid() {
 				const f = this.partnerForm;
@@ -966,7 +1811,10 @@
 			goAfterSales() { uni.navigateTo({ url: '/pages/mine/after-sales' }); },
 			// 消息通知:审核/下发/试用到期/退款 都落这里(v3.4)
 			goNotifications() { uni.navigateTo({ url: '/pages/mine/notifications' }); },
-			goCooperate() { this.currentPage = 'cooperate'; },
+			goCooperate() {
+				this.currentPage = 'cooperate';
+				this.loadCooperations();
+			},
 			// 开发者后台(v3.4 步骤 9):独立 Blade 门户,跑在商城同域 /dev,与 C 端同一账号体系
 			// (邮箱+密码登录 developer 会话)。H5 新开标签页;App/小程序没有同域 web-view 条件,
 			// 复制链接让用户去浏览器打开 —— 与赛事报名外部链接的做法一致。
@@ -983,7 +1831,270 @@
 				});
 				// #endif
 			},
-			goSupplierCode() { uni.showToast({ title: '供应商邀请码：即将开放', icon: 'none' }); },
+			goSupplierCode() {
+				this.currentPage = 'supplier';
+				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
+				if (!this.supplierForm.contact_name) {
+					this.supplierForm.contact_name = customer.name || this.userName || '';
+				}
+				if (!this.supplierForm.contact_phone && customer.phone && /^1d{10}$/.test(String(customer.phone))) {
+					this.supplierForm.contact_phone = String(customer.phone);
+				}
+				if (!this.supplierForm.contact_wechat && customer.email) {
+					this.supplierForm.contact_wechat = customer.email;
+				}
+				this.loadCooperations();
+			},
+			async verifySupplierInviteCode() {
+				const code = String(this.supplierVerifyCode || '').trim();
+				if (!code) {
+					uni.showToast({ title: '请输入待核验的邀请码', icon: 'none' });
+					return;
+				}
+				try {
+					const res = await cooperationApi.verifyInvite(code);
+					const data = (res && res.data) || {};
+					this.supplierVerifyResult = data;
+					if (data.redeemable) {
+						uni.showToast({ title: '邀请码有效 ✓', icon: 'success' });
+					} else {
+						uni.showToast({ title: data.reason || '邀请码不可用', icon: 'none' });
+					}
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '核验失败，请稍后重试', icon: 'none' });
+				}
+			},
+			async verifyFormInviteCode() {
+				const code = String(this.supplierForm.invite_code || '').trim();
+				if (!code) {
+					uni.showToast({ title: '请输入邀请码', icon: 'none' });
+					return;
+				}
+				try {
+					const res = await cooperationApi.verifyInvite(code);
+					const data = (res && res.data) || {};
+					if (data.redeemable) {
+						uni.showToast({ title: '邀请码有效 ✓', icon: 'success' });
+					} else {
+						uni.showToast({ title: data.reason || '邀请码不可用', icon: 'none' });
+					}
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '核验异常', icon: 'none' });
+				}
+			},
+			async verifyModalInviteCode() {
+				const code = String(this.cooperateForm.invite_code || '').trim();
+				if (!code) {
+					uni.showToast({ title: '请输入邀请码', icon: 'none' });
+					return;
+				}
+				try {
+					const res = await cooperationApi.verifyInvite(code);
+					const data = (res && res.data) || {};
+					if (data.redeemable) {
+						uni.showToast({ title: '邀请码有效 ✓', icon: 'success' });
+					} else {
+						uni.showToast({ title: data.reason || '邀请码不可用', icon: 'none' });
+					}
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '核验异常', icon: 'none' });
+				}
+			},
+			chooseSupplierLicense() {
+				uni.showActionSheet({
+					itemList: ['拍照上传', '从手机相册选择'],
+					success: (res) => {
+						const sourceType = res.tapIndex === 0 ? ['camera'] : ['album'];
+						uni.chooseImage({
+							count: 1,
+							sizeType: ['compressed'],
+							sourceType,
+							success: (imgRes) => {
+								const file = imgRes.tempFiles && imgRes.tempFiles[0];
+								if (file) {
+									const sizeKb = file.size ? Math.round(file.size / 1024) : 0;
+									this.supplierLicenseFile = file;
+									this.supplierLicenseFileName = (file.name || 'license_cert_' + Date.now().toString(36) + '.jpg') + (sizeKb > 0 ? ` (${sizeKb} KB)` : '');
+									uni.showToast({ title: '凭证已选取', icon: 'success' });
+								}
+							},
+							fail: () => {}
+						});
+					}
+				});
+			},
+			removeSupplierLicense() {
+				this.supplierLicenseFile = null;
+				this.supplierLicenseFileName = '';
+				uni.showToast({ title: '已移除凭证', icon: 'none' });
+			},
+			appendSupplierItem(tag) {
+				const cur = (this.supplierForm.supply_items || '').trim();
+				if (!cur) {
+					this.supplierForm.supply_items = tag;
+				} else if (!cur.includes(tag)) {
+					this.supplierForm.supply_items = cur + '、' + tag;
+				}
+				uni.showToast({ title: '已添加产品项', icon: 'none' });
+			},
+			fillSupplierCity(city) {
+				this.supplierForm.region = city;
+				uni.showToast({ title: '已填入城市：' + city, icon: 'none' });
+			},
+			fillCurrentAccountToSupplier() {
+				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
+				let changed = false;
+				if (customer.name || this.userName) {
+					this.supplierForm.contact_name = customer.name || this.userName;
+					changed = true;
+				}
+				if (customer.phone && /^1\d{10}$/.test(String(customer.phone))) {
+					this.supplierForm.contact_phone = String(customer.phone);
+					changed = true;
+				}
+				if (customer.email) {
+					this.supplierForm.contact_wechat = customer.email;
+					changed = true;
+				}
+				uni.showToast({ title: changed ? '已一键填入当前账号联系信息' : '当前账号未完善手机号，请手动输入', icon: 'none' });
+			},
+			appendCoopRobot(tag) {
+				const cur = (this.cooperateForm.robot_models || '').trim();
+				if (!cur) {
+					this.cooperateForm.robot_models = tag;
+				} else if (!cur.includes(tag)) {
+					this.cooperateForm.robot_models = cur + ' / ' + tag;
+				}
+				uni.showToast({ title: '已添加机型：' + tag, icon: 'none' });
+			},
+			fillCoopCity(city) {
+				this.cooperateForm.region = city;
+				uni.showToast({ title: '已填入城市：' + city, icon: 'none' });
+			},
+			fillCurrentAccountToCoop() {
+				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
+				let changed = false;
+				if (customer.name || this.userName) {
+					this.cooperateForm.contact_name = customer.name || this.userName;
+					changed = true;
+				}
+				if (customer.phone && /^1\d{10}$/.test(String(customer.phone))) {
+					this.cooperateForm.contact_phone = String(customer.phone);
+					changed = true;
+				}
+				if (customer.email) {
+					this.cooperateForm.contact_wechat = customer.email;
+					changed = true;
+				}
+				uni.showToast({ title: changed ? '已填入账号联系人' : '请手动填写联系方式', icon: 'none' });
+			},
+			fillPartnerCity(city) {
+				this.partnerForm.region = city;
+				uni.showToast({ title: '已填入签约城市：' + city, icon: 'none' });
+			},
+			useVerifiedCodeForSupplierForm() {
+				if (!this.supplierVerifyResult || !this.supplierVerifyResult.code) return;
+				this.supplierForm.entry_mode = 'with_code';
+				this.supplierForm.invite_code = this.supplierVerifyResult.code;
+				uni.showToast({ title: '已带入供应链入驻表单', icon: 'success' });
+			},
+			switchSupplierEntryMode(mode) {
+				this.supplierForm.entry_mode = mode;
+				if (mode === 'apply_code') {
+					this.supplierForm.invite_code = '';
+				}
+			},
+			copyInviteCode(code) {
+				if (!code) return;
+				uni.setClipboardData({
+					data: String(code),
+					success: () => uni.showToast({ title: '邀请码已复制', icon: 'success' }),
+					fail: () => uni.showToast({ title: '复制失败，请重试', icon: 'none' }),
+				});
+			},
+			goDeveloperPortalWithCode(code) {
+				const base = String(BASE_URL).replace(/\/+$/, '');
+				const target = code ? `${base}/dev/join?code=${encodeURIComponent(code)}` : `${base}/dev`;
+				// #ifdef H5
+				window.open(target, '_blank', 'noopener');
+				// #endif
+				// #ifndef H5
+				uni.setClipboardData({
+					data: target,
+					success: () => uni.showToast({ title: '受邀链接已复制，请在浏览器打开', icon: 'none' }),
+					fail: () => uni.showToast({ title: '复制失败', icon: 'none' }),
+				});
+				// #endif
+			},
+			async submitSupplierForm() {
+				if (this.supplierSubmitting) return;
+				const f = this.supplierForm;
+
+				if (f.entry_mode === 'with_code' && (!f.invite_code || !f.invite_code.trim())) {
+					uni.showToast({ title: '持码入驻模式下请输入邀请码', icon: 'none' });
+					return;
+				}
+				if (!f.coop_direction) {
+					uni.showToast({ title: '请选择核心供应品类', icon: 'none' });
+					return;
+				}
+				if (!f.org_name || f.org_name.trim().length < 2) {
+					uni.showToast({ title: '请填写供应商企业全称', icon: 'none' });
+					return;
+				}
+				if (!f.supply_items || !f.supply_items.trim()) {
+					uni.showToast({ title: '请填写主营供应产品或明细', icon: 'none' });
+					return;
+				}
+				if (!f.contact_name || f.contact_name.trim().length < 2) {
+					uni.showToast({ title: '请填写联系人姓名', icon: 'none' });
+					return;
+				}
+				if (!/^1\d{10}$/.test(String(f.contact_phone || '').trim())) {
+					uni.showToast({ title: '请输入正确的 11 位手机号码', icon: 'none' });
+					return;
+				}
+
+				this.supplierSubmitting = true;
+				try {
+					const gk = this.getOrCreateGuestKey();
+					const meta = {
+						entry_mode: f.entry_mode,
+						supply_items: f.supply_items.trim(),
+						capacity_scale: f.capacity_scale,
+						warranty_commitment: f.warranty_commitment,
+					};
+					if (this.supplierLicenseFileName) {
+						meta.license_file_name = this.supplierLicenseFileName;
+					}
+					if (f.credit_code && f.credit_code.trim()) {
+						meta.credit_code = f.credit_code.trim();
+					}
+					if (f.entry_mode === 'with_code' && f.invite_code && f.invite_code.trim()) {
+						meta.invite_code = f.invite_code.trim().toUpperCase();
+					}
+
+					const res = await cooperationApi.submit({
+						coop_type: 'supplier_invite',
+						org_name: f.org_name.trim(),
+						contact_name: f.contact_name.trim(),
+						contact_phone: String(f.contact_phone).trim(),
+						contact_wechat: f.contact_wechat.trim() || null,
+						region: f.region.trim() || null,
+						coop_direction: f.coop_direction,
+						summary: f.summary.trim() || null,
+						guest_key: gk,
+						meta,
+					});
+
+					uni.showToast({ title: (res && res.message) || '供应链申请已提交', icon: 'success' });
+					await this.loadCooperations();
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '提交失败，请稍后重试', icon: 'none' });
+				} finally {
+					this.supplierSubmitting = false;
+				}
+			},
 			goPartnerRecommend() {
 				this.currentPage = 'partner';
 				this.loadPartnerFormCache();
@@ -1172,11 +2283,121 @@
 			},
 
 			// ================================================================
-			// 合作申请 - 跳转表单（预留接口）
+			// 合作申请 - 打开专属表单弹窗并对接 /api/cooperations
 			// ================================================================
+			getOrCreateGuestKey() {
+				let gk = uni.getStorageSync('guest_key');
+				if (!gk || String(gk).length < 6) {
+					gk = 'gk_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+					uni.setStorageSync('guest_key', gk);
+				}
+				return String(gk);
+			},
+			async loadCooperations() {
+				this.cooperateLoading = true;
+				try {
+					const gk = this.getOrCreateGuestKey();
+					const res = await cooperationApi.list(gk);
+					this.cooperateApplications = (res && Array.isArray(res.data)) ? res.data : [];
+				} catch (e) {
+					this.cooperateApplications = [];
+				} finally {
+					this.cooperateLoading = false;
+				}
+			},
 			goApplyForm(item) {
-				// 诚实化:表单页未开发,不再假装跳转
-				uni.showToast({ title: `「${item.name}」申请通道即将开放`, icon: 'none' });
+				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
+				const defaultDir = (item.directions && item.directions[0]) || '';
+				this.activeCoopItem = item;
+				this.cooperateForm = {
+					coop_type: item.key,
+					org_name: '',
+					contact_name: customer.name || this.userName || '',
+					contact_phone: (customer.phone && /^1\d{10}$/.test(String(customer.phone))) ? String(customer.phone) : '',
+					contact_wechat: customer.email || '',
+					region: '',
+					coop_direction: defaultDir,
+					summary: '',
+					robot_models: '',
+					entity_type: 'company',
+					portfolio_url: '',
+					invite_code: '',
+					platform: '抖音',
+					followers_tier: '10万-50万',
+					account_url: '',
+				};
+				this.showCooperateModal = true;
+			},
+			closeCooperateModal() {
+				this.showCooperateModal = false;
+			},
+			async submitCooperateForm() {
+				if (this.cooperateSubmitting || !this.activeCoopItem) return;
+				const f = this.cooperateForm;
+				const key = this.activeCoopItem.key;
+
+				if (!f.org_name || f.org_name.trim().length < 2) {
+					uni.showToast({ title: key === 'influencer' ? '请填写达人昵称或MCN机构' : '请填写主体/企业名称', icon: 'none' });
+					return;
+				}
+				if (!f.coop_direction) {
+					uni.showToast({ title: '请选择合作方向', icon: 'none' });
+					return;
+				}
+				if ((key === 'manufacturer' || key === 'raas') && !f.robot_models.trim()) {
+					uni.showToast({ title: key === 'manufacturer' ? '请填写主营本体型号/产品线' : '请填写适配目标机型', icon: 'none' });
+					return;
+				}
+				if (key === 'influencer' && (!f.platform || !f.followers_tier)) {
+					uni.showToast({ title: '请选择主营平台与粉丝量级', icon: 'none' });
+					return;
+				}
+				if (!f.contact_name || f.contact_name.trim().length < 2) {
+					uni.showToast({ title: '请填写联系人姓名', icon: 'none' });
+					return;
+				}
+				if (!/^1\d{10}$/.test(String(f.contact_phone || '').trim())) {
+					uni.showToast({ title: '请输入正确的 11 位手机号码', icon: 'none' });
+					return;
+				}
+
+				const meta = {};
+				if (key === 'manufacturer') {
+					meta.robot_models = f.robot_models.trim();
+				} else if (key === 'raas') {
+					meta.entity_type = f.entity_type || 'company';
+					meta.robot_models = f.robot_models.trim();
+					if (f.portfolio_url.trim()) meta.portfolio_url = f.portfolio_url.trim();
+					if (f.invite_code.trim()) meta.invite_code = f.invite_code.trim();
+				} else if (key === 'influencer') {
+					meta.platform = f.platform;
+					meta.followers_tier = f.followers_tier;
+					if (f.account_url.trim()) meta.account_url = f.account_url.trim();
+				}
+
+				this.cooperateSubmitting = true;
+				try {
+					const gk = this.getOrCreateGuestKey();
+					const res = await cooperationApi.submit({
+						coop_type: key,
+						org_name: f.org_name.trim(),
+						contact_name: f.contact_name.trim(),
+						contact_phone: String(f.contact_phone).trim(),
+						contact_wechat: f.contact_wechat.trim() || null,
+						region: f.region.trim() || null,
+						coop_direction: f.coop_direction,
+						summary: f.summary.trim() || null,
+						guest_key: gk,
+						meta,
+					});
+					this.showCooperateModal = false;
+					uni.showToast({ title: (res && res.message) || '申请已提交', icon: 'success' });
+					await this.loadCooperations();
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '提交失败，请稍后重试', icon: 'none' });
+				} finally {
+					this.cooperateSubmitting = false;
+				}
 			},
 
 			// ================================================================
@@ -1374,15 +2595,53 @@
 			},
 
 			// ================================================================
-			// 合伙人推荐 - 提交表单
+			// 合伙人推荐 - 提交表单（对接后端 /api/cooperations）
 			// ================================================================
-			submitForm() {
+			async submitForm() {
 				if (!this.isFormValid) {
 					uni.showToast({ title: '请完善所有必填项', icon: 'none' });
 					return;
 				}
-				// 诚实化:提交通道未接后端,不再假装提交成功;草稿仍本地保留便于日后一键提交
-				uni.showToast({ title: '合伙人计划通道即将开放，资料已暂存草稿', icon: 'none' });
+				if (this.partnerSubmitting) return;
+				this.partnerSubmitting = true;
+				try {
+					const gk = this.getOrCreateGuestKey();
+					const pf = this.partnerForm;
+					const res = await cooperationApi.submit({
+						coop_type: 'partner_referral',
+						org_name: pf.companyName.trim(),
+						contact_name: pf.contactName.trim(),
+						contact_phone: pf.phone.trim(),
+						region: pf.region.trim(),
+						coop_direction: (pf.level || '金牌') + '合伙人推荐',
+						summary: pf.intro.trim(),
+						guest_key: gk,
+						meta: {
+							level: pf.level || '金牌',
+							recommender_type: pf.recommenderType || 'sales',
+							invite_code: (pf.inviteCode || '').trim(),
+							license_file_name: this.licenseFileName || '',
+						},
+					});
+					uni.removeStorageSync(this.cacheKey);
+					this.partnerForm = {
+						companyName: '',
+						level: '金牌',
+						contactName: '',
+						phone: '',
+						region: '',
+						intro: '',
+						recommenderType: 'sales',
+						inviteCode: '',
+					};
+					this.licenseFile = null;
+					this.licenseFileName = '';
+					uni.showToast({ title: (res && res.message) || '推荐已提交', icon: 'success' });
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '提交失败，请稍后重试', icon: 'none' });
+				} finally {
+					this.partnerSubmitting = false;
+				}
 			},
 
 			// ================================================================
@@ -2306,6 +3565,312 @@
 		color: #4A5A6A;
 		line-height: 1.4;
 	}
+	/* 合作申请记录列表 */
+	.coop-history-section {
+		margin-top: 36rpx;
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 28rpx;
+		border: 1rpx solid #f0f4f8;
+		box-shadow: 0 4rpx 16rpx rgba(66, 145, 246, 0.05);
+	}
+	.coop-history-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+	.coop-history-title {
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #1A2A3A;
+	}
+	.coop-history-refresh {
+		font-size: 24rpx;
+		color: #4291F6;
+		cursor: pointer;
+	}
+	.coop-history-empty {
+		font-size: 24rpx;
+		color: #8C9AA8;
+		text-align: center;
+		padding: 32rpx 0;
+	}
+	.coop-history-list {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+	}
+	.coop-record-card {
+		background: #F8FAFC;
+		border-radius: 16rpx;
+		padding: 22rpx 24rpx;
+		border: 1rpx solid #EEF2F7;
+	}
+	.coop-record-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 10rpx;
+	}
+	.coop-record-tags {
+		display: flex;
+		align-items: center;
+		gap: 10rpx;
+		flex-wrap: wrap;
+	}
+	.coop-type-tag {
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #4291F6;
+		background: #E8F4FD;
+		padding: 4rpx 14rpx;
+		border-radius: 10rpx;
+	}
+	.coop-dir-tag {
+		font-size: 22rpx;
+		color: #4A5A6A;
+		background: #EEF2F7;
+		padding: 4rpx 14rpx;
+		border-radius: 10rpx;
+	}
+	.coop-status-badge {
+		font-size: 22rpx;
+		font-weight: 600;
+		padding: 4rpx 16rpx;
+		border-radius: 20rpx;
+	}
+	.coop-status-badge.status-pending {
+		background: #FEF3C7;
+		color: #D97706;
+	}
+	.coop-status-badge.status-contacting {
+		background: #DBEAFE;
+		color: #2563EB;
+	}
+	.coop-status-badge.status-approved {
+		background: #D1FAE5;
+		color: #059669;
+	}
+	.coop-status-badge.status-rejected {
+		background: #FEE2E2;
+		color: #DC2626;
+	}
+	.coop-record-org {
+		display: block;
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #1A2A3A;
+		margin-bottom: 8rpx;
+	}
+	.coop-record-meta {
+		display: flex;
+		justify-content: space-between;
+		font-size: 22rpx;
+		color: #8C9AA8;
+	}
+	.coop-record-note {
+		margin-top: 14rpx;
+		padding-top: 12rpx;
+		border-top: 1rpx dashed #E2E8F0;
+		font-size: 24rpx;
+		line-height: 1.5;
+	}
+	.coop-note-label {
+		font-weight: 600;
+		color: #4291F6;
+	}
+	.coop-note-content {
+		color: #334155;
+	}
+	/* 合作申请专属表单弹窗 */
+	.coop-modal-mask {
+		position: fixed;
+		left: 0;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		background: rgba(15, 23, 42, 0.55);
+		z-index: 999;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+	}
+	.coop-modal-sheet {
+		width: 100%;
+		max-height: 86vh;
+		background: #FFFFFF;
+		border-top-left-radius: 32rpx;
+		border-top-right-radius: 32rpx;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+	.coop-modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 28rpx 32rpx 22rpx;
+		border-bottom: 1rpx solid #EEF2F7;
+	}
+	.coop-modal-title-wrap {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+	}
+	.coop-modal-emoji {
+		font-size: 44rpx;
+	}
+	.coop-modal-title {
+		display: block;
+		font-size: 32rpx;
+		font-weight: 700;
+		color: #1A2A3A;
+	}
+	.coop-modal-subtitle {
+		display: block;
+		font-size: 22rpx;
+		color: #6B7A8A;
+		margin-top: 4rpx;
+	}
+	.coop-modal-close {
+		font-size: 36rpx;
+		color: #8C9AA8;
+		padding: 8rpx 12rpx;
+		cursor: pointer;
+	}
+	.coop-modal-body {
+		padding: 24rpx 32rpx;
+		max-height: 64vh;
+		box-sizing: border-box;
+	}
+	.coop-raas-banner {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		background: #F0F7FF;
+		border: 1rpx solid #BFDBFE;
+		border-radius: 16rpx;
+		padding: 18rpx 22rpx;
+		margin-bottom: 24rpx;
+		cursor: pointer;
+	}
+	.coop-raas-banner-title {
+		display: block;
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #1D4ED8;
+	}
+	.coop-raas-banner-desc {
+		display: block;
+		font-size: 20rpx;
+		color: #3B82F6;
+		margin-top: 4rpx;
+	}
+	.coop-raas-banner-link {
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #2563EB;
+		white-space: nowrap;
+		margin-left: 16rpx;
+	}
+	.coop-field {
+		margin-bottom: 24rpx;
+	}
+	.coop-field-row {
+		display: flex;
+		gap: 20rpx;
+	}
+	.coop-field.half {
+		flex: 1;
+	}
+	.coop-label {
+		display: block;
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #334155;
+		margin-bottom: 10rpx;
+	}
+	.coop-label.required::after {
+		content: ' *';
+		color: #EF4444;
+	}
+	.coop-input {
+		width: 100%;
+		height: 76rpx;
+		background: #F8FAFC;
+		border: 1rpx solid #E2E8F0;
+		border-radius: 14rpx;
+		padding: 0 22rpx;
+		font-size: 26rpx;
+		color: #1A2A3A;
+		box-sizing: border-box;
+	}
+	.coop-textarea {
+		width: 100%;
+		height: 150rpx;
+		background: #F8FAFC;
+		border: 1rpx solid #E2E8F0;
+		border-radius: 14rpx;
+		padding: 16rpx 22rpx;
+		font-size: 26rpx;
+		color: #1A2A3A;
+		box-sizing: border-box;
+	}
+	.coop-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 14rpx;
+	}
+	.coop-chip {
+		font-size: 24rpx;
+		color: #475569;
+		background: #F1F5F9;
+		border: 1rpx solid #E2E8F0;
+		padding: 10rpx 22rpx;
+		border-radius: 30rpx;
+		cursor: pointer;
+	}
+	.coop-chip.active {
+		background: #E8F4FD;
+		color: #2563EB;
+		border-color: #60A5FA;
+		font-weight: 600;
+	}
+	.coop-modal-footer {
+		display: flex;
+		gap: 20rpx;
+		padding: 20rpx 32rpx 36rpx;
+		border-top: 1rpx solid #EEF2F7;
+		background: #FFFFFF;
+	}
+	.coop-btn-cancel {
+		flex: 1;
+		height: 80rpx;
+		line-height: 80rpx;
+		text-align: center;
+		background: #F1F5F9;
+		color: #64748B;
+		border-radius: 40rpx;
+		font-size: 28rpx;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.coop-btn-submit {
+		flex: 2;
+		height: 80rpx;
+		line-height: 80rpx;
+		text-align: center;
+		background: linear-gradient(135deg, #4291F6, #2563EB);
+		color: #FFFFFF;
+		border-radius: 40rpx;
+		font-size: 28rpx;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.coop-btn-submit.disabled {
+		opacity: 0.6;
+	}
 
 	/* ================================================================ */
 	/* 合伙人推荐页面专属样式 */
@@ -2488,6 +4053,576 @@
 	}
 	.partner-page .btn-submit:active {
 		background: #3373c7;
+	}
+
+	/* 合作与供应链专属标签与签发码样式 */
+	.coop-verified-tag {
+		font-size: 20rpx;
+		color: #059669;
+		background: #ECFDF5;
+		border: 1rpx solid #A7F3D0;
+		padding: 2rpx 12rpx;
+		border-radius: 8rpx;
+		font-weight: 500;
+	}
+	.coop-issued-code-box {
+		margin-top: 14rpx;
+		padding: 14rpx 18rpx;
+		background: #F0FDF4;
+		border: 1rpx solid #86EFAC;
+		border-radius: 14rpx;
+	}
+	.coop-issued-code-main {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8rpx;
+	}
+	.coop-issued-label {
+		font-size: 22rpx;
+		color: #166534;
+		font-weight: 600;
+	}
+	.coop-issued-code {
+		font-size: 26rpx;
+		font-family: monospace;
+		font-weight: 700;
+		color: #15803D;
+		background: #DCFCE7;
+		padding: 2rpx 10rpx;
+		border-radius: 6rpx;
+		letter-spacing: 2rpx;
+	}
+	.coop-issued-exp {
+		font-size: 20rpx;
+		color: #15803D;
+		margin-left: 10rpx;
+	}
+	.coop-issued-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 16rpx;
+		margin-top: 12rpx;
+	}
+	.coop-issued-btn {
+		font-size: 22rpx;
+		padding: 6rpx 18rpx;
+		border-radius: 20rpx;
+		background: #FFFFFF;
+		color: #166534;
+		border: 1rpx solid #86EFAC;
+		cursor: pointer;
+	}
+	.coop-issued-btn.primary {
+		background: #16A34A;
+		color: #FFFFFF;
+		border: none;
+		font-weight: 600;
+	}
+	.coop-inline-verify {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+	}
+	.coop-verify-btn {
+		height: 76rpx;
+		line-height: 76rpx;
+		padding: 0 24rpx;
+		background: #4291F6;
+		color: #FFFFFF;
+		border-radius: 14rpx;
+		font-size: 24rpx;
+		font-weight: 600;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+
+	/* 表单字段集卡片与快捷标签通用样式 */
+	.supplier-header-flex {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+	}
+	.supplier-progress-badge {
+		font-size: 20rpx;
+		font-weight: 700;
+		color: #2563EB;
+		background: #EFF6FF;
+		border: 1rpx solid #BFDBFE;
+		padding: 4rpx 14rpx;
+		border-radius: 20rpx;
+		white-space: nowrap;
+	}
+	.supplier-progress-badge.ready {
+		color: #15803D;
+		background: #ECFDF5;
+		border-color: #86EFAC;
+	}
+	.supplier-progress-bar-wrap {
+		margin-bottom: 24rpx;
+	}
+	.supplier-progress-bar-track {
+		height: 8rpx;
+		background: #F1F5F9;
+		border-radius: 4rpx;
+		overflow: hidden;
+	}
+	.supplier-progress-bar-fill {
+		height: 100%;
+		background: linear-gradient(90deg, #3B82F6, #10B981);
+		border-radius: 4rpx;
+		transition: width 0.3s ease;
+	}
+	.supplier-progress-hint {
+		display: block;
+		font-size: 20rpx;
+		color: #64748B;
+		margin-top: 6rpx;
+	}
+	.mode-tab-title {
+		display: block;
+		font-size: 26rpx;
+		font-weight: 700;
+	}
+	.mode-tab-desc {
+		display: block;
+		font-size: 18rpx;
+		opacity: 0.8;
+		margin-top: 2rpx;
+	}
+	.form-fieldset-card {
+		background: #F8FAFC;
+		border: 1rpx solid #E2E8F0;
+		border-radius: 18rpx;
+		padding: 24rpx 20rpx 12rpx;
+		margin-bottom: 24rpx;
+	}
+	.form-fieldset-header {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+		padding-bottom: 16rpx;
+		margin-bottom: 20rpx;
+		border-bottom: 1rpx solid #E2E8F0;
+	}
+	.form-fieldset-header.justify-between {
+		justify-content: space-between;
+	}
+	.form-fieldset-icon {
+		font-size: 32rpx;
+	}
+	.form-fieldset-title {
+		display: block;
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #1E293B;
+	}
+	.form-fieldset-sub {
+		display: block;
+		font-size: 20rpx;
+		color: #64748B;
+		margin-top: 2rpx;
+	}
+	.coop-label-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 10rpx;
+	}
+	.coop-label-tip {
+		font-size: 20rpx;
+		color: #64748B;
+	}
+	.char-count-pill {
+		font-size: 20rpx;
+		color: #94A3B8;
+		font-family: monospace;
+	}
+	.btn-quick-autofill {
+		display: flex;
+		align-items: center;
+		gap: 6rpx;
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #2563EB;
+		background: #EFF6FF;
+		border: 1rpx solid #BFDBFE;
+		padding: 6rpx 16rpx;
+		border-radius: 20rpx;
+		cursor: pointer;
+	}
+	.btn-quick-autofill-sm {
+		font-size: 20rpx;
+		font-weight: 600;
+		color: #2563EB;
+		background: #EFF6FF;
+		border: 1rpx solid #BFDBFE;
+		padding: 4rpx 14rpx;
+		border-radius: 16rpx;
+		cursor: pointer;
+	}
+	.coop-contact-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 16rpx;
+		padding-top: 10rpx;
+		border-top: 1rpx dashed #E2E8F0;
+	}
+	.coop-contact-title {
+		font-size: 26rpx;
+		font-weight: 700;
+		color: #1E293B;
+	}
+	.quick-chip-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10rpx;
+		margin-top: 10rpx;
+	}
+	.quick-chip-block {
+		margin-top: 10rpx;
+	}
+	.quick-chips-wrap {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10rpx;
+		margin-top: 8rpx;
+	}
+	.quick-chip-label {
+		font-size: 20rpx;
+		color: #64748B;
+	}
+	.quick-chip {
+		font-size: 20rpx;
+		color: #2563EB;
+		background: #EFF6FF;
+		border: 1rpx solid #DBEAFE;
+		padding: 4rpx 14rpx;
+		border-radius: 8rpx;
+		cursor: pointer;
+	}
+	.quick-chip:active {
+		background: #BFDBFE;
+	}
+	.supplier-license-uploader {
+		background: #FFFFFF;
+		border: 1rpx dashed #CBD5E1;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		cursor: pointer;
+	}
+	.supplier-license-empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+	}
+	.license-upload-icon {
+		font-size: 40rpx;
+		margin-bottom: 6rpx;
+	}
+	.license-upload-text {
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #334155;
+	}
+	.license-upload-sub {
+		font-size: 20rpx;
+		color: #94A3B8;
+		margin-top: 4rpx;
+	}
+	.supplier-license-picked {
+		display: flex;
+		align-items: center;
+		gap: 14rpx;
+	}
+	.license-picked-icon {
+		font-size: 36rpx;
+	}
+	.license-picked-info {
+		flex: 1;
+		overflow: hidden;
+	}
+	.license-picked-name {
+		display: block;
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #0F172A;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.license-picked-tip {
+		display: block;
+		font-size: 20rpx;
+		color: #16A34A;
+		margin-top: 2rpx;
+	}
+	.license-picked-del {
+		font-size: 22rpx;
+		color: #EF4444;
+		padding: 8rpx 16rpx;
+		background: #FEF2F2;
+		border-radius: 10rpx;
+	}
+	.supplier-submit-privacy-tip {
+		display: block;
+		text-align: center;
+		font-size: 20rpx;
+		color: #94A3B8;
+		margin-top: 14rpx;
+		line-height: 1.4;
+	}
+	.font-mono {
+		font-family: monospace;
+	}
+
+	/* ================================================================ */
+	/* 供应链受邀入驻页面专属样式 */
+	/* ================================================================ */
+	.supplier-page .sub-content {
+		padding: 20rpx;
+		box-sizing: border-box;
+	}
+	.supplier-hero-card {
+		background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);
+		border-radius: 24rpx;
+		padding: 32rpx 28rpx;
+		color: #FFFFFF;
+		margin-bottom: 24rpx;
+		box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.2);
+	}
+	.supplier-hero-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+	}
+	.supplier-hero-badge {
+		display: inline-block;
+		font-size: 18rpx;
+		font-weight: 700;
+		letter-spacing: 1.5rpx;
+		background: rgba(96, 165, 250, 0.25);
+		color: #93C5FD;
+		border: 1rpx solid rgba(147, 197, 253, 0.4);
+		padding: 4rpx 12rpx;
+		border-radius: 6rpx;
+		margin-bottom: 8rpx;
+	}
+	.supplier-hero-title {
+		display: block;
+		font-size: 34rpx;
+		font-weight: 700;
+		color: #FFFFFF;
+	}
+	.supplier-hero-icon {
+		font-size: 48rpx;
+	}
+	.supplier-hero-desc {
+		display: block;
+		font-size: 22rpx;
+		line-height: 1.6;
+		color: #CBD5E1;
+		margin-top: 14rpx;
+	}
+	.supplier-hero-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 16rpx;
+		margin-top: 18rpx;
+		padding-top: 16rpx;
+		border-top: 1rpx solid rgba(255, 255, 255, 0.15);
+	}
+	.supplier-hero-tag {
+		font-size: 20rpx;
+		color: #BFDBFE;
+	}
+	.supplier-section-card {
+		background: #FFFFFF;
+		border-radius: 24rpx;
+		padding: 28rpx 24rpx;
+		margin-bottom: 24rpx;
+		box-shadow: 0 4rpx 16rpx rgba(66, 145, 246, 0.05);
+	}
+	.supplier-section-header {
+		margin-bottom: 20rpx;
+	}
+	.supplier-section-title {
+		display: block;
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #1A2A3A;
+	}
+	.supplier-section-sub {
+		display: block;
+		font-size: 22rpx;
+		color: #8C9AA8;
+		margin-top: 4rpx;
+	}
+	.supplier-verify-bar {
+		display: flex;
+		gap: 16rpx;
+		align-items: center;
+	}
+	.supplier-verify-input {
+		flex: 1;
+		height: 80rpx;
+		background: #F8FAFC;
+		border: 1rpx solid #CBD5E1;
+		border-radius: 16rpx;
+		padding: 0 20rpx;
+		font-size: 26rpx;
+		color: #1A2A3A;
+		font-family: monospace;
+		box-sizing: border-box;
+	}
+	.supplier-verify-btn {
+		height: 80rpx;
+		line-height: 80rpx;
+		padding: 0 32rpx;
+		background: linear-gradient(135deg, #2563EB, #1D4ED8);
+		color: #FFFFFF;
+		font-size: 26rpx;
+		font-weight: 600;
+		border-radius: 16rpx;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.supplier-verify-result {
+		margin-top: 18rpx;
+		padding: 20rpx;
+		border-radius: 16rpx;
+	}
+	.supplier-verify-result.is-valid {
+		background: #F0FDF4;
+		border: 1rpx solid #86EFAC;
+	}
+	.supplier-verify-result.is-invalid {
+		background: #FEF2F2;
+		border: 1rpx solid #FECACA;
+	}
+	.supplier-verify-result-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+	.supplier-verify-status {
+		font-size: 26rpx;
+		font-weight: 700;
+	}
+	.supplier-verify-result.is-valid .supplier-verify-status {
+		color: #15803D;
+	}
+	.supplier-verify-result.is-invalid .supplier-verify-status {
+		color: #DC2626;
+	}
+	.supplier-verify-code-pill {
+		font-family: monospace;
+		font-size: 22rpx;
+		background: rgba(0, 0, 0, 0.05);
+		padding: 4rpx 12rpx;
+		border-radius: 6rpx;
+		color: #334155;
+	}
+	.supplier-verify-note {
+		display: block;
+		font-size: 24rpx;
+		color: #166534;
+		margin-top: 8rpx;
+	}
+	.supplier-verify-meta {
+		display: block;
+		font-size: 22rpx;
+		color: #4B5563;
+		margin-top: 4rpx;
+	}
+	.supplier-verify-reason {
+		display: block;
+		font-size: 24rpx;
+		color: #991B1B;
+		margin-top: 8rpx;
+	}
+	.supplier-verify-fallback {
+		display: block;
+		font-size: 22rpx;
+		color: #2563EB;
+		margin-top: 8rpx;
+		cursor: pointer;
+		text-decoration: underline;
+	}
+	.supplier-verify-actions {
+		display: flex;
+		gap: 16rpx;
+		margin-top: 16rpx;
+	}
+	.supplier-action-btn {
+		flex: 1;
+		height: 68rpx;
+		line-height: 68rpx;
+		text-align: center;
+		font-size: 24rpx;
+		font-weight: 600;
+		border-radius: 12rpx;
+		cursor: pointer;
+	}
+	.supplier-action-btn.outline {
+		border: 1rpx solid #2563EB;
+		color: #2563EB;
+		background: #FFFFFF;
+	}
+	.supplier-action-btn.primary {
+		background: #2563EB;
+		color: #FFFFFF;
+	}
+	.supplier-mode-tabs {
+		display: flex;
+		background: #F1F5F9;
+		border-radius: 16rpx;
+		padding: 6rpx;
+		margin-bottom: 24rpx;
+	}
+	.supplier-mode-tab {
+		flex: 1;
+		text-align: center;
+		padding: 16rpx 0;
+		font-size: 26rpx;
+		font-weight: 500;
+		color: #64748B;
+		border-radius: 12rpx;
+		cursor: pointer;
+	}
+	.supplier-mode-tab.active {
+		background: #2563EB;
+		color: #FFFFFF;
+		font-weight: 700;
+		box-shadow: 0 4rpx 10rpx rgba(37, 99, 235, 0.25);
+	}
+	.supplier-submit-wrap {
+		margin-top: 32rpx;
+	}
+	.supplier-submit-btn {
+		width: 100%;
+		height: 88rpx;
+		line-height: 88rpx;
+		text-align: center;
+		background: linear-gradient(135deg, #2563EB, #1D4ED8);
+		color: #FFFFFF;
+		font-size: 30rpx;
+		font-weight: 700;
+		border-radius: 44rpx;
+		cursor: pointer;
+		box-shadow: 0 6rpx 18rpx rgba(37, 99, 235, 0.3);
+	}
+	.supplier-submit-btn.disabled {
+		opacity: 0.6;
+		pointer-events: none;
+	}
+	.coop-record-submeta {
+		font-size: 22rpx;
+		color: #2563EB;
+		margin-top: 4rpx;
 	}
 
 	/* ================================================================ */

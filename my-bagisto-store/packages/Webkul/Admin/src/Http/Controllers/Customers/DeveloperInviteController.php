@@ -80,18 +80,22 @@ class DeveloperInviteController extends Controller
         $this->authorizeManage();
 
         $data = $request->validate([
+            'custom_code'     => ['nullable', 'string', 'min:3', 'max:40', 'regex:/^[A-Za-z0-9_-]+$/', 'unique:developer_invite,code'],
             'note'            => ['nullable', 'string', 'max:191'],
+            'max_uses'        => ['nullable', 'integer', 'min:1', 'max:255'],
             'expires_in_days' => ['nullable', 'integer', 'in:'.implode(',', self::EXPIRES_DAY_OPTIONS)],
         ]);
 
         $days = $this->expiresInDays($data['expires_in_days'] ?? null);
         $expiresAt = $days > 0 ? now()->addDays($days) : null;
+        $maxUses = isset($data['max_uses']) && (int) $data['max_uses'] > 0 ? (int) $data['max_uses'] : self::ONE_TIME_MAX_USES;
 
         $invite = $this->invites->generate(
             auth()->guard('admin')->user()->id,
             $data['note'] ?? null,
-            self::ONE_TIME_MAX_USES,
-            $expiresAt
+            $maxUses,
+            $expiresAt,
+            $data['custom_code'] ?? null
         );
 
         // ⚠ 审计只记掩码，不记明文码 —— 日志是长期留存物，码则是可工作凭据。
@@ -102,9 +106,10 @@ class DeveloperInviteController extends Controller
             'note'        => $invite->note,
         ]);
 
+        $usesText = $invite->max_uses > 1 ? "（可用 {$invite->max_uses} 次）" : "（一次性）";
         session()->flash(
             'success',
-            '已生成一次性邀请码：'.$invite->code.'（请复制后发给对方）。'
+            '已生成邀请码'.$usesText.'：'.$invite->code.'（请复制后发给对方）。'
             .'注意：邀请码不是准入闸门，对方持码仍需完成实名与协议签署。'
         );
 

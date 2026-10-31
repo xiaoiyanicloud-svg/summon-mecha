@@ -22,6 +22,107 @@
 
 ## 变更记录
 
+### [后台邀请码创建与在跟进人员指派闭环] 2026-11-01 · 合作申请受理台支持在跟进人员指派、专属邀请码一键签发及开发者邀请码自定义扩展
+- 问题：
+  - 后台运营在受理生态合作/供应链入驻申请时，无法填写并指派专属的「在跟进人员（商务顾问 / 对接负责人）」，无法按跟进人员筛选申请单，C 端申请人也无法在跟进中阶段看到明确的对接顾问姓名；
+  - 邀请码创建在后台之前仅作为合作申请状态变更时的附属勾选项，运营无法独立、快捷地生成或签发邀请码，且缺少自定义码（如 `VIP-SUPPLIER`）与多用途次数配置支持；
+  - 开发者邀请码运营台仅支持单一的 1 次性随机码，不便支持批量或团队多人场景。
+- 调整：
+  - 数据库迁移与模型拓展：
+    - 新增迁移 `2026_11_01_000001_add_followup_person_to_cooperation_applications_table.php`，为 `cooperation_applications` 增加 `followup_person` 字段；
+    - 更新 `CooperationApplication.php`：将 `followup_person` 加入 `$fillable`，并在 `toApiArray()` 中同步透传 `followup_person`、`follower_name` 与 `follower_contact`；
+  - 服务层与控制器升级：
+    - `DeveloperInviteService.php`：`generate()` 方法拓展支持 `$customCode = null` 自定义邀请码（自动规范为大写）及指定 `$maxUses`；
+    - `DeveloperInviteController.php`：发码验证层增加 `custom_code`（唯一性/正则校验）及 `max_uses`（1~255），视图 `developer-invites/index.blade.php` 增加自定义码、可用次数与备注表单域；
+    - `CooperationController.php`：
+      - `index()`：新增 `followup_person` 专项筛选过滤及全字段关键词搜索，传递 `$adminUsers`；
+      - `show()`：传递 `$adminUsers` 便于快捷指派当前或指定管理员；
+      - `updateStatus()`：支持保存 `followup_person` 字段与联系方式，审计日志与站内通知同步记录；
+      - `issueInvite()`：提供独立的专属受邀码快捷签发接口，支持自定义邀请码、有效期与可用次数，签发后自动写回档案并向申请人发送站内信与 C 端卡片；
+      - `createInvite()`：支持在合作申请页直接创建并签发公共/定向邀请码；
+  - 运营台视图重构：
+    - `cooperations/show.blade.php`：在跟进人员输入框新增所有系统管理员快速一键填入/清空芯片；新增独立的「🔑 专属受邀码签发」卡片，无需变更状态即可即时发码；
+    - `cooperations/index.blade.php`：筛选栏增加「跟进人员」搜索框，表格增加「在跟进人员」专栏与「一键发邀请码」快捷操作；
+  - C 端展示优化（`pages/mine/index.vue`）：
+    - 申请记录卡片当存在 `followup_person` 时展示「跟进负责人：XXX」标识。
+- 验证：
+  - 双库迁移执行完成（`summon_mecha_local` 与 `summon_mecha_step10_test`）；
+  - `php artisan ecosystem:contract-check` 契约门禁通过；
+  - `php artisan view:cache` 编译检查全量 Blade 通过；
+  - `DeveloperInviteConsoleS11bTest.php` 12 个测试全数通过（77 assertions）；
+  - `CooperationSupplierInviteTest.php` 4 个测试全数通过（69 assertions）；
+  - `CooperationApplicationTest.php` 3 个测试全数通过（37 assertions）；
+  - `scene-uni-build.mjs` 成功构建并同步前端 H5 / mp-weixin 产物。
+- 回滚：`git checkout -- my-bagisto-store/packages/Webkul/Admin/ my-bagisto-store/packages/Webkul/Shop/ pages/mine/index.vue docs/ai-changelog.md`。
+
+### [入驻与合作表单内容深度优化] 2026-10-31 · 供应链受邀入驻、合作申请与合伙人推荐全表单信息层级结构化、快捷点选与智能辅助体验升级
+- 问题：
+  - 供应链受邀入驻与合作申请表单字段较长、平铺排列缺乏信息层级，填写体验较沉重；
+  - 缺乏快捷机型与常用产品填充标签，需要供应商与开发者反复手动敲击长字符机型名称；
+  - 缺少表单填写进度引导与缺项明确提示，用户难以在提交前直观获知还差哪些必填项；
+  - 缺少资质证明/营业执照凭证的轻量化选择与附件留痕能力；
+  - 每次重新打开都需要重复输入姓名、手机号等联系方式，缺少账号信息一键填充。
+- 调整：
+  - 供应链入驻表单结构化卡片重构（`pages/mine/index.vue`）：
+    - 增加 **表单完成度动态进度条**（实时计算已完成比例与缺项中文引导）；
+    - **分组一 · 企业主体与供应资质**：增加营业执照/资质材料轻量化选择与文件名/大小展示、统一社会信用代码大写格式辅助、覆盖城市热门标签（`深圳`、`苏州`、`杭州`、`上海`、`东莞`、`北京`、`武汉`、`成都`）；
+    - **分组二 · 供货清单与履约质保**：增加常用热门机型与零配件清单快捷点选追加（`宇树 G1 关节模组`、`宇树 Go2 核心零备件`、`智元远征系列套件`、`钛合金外骨骼外壳`、`驻场工程师维保`、`ROS2运控算法包`），文本域增加实时字数计算 `0/500`；
+    - **分组三 · 商务对接负责人**：新增「⚡ 一键填入当前账号」快捷操作，自动预填登录用户的姓名、手机、微信/邮箱，并提供手机号 11 位即时规范提示。
+  - 合作申请专属弹窗（`cooperateForm`）优化：
+    - 本体厂商与 RaaS 开发者表单增加热门机型与热门城市快捷芯片点选；
+    - 增加「⚡ 填入当前账号」联系人一键填充与补充说明实时字数计数。
+  - 合伙人推荐表单（`partnerForm`）优化：
+    - 意向签约城市增加热门城市一键填充芯片。
+- 验证：
+  - `scene-uni-build.mjs` 编译检查全绿（h5 与 mp-weixin 均 exit 0），更新同步至 `unpackage/dist/build/h5`；
+  - 后端 feature 测试 `CooperationSupplierInviteTest.php`（3 passed, 47 assertions）与 `CooperationApplicationTest.php`（3 passed, 37 assertions）全绿；
+  - `php artisan ecosystem:contract-check` 契约门禁校验通过。
+- 回滚：`git checkout -- pages/mine/index.vue docs/ai-changelog.md`。
+
+### [供应链受邀入驻与邀请码核验闭环] 2026-10-31 · 供应链受邀入驻 / 邀请码实时核验 / Admin 签发邀请码与 C 端直通开发者门户全链路
+- 问题：`pages/mine/index.vue` 伙伴入口网格中的「🔑 供应商邀请」长期停留在 `uni.showToast('供应商邀请码：即将开放')` 占位，缺少专属申请与核验通道；此前各合作入口填写的 `invite_code` 未与底层 `developer_invite`（`DeveloperInviteService`）邀请码体系打通校验与留痕；且运营在后台审核通过供应链或合伙人申请时，无法一键在线签发专属受邀码并同步下发至申请人。
+- 调整：
+  - 数据模型层：
+    - `CooperationApplication.php`：增加 `TYPE_SUPPLIER_INVITE = 'supplier_invite'`（`供应链受邀入驻`）常量与 `ALLOWED_TYPES` / `ALLOWED_STATUSES` 字典；
+    - 补齐静态 `typeLabel()`、`statusLabel()`、`formatMetaForDisplay()` 及 `toApiArray()`，格式化中文标签并输出 `invite_code`、`invite_verified`、`invite_note`、`issued_invite_code`、`issued_invite_expires_at`。
+  - API 与路由层：
+    - `packages/Webkul/Shop/src/Routes/api.php`：增加 `POST /api/cooperations/verify-invite` 路由；
+    - `Webkul\Shop\Http\Controllers\API\CooperationController.php`：
+      - 注入 `DeveloperInviteService`；
+      - 实现 `verifyInvite(Request $request)`，提供 10 位邀请码有效性核验与 4 种精细化诊断原因（不存在、已作废、已过期、已用尽）及直通受邀链接 `dev_join_url`；
+      - 升级 `store(Request $request)`：为 `supplier_invite` 定制强校验规则（品类方向、供货产品与型号、月供货量级、履约与质保承诺、信用代码、入驻模式与邀请码），在持码模式下执行真实受邀码核验，有效时自动记录核验标记与备注留痕，无效时 422 拒绝并给出明确诊断。
+  - Admin 运营台：
+    - `Webkul\Admin\Http\Controllers\Customers\CooperationController.php`：增加 `supplier_invite` 统计项；在 `updateStatus` 支持可选勾选「同步签发专属供应链/生态邀请码」（`issue_invite`）与有效期（7/30/90天/长期），自动调用 `DeveloperInviteService::generate` 生成真实可用邀请码并回填申请档案，记录审计日志并在站内信与通知中下发给客户。
+    - 视图（`index.blade.php`、`show.blade.php`）：增加 `供应链受邀入驻` 筛选与申报邀请码/核验/已签发码状态角标；详情页格式化展示中文标签、专属签发码高亮展示卡片及签发操作表单。
+  - 前端 C 端（`utils/api.js`、`pages/mine/index.vue`）：
+    - `cooperationApi` 增加 `verifyInvite(code)`；
+    - 打通「🔑 供应商邀请」点击进入独立子页面 `currentPage === 'supplier'`；
+    - 落地三大模块：① 邀请码即时核验与直通激活器（展示有效状态、剩余次数、有效期，提供「带入下方表单」与「带码直通开发者门户 (/dev)」快捷操作）；② 供应链受邀入驻表单（支持「持邀请码极速入驻」与「无码申请供应链邀约」双模式，涵盖四大品类芯片、产能量级、质保承诺、企业统一社会信用代码与联系信息）；③ 我的供应链入驻与进度追踪卡片（展示审核状态、核验标记、商务反馈，以及审核通过后平台在线签发的专属邀请码卡片，支持「一键复制邀请码」与「去门户激活」）。
+    - 联动优化 RaaS 合伙人申请弹窗中的邀请码核验能力，各合作记录卡片统一展示核验状态与签发码。
+- 验证：
+  - 新增专项测试 `packages/Webkul/Shop/tests/Feature/API/CooperationSupplierInviteTest.php`（3 passed, 47 assertions）全绿；
+  - 既有测试 `CooperationApplicationTest.php`（3 passed, 37 assertions）全绿；
+  - `php artisan ecosystem:contract-check` 契约检查通过（admin_routes: 113, public_routes: 45, error_codes: 85）；
+  - H5 编译器编译检查 `node tools/tests/scene-uni-build.mjs` 成功生成（Exit 0）；
+  - 本机 live 8008 服务接口探测（`verify-invite` 与 `POST /api/cooperations` 提交真实 201 响应）验证通过。
+- 回滚：`git checkout -- pages/mine/index.vue utils/api.js my-bagisto-store/` 并删除新增测试。
+
+### [AI首屏文案精简] 2026-10-31 · 移除欢迎卡片冗余副标题与引导语
+- 问题：`pages/ai/index.vue` 欢迎卡片主标题「✨ 一句话，帮你选对机器人」下方连续堆叠两行说明文字（「说清场景、任务和预算，小召给你选型与落地建议」与「不知道怎么描述？可以从这里开始」），文字过多且与输入框占位提示重复。
+- 调整：移除 `.card-subtitle` 与 `.question-label` 两行文案及对应冗余样式，主标题下方直接展示 3 个快捷问题按钮。
+- 验证：`node tools/tests/scene-ui-check.mjs` 与 `node tools/tests/scene-workflow-ui.mjs` 真实 SFC 编译与 Chromium 无头浏览器检查全部通过（0 页面异常）。
+- 回滚：从 `.claude/backup/ai-subtitle-remove-20261031/pages/ai/index.vue` 恢复覆盖，或执行 `git checkout -- pages/ai/index.vue`。
+
+### [合作申请全链路闭环] 2026-10-31 · 本体厂商 / RaaS合伙人 / 网红达人 / 合伙人推荐前后端与运营台落地
+- 问题：`pages/mine/index.vue` 中「合作申请」的三个入口（本体厂商、RaaS合伙人、网红达人）及「合伙人推荐」均停留在「通道即将开放」的占位提示，无数据表、无后端 API、无 Admin 审核台。
+- 调整：
+  - 数据层：新增迁移 `2026_10_31_000001_create_cooperation_applications_table.php` 与模型 `CooperationApplication.php`，统一承载 `manufacturer`、`raas`、`influencer`、`partner_referral` 四类合作申请及 `pending/contacting/approved/rejected` 状态机。
+  - Shop API：新增 `Webkul\Shop\Http\Controllers\API\CooperationController.php`（`GET /api/cooperations`、`POST /api/cooperations`），支持登录客户与游客 `guest_key` 追踪、分类型字段强校验、待审防重拦截（409 CONFLICT）、审计日志与站内信通知。
+  - Admin 运营台：新增 `Webkul\Admin\Http\Controllers\Customers\CooperationController.php`、列表/详情视图（`customers/cooperations/index.blade.php`、`show.blade.php`）及路由/菜单/ACL，支持按类型与状态筛选、商务跟进备注回写及自动下发客户站内通知。
+  - C 端前端（`utils/api.js`、`pages/mine/index.vue`）：新增 `cooperationApi`；为本体厂商、RaaS合伙人（含直达 `/dev` 开发者门户快捷入口）、网红达人分别定制专属申请弹窗表单与「我的申请记录」状态追踪列表；打通「合伙人推荐」真实提交。
+- 验证：`CooperationApplicationTest.php`（3 passed, 37 assertions）、`php artisan view:cache`、`php artisan ecosystem:contract-check`、`node --test tools/tests/*.test.mjs`（98/98 passed）全绿。
+- 回滚：从 `.claude/backup/cooperation-apply-20261031/` 恢复修改文件并回滚新增迁移。
+
 ### [技能节点1-校正闭环] 2026-10-26 · DEV-01~03 上传即安检（Fail-Fast）与表单规范对齐
 - 问题：
   - DEV-01：`PackageInspector` 在扩展缺失时直接调用 `ZipArchive` 可能抛出未捕获错误导致 500；

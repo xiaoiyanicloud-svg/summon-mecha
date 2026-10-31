@@ -880,6 +880,17 @@ return [
         'name'  => 'admin::app.acl.view',
         'route' => 'admin.customers.incidents.show',
         'sort'  => 1,
+    ], [
+        // 生态合作申请受理台（本体厂商 / RaaS合伙人 / 网红达人 / 合伙人推荐）
+        'key'   => 'customers.cooperations',
+        'name'  => '合作申请',
+        'route' => 'admin.customers.cooperations.index',
+        'sort'  => 11,
+    ], [
+        'key'   => 'customers.cooperations.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.customers.cooperations.show',
+        'sort'  => 1,
     ],
 
     /*

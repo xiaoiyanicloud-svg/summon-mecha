@@ -39,15 +39,34 @@ class DeveloperInviteService
      * @param  string|null  $note  备注
      * @param  int  $maxUses  可用次数（1..255，落 unsignedTinyInteger 列）
      * @param  CarbonInterface|null  $expiresAt  过期时间；null = 永不过期
+     * @param  string|null  $customCode  自定义邀请码（可选，为 null 时自动生成防混淆随机码）
      */
     public function generate(
         ?int $createdBy,
         ?string $note = null,
         int $maxUses = 1,
-        ?CarbonInterface $expiresAt = null
+        ?CarbonInterface $expiresAt = null,
+        ?string $customCode = null
     ): DeveloperInvite {
         // unsignedTinyInteger 上限 255，下界 1（0 次的码没有意义）
         $maxUses = max(1, min(255, $maxUses));
+
+        if ($customCode !== null && trim($customCode) !== '') {
+            $code = strtoupper(trim($customCode));
+            $id = DB::table('developer_invite')->insertGetId([
+                'code'       => $code,
+                'max_uses'   => $maxUses,
+                'times_used' => 0,
+                'expires_at' => $expiresAt,
+                'status'     => DeveloperInvite::STATUS_ACTIVE,
+                'created_by' => $createdBy,
+                'note'       => $note,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return DeveloperInvite::query()->findOrFail($id);
+        }
 
         $id = null;
 

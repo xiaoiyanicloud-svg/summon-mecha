@@ -606,3 +606,20 @@ export const addressApi = {
 export const cmsApi = {
   page: (slug) => http.get(`/api/cms/pages/${slug}`, { loading: false }),
 }
+
+
+// ==================== 生态合作申请（本体厂商 / RaaS合伙人 / 网红达人 / 合伙人推荐 / 供应链受邀入驻） ====================
+export const cooperationApi = {
+  list: (guestKey = '') => http.get('/api/cooperations', {
+    data: guestKey ? { guest_key: guestKey } : {},
+    loading: false,
+  }),
+  submit: (data) => http.post('/api/cooperations', data, {
+    loading: true,
+    loadingText: '提交申请中...',
+  }),
+  verifyInvite: (code) => http.post('/api/cooperations/verify-invite', { code }, {
+    loading: true,
+    loadingText: '正在核验邀请码...',
+  }),
+}

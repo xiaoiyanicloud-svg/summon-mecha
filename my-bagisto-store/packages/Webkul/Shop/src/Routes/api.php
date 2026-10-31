@@ -28,6 +28,7 @@ use Webkul\Shop\Http\Controllers\API\EventRegistrationController;
 use Webkul\Shop\Http\Controllers\API\EcosystemMediaController;
 use Webkul\Shop\Http\Controllers\API\FavoriteController;
 use Webkul\Shop\Http\Controllers\API\CompareController;
+use Webkul\Shop\Http\Controllers\API\CooperationController;
 use Webkul\Shop\Http\Controllers\API\CoreController;
 use Webkul\Shop\Http\Controllers\API\CustomerController;
 use Webkul\Shop\Http\Controllers\API\Dev\AgreementController as DevAgreementController;
@@ -339,6 +340,13 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('', 'guestIndex')->name('shop.api.guest-orders.index');
         // 游客自助取消(游客单 customer_id 为空)——api.customer 放行,与登录 cancel 逻辑一致(复用 cancel)
         Route::post('{id}/cancel', 'cancel')->name('shop.api.guest-orders.cancel');
+    });
+
+    // 生态合作申请（本体厂商 / RaaS合伙人 / 网红达人 / 合伙人推荐 / 供应链受邀入驻）：带 token 自动绑定 customer_id，游客凭 guest_key 追踪
+    Route::controller(CooperationController::class)->prefix('cooperations')->middleware(['api.customer'])->group(function () {
+        Route::get('', 'index')->name('shop.api.cooperations.index');
+        Route::post('', 'store')->middleware('throttle:write')->name('shop.api.cooperations.store');
+        Route::post('verify-invite', 'verifyInvite')->middleware('throttle:write')->name('shop.api.cooperations.verify_invite');
     });
 
     /**

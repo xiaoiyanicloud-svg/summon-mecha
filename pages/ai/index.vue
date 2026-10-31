@@ -30,11 +30,9 @@
           <view class="card-header">
             <view class="card-heading">
               <text class="card-title"><text class="icon-sparkle">✨</text> 一句话，帮你选对机器人</text>
-              <text class="card-subtitle">说清场景、任务和预算，小召给你选型与落地建议</text>
             </view>
           </view>
           <view class="question-btns">
-            <text class="question-label">不知道怎么描述？可以从这里开始</text>
             <view class="q-btn" role="button" tabindex="0" aria-label="询问工厂分拣机器人怎么选型" @tap="onQuestionTap('工厂分拣机器人怎么选型？请结合节拍、精度和预算给建议')" @keydown.enter.prevent="onQuestionTap('工厂分拣机器人怎么选型？请结合节拍、精度和预算给建议')">
               <text>工厂分拣怎么选型</text>
               <text class="q-arrow">›</text>
@@ -2094,11 +2092,6 @@ page {
   font-weight: 600;
   color: #1a2a3a;
 }
-.card-subtitle {
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: #607080;
-}
 .icon-sparkle {
   margin-right: 10rpx;
   font-size: 30rpx;
@@ -2114,11 +2107,6 @@ page {
   display: flex;
   flex-direction: column;
   gap: 14rpx;
-}
-.question-label {
-  margin-bottom: 2rpx;
-  font-size: 23rpx;
-  color: #6b7a88;
 }
 .q-btn {
   background: rgba(255, 255, 255, 0.75);

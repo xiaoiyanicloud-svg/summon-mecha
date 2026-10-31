@@ -20,32 +20,48 @@
         </p>
     </div>
 
-    {{-- 发码：只发一次性码（max_uses = 1 固定，UI 不暴露多用途） --}}
+    {{-- 发码：支持一次性码或多用途码，支持自定义码或系统自动生成 --}}
     <div class="mb-4 box-shadow rounded bg-white p-4 dark:bg-gray-900">
-        <p class="mb-1 font-semibold text-gray-800 dark:text-white">生成邀请码（一次性）</p>
+        <p class="mb-1 font-semibold text-gray-800 dark:text-white">生成并签发邀请码</p>
         <p class="mb-3 text-xs text-gray-500">
-            每次生成一张仅可使用一次的新码，有效期默认 7 天。生成后请复制并直接发给对方；
-            列表里也会一直显示明文码，便于重发。
+            支持自动生成 10 位防混淆码或指定专属自定义码，可指定有效使用次数与有效期。生成后请复制并直接发给入驻主体；列表内明文呈现便于随时核对与重发。
         </p>
 
         <form
             method="POST"
             action="{{ route('admin.customers.developer-invites.store') }}"
-            class="grid items-end gap-3 md:grid-cols-3"
+            class="grid items-end gap-3 md:grid-cols-4"
         >
             @csrf
 
             <label class="block">
-                <span class="mb-1 block text-xs text-gray-600 dark:text-gray-300">备注（发给谁 / 用途，可选）</span>
+                <span class="mb-1 block text-xs text-gray-600 dark:text-gray-300">自定义邀请码（可选）</span>
                 <input
                     type="text"
-                    name="note"
-                    maxlength="191"
-                    value="{{ old('note') }}"
-                    placeholder="例如：发给某某机器人公司-张工"
+                    name="custom_code"
+                    maxlength="40"
+                    value="{{ old('custom_code') }}"
+                    placeholder="留空则自动生成防混淆码"
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm uppercase font-mono dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                >
+                @error('custom_code')
+                    <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
+                @enderror
+            </label>
+
+            <label class="block">
+                <span class="mb-1 block text-xs text-gray-600 dark:text-gray-300">可用次数</span>
+                <select
+                    name="max_uses"
                     class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white"
                 >
-                @error('note')
+                    <option value="1" @selected(old('max_uses', 1) == 1)>1 次（一次性专属码，推荐）</option>
+                    <option value="5" @selected(old('max_uses') == 5)>5 次（团队多人使用）</option>
+                    <option value="10" @selected(old('max_uses') == 10)>10 次</option>
+                    <option value="100" @selected(old('max_uses') == 100)>100 次（批量分发）</option>
+                    <option value="255" @selected(old('max_uses') == 255)>255 次（长期不限）</option>
+                </select>
+                @error('max_uses')
                     <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
                 @enderror
             </label>
@@ -56,7 +72,7 @@
                     name="expires_in_days"
                     class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white"
                 >
-                    @foreach ([7 => '7 天（默认）', 30 => '30 天', 90 => '90 天', 0 => '不过期'] as $days => $label)
+                    @foreach ([7 => '7 天（默认）', 30 => '30 天（推荐）', 90 => '90 天', 0 => '不过期'] as $days => $label)
                         <option value="{{ $days }}" @selected((string) old('expires_in_days', 7) === (string) $days)>
                             {{ $label }}
                         </option>
@@ -67,8 +83,23 @@
                 @enderror
             </label>
 
-            <div>
-                <button type="submit" class="primary-button">生成一次性邀请码</button>
+            <label class="block">
+                <span class="mb-1 block text-xs text-gray-600 dark:text-gray-300">备注（发给谁 / 供应链用途，可选）</span>
+                <input
+                    type="text"
+                    name="note"
+                    maxlength="191"
+                    value="{{ old('note') }}"
+                    placeholder="例如：发给宇树科技-张工"
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                >
+                @error('note')
+                    <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
+                @enderror
+            </label>
+
+            <div class="md:col-span-4 flex justify-end">
+                <button type="submit" class="primary-button">生成并签发邀请码</button>
             </div>
         </form>
     </div>

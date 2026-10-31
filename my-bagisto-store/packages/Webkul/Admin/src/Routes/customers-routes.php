@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Webkul\Admin\Http\Controllers\Customers\AddressController;
+use Webkul\Admin\Http\Controllers\Customers\CooperationController;
 use Webkul\Admin\Http\Controllers\Customers\Customer\CartController;
 use Webkul\Admin\Http\Controllers\Customers\Customer\CompareController;
 use Webkul\Admin\Http\Controllers\Customers\Customer\OrderController;
@@ -223,5 +224,16 @@ Route::prefix('customers')->group(function () {
         Route::get('', 'index')->name('admin.customers.incidents.index');
         Route::get('{id}', 'show')->whereNumber('id')->name('admin.customers.incidents.show');
         Route::post('{id}/handle', 'handle')->whereNumber('id')->name('admin.customers.incidents.handle');
+    });
+
+    /**
+     * 生态合作申请受理台（本体厂商 / RaaS合伙人 / 网红达人 / 合伙人推荐 / 供应链受邀入驻）。
+     */
+    Route::controller(CooperationController::class)->prefix('cooperations')->group(function () {
+        Route::get('', 'index')->name('admin.customers.cooperations.index');
+        Route::post('invites', 'createInvite')->name('admin.customers.cooperations.invites.store');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.customers.cooperations.show');
+        Route::post('{id}/status', 'updateStatus')->whereNumber('id')->name('admin.customers.cooperations.status');
+        Route::post('{id}/issue-invite', 'issueInvite')->whereNumber('id')->name('admin.customers.cooperations.issue_invite');
     });
 });

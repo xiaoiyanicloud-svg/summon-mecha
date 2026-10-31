@@ -51,6 +51,28 @@ it('a) 运营生成邀请码：DB 只有一条、一次性、active、created_by
         ->and($invite->expires_at)->not->toBeNull();
 });
 
+it('a) 运营生成邀请码支持指定自定义码与可用次数', function () {
+    $admin = $this->loginAsAdmin();
+    $custom = 'CUSTOM' . strtoupper(substr(uniqid(), -4));
+
+    post(route('admin.customers.developer-invites.store'), [
+        'custom_code'     => $custom,
+        'max_uses'        => 5,
+        'note'            => '供应商多账号测试',
+        'expires_in_days' => 30,
+    ])
+        ->assertRedirect(route('admin.customers.developer-invites.index'))
+        ->assertSessionHas('success');
+
+    $invite = DB::table('developer_invite')->where('code', $custom)->first();
+    expect($invite)->not->toBeNull()
+        ->and((int) $invite->max_uses)->toBe(5)
+        ->and((int) $invite->times_used)->toBe(0)
+        ->and($invite->status)->toBe(DeveloperInvite::STATUS_ACTIVE)
+        ->and((int) $invite->created_by)->toBe($admin->id)
+        ->and($invite->note)->toBe('供应商多账号测试');
+});
+
 it('a) 列表（datagrid）能看到明文码、一次性上限与 active 状态', function () {
     $this->loginAsAdmin();
 

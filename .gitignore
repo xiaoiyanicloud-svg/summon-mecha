@@ -44,3 +44,8 @@ Thumbs.db
 
 # 本地数据库备份，不入库
 backups/
+
+# 临时与测试目录
+.claude/sc45*
+scratch/
+召唤机甲/

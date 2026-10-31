@@ -285,6 +285,12 @@ return [
         'route'      => 'admin.customers.incidents.index',
         'sort'       => 8,
         'icon'       => '',
+    ], [
+        'key'        => 'customers.cooperations',
+        'name'       => '合作申请',
+        'route'      => 'admin.customers.cooperations.index',
+        'sort'       => 9,
+        'icon'       => '',
     ],
 
     /**
