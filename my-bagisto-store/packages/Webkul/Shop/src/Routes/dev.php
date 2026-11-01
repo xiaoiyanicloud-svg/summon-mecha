@@ -83,6 +83,9 @@ Route::controller(RealnameController::class)->prefix($devPrefix)->middleware('de
 });
 
 Route::controller(SkillController::class)->prefix($devPrefix)->middleware('developer')->group(function () {
+    Route::get('orders', 'orders')->name('shop.dev.orders.index');
+    Route::get('orders/{id}', 'showOrder')->whereNumber('id')->name('shop.dev.orders.show');
+
     Route::get('skills', 'index')->name('shop.dev.skills.index');
 
     // 注意顺序：静态段必须在 {id} 之前，否则 create 会被当成 id
@@ -104,11 +107,16 @@ Route::controller(SkillController::class)->prefix($devPrefix)->middleware('devel
     Route::post('skills/{id}/request-listing', 'requestListing')->whereNumber('id')->name('shop.dev.skills.request-listing');
 
     Route::post('skills/{id}/versions', 'storeVersion')->whereNumber('id')->name('shop.dev.skills.versions.store');
+    Route::put('versions/{versionId}', 'updateVersion')->whereNumber('versionId')->name('shop.dev.versions.update');
+    Route::post('versions/{versionId}/evidence', 'storeEvidence')->whereNumber('versionId')->name('shop.dev.versions.evidence.store');
 
     Route::post('versions/{versionId}/upload', 'upload')->whereNumber('versionId')->name('shop.dev.versions.upload');
     Route::get('versions/{versionId}/sample', 'sample')->whereNumber('versionId')->name('shop.dev.versions.sample');
     Route::post('versions/{versionId}/submit', 'submit')->whereNumber('versionId')->name('shop.dev.versions.submit');
     Route::post('versions/{versionId}/withdraw', 'withdraw')->whereNumber('versionId')->name('shop.dev.versions.withdraw');
+
+    Route::get('assets/{assetId}/download', 'downloadAsset')->whereNumber('assetId')->name('shop.dev.assets.download');
+    Route::delete('assets/{assetId}', 'destroyAsset')->whereNumber('assetId')->name('shop.dev.assets.destroy');
 
     Route::get('audits', 'audits')->name('shop.dev.audits.index');
 });
@@ -119,5 +127,6 @@ Route::controller(SkillController::class)->prefix($devPrefix)->middleware('devel
  */
 Route::controller(NotificationController::class)->prefix($devPrefix)->middleware('developer')->group(function () {
     Route::get('notifications', 'index')->name('shop.dev.notifications.index');
+    Route::post('notifications/read-all', 'readAll')->name('shop.dev.notifications.read-all');
     Route::post('notifications/{id}/read', 'read')->whereNumber('id')->name('shop.dev.notifications.read');
 });

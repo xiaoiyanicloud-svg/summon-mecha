@@ -8,8 +8,10 @@ use Webkul\Shop\Http\Controllers\API\APIController;
 use Webkul\Shop\Http\Controllers\API\ApiErrorCode;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillCompatibilityEvidence;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Developer\DeveloperSkillService;
+use Webkul\Shop\Services\SkillPackage\SkillManifest;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
 
 /**
@@ -98,7 +100,7 @@ class DeveloperSkillController extends APIController
         $versions = SkillVersion::query()
             ->where('product_id', $product->id)
             ->where('seller_id', $profile->seller_id)
-            ->with('assets')
+            ->with(['assets', 'compatibilityEvidence'])
             ->orderByDesc('id')
             ->get();
 
@@ -110,17 +112,42 @@ class DeveloperSkillController extends APIController
                 'price'    => (float) $product->price,
                 'status'   => (int) $product->status,
                 'versions' => $versions->map(fn (SkillVersion $v) => [
-                    'id'      => $v->id,
-                    'version' => $v->version,
-                    'status'  => $v->status,
-                    'channel' => $v->channel,
-                    'assets'  => $v->assets->map(fn (SkillAsset $a) => [
+                    'id'                     => $v->id,
+                    'version'                => $v->version,
+                    'status'                 => $v->status,
+                    'channel'                => $v->channel,
+                    'license_mode'           => $v->license_mode,
+                    'max_activations'        => $v->max_activations,
+                    'valid_days'             => $v->valid_days,
+                    'min_robot_version'      => $v->min_robot_version,
+                    'risk_level'             => $v->risk_level,
+                    'delivery_channels'      => $v->delivery_channels ?? [],
+                    'permissions'            => $v->permissions ?? [],
+                    'compatibility'          => $v->compatibility,
+                    'changelog'              => $v->changelog,
+                    'install_guide'          => $v->install_guide,
+                    'assets'                 => $v->assets->map(fn (SkillAsset $a) => [
                         'id'           => $a->id,
                         'carrier_type' => $a->carrier_type,
                         'file_name'    => $a->file_name,
                         'file_size'    => $a->file_size,
+                        'file_hash'    => $a->file_hash,
+                        'entrypoint'   => $a->entrypoint,
                         // 红线：绝不返回 file_path
                         'file_ready'   => $a->fileExists(),
+                    ])->values(),
+                    'compatibility_evidence' => $v->compatibilityEvidence->map(fn (SkillCompatibilityEvidence $e) => [
+                        'id'               => $e->id,
+                        'model_code'       => $e->model_code,
+                        'firmware_version' => $e->firmware_version,
+                        'sdk_version'      => $e->sdk_version,
+                        'source'           => $e->source,
+                        'evidence_type'    => $e->evidence_type,
+                        'result'           => $e->result,
+                        'asset_id'         => $e->asset_id,
+                        'asset_hash'       => $e->asset_hash,
+                        'summary'          => $e->summary,
+                        'observed_at'      => optional($e->observed_at)->toIso8601String(),
                     ])->values(),
                 ])->values(),
             ],
@@ -130,9 +157,21 @@ class DeveloperSkillController extends APIController
     public function storeVersion(Request $request, int $skillId): JsonResponse
     {
         $payload = $request->validate([
-            'version'       => ['required', 'string', 'max:32'],
-            'changelog'     => ['nullable', 'string', 'max:2000'],
-            'install_guide' => ['nullable', 'string', 'max:5000'],
+            'version'             => ['required', 'string', 'max:32'],
+            'channel'             => ['nullable', 'string', 'in:'.implode(',', SkillVersion::CHANNELS)],
+            'license_mode'        => ['nullable', 'string', 'in:'.implode(',', SkillVersion::LICENSE_MODES)],
+            'max_activations'     => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'valid_days'          => ['nullable', 'integer', 'min:1', 'max:36500'],
+            'min_robot_version'   => ['nullable', 'string', 'max:64'],
+            'risk_level'          => ['nullable', 'string', 'in:low,medium,high'],
+            'delivery_channels'   => ['nullable', 'array'],
+            'delivery_channels.*' => ['string', 'in:'.implode(',', SkillAsset::DELIVERY_CHANNELS)],
+            'permissions'         => ['nullable', 'array'],
+            'permissions.*'       => ['string', 'in:'.implode(',', SkillManifest::PERMISSION_WHITELIST)],
+            'target_models'       => ['nullable', 'string', 'max:500'],
+            'compatibility'       => ['nullable', 'array'],
+            'changelog'           => ['nullable', 'string', 'max:2000'],
+            'install_guide'       => ['nullable', 'string', 'max:5000'],
         ]);
 
         $version = $this->skills->createVersion($this->profile($request), $skillId, $payload);
@@ -144,6 +183,113 @@ class DeveloperSkillController extends APIController
         return response()->json([
             'message' => '版本已创建（draft）。',
             'data'    => ['id' => $version->id, 'version' => $version->version, 'status' => $version->status],
+        ], 201);
+    }
+
+    public function updateVersion(Request $request, int $versionId): JsonResponse
+    {
+        $payload = $request->validate([
+            'channel'             => ['nullable', 'string', 'in:'.implode(',', SkillVersion::CHANNELS)],
+            'license_mode'        => ['nullable', 'string', 'in:'.implode(',', SkillVersion::LICENSE_MODES)],
+            'max_activations'     => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'valid_days'          => ['nullable', 'integer', 'min:1', 'max:36500'],
+            'min_robot_version'   => ['nullable', 'string', 'max:64'],
+            'risk_level'          => ['nullable', 'string', 'in:low,medium,high'],
+            'delivery_channels'   => ['nullable', 'array'],
+            'delivery_channels.*' => ['string', 'in:'.implode(',', SkillAsset::DELIVERY_CHANNELS)],
+            'permissions'         => ['nullable', 'array'],
+            'permissions.*'       => ['string', 'in:'.implode(',', SkillManifest::PERMISSION_WHITELIST)],
+            'target_models'       => ['nullable', 'string', 'max:500'],
+            'compatibility'       => ['nullable', 'array'],
+            'changelog'           => ['nullable', 'string', 'max:2000'],
+            'install_guide'       => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $result = $this->skills->updateVersion($this->profile($request), $versionId, $payload);
+
+        if (! $result) {
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
+        }
+
+        if (! $result['ok']) {
+            $code = $result['code'] === 'VERSION_PUBLISHED_IMMUTABLE'
+                ? ApiErrorCode::VERSION_PUBLISHED_IMMUTABLE
+                : ApiErrorCode::CONFLICT;
+
+            return $this->fail($code, $result['message'], $result['status']);
+        }
+
+        return response()->json([
+            'message' => $result['message'],
+            'data'    => [
+                'id'           => $result['version']->id,
+                'version'      => $result['version']->version,
+                'status'       => $result['version']->status,
+                'channel'      => $result['version']->channel,
+                'license_mode' => $result['version']->license_mode,
+            ],
+        ]);
+    }
+
+    public function destroyAsset(Request $request, int $assetId): JsonResponse
+    {
+        $result = $this->skills->deleteAsset($this->profile($request), $assetId);
+
+        if (! $result) {
+            return $this->fail(ApiErrorCode::SKILL_ASSET_NOT_FOUND, '交付物不存在。', 404);
+        }
+
+        if (! $result['ok']) {
+            $code = $result['code'] === 'VERSION_PUBLISHED_IMMUTABLE'
+                ? ApiErrorCode::VERSION_PUBLISHED_IMMUTABLE
+                : ApiErrorCode::CONFLICT;
+
+            return $this->fail($code, $result['message'], $result['status']);
+        }
+
+        return response()->json([
+            'message' => $result['message'],
+        ]);
+    }
+
+    public function storeEvidence(Request $request, int $versionId): JsonResponse
+    {
+        $payload = $request->validate([
+            'model_code'       => ['required', 'string', 'max:64'],
+            'source'           => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::SOURCES)],
+            'evidence_type'    => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::EVIDENCE_TYPES)],
+            'result'           => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::RESULTS)],
+            'firmware_version' => ['nullable', 'string', 'max:64'],
+            'sdk_version'      => ['nullable', 'string', 'max:64'],
+            'agent_version'    => ['nullable', 'string', 'max:64'],
+            'device_did'       => ['nullable', 'string', 'max:128'],
+            'asset_id'         => ['nullable', 'integer'],
+            'summary'          => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $result = $this->skills->recordCompatibilityEvidence($this->profile($request), $versionId, $payload);
+
+        if (! $result) {
+            return $this->fail(ApiErrorCode::VERSION_NOT_FOUND, '版本不存在。', 404);
+        }
+
+        if (! $result['ok']) {
+            return $this->fail(ApiErrorCode::SKILL_COMPATIBILITY_EVIDENCE_INVALID, $result['message'], $result['status']);
+        }
+
+        $e = $result['evidence'];
+
+        return response()->json([
+            'message' => $result['message'],
+            'data'    => [
+                'id'            => $e->id,
+                'model_code'    => $e->model_code,
+                'source'        => $e->source,
+                'evidence_type' => $e->evidence_type,
+                'result'        => $e->result,
+                'asset_id'      => $e->asset_id,
+                'asset_hash'    => $e->asset_hash,
+            ],
         ], 201);
     }
 
@@ -214,6 +360,47 @@ class DeveloperSkillController extends APIController
             'code'    => $result['code'] ?? null,
             'data'    => $result['data'] ?? ['errors' => $result['errors'] ?? []],
         ], $result['status']);
+    }
+
+    public function salesMetrics(Request $request): JsonResponse
+    {
+        $metrics = $this->skills->salesMetrics($this->profile($request));
+
+        return response()->json([
+            'message' => 'ok',
+            'data'    => $metrics,
+        ]);
+    }
+
+    public function orders(Request $request): JsonResponse
+    {
+        $filters = $request->only(['status', 'product_id', 'keyword']);
+        $paginator = $this->skills->listOrders($this->profile($request), $filters, (int) $request->input('per_page', 15));
+
+        return response()->json([
+            'message' => 'ok',
+            'data'    => $paginator->items(),
+            'meta'    => [
+                'current_page' => $paginator->currentPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
+                'last_page'    => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function showOrder(Request $request, int $id): JsonResponse
+    {
+        $order = $this->skills->findOwnedOrder($this->profile($request), $id);
+
+        if (! $order) {
+            return $this->fail(ApiErrorCode::ORDER_NOT_FOUND, '订单不存在或无权访问。', 404);
+        }
+
+        return response()->json([
+            'message' => 'ok',
+            'data'    => $order,
+        ]);
     }
 
     protected function profile(Request $request): DeveloperProfile

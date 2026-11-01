@@ -61,6 +61,14 @@ return [
             'driver'   => 'session',
             'provider' => 'developers',
         ],
+
+        /*
+         * 商家后台（多租户商品/租赁/配件供给侧）—— 与买家、开发者会话隔离。
+         */
+        'merchant' => [
+            'driver'   => 'session',
+            'provider' => 'customers',
+        ],
     ],
 
     /*

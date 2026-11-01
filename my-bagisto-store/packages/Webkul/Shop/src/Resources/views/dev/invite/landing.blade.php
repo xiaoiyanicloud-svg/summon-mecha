@@ -4,11 +4,14 @@
 
 @section('content')
     @if ($state === 'ok')
-        <div class="card" style="max-width:680px;margin:40px auto">
-            <h1>邀请入驻</h1>
+        <div class="card" style="max-width:720px;margin:32px auto">
+            <div class="card-head">
+                <h1 style="margin:0">🤝 邀请入驻</h1>
+                <span class="badge ok">邀请码有效</span>
+            </div>
 
-            <p>
-                你带来的邀请码是 <strong>{{ $code }}</strong>。
+            <p style="font-size:14.5px">
+                你带来的邀请码是 <strong class="code-chip">{{ $code }}</strong>。
                 它已保留在你这次会话里，接下来的注册 / 入驻步骤不必手抄。
             </p>
 
@@ -19,7 +22,7 @@
             </div>
 
             <h2>完整链路</h2>
-            <p class="muted" style="line-height:1.9">
+            <p class="muted" style="line-height:1.9;font-weight:600">
                 注册 → 入驻 → 实名 → 协议 → 建技能
             </p>
 
@@ -27,13 +30,13 @@
             <p class="muted">请选择与你情况相符的一条：</p>
 
             <div class="row" style="margin-top:12px">
-                <div class="card" style="margin-bottom:0">
+                <div class="card" style="margin-bottom:0;background:#F8FAFC">
                     <h2>我已经有平台账号</h2>
                     <p class="muted">用同一账号登录开发者中心，登录后继续入驻流程。</p>
                     <a class="btn" href="{{ route('shop.dev.login') }}">去登录</a>
                 </div>
 
-                <div class="card" style="margin-bottom:0">
+                <div class="card" style="margin-bottom:0;background:#F8FAFC">
                     <h2>我还没有账号</h2>
                     <p class="muted">先在「召唤机甲」注册 C 端账号，再用同一账号登录开发者中心。</p>
                     <a class="btn ghost" href="{{ route('shop.customers.register.index') }}">去注册</a>
@@ -41,8 +44,11 @@
             </div>
         </div>
     @else
-        <div class="card" style="max-width:680px;margin:40px auto">
-            <h1>{{ $state === 'missing' ? '邀请链接不完整' : '这个邀请码暂时不能用' }}</h1>
+        <div class="card" style="max-width:720px;margin:32px auto">
+            <div class="card-head">
+                <h1 style="margin:0">{{ $state === 'missing' ? '邀请链接不完整' : '这个邀请码暂时不能用' }}</h1>
+                <span class="badge warn">可自助继续</span>
+            </div>
 
             <div class="flash error">{{ $message }}</div>
 
@@ -54,7 +60,7 @@
             <h2>可以这样继续</h2>
 
             <div class="row" style="margin-top:12px">
-                <div class="card" style="margin-bottom:0">
+                <div class="card" style="margin-bottom:0;background:#F8FAFC">
                     <h2>重新索取邀请码</h2>
                     <p class="muted">
                         请联系邀请你入驻的人，让他在运营端重新发一个可用的邀请码，
@@ -62,10 +68,10 @@
                     </p>
                 </div>
 
-                <div class="card" style="margin-bottom:0">
+                <div class="card" style="margin-bottom:0;background:#F8FAFC">
                     <h2>直接自助申请入驻</h2>
                     <p class="muted">无需邀请码：已有账号直接登录；没有账号先注册。</p>
-                    <p>
+                    <p style="margin-bottom:0;display:flex;gap:8px">
                         <a class="btn small" href="{{ route('shop.dev.login') }}">去登录</a>
                         <a class="btn ghost small" href="{{ route('shop.customers.register.index') }}">去注册</a>
                     </p>

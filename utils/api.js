@@ -623,3 +623,9 @@ export const cooperationApi = {
     loadingText: '正在核验邀请码...',
   }),
 }
+
+// ==================== 统一后台选择入口（Portal Backend Registry） ====================
+export const portalApi = {
+  backends: () => http.get('/api/portal/backends', { loading: false }),
+  track: (data) => http.post('/api/portal/backends/track', data, { loading: false }),
+}

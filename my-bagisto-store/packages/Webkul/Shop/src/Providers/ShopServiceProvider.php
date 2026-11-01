@@ -15,13 +15,16 @@ use Illuminate\Support\Str;
 use Webkul\Core\Http\Middleware\PreventRequestsDuringMaintenance;
 use Webkul\Shop\Http\Middleware\AuthenticateCustomer;
 use Webkul\Shop\Http\Middleware\AuthenticateDeveloper;
+use Webkul\Shop\Http\Middleware\AuthenticateMerchant;
 use Webkul\Shop\Http\Middleware\CacheResponse;
 use Webkul\Shop\Http\Middleware\Currency;
 use Webkul\Shop\Http\Middleware\Locale;
 use Webkul\Shop\Http\Middleware\RequireDeveloperLogin;
+use Webkul\Shop\Http\Middleware\RequireMerchantLogin;
 use Webkul\Shop\Http\Middleware\ResolveApiCustomer;
 use Webkul\Shop\Http\Middleware\ResolveDeveloper;
 use Webkul\Shop\Http\Middleware\ResolveDeveloperLogin;
+use Webkul\Shop\Http\Middleware\ResolveMerchant;
 use Webkul\Shop\Http\Middleware\Theme;
 use Webkul\Shop\Http\Middleware\VerifyAgentKey;
 use Webkul\Shop\Http\Middleware\VerifyInternalKey;
@@ -111,6 +114,11 @@ class ShopServiceProvider extends ServiceProvider
         $router->aliasMiddleware('developer.session', RequireDeveloperLogin::class);
         $router->aliasMiddleware('api.developer', ResolveDeveloper::class);
         $router->aliasMiddleware('api.developer.login', ResolveDeveloperLogin::class);
+
+        // 多租户商家后台：会话鉴权 + 权限守卫 / 入驻门槛 / API 鉴权
+        $router->aliasMiddleware('merchant', AuthenticateMerchant::class);
+        $router->aliasMiddleware('merchant.session', RequireMerchantLogin::class);
+        $router->aliasMiddleware('api.merchant', ResolveMerchant::class);
 
         Route::middleware(['web', 'shop', PreventRequestsDuringMaintenance::class])->group(__DIR__.'/../Routes/web.php');
         Route::middleware(['web', 'shop', 'api.customer', PreventRequestsDuringMaintenance::class])->group(__DIR__.'/../Routes/api.php');

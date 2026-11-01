@@ -3,15 +3,19 @@
 namespace Webkul\Shop\Http\Controllers\Dev;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Webkul\Shop\Http\Controllers\Controller;
+use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillCompatibilityEvidence;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Developer\DeveloperSkillService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillAudit\ReviewGate;
 use Webkul\Shop\Services\SkillAudit\SkillPublisher;
+use Webkul\Shop\Services\SkillPackage\SkillManifest;
 
 /**
  * 开发者门户 · 我的技能 / 版本 / 传包 / 提审 —— v3.4 步骤 9。
@@ -152,7 +156,7 @@ class SkillController extends Controller
         $versions = SkillVersion::query()
             ->where('product_id', $product->id)
             ->where('seller_id', $profile->seller_id)
-            ->with('assets')
+            ->with(['assets', 'compatibilityEvidence'])
             ->orderByDesc('id')
             ->get();
 
@@ -174,15 +178,40 @@ class SkillController extends Controller
         // 视图据此把「申请上架」按钮换成"已于 … 申请，等待处理"。
         $listingRequestedAt = $this->skills->listingRequestedAt($versions->pluck('id')->all());
 
-        return view('shop::dev.skills.show', compact('product', 'versions', 'gates', 'ownerQualification', 'listingRequestedAt'));
+        // 逐版本的历史审核记录（含 L0 / L2 驳回原因明细）
+        $auditByVersion = AuditRecord::query()
+            ->where('skill_id', $product->id)
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('version_id');
+
+        return view('shop::dev.skills.show', compact(
+            'product',
+            'versions',
+            'gates',
+            'ownerQualification',
+            'listingRequestedAt',
+            'auditByVersion'
+        ));
     }
 
     public function storeVersion(Request $request, int $id)
     {
         $payload = $request->validate([
-            'version'       => ['required', 'string', 'max:32'],
-            'changelog'     => ['nullable', 'string', 'max:2000'],
-            'install_guide' => ['nullable', 'string', 'max:5000'],
+            'version'             => ['required', 'string', 'max:32'],
+            'channel'             => ['nullable', 'string', 'in:'.implode(',', SkillVersion::CHANNELS)],
+            'license_mode'        => ['nullable', 'string', 'in:'.implode(',', SkillVersion::LICENSE_MODES)],
+            'max_activations'     => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'valid_days'          => ['nullable', 'integer', 'min:1', 'max:36500'],
+            'min_robot_version'   => ['nullable', 'string', 'max:64'],
+            'risk_level'          => ['nullable', 'string', 'in:low,medium,high'],
+            'delivery_channels'   => ['nullable', 'array'],
+            'delivery_channels.*' => ['string', 'in:'.implode(',', SkillAsset::DELIVERY_CHANNELS)],
+            'permissions'         => ['nullable', 'array'],
+            'permissions.*'       => ['string', 'in:'.implode(',', SkillManifest::PERMISSION_WHITELIST)],
+            'target_models'       => ['nullable', 'string', 'max:500'],
+            'changelog'           => ['nullable', 'string', 'max:2000'],
+            'install_guide'       => ['nullable', 'string', 'max:5000'],
         ]);
 
         $version = $this->skills->createVersion($this->profile($request), $id, $payload);
@@ -194,6 +223,114 @@ class SkillController extends Controller
         return redirect()
             ->route('shop.dev.skills.show', $id)
             ->with('success', '版本已创建（draft）。请上传技能包后提交审核。');
+    }
+
+    /**
+     * 更新草稿/被驳回版本的配置与说明（三级/四级闭环）。
+     */
+    public function updateVersion(Request $request, int $versionId)
+    {
+        $payload = $request->validate([
+            'channel'             => ['nullable', 'string', 'in:'.implode(',', SkillVersion::CHANNELS)],
+            'license_mode'        => ['nullable', 'string', 'in:'.implode(',', SkillVersion::LICENSE_MODES)],
+            'max_activations'     => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'valid_days'          => ['nullable', 'integer', 'min:1', 'max:36500'],
+            'min_robot_version'   => ['nullable', 'string', 'max:64'],
+            'risk_level'          => ['nullable', 'string', 'in:low,medium,high'],
+            'delivery_channels'   => ['nullable', 'array'],
+            'delivery_channels.*' => ['string', 'in:'.implode(',', SkillAsset::DELIVERY_CHANNELS)],
+            'permissions'         => ['nullable', 'array'],
+            'permissions.*'       => ['string', 'in:'.implode(',', SkillManifest::PERMISSION_WHITELIST)],
+            'target_models'       => ['nullable', 'string', 'max:500'],
+            'changelog'           => ['nullable', 'string', 'max:2000'],
+            'install_guide'       => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        // 当复选框全部取消勾选时，允许清空为 null
+        $payload['delivery_channels'] = $request->input('delivery_channels', []);
+        $payload['permissions'] = $request->input('permissions', []);
+
+        $result = $this->skills->updateVersion($this->profile($request), $versionId, $payload);
+
+        if (! $result) {
+            abort(404);
+        }
+
+        if (! $result['ok']) {
+            return back()->withErrors(['version_update' => $result['message']]);
+        }
+
+        return back()->with('success', $result['message']);
+    }
+
+    /**
+     * 开发者自检下载自己上传的交付物（四级闭环）。
+     */
+    public function downloadAsset(Request $request, int $assetId)
+    {
+        $asset = $this->skills->findOwnedAsset($this->profile($request), $assetId);
+
+        if (! $asset) {
+            abort(404);
+        }
+
+        if (! $asset->fileExists() || ! $asset->file_path) {
+            return back()->withErrors(['asset' => '该交付物不是文件载体或物理文件不存在，无法下载。']);
+        }
+
+        return Storage::disk(SkillAsset::disk())->download(
+            $asset->file_path,
+            $asset->file_name ?: ('skill-asset-'.$asset->id.'.skill')
+        );
+    }
+
+    /**
+     * 移除草稿/被驳回版本的交付物（四级闭环）。
+     */
+    public function destroyAsset(Request $request, int $assetId)
+    {
+        $result = $this->skills->deleteAsset($this->profile($request), $assetId);
+
+        if (! $result) {
+            abort(404);
+        }
+
+        if (! $result['ok']) {
+            return back()->withErrors(['asset' => $result['message']]);
+        }
+
+        return back()->with('success', $result['message']);
+    }
+
+    /**
+     * 登记版本自测/仿真/真机适配证据（四级闭环）。
+     */
+    public function storeEvidence(Request $request, int $versionId)
+    {
+        $payload = $request->validate([
+            'model_code'       => ['required', 'string', 'max:64'],
+            'source'           => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::SOURCES)],
+            'evidence_type'    => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::EVIDENCE_TYPES)],
+            'result'           => ['required', 'string', 'in:'.implode(',', SkillCompatibilityEvidence::RESULTS)],
+            'firmware_version' => ['nullable', 'string', 'max:64'],
+            'sdk_version'      => ['nullable', 'string', 'max:64'],
+            'agent_version'    => ['nullable', 'string', 'max:64'],
+            'device_did'       => ['nullable', 'string', 'max:128'],
+            'asset_id'         => ['nullable', 'integer'],
+            'summary'          => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $result = $this->skills->recordCompatibilityEvidence($this->profile($request), $versionId, $payload);
+
+        if (! $result) {
+            abort(404);
+        }
+
+        if (! $result['ok']) {
+            return back()->withErrors(['evidence' => $result['message']]);
+        }
+
+        return back()->with('success', $result['message']);
     }
 
     public function upload(Request $request, int $versionId)
@@ -278,8 +415,11 @@ class SkillController extends Controller
 
     public function audits(Request $request)
     {
+        $profile = $this->profile($request);
+
         return view('shop::dev.audits.index', [
-            'records' => $this->skills->listAudits($this->profile($request)),
+            'records'       => $this->skills->listAudits($profile),
+            'operationLogs' => $this->skills->listOperationLogs($profile),
         ]);
     }
 
@@ -394,6 +534,45 @@ class SkillController extends Controller
         }
 
         return back()->with('success', $result['message']);
+    }
+
+    /**
+     * 开发者交易与授权订单列表（闭环 L3/L4）。
+     */
+    public function orders(Request $request)
+    {
+        $profile = $this->profile($request);
+        $filters = $request->only(['status', 'product_id', 'keyword']);
+        $orders = $this->skills->listOrders($profile, $filters, (int) $request->input('per_page', 15));
+        $metrics = $this->skills->salesMetrics($profile);
+        $ownedSkills = $this->skills->listSkills($profile);
+
+        return view('shop::dev.orders.index', [
+            'profile'     => $profile,
+            'orders'      => $orders,
+            'metrics'     => $metrics,
+            'filters'     => $filters,
+            'ownedSkills' => $ownedSkills,
+        ]);
+    }
+
+    /**
+     * 单个授权订单详情（Anti-IDOR，查不到 404）。
+     */
+    public function showOrder(Request $request, int $id)
+    {
+        $profile = $this->profile($request);
+        $order = $this->skills->findOwnedOrder($profile, $id);
+
+        if (! $order) {
+            abort(404);
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'ok', 'data' => $order]);
+        }
+
+        return redirect()->route('shop.dev.orders.index', ['view_order_id' => $id]);
     }
 
     protected function profile(Request $request): DeveloperProfile

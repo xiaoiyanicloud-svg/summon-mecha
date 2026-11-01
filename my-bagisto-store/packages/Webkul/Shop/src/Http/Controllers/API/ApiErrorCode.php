@@ -631,6 +631,15 @@ final class ApiErrorCode
     public const SCENE_REQUIRED = 'SCENE_REQUIRED';
     public const SCENE_PRODUCT_UNAVAILABLE = 'SCENE_PRODUCT_UNAVAILABLE';
 
+    // ── 统一后台选择入口与多租户商家后台 ─────────────────────────────────
+    public const BACKEND_DISABLED = 'BACKEND_DISABLED';
+    public const MERCHANT_ACCESS_FORBIDDEN = 'MERCHANT_ACCESS_FORBIDDEN';
+    public const MERCHANT_SUSPENDED = 'MERCHANT_SUSPENDED';
+    public const MERCHANT_SHOP_REQUIRED = 'MERCHANT_SHOP_REQUIRED';
+    public const MERCHANT_PERMISSION_DENIED = 'MERCHANT_PERMISSION_DENIED';
+    public const COMPATIBLE_MODEL_UNKNOWN = 'COMPATIBLE_MODEL_UNKNOWN';
+    public const MODEL_L3_DISPLAY_ONLY = 'MODEL_L3_DISPLAY_ONLY';
+
 
     /**
      * 全部已登记的码。

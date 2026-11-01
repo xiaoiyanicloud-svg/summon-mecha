@@ -63,6 +63,19 @@ class NotificationController extends Controller
     }
 
     /**
+     * 一键标记当前开发者收件箱内所有未读通知为已读（严格限定在 developerInbox 作用域内）。
+     */
+    public function readAll(Request $request)
+    {
+        $updated = Notification::query()
+            ->developerInbox($this->customerId())
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return back()->with('success', $updated > 0 ? "已将 {$updated} 条未读通知标记为已读。" : '当前没有未读通知。');
+    }
+
+    /**
      * 当前登录开发者的 customer_id —— `developer` 中间件已保证已登录，故不必判空。
      */
     protected function customerId(): int

@@ -109,30 +109,80 @@
 						<text class="func-icon">⭐</text>
 						<text class="func-label">收藏</text>
 					</view>
-				</view>
-
-				<view class="function-divider"></view>
-
-				<view class="function-grid function-grid-partner">
-					<view class="func-item" @click="goCooperate">
-						<text class="func-icon">🤝</text>
-						<text class="func-label">合作申请</text>
-					</view>
-					<view class="func-item" @click="goPartnerRecommend">
-						<text class="func-icon">🌟</text>
-						<text class="func-label">合伙人推荐</text>
-					</view>
-					<view class="func-item" @click="goSupplierCode">
-						<text class="func-icon">🔑</text>
-						<text class="func-label">供应商邀请</text>
-					</view>
-					<view class="func-item" @click="goDeveloperPortal">
-						<text class="func-icon">🧑‍💻</text>
-						<text class="func-label">开发者后台</text>
-					</view>
 					<view class="func-item" @click="goSettings">
 						<text class="func-icon">⚙️</text>
 						<text class="func-label">设置</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- ===== 第四模块：企业工作台与生态合作 ===== -->
+			<view class="enterprise-hub-module">
+				<view class="module-header">
+					<view class="module-title-wrap">
+						<text class="module-title">工作台与生态合作</text>
+						<text class="module-subtitle">多端赋能 · 安全隔离</text>
+					</view>
+				</view>
+
+				<view class="hub-card-list">
+					<!-- 1. 统一后台工作台 -->
+					<view class="hub-card hub-card-portal" @click="openPortalSelector" role="button" tabindex="0" aria-label="打开后台工作台选择入口" @keydown.enter="openPortalSelector">
+						<view class="hub-card-left">
+							<view class="hub-card-icon-box portal-theme">
+								<text class="hub-card-icon">🖥️</text>
+							</view>
+							<view class="hub-card-info">
+								<view class="hub-card-title-row">
+									<text class="hub-card-title">后台管理工作台</text>
+									<text class="hub-pill pill-portal">商家 / 开发者</text>
+								</view>
+								<text class="hub-card-desc">商户店铺管理 · 开发者技能上架 · 独立权限</text>
+							</view>
+						</view>
+						<view class="hub-card-right">
+							<text class="hub-card-btn">进入工作台 ›</text>
+						</view>
+					</view>
+
+					<!-- 2. 生态合作申请 -->
+					<view class="hub-card hub-card-coop" @click="goCooperate('channels')">
+						<view class="hub-card-left">
+							<view class="hub-card-icon-box coop-theme">
+								<text class="hub-card-icon">🤝</text>
+							</view>
+							<view class="hub-card-info">
+								<view class="hub-card-title-row">
+									<text class="hub-card-title">生态合作申请</text>
+									<text class="hub-pill pill-accent" v-if="hasCoopPendingOrIssued">有跟进动态</text>
+									<text class="hub-pill" v-else>4 大合作通道</text>
+								</view>
+								<text class="hub-card-desc">本体厂商 · RaaS 算法合伙人 · 机甲达人 · 推荐</text>
+							</view>
+						</view>
+						<view class="hub-card-right">
+							<text class="hub-card-btn">洽谈合作 ›</text>
+						</view>
+					</view>
+
+					<!-- 3. 供应商邀请入驻 -->
+					<view class="hub-card hub-card-supplier" @click="goSupplierCode('verify')">
+						<view class="hub-card-left">
+							<view class="hub-card-icon-box supplier-theme">
+								<text class="hub-card-icon">🔑</text>
+							</view>
+							<view class="hub-card-info">
+								<view class="hub-card-title-row">
+									<text class="hub-card-title">供应商受邀入驻</text>
+									<text class="hub-pill pill-success" v-if="hasSupplierIssuedCode">专属码已签发</text>
+									<text class="hub-pill" v-else>持码秒验 · 建档</text>
+								</view>
+								<text class="hub-card-desc">供应链采购对接 · 10 位定向邀请码核验与激活</text>
+							</view>
+						</view>
+						<view class="hub-card-right">
+							<text class="hub-card-btn">核验入驻 ›</text>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -361,41 +411,80 @@
 					<text class="back-icon">‹</text>
 					<text class="back-text">返回</text>
 				</view>
-				<text class="nav-title">合作申请</text>
-				<view class="nav-placeholder"></view>
+				<text class="nav-title">生态合作申请</text>
+				<view class="nav-action" @tap="loadCooperations">
+					<text class="nav-refresh-text">刷新</text>
+				</view>
 			</view>
-			<scroll-view class="sub-content" scroll-y="true" show-scrollbar="false">
-				<view class="cooperate-card" v-for="(item, index) in cooperateList" :key="index">
-					<view class="card-header">
-						<view class="header-left">
-							<view class="avatar-icon" :style="{ background: item.avatarBg }">{{ item.avatar }}</view>
-							<text class="cooperate-name">{{ item.name }}</text>
-						</view>
-						<view class="header-right">
-							<view class="btn-apply" @tap="goApplyForm(item)">{{ item.btnText }}</view>
+
+			<!-- 沉浸式分段导航标签 -->
+			<view class="segment-tabs-wrap">
+				<view
+					class="segment-tab-item"
+					:class="{ active: coopActiveTab === 'channels' }"
+					@tap="coopActiveTab = 'channels'"
+				>
+					<text class="segment-tab-title">💼 合作通道 (4)</text>
+				</view>
+				<view
+					class="segment-tab-item"
+					:class="{ active: coopActiveTab === 'history' }"
+					@tap="coopActiveTab = 'history'"
+				>
+					<text class="segment-tab-title">📋 申请记录与签发码</text>
+					<text class="segment-badge" v-if="coopOnlyApplications.length">{{ coopOnlyApplications.length }}</text>
+				</view>
+			</view>
+
+			<scroll-view class="sub-content" scroll-y="true" show-scrollbar="false" :style="{ paddingBottom: (safeBottom + 30) + 'px' }">
+				<!-- Tab 1: 合作通道 -->
+				<view v-if="coopActiveTab === 'channels'" class="coop-channels-view">
+					<view class="coop-hero-banner">
+						<view class="coop-hero-info">
+							<text class="coop-hero-tag">ECOSYSTEM PARTNERSHIP</text>
+							<text class="coop-hero-title">携手召唤机甲 · 共建机器人产业生态</text>
+							<text class="coop-hero-desc">面向机器人整机本体、RaaS算法开发、机甲达人与行业合伙人开放。官方渠道直采、高额分成与流量扶持。</text>
 						</view>
 					</view>
-					<text class="cooperate-desc">{{ item.desc }}</text>
-					<view class="benefit-list">
-						<view class="benefit-item" v-for="(benefit, idx) in item.benefits" :key="idx">
-							<text class="dot">•</text>
-							<text class="benefit-text">{{ benefit }}</text>
+
+					<view class="coop-cards-grid">
+						<view
+							class="coop-card-item"
+							v-for="(item, index) in cooperateList"
+							:key="item.key || index"
+							:class="'coop-theme-' + item.key"
+						>
+							<view class="coop-card-top-row">
+								<view class="coop-card-icon-badge" :style="{ background: item.avatarBg }">
+									<text class="coop-avatar-emoji">{{ item.avatar }}</text>
+								</view>
+								<text class="coop-card-tag-pill">{{ item.tag || '生态合作' }}</text>
+							</view>
+							<text class="coop-card-title">{{ item.name }}</text>
+							<text class="coop-card-summary">{{ item.desc }}</text>
+							<view class="coop-benefit-tags">
+								<text class="coop-benefit-tag" v-for="(b, bi) in item.benefits" :key="bi">{{ b }}</text>
+							</view>
+							<view class="coop-card-action-wrap">
+								<view class="coop-card-btn" @tap="goApplyForm(item)">{{ item.btnText }} ›</view>
+							</view>
 						</view>
 					</view>
 				</view>
 
-				<!-- 我的合作申请记录 -->
-				<view class="coop-history-section">
-					<view class="coop-history-header">
-						<text class="coop-history-title">我的申请记录</text>
-						<text class="coop-history-refresh" @tap="loadCooperations">刷新</text>
+				<!-- Tab 2: 申请记录与签发码 -->
+				<view v-else class="coop-history-view">
+					<view v-if="cooperateLoading" class="coop-state-card">
+						<text class="coop-state-text">正在同步申请进度与签发状态…</text>
 					</view>
-					<view v-if="cooperateLoading" class="coop-history-empty">加载中...</view>
-					<view v-else-if="cooperateApplications.length === 0" class="coop-history-empty">
-						暂无合作申请记录，点击上方对应通道按钮即可提交申请
+					<view v-else-if="coopOnlyApplications.length === 0" class="coop-state-card">
+						<text class="coop-empty-icon">📭</text>
+						<text class="coop-state-title">暂无生态合作申请记录</text>
+						<text class="coop-state-desc">点击上方「合作通道」，选择您所代表的企业主体或团队方向即可提交申请。</text>
+						<view class="coop-empty-action" @tap="coopActiveTab = 'channels'">去浏览合作通道 ›</view>
 					</view>
 					<view v-else class="coop-history-list">
-						<view class="coop-record-card" v-for="app in cooperateApplications" :key="app.id">
+						<view class="coop-record-card" v-for="app in coopOnlyApplications" :key="app.id">
 							<view class="coop-record-top">
 								<view class="coop-record-tags">
 									<text class="coop-type-tag">{{ app.type_label }}</text>
@@ -410,12 +499,13 @@
 								<text>{{ app.created_at }}</text>
 							</view>
 							<view v-if="app.follower_name" class="coop-record-submeta">
-								<text>跟进负责人：{{ app.follower_name }}{{ app.follower_contact ? '（' + app.follower_contact + '）' : '' }}</text>
+								<text>商务负责人：{{ app.follower_name }}{{ app.follower_contact ? '（' + app.follower_contact + '）' : '' }}</text>
 							</view>
 							<view v-if="app.issued_invite_code" class="coop-issued-code-box">
 								<view class="coop-issued-code-main">
 									<text class="coop-issued-label">🔑 平台已签发专属邀请码：</text>
-									<text class="coop-issued-code">{{ app.issued_invite_code }}</text>
+									<text class="coop-issued-code font-mono">{{ app.issued_invite_code }}</text>
+									<text class="coop-issued-exp" v-if="app.issued_invite_expires_at">有效期至：{{ app.issued_invite_expires_at }}</text>
 								</view>
 								<view class="coop-issued-actions">
 									<text class="coop-issued-btn" @tap="copyInviteCode(app.issued_invite_code)">复制邀请码</text>
@@ -795,41 +885,72 @@
 					<text class="back-text">返回</text>
 				</view>
 				<text class="nav-title">供应链受邀入驻</text>
-				<view class="nav-placeholder"></view>
+				<view class="nav-action" @tap="loadCooperations">
+					<text class="nav-refresh-text">刷新</text>
+				</view>
 			</view>
+
+			<!-- 供应链任务分段导航 -->
+			<view class="segment-tabs-wrap">
+				<view
+					class="segment-tab-item"
+					:class="{ active: supplierActiveTab === 'verify' }"
+					@tap="supplierActiveTab = 'verify'"
+				>
+					<text class="segment-tab-title">🔑 邀请码核验</text>
+				</view>
+				<view
+					class="segment-tab-item"
+					:class="{ active: supplierActiveTab === 'apply' }"
+					@tap="supplierActiveTab = 'apply'"
+				>
+					<text class="segment-tab-title">📝 资质入驻建档</text>
+				</view>
+				<view
+					class="segment-tab-item"
+					:class="{ active: supplierActiveTab === 'progress' }"
+					@tap="supplierActiveTab = 'progress'"
+				>
+					<text class="segment-tab-title">📬 进度与专属码</text>
+					<text class="segment-badge" v-if="supplierApplications.length">{{ supplierApplications.length }}</text>
+				</view>
+			</view>
+
 			<scroll-view 
 				class="sub-content" 
 				scroll-y="true" 
 				show-scrollbar="false"
 				:style="{ paddingBottom: (safeBottom + 40) + 'px' }"
 			>
-				<!-- 顶部供应链专属权益横幅 -->
-				<view class="supplier-hero-card">
-					<view class="supplier-hero-top">
-						<view>
-							<text class="supplier-hero-badge">SUPPLY CHAIN INVITATION</text>
-							<text class="supplier-hero-title">召唤机甲 · 核心供应链邀约通道</text>
+				<!-- Tab 1: 邀请码即时核验与直通激活器 -->
+				<view v-if="supplierActiveTab === 'verify'" class="supplier-tab-verify-view">
+					<!-- 顶部供应链专属权益横幅 -->
+					<view class="supplier-hero-card">
+						<view class="supplier-hero-top">
+							<view>
+								<text class="supplier-hero-badge">SUPPLY CHAIN INVITATION</text>
+								<text class="supplier-hero-title">召唤机甲 · 核心供应链邀约通道</text>
+							</view>
+							<text class="supplier-hero-icon">🔑</text>
 						</view>
-						<text class="supplier-hero-icon">🔑</text>
+						<text class="supplier-hero-desc">
+							面向机器人整机货源、核心零配件/机甲皮肤、城市驻场运维及 RaaS 技能供应商开放。持官方邀请码可即时核验归属并进入优先审核或直通门户激活；暂无邀请码亦可提交资质申请定向签发。
+						</text>
+						<view class="supplier-hero-tags">
+							<text class="supplier-hero-tag">✓ 邀请码实时核验</text>
+							<text class="supplier-hero-tag">✓ 专属采购与分成对接</text>
+							<text class="supplier-hero-tag">✓ 审核通过在线签发邀请码</text>
+						</view>
 					</view>
-					<text class="supplier-hero-desc">
-						面向机器人整机货源、核心零配件/机甲皮肤、城市驻场运维及 RaaS 技能供应商开放。持官方邀请码可即时核验归属并进入优先审核或直通门户激活；暂无邀请码亦可提交资质申请定向签发。
-					</text>
-					<view class="supplier-hero-tags">
-						<text class="supplier-hero-tag">✓ 邀请码实时核验</text>
-						<text class="supplier-hero-tag">✓ 专属采购与分成对接</text>
-						<text class="supplier-hero-tag">✓ 审核通过在线签发邀请码</text>
-					</view>
-				</view>
 
-				<!-- 模块 1：邀请码即时核验与直通激活器 -->
-				<view class="supplier-section-card">
-					<view class="supplier-section-header">
-						<text class="supplier-section-title">1. 邀请码核验与直通激活</text>
-						<text class="supplier-section-sub">支持 10 位平台定向邀请码实时校验</text>
-					</view>
-					<view class="supplier-verify-bar">
-						<input
+					<!-- 模块 1：邀请码即时核验与直通激活器 -->
+					<view class="supplier-section-card">
+						<view class="supplier-section-header">
+							<text class="supplier-section-title">邀请码核验与直通激活</text>
+							<text class="supplier-section-sub">支持 10 位平台定向邀请码实时校验</text>
+						</view>
+						<view class="supplier-verify-bar">
+							<input
 							class="supplier-verify-input"
 							type="text"
 							v-model="supplierVerifyCode"
@@ -875,12 +996,26 @@
 					</view>
 				</view>
 
-				<!-- 模块 2：供应链受邀入驻 / 申请邀约码表单 -->
+				<!-- 暂无邀请码快捷引导卡片 -->
+				<view class="supplier-guide-card" @tap="switchSupplierEntryMode('apply_code')">
+					<view class="supplier-guide-left">
+						<text class="supplier-guide-icon">📝</text>
+						<view class="supplier-guide-text">
+							<text class="supplier-guide-title">暂无邀请码？提交资质申请专属邀约码</text>
+							<text class="supplier-guide-desc">机器人整机/零配件/算法服务商均可申请，审核通过在线签发</text>
+						</view>
+					</view>
+					<text class="supplier-guide-btn">去申请 ›</text>
+				</view>
+			</view>
+
+			<!-- Tab 2: 供应链入驻建档与邀约申请 -->
+			<view v-else-if="supplierActiveTab === 'apply'" class="supplier-tab-apply-view">
 				<view class="supplier-section-card">
 					<view class="supplier-section-header">
 						<view class="supplier-header-flex">
 							<view>
-								<text class="supplier-section-title">2. 供应链入驻建档与邀约申请</text>
+								<text class="supplier-section-title">供应链入驻建档与邀约申请</text>
 								<text class="supplier-section-sub">提交后进入 Admin 运营台审核，通过后将在本页下发专属邀请码</text>
 							</view>
 							<view class="supplier-progress-badge" :class="{ ready: supplierProgress.isReady }">
@@ -1181,8 +1316,10 @@
 						</text>
 					</view>
 				</view>
+			</view>
 
-				<!-- 模块 3：我的供应链入驻与合作申请进度（含后台签发邀请码卡片） -->
+			<!-- Tab 3: 我的供应链入驻与合作申请进度（含后台签发邀请码卡片） -->
+			<view v-else class="supplier-tab-progress-view">
 				<view class="coop-history-section">
 					<view class="coop-history-header">
 						<text class="coop-history-title">我的供应链入驻与邀约进度</text>
@@ -1190,7 +1327,10 @@
 					</view>
 					<view v-if="cooperateLoading" class="coop-history-empty">加载中...</view>
 					<view v-else-if="supplierApplications.length === 0" class="coop-history-empty">
-						暂无供应链入驻记录。提交上方表单后，可在此实时追踪审核进度并领取平台签发的专属邀请码。
+						<text class="coop-empty-icon">📭</text>
+						<text class="coop-state-title">暂无供应链入驻记录</text>
+						<text class="coop-state-desc">提交上方表单后，可在此实时追踪审核进度并领取平台签发的专属邀请码。</text>
+						<view class="coop-empty-action" @tap="supplierActiveTab = 'apply'">去填写供应链入驻表单 ›</view>
 					</view>
 					<view v-else class="coop-history-list">
 						<view class="coop-record-card" v-for="app in supplierApplications" :key="app.id">
@@ -1217,7 +1357,7 @@
 							<view v-if="app.issued_invite_code" class="coop-issued-code-box">
 								<view class="coop-issued-code-main">
 									<text class="coop-issued-label">🎉 平台已为您签发专属邀请码：</text>
-									<text class="coop-issued-code">{{ app.issued_invite_code }}</text>
+									<text class="coop-issued-code font-mono">{{ app.issued_invite_code }}</text>
 									<text class="coop-issued-exp" v-if="app.issued_invite_expires_at">有效期：{{ app.issued_invite_expires_at }}</text>
 								</view>
 								<view class="coop-issued-actions">
@@ -1232,6 +1372,7 @@
 						</view>
 					</view>
 				</view>
+			</view>
 				<view style="height: 40rpx;"></view>
 			</scroll-view>
 		</view>
@@ -1386,13 +1527,109 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- ===== 统一后台选择入口弹窗（配置化驱动：商家后台 / 开发者技能后台 / 扩展后台） ===== -->
+		<view
+			class="portal-modal-mask"
+			v-if="showPortalModal"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="portal-modal-title"
+			tabindex="-1"
+			@tap="closePortalSelector"
+			@keydown.esc="closePortalSelector"
+		>
+			<view class="portal-modal" @tap.stop>
+				<view class="portal-modal-header">
+					<view>
+						<text id="portal-modal-title" class="portal-modal-title">管理工作台矩阵</text>
+						<text class="portal-modal-sub">当前账号: {{ userName || '游客 / 未登录' }} · 多租户安全隔离</text>
+					</view>
+					<view
+						class="portal-modal-close"
+						role="button"
+						tabindex="0"
+						aria-label="关闭后台选择弹窗"
+						@tap="closePortalSelector"
+						@keydown.enter="closePortalSelector"
+					>✕</view>
+				</view>
+
+				<!-- 加载态 -->
+				<view v-if="portalLoading" class="portal-state-box">
+					<text class="portal-state-text">正在同步可用后台工作台矩阵…</text>
+				</view>
+
+				<!-- 错误态 -->
+				<view v-else-if="portalError" class="portal-state-box" @tap="loadPortalBackends">
+					<text class="portal-state-text portal-state-error">{{ portalError }}</text>
+					<text class="portal-state-retry">点击重试</text>
+				</view>
+
+				<!-- 空态 -->
+				<view v-else-if="!portalBackends.length" class="portal-state-box">
+					<text class="portal-state-text">当前暂无可用的后台工作台</text>
+				</view>
+
+				<!-- 后台列表（零硬编码，完全由 GET /api/portal/backends 驱动） -->
+				<view v-else class="portal-list" @keydown.down.prevent="movePortalFocus(1)" @keydown.up.prevent="movePortalFocus(-1)">
+					<view
+						v-for="(item, idx) in portalBackends"
+						:key="item.code"
+						class="portal-card"
+						:class="{ 'is-disabled': !isPortalSelectable(item), 'is-focused': portalActiveIndex === idx }"
+						role="button"
+						:tabindex="isPortalSelectable(item) ? 0 : -1"
+						:aria-disabled="!isPortalSelectable(item)"
+						@tap="handleSelectBackend(item)"
+						@keydown.enter="handleSelectBackend(item)"
+					>
+						<view class="portal-card-icon">
+							<text>{{ resolvePortalIcon(item.icon) }}</text>
+						</view>
+						<view class="portal-card-main">
+							<view class="portal-card-top">
+								<text class="portal-card-name">{{ item.name }}</text>
+								<text
+									class="portal-card-badge"
+									:class="isPortalSelectable(item) ? 'badge-ready' : (!item.enabled ? 'badge-off' : 'badge-locked')"
+								>
+									{{ isPortalSelectable(item) ? (item.badge || '已就绪') : (!item.enabled ? '规划中' : '需商户认证') }}
+								</text>
+							</view>
+							<text class="portal-card-desc">{{ item.description }}</text>
+							<text v-if="!isPortalSelectable(item) && (item.disabledReason || item.disabled_reason)" class="portal-card-reason">
+								{{ item.disabledReason || item.disabled_reason }}
+							</text>
+							<!-- L3 无权限快捷通道路由：未授权商家直接分流至核验码或入驻表单 -->
+							<view
+								v-if="item.enabled && !isPortalSelectable(item) && item.code === 'merchant_admin'"
+								class="portal-card-action-row"
+							>
+								<view class="portal-action-pill" @tap.stop="handlePortalAction('verify')">
+									<text>🔑 核验邀请码激活</text>
+								</view>
+								<view class="portal-action-pill primary" @tap.stop="handlePortalAction('apply')">
+									<text>📝 申请商户入驻</text>
+								</view>
+							</view>
+						</view>
+						<view class="portal-card-arrow" v-if="isPortalSelectable(item)">›</view>
+					</view>
+				</view>
+
+				<view class="portal-modal-footer-tip">
+					<text>🔒 平台基于多租户 RBAC 严格隔离，越权访问将自动阻断并审计留痕</text>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import StateView from '@/components/StateView.vue';
-	import { authApi, addressApi, invoiceApi, orderApi, cooperationApi } from '@/utils/api';
+	import { authApi, addressApi, invoiceApi, orderApi, cooperationApi, portalApi } from '@/utils/api';
 	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION, BASE_URL } from '@/utils/config';
 	import { serverToLocal, localToServerPayload } from '@/utils/address';
 
@@ -1445,39 +1682,55 @@
 				mapKey: 'YOUR_TENCENT_MAP_KEY',
 
 				// ===== 合作申请数据 =====
+				coopActiveTab: 'channels', // 'channels' | 'history'
 				cooperateList: [
 					{
 						key: 'manufacturer',
-						name: '本体厂商',
+						name: '机器人本体厂商',
 						avatar: '🏭',
 						avatarBg: '#E8F4FD',
 						btnText: '洽谈合作',
 						desc: '制造 / 渠道 / 技术协同',
+						tag: '整机直采 · 展厅租赁',
 						benefits: ['品牌联合推广', '渠道资源共享', '技术方案协同'],
 						directions: ['品牌联合推广', '租赁与销售渠道共建', '技能SDK与生态适配', '赛事与展会联合冠名'],
 						formPath: '/pages/cooperate/manufacturer'
 					},
 					{
 						key: 'raas',
-						name: 'RaaS合伙人',
-						avatar: '🤝',
-						avatarBg: '#E8F4FD',
+						name: 'RaaS 算法合伙人',
+						avatar: '🧠',
+						avatarBg: '#EEF2FF',
 						btnText: '立即加入',
-						desc: '技能售卖 / 分成 / 技术社区',
+						desc: '技能售卖 / 分成 / 算法社区',
+						tag: '技能上架 · 高额分润',
 						benefits: ['技能服务上架', '高额分成收益', '社区技术交流'],
 						directions: ['动作捕捉与重定向', 'ROS2与运控算法', '视觉与多模态交互', '场景全栈解决方案'],
 						formPath: '/pages/cooperate/raas'
 					},
 					{
 						key: 'influencer',
-						name: '网红达人',
-						avatar: '📱',
-						avatarBg: '#E8F4FD',
+						name: '机甲达人 / MCN',
+						avatar: '🎬',
+						avatarBg: '#FEF3C7',
 						btnText: '演出合作',
 						desc: '免费用机 / 商单 / 流量扶持',
+						tag: '样机测评 · 流量分佣',
 						benefits: ['免费用机体验', '品牌商单合作', '平台流量扶持'],
 						directions: ['免费用机评测', '商业演出合拍', '赛事探馆直播', '带货分佣合作'],
 						formPath: '/pages/cooperate/influencer'
+					},
+					{
+						key: 'partner',
+						name: '生态合伙人推荐',
+						avatar: '🌟',
+						avatarBg: '#FDF2F8',
+						btnText: '在线推荐',
+						desc: '引荐企业 / 商务签约 / 激励',
+						tag: '引荐签约 · 尊享激励',
+						benefits: ['签约成功专属奖励', '优先合作顾问对接', '平台长期生态分成'],
+						directions: ['优质供应商引荐', '高校实验室引荐', '租赁运营商引荐', '采购企业引荐'],
+						formPath: '/pages/partner/recommend'
 					}
 				],
 				influencerPlatforms: ['抖音', '小红书', 'B站', '视频号', '快手'],
@@ -1507,6 +1760,7 @@
 				partnerSubmitting: false,
 
 				// ===== 供应链受邀入驻数据 =====
+				supplierActiveTab: 'verify', // 'verify' | 'apply' | 'progress'
 				supplierVerifyCode: '',
 				supplierVerifyResult: null,
 				supplierSubmitting: false,
@@ -1576,6 +1830,13 @@
 
 				// 底部安全区高度（单位 px）
 				safeBottom: 0,
+
+				// ===== 统一后台选择入口状态 =====
+				showPortalModal: false,
+				portalLoading: false,
+				portalError: '',
+				portalBackends: [],
+				portalActiveIndex: 0,
 			};
 		},
 		computed: {
@@ -1599,6 +1860,15 @@
 				if (!id) return '';
 				const o = (this.paidOrders || []).find(x => x.id === id);
 				return o ? `${o.increment_id || o.id}  ¥${o.grand_total}` : '';
+			},
+			coopOnlyApplications() {
+				return (this.cooperateApplications || []).filter(app => app.coop_type !== 'supplier_invite');
+			},
+			hasCoopPendingOrIssued() {
+				return this.coopOnlyApplications.some(app => app.status === 'pending' || app.status === 'contacting' || !!app.issued_invite_code);
+			},
+			hasSupplierIssuedCode() {
+				return (this.supplierApplications || []).some(app => !!app.issued_invite_code);
 			},
 			supplierApplications() {
 				return (this.cooperateApplications || []).filter(app => app.coop_type === 'supplier_invite');
@@ -1811,33 +2081,122 @@
 			goAfterSales() { uni.navigateTo({ url: '/pages/mine/after-sales' }); },
 			// 消息通知:审核/下发/试用到期/退款 都落这里(v3.4)
 			goNotifications() { uni.navigateTo({ url: '/pages/mine/notifications' }); },
-			goCooperate() {
+			goCooperate(targetTab = 'channels') {
 				this.currentPage = 'cooperate';
+				this.coopActiveTab = targetTab;
 				this.loadCooperations();
 			},
 			// 开发者后台(v3.4 步骤 9):独立 Blade 门户,跑在商城同域 /dev,与 C 端同一账号体系
 			// (邮箱+密码登录 developer 会话)。H5 新开标签页;App/小程序没有同域 web-view 条件,
 			// 复制链接让用户去浏览器打开 —— 与赛事报名外部链接的做法一致。
-			goDeveloperPortal() {
-				const url = String(BASE_URL).replace(/\/+$/, '') + '/dev';
+			// 统一后台选择入口：数据驱动展示商家后台、开发者技能后台与配置化扩展后台
+			openPortalSelector() {
+				this.showPortalModal = true;
+				this.loadPortalBackends();
+			},
+			closePortalSelector() {
+				this.showPortalModal = false;
+			},
+			async loadPortalBackends() {
+				this.portalLoading = true;
+				this.portalError = '';
+				try {
+					const res = await portalApi.backends();
+					const list = (res && Array.isArray(res.data)) ? res.data : [];
+					this.portalBackends = list.slice().sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
+				} catch (err) {
+					this.portalError = (err && err.message) ? err.message : '后台入口列表加载失败，请重试';
+				} finally {
+					this.portalLoading = false;
+				}
+			},
+			isPortalSelectable(item) {
+				if (!item || !item.enabled) return false;
+				if (typeof item.canEnter === 'boolean') return item.canEnter;
+				if (typeof item.hasPermission === 'boolean') return item.hasPermission;
+				return true;
+			},
+			resolvePortalIcon(icon) {
+				const map = {
+					store: '🏢',
+					terminal: '🧑‍💻',
+					cube: '🌐',
+				};
+				return map[icon] || '🖥️';
+			},
+			movePortalFocus(delta) {
+				if (!this.portalBackends || !this.portalBackends.length) return;
+				const len = this.portalBackends.length;
+				this.portalActiveIndex = (this.portalActiveIndex + delta + len) % len;
+			},
+			handlePortalQualificationShortcut(item) {
+				this.handlePortalAction('apply');
+			},
+			handlePortalAction(action) {
+				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
+				portalApi.track({
+					user_id: customer.id || null,
+					backend_code: 'merchant_admin',
+					timestamp: new Date().toISOString(),
+					source: 'mine_portal_action_' + action,
+				}).catch(() => {});
+
+				this.showPortalModal = false;
+				if (!this.userName) {
+					this.showLoginModal = true;
+					return;
+				}
+				if (action === 'verify') {
+					this.goSupplierCode('verify');
+				} else {
+					this.goSupplierCode('apply');
+				}
+			},
+			handleSelectBackend(item) {
+				if (!item) return;
+				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
+				const payload = {
+					user_id: customer.id || null,
+					backend_code: item.code,
+					timestamp: new Date().toISOString(),
+					source: 'mine_portal_selector',
+				};
+				portalApi.track(payload).catch(() => {});
+
+				if (!this.isPortalSelectable(item)) {
+					const reason = item.disabledReason || item.disabled_reason || (!item.enabled ? '该后台暂未开放' : '当前账号暂无该后台访问权限');
+					uni.showToast({ title: reason, icon: 'none', duration: 2500 });
+					return;
+				}
+
+				const routePath = item.routeUrl || item.route_url || '/dev';
+				const targetUrl = /^https?:\/\//i.test(routePath)
+					? routePath
+					: String(BASE_URL).replace(/\/+$/, '') + '/' + String(routePath).replace(/^\/+/, '');
+
+				this.showPortalModal = false;
 				// #ifdef H5
-				window.open(url, '_blank', 'noopener');
+				window.open(targetUrl, '_blank', 'noopener');
 				// #endif
 				// #ifndef H5
 				uni.setClipboardData({
-					data: url,
-					success: () => uni.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }),
+					data: targetUrl,
+					success: () => uni.showToast({ title: '后台链接已复制，请在浏览器打开', icon: 'none' }),
 					fail: () => uni.showToast({ title: '复制失败，请稍后重试', icon: 'none' }),
 				});
 				// #endif
 			},
-			goSupplierCode() {
+			goDeveloperPortal() {
+				this.openPortalSelector();
+			},
+			goSupplierCode(targetTab = 'verify') {
 				this.currentPage = 'supplier';
+				this.supplierActiveTab = targetTab;
 				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
 				if (!this.supplierForm.contact_name) {
 					this.supplierForm.contact_name = customer.name || this.userName || '';
 				}
-				if (!this.supplierForm.contact_phone && customer.phone && /^1d{10}$/.test(String(customer.phone))) {
+				if (!this.supplierForm.contact_phone && customer.phone && /^1\d{10}$/.test(String(customer.phone))) {
 					this.supplierForm.contact_phone = String(customer.phone);
 				}
 				if (!this.supplierForm.contact_wechat && customer.email) {
@@ -1996,13 +2355,15 @@
 				if (!this.supplierVerifyResult || !this.supplierVerifyResult.code) return;
 				this.supplierForm.entry_mode = 'with_code';
 				this.supplierForm.invite_code = this.supplierVerifyResult.code;
-				uni.showToast({ title: '已带入供应链入驻表单', icon: 'success' });
+				this.supplierActiveTab = 'apply';
+				uni.showToast({ title: '已带入邀请码，请完善资料', icon: 'success' });
 			},
 			switchSupplierEntryMode(mode) {
 				this.supplierForm.entry_mode = mode;
 				if (mode === 'apply_code') {
 					this.supplierForm.invite_code = '';
 				}
+				this.supplierActiveTab = 'apply';
 			},
 			copyInviteCode(code) {
 				if (!code) return;
@@ -2089,6 +2450,7 @@
 
 					uni.showToast({ title: (res && res.message) || '供应链申请已提交', icon: 'success' });
 					await this.loadCooperations();
+					this.supplierActiveTab = 'progress';
 				} catch (e) {
 					uni.showToast({ title: (e && e.message) || '提交失败，请稍后重试', icon: 'none' });
 				} finally {
@@ -2306,6 +2668,10 @@
 				}
 			},
 			goApplyForm(item) {
+				if (item && item.key === 'partner') {
+					this.goPartnerRecommend();
+					return;
+				}
 				const customer = uni.getStorageSync(CUSTOMER_KEY) || {};
 				const defaultDir = (item.directions && item.directions[0]) || '';
 				this.activeCoopItem = item;
@@ -2393,6 +2759,7 @@
 					this.showCooperateModal = false;
 					uni.showToast({ title: (res && res.message) || '申请已提交', icon: 'success' });
 					await this.loadCooperations();
+					this.coopActiveTab = 'history';
 				} catch (e) {
 					uni.showToast({ title: (e && e.message) || '提交失败，请稍后重试', icon: 'none' });
 				} finally {
@@ -4874,6 +5241,630 @@
 		from { transform: scale(0.9); opacity: 0; }
 		to { transform: scale(1); opacity: 1; }
 	}
+
+	/* ===== 统一后台选择入口弹窗（简洁高级风格） ===== */
+	.portal-modal-mask {
+		position: fixed;
+		inset: 0;
+		background: rgba(15, 23, 42, 0.52);
+		backdrop-filter: blur(6px);
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 32rpx;
+		animation: loginFadeIn 0.18s ease-out;
+	}
+	.portal-modal {
+		width: 100%;
+		max-width: 680rpx;
+		background: #FFFFFF;
+		border-radius: 32rpx;
+		padding: 40rpx 36rpx;
+		box-shadow: 0 24rpx 64rpx rgba(15, 23, 42, 0.18);
+		animation: loginScaleIn 0.2s ease-out;
+	}
+	.portal-modal-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin-bottom: 28rpx;
+	}
+	.portal-modal-title {
+		display: block;
+		font-size: 34rpx;
+		font-weight: 700;
+		color: #0F172A;
+		letter-spacing: -0.01em;
+	}
+	.portal-modal-sub {
+		display: block;
+		font-size: 24rpx;
+		color: #64748B;
+		margin-top: 6rpx;
+	}
+	.portal-modal-close {
+		width: 56rpx;
+		height: 56rpx;
+		border-radius: 28rpx;
+		background: #F1F5F9;
+		color: #475569;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 26rpx;
+	}
+	.portal-state-box {
+		padding: 64rpx 24rpx;
+		text-align: center;
+		background: #F8FAFC;
+		border-radius: 20rpx;
+	}
+	.portal-state-text {
+		display: block;
+		font-size: 26rpx;
+		color: #475569;
+	}
+	.portal-state-error {
+		color: #DC2626;
+	}
+	.portal-state-retry {
+		display: inline-block;
+		margin-top: 16rpx;
+		padding: 10rpx 28rpx;
+		border-radius: 999rpx;
+		background: #EEF4FF;
+		color: #165DFF;
+		font-size: 24rpx;
+		font-weight: 600;
+	}
+	.portal-list {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+	}
+	.portal-card {
+		display: flex;
+		align-items: flex-start;
+		gap: 24rpx;
+		padding: 28rpx;
+		border-radius: 22rpx;
+		background: #F8FAFC;
+		border: 2rpx solid #E2E8F0;
+		transition: all 0.16s ease;
+	}
+	.portal-card:not(.is-disabled):active {
+		background: #EEF4FF;
+		border-color: #165DFF;
+	}
+	.portal-card.is-disabled {
+		opacity: 0.62;
+		background: #F8FAFC;
+		border-color: #E2E8F0;
+	}
+	.portal-card-icon {
+		width: 76rpx;
+		height: 76rpx;
+		border-radius: 20rpx;
+		background: linear-gradient(135deg, #0F296B, #165DFF);
+		color: #FFFFFF;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 36rpx;
+		flex-shrink: 0;
+	}
+	.portal-card.is-disabled .portal-card-icon {
+		background: #CBD5E1;
+	}
+	.portal-card-main {
+		flex: 1;
+		min-width: 0;
+	}
+	.portal-card-top {
+		display: flex;
+		align-items: center;
+		gap: 14rpx;
+		flex-wrap: wrap;
+	}
+	.portal-card-name {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #0F172A;
+	}
+	.portal-card-badge {
+		font-size: 20rpx;
+		font-weight: 600;
+		padding: 4rpx 14rpx;
+		border-radius: 999rpx;
+	}
+	.portal-card-badge.badge-ready {
+		background: #EEF4FF;
+		color: #165DFF;
+	}
+	.portal-card-badge.badge-locked {
+		background: #FEF3C7;
+		color: #B45309;
+	}
+	.portal-card-badge.badge-off {
+		background: #E2E8F0;
+		color: #64748B;
+	}
+	.portal-card-desc {
+		display: block;
+		font-size: 24rpx;
+		color: #475569;
+		margin-top: 8rpx;
+		line-height: 1.45;
+	}
+	.portal-card-reason {
+		display: block;
+		font-size: 22rpx;
+		color: #B45309;
+		margin-top: 10rpx;
+		background: #FFFBEB;
+		padding: 8rpx 14rpx;
+		border-radius: 10rpx;
+	}
+	.portal-card.is-focused {
+		border-color: #165DFF;
+		box-shadow: 0 0 0 4rpx rgba(22, 93, 255, 0.12);
+	}
+	.portal-card-action-row {
+		margin-top: 14rpx;
+		display: flex;
+		align-items: center;
+	}
+	.portal-card-action-link {
+		display: inline-flex;
+		align-items: center;
+		padding: 10rpx 22rpx;
+		border-radius: 999rpx;
+		background: #EEF4FF;
+		border: 2rpx solid #BFDBFE;
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #165DFF;
+		text-decoration: none;
+	}
+	.portal-card-arrow {
+		width: 48rpx;
+		height: 48rpx;
+		border-radius: 24rpx;
+		background: #EEF4FF;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 32rpx;
+		color: #165DFF;
+		font-weight: 700;
+		align-self: center;
+		flex-shrink: 0;
+	}
+
+	/* ===== 企业工作台与生态合作模块（主页面清晰降噪版） ===== */
+	.enterprise-hub-module {
+		background: #FFFFFF;
+		border-radius: 24rpx;
+		padding: 24rpx;
+		margin-bottom: 24rpx;
+		box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.05);
+		border: 1rpx solid #F1F5F9;
+	}
+	.module-title-wrap {
+		display: flex;
+		align-items: baseline;
+		gap: 12rpx;
+	}
+	.module-subtitle {
+		font-size: 20rpx;
+		color: #94A3B8;
+		font-weight: 500;
+	}
+	.hub-card-list {
+		display: flex;
+		flex-direction: column;
+		gap: 16rpx;
+		margin-top: 14rpx;
+	}
+	.hub-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 22rpx 20rpx;
+		border-radius: 18rpx;
+		background: #F8FAFC;
+		border: 1rpx solid #E2E8F0;
+		transition: all 0.16s ease;
+		cursor: pointer;
+	}
+	.hub-card:active {
+		background: #F1F5F9;
+		transform: scale(0.99);
+	}
+	.hub-card-left {
+		display: flex;
+		align-items: center;
+		gap: 18rpx;
+		flex: 1;
+		min-width: 0;
+	}
+	.hub-card-icon-box {
+		width: 68rpx;
+		height: 68rpx;
+		border-radius: 18rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+	.hub-card-icon-box.portal-theme {
+		background: linear-gradient(135deg, #0F296B, #2563EB);
+	}
+	.hub-card-icon-box.coop-theme {
+		background: linear-gradient(135deg, #065F46, #059669);
+	}
+	.hub-card-icon-box.supplier-theme {
+		background: linear-gradient(135deg, #92400E, #D97706);
+	}
+	.hub-card-icon {
+		font-size: 34rpx;
+	}
+	.hub-card-info {
+		flex: 1;
+		min-width: 0;
+	}
+	.hub-card-title-row {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+		flex-wrap: wrap;
+	}
+	.hub-card-title {
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #0F172A;
+	}
+	.hub-pill {
+		font-size: 20rpx;
+		padding: 2rpx 12rpx;
+		border-radius: 999rpx;
+		background: #E2E8F0;
+		color: #475569;
+		font-weight: 600;
+	}
+	.hub-pill.pill-portal {
+		background: #EEF2FF;
+		color: #2563EB;
+	}
+	.hub-pill.pill-accent {
+		background: #FEF3C7;
+		color: #D97706;
+	}
+	.hub-pill.pill-success {
+		background: #ECFDF5;
+		color: #059669;
+	}
+	.hub-card-desc {
+		display: block;
+		font-size: 22rpx;
+		color: #64748B;
+		margin-top: 4rpx;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.hub-card-right {
+		margin-left: 14rpx;
+		flex-shrink: 0;
+	}
+	.hub-card-btn {
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #2563EB;
+		background: #EFF6FF;
+		padding: 8rpx 18rpx;
+		border-radius: 999rpx;
+	}
+
+	/* ===== 统一分段任务导航标签 ===== */
+	.segment-tabs-wrap {
+		display: flex;
+		background: #F1F5F9;
+		padding: 8rpx;
+		border-radius: 20rpx;
+		margin: 16rpx 24rpx;
+		gap: 8rpx;
+	}
+	.segment-tab-item {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8rpx;
+		padding: 16rpx 0;
+		border-radius: 14rpx;
+		transition: all 0.18s ease;
+		cursor: pointer;
+	}
+	.segment-tab-item.active {
+		background: #FFFFFF;
+		box-shadow: 0 4rpx 12rpx rgba(15, 23, 42, 0.08);
+	}
+	.segment-tab-title {
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #64748B;
+	}
+	.segment-tab-item.active .segment-tab-title {
+		color: #0F172A;
+		font-weight: 700;
+	}
+	.segment-badge {
+		font-size: 18rpx;
+		font-weight: 700;
+		background: #EF4444;
+		color: #FFFFFF;
+		padding: 2rpx 10rpx;
+		border-radius: 999rpx;
+		line-height: 1.2;
+	}
+	.nav-refresh-text {
+		font-size: 24rpx;
+		color: #2563EB;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	/* ===== 合作通道卡片与全景布局 ===== */
+	.coop-channels-view {
+		padding: 10rpx 24rpx 40rpx;
+	}
+	.coop-hero-banner {
+		background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+		border-radius: 24rpx;
+		padding: 30rpx 26rpx;
+		color: #FFFFFF;
+		margin-bottom: 24rpx;
+		box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.15);
+	}
+	.coop-hero-tag {
+		display: inline-block;
+		font-size: 18rpx;
+		font-weight: 700;
+		letter-spacing: 1.5rpx;
+		color: #93C5FD;
+		background: rgba(147, 197, 253, 0.18);
+		border: 1rpx solid rgba(147, 197, 253, 0.35);
+		padding: 4rpx 12rpx;
+		border-radius: 6rpx;
+		margin-bottom: 10rpx;
+	}
+	.coop-hero-title {
+		display: block;
+		font-size: 32rpx;
+		font-weight: 700;
+		color: #FFFFFF;
+	}
+	.coop-hero-desc {
+		display: block;
+		font-size: 22rpx;
+		line-height: 1.55;
+		color: #CBD5E1;
+		margin-top: 10rpx;
+	}
+	.coop-cards-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+	}
+	.coop-card-item {
+		background: #FFFFFF;
+		border-radius: 24rpx;
+		padding: 28rpx 24rpx;
+		border: 1rpx solid #E2E8F0;
+		box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.04);
+		transition: all 0.16s ease;
+	}
+	.coop-card-top-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 12rpx;
+	}
+	.coop-card-icon-badge {
+		width: 64rpx;
+		height: 64rpx;
+		border-radius: 18rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.coop-avatar-emoji {
+		font-size: 34rpx;
+	}
+	.coop-card-tag-pill {
+		font-size: 20rpx;
+		font-weight: 600;
+		padding: 4rpx 16rpx;
+		border-radius: 999rpx;
+		background: #F1F5F9;
+		color: #475569;
+	}
+	.coop-theme-manufacturer .coop-card-tag-pill { background: #EEF2FF; color: #2563EB; }
+	.coop-theme-raas .coop-card-tag-pill { background: #ECFDF5; color: #059669; }
+	.coop-theme-influencer .coop-card-tag-pill { background: #FEF3C7; color: #D97706; }
+	.coop-theme-partner .coop-card-tag-pill { background: #FDF2F8; color: #DB2777; }
+	.coop-card-title {
+		display: block;
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #0F172A;
+		margin-bottom: 6rpx;
+	}
+	.coop-card-summary {
+		display: block;
+		font-size: 24rpx;
+		color: #64748B;
+		line-height: 1.45;
+		margin-bottom: 16rpx;
+	}
+	.coop-benefit-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10rpx;
+		margin-bottom: 20rpx;
+	}
+	.coop-benefit-tag {
+		font-size: 20rpx;
+		color: #334155;
+		background: #F8FAFC;
+		border: 1rpx solid #E2E8F0;
+		padding: 4rpx 14rpx;
+		border-radius: 8rpx;
+	}
+	.coop-card-action-wrap {
+		display: flex;
+		justify-content: flex-end;
+	}
+	.coop-card-btn {
+		font-size: 24rpx;
+		font-weight: 600;
+		padding: 10rpx 28rpx;
+		border-radius: 999rpx;
+		background: linear-gradient(135deg, #2563EB, #1D4ED8);
+		color: #FFFFFF;
+		cursor: pointer;
+	}
+	.coop-card-btn:active {
+		opacity: 0.85;
+	}
+
+	/* 合作历史与状态 */
+	.coop-history-view {
+		padding: 10rpx 24rpx 40rpx;
+	}
+	.coop-state-card {
+		background: #FFFFFF;
+		border-radius: 24rpx;
+		padding: 64rpx 32rpx;
+		text-align: center;
+		border: 1rpx solid #E2E8F0;
+		box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.04);
+	}
+	.coop-empty-icon {
+		font-size: 64rpx;
+		margin-bottom: 16rpx;
+		display: block;
+	}
+	.coop-state-title {
+		display: block;
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #0F172A;
+		margin-bottom: 8rpx;
+	}
+	.coop-state-desc {
+		display: block;
+		font-size: 22rpx;
+		color: #64748B;
+		line-height: 1.5;
+		max-width: 480rpx;
+		margin: 0 auto 24rpx;
+	}
+	.coop-empty-action {
+		display: inline-block;
+		padding: 12rpx 32rpx;
+		border-radius: 999rpx;
+		background: #EEF2FF;
+		color: #2563EB;
+		font-size: 24rpx;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	/* 供应商引导卡片 */
+	.supplier-guide-card {
+		margin-top: 20rpx;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		background: #EFF6FF;
+		border: 1rpx solid #BFDBFE;
+		border-radius: 20rpx;
+		padding: 22rpx 20rpx;
+		cursor: pointer;
+	}
+	.supplier-guide-left {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+		flex: 1;
+		min-width: 0;
+	}
+	.supplier-guide-icon {
+		font-size: 36rpx;
+	}
+	.supplier-guide-text {
+		flex: 1;
+		min-width: 0;
+	}
+	.supplier-guide-title {
+		display: block;
+		font-size: 24rpx;
+		font-weight: 700;
+		color: #1E3A8A;
+	}
+	.supplier-guide-desc {
+		display: block;
+		font-size: 20rpx;
+		color: #3B82F6;
+		margin-top: 2rpx;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.supplier-guide-btn {
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #1D4ED8;
+		background: #FFFFFF;
+		padding: 6rpx 18rpx;
+		border-radius: 999rpx;
+		border: 1rpx solid #BFDBFE;
+		margin-left: 12rpx;
+		flex-shrink: 0;
+	}
+
+	/* 弹窗中的快捷操作胶囊 */
+	.portal-action-pill {
+		display: inline-flex;
+		align-items: center;
+		padding: 8rpx 20rpx;
+		border-radius: 999rpx;
+		background: #F1F5F9;
+		border: 1rpx solid #CBD5E1;
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #334155;
+		cursor: pointer;
+		margin-right: 12rpx;
+		margin-top: 8rpx;
+	}
+	.portal-action-pill.primary {
+		background: #EEF2FF;
+		border-color: #BFDBFE;
+		color: #2563EB;
+	}
+	.portal-modal-footer-tip {
+		margin-top: 24rpx;
+		padding-top: 18rpx;
+		border-top: 1rpx solid #F1F5F9;
+		text-align: center;
+		font-size: 20rpx;
+		color: #94A3B8;
+	}
+
 </style>
 
 <!-- 全局样式：隐藏滚动条（仅保留 webkit 伪类，删除 * 选择器） -->

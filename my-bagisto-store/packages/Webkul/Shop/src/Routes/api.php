@@ -36,6 +36,8 @@ use Webkul\Shop\Http\Controllers\API\Dev\AuditController as DevAuditController;
 use Webkul\Shop\Http\Controllers\API\Dev\AuthController as DevAuthController;
 use Webkul\Shop\Http\Controllers\API\Dev\DeveloperSkillController;
 use Webkul\Shop\Http\Controllers\API\Dev\ProfileController as DevProfileController;
+use Webkul\Shop\Http\Controllers\API\Merchant\MerchantApiController;
+use Webkul\Shop\Http\Controllers\API\PortalBackendController;
 use Webkul\Shop\Http\Controllers\API\DeviceController;
 use Webkul\Shop\Http\Controllers\API\GrayReleaseController;
 use Webkul\Shop\Http\Controllers\API\IncidentController;
@@ -646,17 +648,94 @@ Route::group(['prefix' => 'api'], function () {
     });
 
     Route::controller(DeveloperSkillController::class)->prefix('dev')->middleware(['api.developer'])->group(function () {
+        Route::get('sales-metrics', 'salesMetrics')->name('shop.api.dev.sales-metrics');
+        Route::get('orders', 'orders')->name('shop.api.dev.orders.index');
+        Route::get('orders/{id}', 'showOrder')->whereNumber('id')->name('shop.api.dev.orders.show');
+
         Route::get('skills', 'index')->name('shop.api.dev.skills.index');
         Route::post('skills', 'store')->name('shop.api.dev.skills.store');
         Route::get('skills/{skillId}', 'show')->whereNumber('skillId')->name('shop.api.dev.skills.show');
         Route::post('skills/{skillId}/versions', 'storeVersion')->whereNumber('skillId')->name('shop.api.dev.skills.versions.store');
 
+        Route::put('versions/{versionId}', 'updateVersion')->whereNumber('versionId')->name('shop.api.dev.versions.update');
         Route::post('versions/{versionId}/assets', 'storeAsset')->whereNumber('versionId')->name('shop.api.dev.versions.assets.store');
+        Route::post('versions/{versionId}/evidence', 'storeEvidence')->whereNumber('versionId')->name('shop.api.dev.versions.evidence.store');
         Route::post('versions/{versionId}/submit', 'submit')->whereNumber('versionId')->name('shop.api.dev.versions.submit');
+
+        Route::delete('assets/{assetId}', 'destroyAsset')->whereNumber('assetId')->name('shop.api.dev.assets.destroy');
     });
 
     Route::controller(DevAuditController::class)->prefix('dev')->middleware(['api.developer'])->group(function () {
         Route::get('audits', 'index')->name('shop.api.dev.audits.index');
+    });
+
+    /**
+     * 统一后台选择入口（Portal Backend Registry）—— 配置化返回商家后台、开发者技能后台、场景合作方后台等。
+     */
+    Route::controller(PortalBackendController::class)->prefix('portal')->group(function () {
+        Route::get('backends', 'index')->name('shop.api.portal.backends.index');
+        Route::post('backends/track', 'track')->middleware('throttle:write')->name('shop.api.portal.backends.track');
+    });
+
+    /**
+     * 多租户商家后台 REST API（/api/merchant/*）—— 严格按 seller_id 隔离，禁止越权访问。
+     */
+    Route::controller(MerchantApiController::class)->prefix('merchant')->middleware(['api.merchant'])->group(function () {
+        Route::get('context', 'context')->name('shop.api.merchant.context');
+        Route::post('shops/switch', 'switchShop')->middleware('throttle:write')->name('shop.api.merchant.shops.switch');
+        Route::post('shops', 'createShop')->middleware('throttle:write')->name('shop.api.merchant.shops.store');
+        Route::put('shops/current', 'updateCurrentShop')->middleware('throttle:write')->name('shop.api.merchant.shops.update-current');
+
+        Route::get('members', 'members')->name('shop.api.merchant.members.index');
+        Route::post('members', 'upsertMember')->middleware('throttle:write')->name('shop.api.merchant.members.store');
+        Route::put('members', 'upsertMember')->middleware('throttle:write')->name('shop.api.merchant.members.update');
+
+        Route::get('products', 'products')->name('shop.api.merchant.products.index');
+        Route::post('products', 'storeProduct')->middleware('throttle:write')->name('shop.api.merchant.products.store');
+        Route::get('products/{id}', 'showProduct')->whereNumber('id')->name('shop.api.merchant.products.show');
+        Route::put('products/{id}', 'updateProduct')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.products.update');
+        Route::post('products/{id}/submit-review', 'submitReview')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.products.submit-review');
+        Route::post('products/{id}/review-decision', 'reviewDecision')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.products.review-decision');
+        Route::post('products/{id}/on-shelf', 'onShelf')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.products.on-shelf');
+        Route::post('products/{id}/off-shelf', 'offShelf')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.products.off-shelf');
+
+        Route::get('skus', 'skus')->name('shop.api.merchant.skus.index');
+        Route::post('skus', 'storeSku')->middleware('throttle:write')->name('shop.api.merchant.skus.store');
+        Route::put('skus/{skuId}', 'updateSku')->whereNumber('skuId')->middleware('throttle:write')->name('shop.api.merchant.skus.update');
+
+        Route::get('rental-plans', 'rentalPlans')->name('shop.api.merchant.rental-plans.index');
+        Route::post('rental-plans', 'storeRentalPlan')->middleware('throttle:write')->name('shop.api.merchant.rental-plans.store');
+        Route::put('rental-plans/{planId}', 'updateRentalPlan')->whereNumber('planId')->middleware('throttle:write')->name('shop.api.merchant.rental-plans.update');
+
+        Route::get('warehouses', 'warehouses')->name('shop.api.merchant.warehouses.index');
+        Route::post('warehouses', 'storeWarehouse')->middleware('throttle:write')->name('shop.api.merchant.warehouses.store');
+
+        Route::get('inventory', 'inventory')->name('shop.api.merchant.inventory.index');
+        Route::put('inventory/{id}', 'updateInventory')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.inventory.update');
+        Route::get('inventory-locks', 'inventoryLocks')->name('shop.api.merchant.inventory-locks.index');
+
+        Route::get('orders', 'orders')->name('shop.api.merchant.orders.index');
+        Route::post('orders', 'storeOrder')->middleware('throttle:write')->name('shop.api.merchant.orders.store');
+        Route::get('rental-orders', 'rentalOrders')->name('shop.api.merchant.rental-orders.index');
+        Route::post('orders/{id}/ship', 'shipOrder')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.orders.ship');
+        Route::post('orders/{id}/return', 'returnOrder')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.orders.return');
+        Route::post('orders/{id}/inspect', 'inspectOrder')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.orders.inspect');
+        Route::post('orders/{id}/complete', 'completeOrder')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.orders.complete');
+        Route::post('orders/{id}/cancel', 'cancelOrder')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.orders.cancel');
+
+        Route::get('after-sales', 'afterSales')->name('shop.api.merchant.after-sales.index');
+        Route::post('after-sales', 'storeAfterSales')->middleware('throttle:write')->name('shop.api.merchant.after-sales.store');
+        Route::post('after-sales/{id}/resolve', 'resolveAfterSales')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.after-sales.resolve');
+
+        Route::get('settlements', 'settlements')->name('shop.api.merchant.settlements.index');
+        Route::post('settlements', 'storeSettlement')->middleware('throttle:write')->name('shop.api.merchant.settlements.store');
+        Route::post('settlements/{id}/confirm', 'confirmSettlement')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.settlements.confirm');
+
+        Route::get('invoices', 'invoices')->name('shop.api.merchant.invoices.index');
+        Route::post('invoices', 'storeInvoice')->middleware('throttle:write')->name('shop.api.merchant.invoices.store');
+        Route::post('invoices/{id}/issue', 'issueInvoice')->whereNumber('id')->middleware('throttle:write')->name('shop.api.merchant.invoices.issue');
+
+        Route::get('audit-logs', 'auditLogs')->name('shop.api.merchant.audit-logs.index');
     });
 
     /**

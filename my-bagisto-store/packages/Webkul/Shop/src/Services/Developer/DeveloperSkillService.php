@@ -6,6 +6,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Webkul\Product\Models\ProductProxy;
@@ -14,12 +15,15 @@ use Webkul\Shop\Models\AuditRecord;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillCompatibilityEvidence;
+use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillAudit\AuditService;
 use Webkul\Shop\Services\SkillAudit\ReviewGate;
 use Webkul\Shop\Services\SkillAudit\SkillVersionState;
 use Webkul\Shop\Services\SkillPackage\PackageInspector;
+use Webkul\Shop\Services\SkillPackage\SkillManifest;
 use Webkul\Shop\Services\SkillPackage\SkillPackageBuilder;
 use Webkul\Shop\Services\SkillSupply\AssetUploadResult;
 use Webkul\Shop\Services\SkillSupply\AssetUploadService;
@@ -105,9 +109,28 @@ class DeveloperSkillService
     }
 
     /**
-     * 我的技能列表（带名字/价格，供门户列表页用）。
+     * 取"我的某个交付物（SkillAsset）"。在查询层通过 skill_versions.seller_id 过滤归属。
+     * 不属于我 → null。
+     */
+    public function findOwnedAsset(DeveloperProfile $profile, int $assetId): ?SkillAsset
+    {
+        if (! $profile->seller_id) {
+            return null;
+        }
+
+        return SkillAsset::query()
+            ->select('skill_assets.*')
+            ->join('skill_versions', 'skill_versions.id', '=', 'skill_assets.skill_version_id')
+            ->where('skill_assets.id', $assetId)
+            ->where('skill_versions.seller_id', $profile->seller_id)
+            ->with('version')
+            ->first();
+    }
+
+    /**
+     * 我的技能列表（带名字/价格/版本统计/授权统计，供门户列表页与 API 用）。
      *
-     * 直接 join product_flat 取展示字段，避免逐个商品解析属性造成 N+1。
+     * 直接 join product_flat 取展示字段，并用批量聚合补充版本数与最新状态，避免 N+1。
      */
     public function listSkills(DeveloperProfile $profile): Collection
     {
@@ -115,7 +138,7 @@ class DeveloperSkillService
             return collect();
         }
 
-        return DB::table('products')
+        $rows = DB::table('products')
             ->join('product_flat', function ($join) {
                 $join->on('product_flat.product_id', '=', 'products.id')
                     ->where('product_flat.channel', core()->getDefaultChannelCode())
@@ -128,10 +151,43 @@ class DeveloperSkillService
                 'products.created_at',
                 'product_flat.name',
                 'product_flat.price',
-                'product_flat.status'
+                'product_flat.status',
+                'product_flat.short_description'
             )
             ->orderByDesc('products.id')
             ->get();
+
+        if ($rows->isEmpty()) {
+            return $rows;
+        }
+
+        $productIds = $rows->pluck('id')->all();
+
+        $versionsByProduct = SkillVersion::query()
+            ->whereIn('product_id', $productIds)
+            ->where('seller_id', $profile->seller_id)
+            ->orderByDesc('id')
+            ->get(['id', 'product_id', 'version', 'status', 'channel'])
+            ->groupBy('product_id');
+
+        $entitlementsByProduct = DB::table('skill_entitlements')
+            ->whereIn('product_id', $productIds)
+            ->selectRaw('product_id, COUNT(*) as cnt')
+            ->groupBy('product_id')
+            ->pluck('cnt', 'product_id');
+
+        return $rows->map(function ($row) use ($versionsByProduct, $entitlementsByProduct) {
+            $versions = $versionsByProduct->get($row->id, collect());
+            $latest = $versions->first();
+
+            $row->versions_count = $versions->count();
+            $row->latest_version = $latest?->version;
+            $row->latest_version_status = $latest?->status;
+            $row->latest_version_channel = $latest?->channel;
+            $row->entitlements_count = (int) ($entitlementsByProduct[$row->id] ?? 0);
+
+            return $row;
+        });
     }
 
     /**
@@ -170,7 +226,7 @@ class DeveloperSkillService
     }
 
     /**
-     * 我的版本的审核记录（含驳回理由 —— 计划 C 组"驳回理由开发者可见"）。
+     * 我的版本的审核记录（含驳回理由 + 技能名称与版本号回显 —— 计划 C 组"驳回理由开发者可见"）。
      */
     public function listAudits(DeveloperProfile $profile): Collection
     {
@@ -186,9 +242,48 @@ class DeveloperSkillService
             return collect();
         }
 
-        return AuditRecord::query()
+        $records = AuditRecord::query()
             ->whereIn('skill_id', $productIds)
             ->orderByDesc('id')
+            ->get();
+
+        if ($records->isEmpty()) {
+            return $records;
+        }
+
+        $skillNames = DB::table('product_flat')
+            ->whereIn('product_id', $productIds)
+            ->where('channel', core()->getDefaultChannelCode())
+            ->where('locale', $this->defaultLocaleCode())
+            ->pluck('name', 'product_id');
+
+        $versionIds = $records->pluck('version_id')->filter()->unique()->values()->all();
+        $versionNumbers = $versionIds
+            ? SkillVersion::query()->whereIn('id', $versionIds)->pluck('version', 'id')
+            : collect();
+
+        return $records->map(function (AuditRecord $rec) use ($skillNames, $versionNumbers) {
+            $rec->setAttribute('skill_name', $skillNames[$rec->skill_id] ?? ('技能 #'.$rec->skill_id));
+            $rec->setAttribute('version_number', $rec->version_id ? ($versionNumbers[$rec->version_id] ?? null) : null);
+
+            return $rec;
+        });
+    }
+
+    /**
+     * 开发者本主体的操作审计留痕（改价、下架、撤回提审、申请上架、版本配置更新、交付物移除、适配证据登记）。
+     */
+    public function listOperationLogs(DeveloperProfile $profile, int $limit = 50): Collection
+    {
+        if (! $profile->seller_id) {
+            return collect();
+        }
+
+        return OperationLog::query()
+            ->where('actor_type', OperationLog::ACTOR_SELLER)
+            ->where('actor_id', $profile->seller_id)
+            ->orderByDesc('id')
+            ->limit($limit)
             ->get();
     }
 
@@ -348,20 +443,322 @@ class DeveloperSkillService
             return null;
         }
 
+        $channel = in_array($data['channel'] ?? '', SkillVersion::CHANNELS, true)
+            ? $data['channel']
+            : SkillVersion::CHANNEL_STABLE;
+
+        $licenseMode = in_array($data['license_mode'] ?? '', SkillVersion::LICENSE_MODES, true)
+            ? $data['license_mode']
+            : SkillVersion::LICENSE_PER_DEVICE;
+
+        $riskLevel = in_array($data['risk_level'] ?? '', ['low', 'medium', 'high'], true)
+            ? $data['risk_level']
+            : null;
+
+        $deliveryChannels = is_array($data['delivery_channels'] ?? null)
+            ? array_values(array_intersect($data['delivery_channels'], SkillAsset::DELIVERY_CHANNELS))
+            : null;
+
+        $permissions = is_array($data['permissions'] ?? null)
+            ? array_values(array_intersect($data['permissions'], SkillManifest::PERMISSION_WHITELIST))
+            : null;
+
+        $compatibility = $this->normalizeCompatibility($data);
+
         return SkillVersion::firstOrCreate(
             [
                 'product_id' => $product->id,
                 'version'    => $data['version'],
             ],
+            array_filter([
+                'seller_id'         => $profile->seller_id,
+                'channel'           => $channel,
+                'status'            => SkillVersion::STATUS_DRAFT,
+                'license_mode'      => $licenseMode,
+                'max_activations'   => isset($data['max_activations']) && $data['max_activations'] !== '' ? (int) $data['max_activations'] : null,
+                'valid_days'        => isset($data['valid_days']) && $data['valid_days'] !== '' ? (int) $data['valid_days'] : null,
+                'min_robot_version' => ! empty($data['min_robot_version']) ? (string) $data['min_robot_version'] : null,
+                'risk_level'        => $riskLevel,
+                'delivery_channels' => $deliveryChannels ?: null,
+                'permissions'       => $permissions ?: null,
+                'compatibility'     => $compatibility,
+                'changelog'         => $data['changelog'] ?? null,
+                'install_guide'     => $data['install_guide'] ?? null,
+            ], fn ($v) => $v !== null)
+        );
+    }
+
+    /**
+     * 更新草稿或被驳回版本的配置与说明（三级/四级闭环）。
+     *
+     * ⚠ 状态锁：审核中（in_review）与已发布（published）版本禁止修改版本参数与说明，
+     *   避免在审核流转中途或对已买断买家静默篡改授权规则/适配承诺。
+     *
+     * @return array{ok:bool,status:int,code:string,message:string,version?:SkillVersion}|null
+     */
+    public function updateVersion(DeveloperProfile $profile, int $versionId, array $data): ?array
+    {
+        $version = $this->findOwnedVersion($profile, $versionId);
+
+        if (! $version) {
+            return null;
+        }
+
+        if (! in_array($version->status, [SkillVersion::STATUS_DRAFT, SkillVersion::STATUS_REJECTED], true)) {
+            return [
+                'ok'      => false,
+                'status'  => 409,
+                'code'    => $version->isPublished() ? 'VERSION_PUBLISHED_IMMUTABLE' : 'CONFLICT',
+                'message' => $version->isPublished()
+                    ? '已发布的版本不可修改配置；请新建更高版本进行迭代。'
+                    : '审核中的版本不可修改配置；如需修改请先撤回提审。',
+            ];
+        }
+
+        if (isset($data['channel']) && in_array($data['channel'], SkillVersion::CHANNELS, true)) {
+            $version->channel = $data['channel'];
+        }
+
+        if (isset($data['license_mode']) && in_array($data['license_mode'], SkillVersion::LICENSE_MODES, true)) {
+            $version->license_mode = $data['license_mode'];
+        }
+
+        if (array_key_exists('max_activations', $data)) {
+            $version->max_activations = ($data['max_activations'] !== null && $data['max_activations'] !== '')
+                ? (int) $data['max_activations']
+                : null;
+        }
+
+        if (array_key_exists('valid_days', $data)) {
+            $version->valid_days = ($data['valid_days'] !== null && $data['valid_days'] !== '')
+                ? (int) $data['valid_days']
+                : null;
+        }
+
+        if (array_key_exists('min_robot_version', $data)) {
+            $version->min_robot_version = ($data['min_robot_version'] !== null && trim((string) $data['min_robot_version']) !== '')
+                ? trim((string) $data['min_robot_version'])
+                : null;
+        }
+
+        if (array_key_exists('risk_level', $data)) {
+            $version->risk_level = in_array($data['risk_level'], ['low', 'medium', 'high'], true)
+                ? $data['risk_level']
+                : $version->risk_level;
+        }
+
+        if (array_key_exists('delivery_channels', $data)) {
+            $channels = is_array($data['delivery_channels'])
+                ? array_values(array_intersect($data['delivery_channels'], SkillAsset::DELIVERY_CHANNELS))
+                : [];
+            $version->delivery_channels = $channels ?: null;
+        }
+
+        if (array_key_exists('permissions', $data)) {
+            $perms = is_array($data['permissions'])
+                ? array_values(array_intersect($data['permissions'], SkillManifest::PERMISSION_WHITELIST))
+                : [];
+            $version->permissions = $perms ?: null;
+        }
+
+        if (array_key_exists('compatibility', $data) || array_key_exists('target_models', $data)) {
+            $version->compatibility = $this->normalizeCompatibility($data);
+        }
+
+        if (array_key_exists('changelog', $data)) {
+            $version->changelog = $data['changelog'];
+        }
+
+        if (array_key_exists('install_guide', $data)) {
+            $version->install_guide = $data['install_guide'];
+        }
+
+        $version->save();
+
+        $this->ops->log(
+            OperationLog::ACTOR_SELLER,
+            $profile->seller_id,
+            'skill.version.update',
+            self::TARGET_SKILL_VERSION,
+            $version->id,
             [
-                'seller_id'     => $profile->seller_id,
-                'channel'       => $data['channel'] ?? SkillVersion::CHANNEL_STABLE,
-                'status'        => SkillVersion::STATUS_DRAFT,
-                'license_mode'  => $data['license_mode'] ?? SkillVersion::LICENSE_PER_DEVICE,
-                'changelog'     => $data['changelog'] ?? null,
-                'install_guide' => $data['install_guide'] ?? null,
+                'product_id'   => $version->product_id,
+                'version'      => $version->version,
+                'channel'      => $version->channel,
+                'license_mode' => $version->license_mode,
+                'risk_level'   => $version->risk_level,
             ]
         );
+
+        return [
+            'ok'      => true,
+            'status'  => 200,
+            'code'    => 'UPDATED',
+            'message' => '版本配置与说明已更新。',
+            'version' => $version->fresh(),
+        ];
+    }
+
+    /**
+     * 移除未锁定的版本交付物（仅允许 draft / rejected 状态版本）。
+     *
+     * @return array{ok:bool,status:int,code:string,message:string}|null
+     */
+    public function deleteAsset(DeveloperProfile $profile, int $assetId): ?array
+    {
+        $asset = $this->findOwnedAsset($profile, $assetId);
+
+        if (! $asset || ! $asset->version) {
+            return null;
+        }
+
+        $version = $asset->version;
+
+        if (! in_array($version->status, [SkillVersion::STATUS_DRAFT, SkillVersion::STATUS_REJECTED], true)) {
+            return [
+                'ok'      => false,
+                'status'  => 409,
+                'code'    => $version->isPublished() ? 'VERSION_PUBLISHED_IMMUTABLE' : 'CONFLICT',
+                'message' => $version->isPublished()
+                    ? '已发布版本的交付物不可移除。'
+                    : '审核中版本的交付物不可直接移除；如需更换或删除，请先撤回提审。',
+            ];
+        }
+
+        $meta = [
+            'product_id'   => $version->product_id,
+            'version_id'   => $version->id,
+            'version'      => $version->version,
+            'carrier_type' => $asset->carrier_type,
+            'file_name'    => $asset->file_name,
+            'file_hash'    => $asset->file_hash,
+        ];
+
+        if ($asset->file_path) {
+            $disk = Storage::disk(SkillAsset::disk());
+            if ($disk->exists($asset->file_path)) {
+                $disk->delete($asset->file_path);
+            }
+        }
+
+        $asset->delete();
+
+        $this->ops->log(
+            OperationLog::ACTOR_SELLER,
+            $profile->seller_id,
+            'skill.asset.delete',
+            'skill_asset',
+            $assetId,
+            $meta
+        );
+
+        return [
+            'ok'      => true,
+            'status'  => 200,
+            'code'    => 'DELETED',
+            'message' => '交付物已移除。',
+        ];
+    }
+
+    /**
+     * 登记版本自测/仿真/真机适配证据（四级闭环 · 钉住当前产物 SHA-256）。
+     *
+     * @return array{ok:bool,status:int,code:string,message:string,evidence?:SkillCompatibilityEvidence}|null
+     */
+    public function recordCompatibilityEvidence(DeveloperProfile $profile, int $versionId, array $data): ?array
+    {
+        $version = $this->findOwnedVersion($profile, $versionId);
+
+        if (! $version) {
+            return null;
+        }
+
+        $asset = null;
+        if (! empty($data['asset_id'])) {
+            $asset = SkillAsset::query()
+                ->where('id', (int) $data['asset_id'])
+                ->where('skill_version_id', $version->id)
+                ->first();
+        }
+
+        if (! $asset) {
+            $asset = SkillAsset::query()
+                ->where('skill_version_id', $version->id)
+                ->orderByRaw("CASE WHEN carrier_type = 'file' THEN 0 ELSE 1 END")
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        $evidence = SkillCompatibilityEvidence::create([
+            'skill_version_id' => $version->id,
+            'product_id'       => $version->product_id,
+            'model_code'       => trim((string) $data['model_code']),
+            'firmware_version' => ! empty($data['firmware_version']) ? trim((string) $data['firmware_version']) : null,
+            'sdk_version'      => ! empty($data['sdk_version']) ? trim((string) $data['sdk_version']) : null,
+            'agent_version'    => ! empty($data['agent_version']) ? trim((string) $data['agent_version']) : null,
+            'device_did'       => ! empty($data['device_did']) ? trim((string) $data['device_did']) : null,
+            'carrier_type'     => $asset?->carrier_type ?? ($data['carrier_type'] ?? SkillAsset::CARRIER_FILE),
+            'asset_id'         => $asset?->id,
+            'asset_hash'       => $asset?->file_hash,
+            'source'           => $data['source'],
+            'evidence_type'    => $data['evidence_type'],
+            'result'           => $data['result'],
+            'summary'          => ! empty($data['summary']) ? trim((string) $data['summary']) : null,
+            'verified_by'      => 'seller:'.$profile->seller_id,
+            'observed_at'      => now(),
+        ]);
+
+        $this->ops->log(
+            OperationLog::ACTOR_SELLER,
+            $profile->seller_id,
+            'skill.version.evidence',
+            self::TARGET_SKILL_VERSION,
+            $version->id,
+            [
+                'evidence_id'   => $evidence->id,
+                'model_code'    => $evidence->model_code,
+                'source'        => $evidence->source,
+                'evidence_type' => $evidence->evidence_type,
+                'result'        => $evidence->result,
+                'asset_id'      => $evidence->asset_id,
+            ]
+        );
+
+        return [
+            'ok'       => true,
+            'status'   => 201,
+            'code'     => 'CREATED',
+            'message'  => '适配验证记录已登记（已绑定当前版本产物快照）。',
+            'evidence' => $evidence,
+        ];
+    }
+
+    /**
+     * 将表单或 JSON 提交的适配机型解析为标准 compatibility 结构。
+     */
+    protected function normalizeCompatibility(array $data): ?array
+    {
+        if (isset($data['compatibility']) && is_array($data['compatibility'])) {
+            return $data['compatibility'];
+        }
+
+        if (isset($data['target_models'])) {
+            $raw = $data['target_models'];
+            $models = is_array($raw)
+                ? $raw
+                : preg_split('/[\s,;，；]+/u', (string) $raw, -1, PREG_SPLIT_NO_EMPTY);
+
+            $models = array_values(array_unique(array_filter(array_map('trim', (array) $models))));
+            if ($models === []) {
+                return null;
+            }
+
+            return [
+                'models' => array_map(fn (string $m) => ['model' => $m], $models),
+            ];
+        }
+
+        return null;
     }
 
     /**
@@ -758,6 +1155,289 @@ class DeveloperSkillService
             ->value('status');
 
         return (int) $status === 1;
+    }
+
+    // ==================== 交易与授权订单（闭环 L3/L4） ====================
+
+    /**
+     * 开发者名下技能销售指标（GMV、净销售额、授权总数、有效授权、待绑定、已撤销、下载量）。
+     */
+    public function salesMetrics(DeveloperProfile $profile): array
+    {
+        if (! $profile->seller_id) {
+            return [
+                'gmv_cents'            => 0,
+                'gmv_yuan'             => '0.00',
+                'net_sales_cents'      => 0,
+                'net_sales_yuan'       => '0.00',
+                'orders_count'         => 0,
+                'total_entitlements'   => 0,
+                'active_count'         => 0,
+                'pending_bind_count'   => 0,
+                'revoked_count'        => 0,
+                'expired_count'        => 0,
+                'downloads_count'      => 0,
+            ];
+        }
+
+        $sellerId = $profile->seller_id;
+
+        $entitlements = SkillEntitlement::query()
+            ->where('seller_id', $sellerId)
+            ->with(['orderItem'])
+            ->get();
+
+        $gmvCents = 0;
+        $revokedCents = 0;
+        $orderIds = [];
+
+        foreach ($entitlements as $ent) {
+            if ($ent->order_id) {
+                $orderIds[$ent->order_id] = true;
+            }
+            $itemTotal = (float) ($ent->orderItem?->base_total ?? 0);
+            $cents = (int) round($itemTotal * 100);
+            $gmvCents += $cents;
+            if ($ent->status === SkillEntitlement::STATUS_REVOKED) {
+                $revokedCents += $cents;
+            }
+        }
+
+        $netSalesCents = max(0, $gmvCents - $revokedCents);
+
+        $downloadCount = Schema::hasTable('operation_log')
+            ? (int) DB::table('operation_log')
+                ->where('action', 'skill.download')
+                ->where('target_type', 'skill_version')
+                ->whereIn('target_id', function ($query) use ($sellerId) {
+                    $query->select('id')->from('skill_versions')->where('seller_id', $sellerId);
+                })
+                ->count()
+            : 0;
+
+        return [
+            'gmv_cents'            => $gmvCents,
+            'gmv_yuan'             => number_format($gmvCents / 100, 2, '.', ''),
+            'net_sales_cents'      => $netSalesCents,
+            'net_sales_yuan'       => number_format($netSalesCents / 100, 2, '.', ''),
+            'orders_count'         => count($orderIds),
+            'total_entitlements'   => $entitlements->count(),
+            'active_count'         => $entitlements->where('status', SkillEntitlement::STATUS_ACTIVE)->count(),
+            'pending_bind_count'   => $entitlements->where('status', SkillEntitlement::STATUS_PENDING_BIND)->count(),
+            'revoked_count'        => $entitlements->where('status', SkillEntitlement::STATUS_REVOKED)->count(),
+            'expired_count'        => $entitlements->where('status', SkillEntitlement::STATUS_EXPIRED)->count(),
+            'downloads_count'      => $downloadCount,
+        ];
+    }
+
+    /**
+     * 开发者名下订单列表（分页 + 状态过滤 + 关键词搜索 + 买家 PII 严格脱敏）。
+     */
+    public function listOrders(DeveloperProfile $profile, array $filters = [], int $perPage = 15): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        if (! $profile->seller_id) {
+            return new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage);
+        }
+
+        $query = SkillEntitlement::query()
+            ->where('skill_entitlements.seller_id', $profile->seller_id)
+            ->with(['product', 'version', 'device', 'order', 'orderItem']);
+
+        if (! empty($filters['status'])) {
+            $query->where('skill_entitlements.status', (string) $filters['status']);
+        }
+
+        if (! empty($filters['product_id'])) {
+            $query->where('skill_entitlements.product_id', (int) $filters['product_id']);
+        }
+
+        if (! empty($filters['keyword'])) {
+            $kw = trim((string) $filters['keyword']);
+            $query->where(function ($q) use ($kw) {
+                $q->where('skill_entitlements.license_key', 'like', '%'.$kw.'%')
+                    ->orWhereHas('order', function ($oq) use ($kw) {
+                        $oq->where('increment_id', 'like', '%'.$kw.'%')
+                            ->orWhere('customer_first_name', 'like', '%'.$kw.'%')
+                            ->orWhere('customer_email', 'like', '%'.$kw.'%');
+                    })
+                    ->orWhereHas('device', function ($dq) use ($kw) {
+                        $dq->where('sn', 'like', '%'.$kw.'%');
+                    })
+                    ->orWhereIn('skill_entitlements.product_id', function ($sub) use ($kw) {
+                        $sub->select('product_id')->from('product_flat')->where('name', 'like', '%'.$kw.'%');
+                    });
+            });
+        }
+
+        $paginator = $query->orderByDesc('skill_entitlements.id')->paginate(max(1, min(100, $perPage)));
+        $paginator->getCollection()->transform(fn (SkillEntitlement $ent) => $this->formatOrderEntitlement($ent));
+
+        return $paginator;
+    }
+
+    /**
+     * 开发者查询单个属于自己的授权订单（Anti-IDOR：查不到返回 null）。
+     */
+    public function findOwnedOrder(DeveloperProfile $profile, int $entitlementId): ?array
+    {
+        if (! $profile->seller_id) {
+            return null;
+        }
+
+        $ent = SkillEntitlement::query()
+            ->where('seller_id', $profile->seller_id)
+            ->where('id', $entitlementId)
+            ->with(['product', 'version', 'device', 'order', 'orderItem'])
+            ->first();
+
+        return $ent ? $this->formatOrderEntitlement($ent) : null;
+    }
+
+    /**
+     * 格式化授权订单为结构化数据，含 PII 脱敏、履约状态与完整时间线。
+     */
+    public function formatOrderEntitlement(SkillEntitlement $ent): array
+    {
+        $order = $ent->order;
+        $orderItem = $ent->orderItem;
+        $version = $ent->version;
+        $device = $ent->device;
+
+        $amountYuan = $orderItem ? (float) $orderItem->base_total : 0.0;
+        $amountCents = (int) round($amountYuan * 100);
+
+        // 买家 PII 严格合规脱敏（智能适配中英文姓名顺序）
+        $rawFirstName = trim((string) ($order?->customer_first_name ?? ''));
+        $rawLastName = trim((string) ($order?->customer_last_name ?? ''));
+        if (preg_match('/[\x{4e00}-\x{9fa5}]/u', $rawFirstName . $rawLastName)) {
+            $rawBuyerName = trim($rawLastName . $rawFirstName);
+        } else {
+            $rawBuyerName = trim($rawFirstName . ' ' . $rawLastName);
+        }
+        if ($rawBuyerName === '') {
+            $rawBuyerName = '机甲开发者用户';
+        }
+        $nameLen = mb_strlen($rawBuyerName, 'UTF-8');
+        if ($nameLen <= 1) {
+            $maskedBuyerName = '*';
+        } elseif ($nameLen === 2) {
+            $maskedBuyerName = mb_substr($rawBuyerName, 0, 1, 'UTF-8') . '*';
+        } else {
+            $maskedBuyerName = mb_substr($rawBuyerName, 0, 1, 'UTF-8') . str_repeat('*', $nameLen - 2) . mb_substr($rawBuyerName, -1, 1, 'UTF-8');
+        }
+
+        $rawEmail = (string) ($order?->customer_email ?? '');
+        $maskedBuyerEmail = '—';
+        if ($rawEmail !== '') {
+            $parts = explode('@', $rawEmail, 2);
+            $local = $parts[0] ?? '';
+            $domain = $parts[1] ?? '';
+            $maskedLocal = mb_substr($local, 0, 1) . '***';
+            $maskedBuyerEmail = $maskedLocal . '@' . $domain;
+        }
+
+        $statusLabels = [
+            SkillEntitlement::STATUS_ACTIVE       => '生效中',
+            SkillEntitlement::STATUS_PENDING_BIND => '待绑定设备',
+            SkillEntitlement::STATUS_GRANTED      => '已发放',
+            SkillEntitlement::STATUS_REVOKED      => '已撤销/退款',
+            SkillEntitlement::STATUS_EXPIRED      => '已过期',
+            SkillEntitlement::STATUS_EXPIRING     => '回收中',
+        ];
+
+        $statusLabel = $statusLabels[$ent->status] ?? $ent->status;
+
+        // 撤销/取消信息溯源
+        $meta = is_array($ent->meta) ? $ent->meta : [];
+        $cancelReason = $meta['revoke_reason'] ?? $meta['cancel_reason'] ?? ($ent->status === SkillEntitlement::STATUS_REVOKED ? '订单取消或售后退款' : null);
+
+        // 时间线
+        $timeline = [];
+        if ($order?->created_at) {
+            $timeline[] = [
+                'title'  => '订单创建与支付',
+                'time'   => $order->created_at->format('Y-m-d H:i:s'),
+                'status' => 'done',
+                'desc'   => '平台订单编号 #' . ($order->increment_id ?? $order->id) . '，金额 ¥' . number_format($amountYuan, 2),
+            ];
+        }
+        if ($ent->granted_at) {
+            $timeline[] = [
+                'title'  => '授权许可发放',
+                'time'   => $ent->granted_at->format('Y-m-d H:i:s'),
+                'status' => 'done',
+                'desc'   => '凭证已安全生成并就绪，通道：' . ($ent->delivery_channel ?: 'api'),
+            ];
+        }
+        if ($device || ! empty($meta['device_sn'])) {
+            $deviceSn = $device?->sn ?? $meta['device_sn'];
+            $timeline[] = [
+                'title'  => '设备绑定成功',
+                'time'   => optional($ent->updated_at)->format('Y-m-d H:i:s') ?: optional($ent->granted_at)->format('Y-m-d H:i:s'),
+                'status' => 'done',
+                'desc'   => '已挂载至设备（SN: ' . $deviceSn . '）',
+            ];
+        } elseif ($ent->status === SkillEntitlement::STATUS_PENDING_BIND) {
+            $timeline[] = [
+                'title'  => '等待设备挂载绑定',
+                'time'   => null,
+                'status' => 'wait',
+                'desc'   => '买家尚未在终端机器人中填入或拉取该授权许可',
+            ];
+        }
+
+        if ($ent->status === SkillEntitlement::STATUS_REVOKED) {
+            $timeline[] = [
+                'title'  => '授权撤销 / 订单取消',
+                'time'   => optional($ent->revoked_at)->format('Y-m-d H:i:s') ?: optional($ent->updated_at)->format('Y-m-d H:i:s'),
+                'status' => 'revoked',
+                'desc'   => '撤销原因：' . ($cancelReason ?: '用户发起退款或订单撤单'),
+            ];
+        } elseif ($ent->status === SkillEntitlement::STATUS_EXPIRED) {
+            $timeline[] = [
+                'title'  => '授权到期失效',
+                'time'   => optional($ent->expires_at)->format('Y-m-d H:i:s'),
+                'status' => 'expired',
+                'desc'   => '订阅或试用期已满，自动终止设备调用权限',
+            ];
+        }
+
+        $productFlat = DB::table('product_flat')
+            ->where('product_id', $ent->product_id)
+            ->first();
+
+        return [
+            'id'                 => (int) $ent->id,
+            'order_id'           => (int) $ent->order_id,
+            'order_no'           => (string) ($order?->increment_id ?? ('#' . $ent->order_id)),
+            'order_status'       => (string) ($order?->status ?? 'processing'),
+            'product_id'         => (int) $ent->product_id,
+            'product_name'       => (string) ($ent->product?->name ?? $productFlat?->name ?? $orderItem?->name ?? '机器人技能商品'),
+            'product_sku'        => (string) ($ent->product?->sku ?? $orderItem?->sku ?? ''),
+            'version_id'         => $ent->skill_version_id,
+            'version'            => (string) ($version?->version ?? '最新稳定版'),
+            'version_code'       => $version?->version_code,
+            'license_key'        => (string) $ent->license_key,
+            'license_key_masked' => substr($ent->license_key, 0, 8) . '••••••••' . substr($ent->license_key, -6),
+            'status'             => (string) $ent->status,
+            'status_label'       => $statusLabel,
+            'amount_cents'       => $amountCents,
+            'amount_yuan'        => number_format($amountYuan, 2, '.', ''),
+            'delivery_channel'   => (string) ($ent->delivery_channel ?: 'api'),
+            'activations'        => (int) $ent->activations,
+            'max_activations'    => $ent->max_activations,
+            'buyer_id'           => (int) ($ent->customer_id ?? $order?->customer_id ?? 0),
+            'buyer_name_masked'  => $maskedBuyerName,
+            'buyer_email_masked' => $maskedBuyerEmail,
+            'device_id'          => $ent->device_id,
+            'device_sn'          => $device?->sn ?? ($meta['device_sn'] ?? null),
+            'device_model'       => $device?->model_code ?? ($meta['device_model'] ?? null),
+            'granted_at'         => optional($ent->granted_at)->format('Y-m-d H:i:s'),
+            'expires_at'         => optional($ent->expires_at)->format('Y-m-d H:i:s'),
+            'revoked_at'         => optional($ent->revoked_at)->format('Y-m-d H:i:s'),
+            'cancel_reason'      => $cancelReason,
+            'timeline'           => $timeline,
+        ];
     }
 
     // ==================== 内部 ====================
