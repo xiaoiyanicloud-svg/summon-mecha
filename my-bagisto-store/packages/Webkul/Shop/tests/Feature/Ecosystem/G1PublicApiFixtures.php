@@ -23,6 +23,8 @@ final class G1PublicApiFixtures
     public static function event(array $event = [], array $revision = []): array
     {
         $now = '2026-10-19 04:00:00';
+        $startsAt = now('UTC')->addDay()->format('Y-m-d H:i:s');
+        $endsAt = now('UTC')->addDays(3)->format('Y-m-d H:i:s');
 
         $eventId = (int) DB::table('events')->insertGetId(array_merge([
             'name'               => '旧活动名称',
@@ -41,8 +43,8 @@ final class G1PublicApiFixtures
             'disposition'        => 'normal',
             'hosting_status'     => 'scheduled',
             'timezone'           => 'Asia/Shanghai',
-            'starts_at'          => '2026-11-01 01:00:00',
-            'ends_at'            => '2026-11-01 10:00:00',
+            'starts_at'          => $startsAt,
+            'ends_at'            => $endsAt,
             'source_type'        => 'platform',
             'platform_role'      => 'organizer',
             'first_published_at' => $now,
@@ -62,8 +64,8 @@ final class G1PublicApiFixtures
             'location_text'                 => '张江科学会堂',
             'participation_mode'            => 'offline',
             'timezone'                      => 'Asia/Shanghai',
-            'starts_at'                     => '2026-11-01 01:00:00',
-            'ends_at'                       => '2026-11-01 10:00:00',
+            'starts_at'                     => $startsAt,
+            'ends_at'                       => $endsAt,
             'source_type'                   => 'platform',
             'platform_role'                 => 'organizer',
             'organizer_name_snapshot'       => '召唤机甲',

@@ -192,18 +192,27 @@ it('G4-01 · page 与 cursor 不能同时使用', function () {
 });
 
 it('G4-01 · registration_state 按 scope 事实过滤', function () {
-    $open = Fixtures::event([], ['name' => '开放活动']);
+    $now = now('UTC');
+    $futureEvent = [
+        'starts_at' => $now->copy()->subHour()->format('Y-m-d H:i:s'),
+        'ends_at'   => $now->copy()->addDays(3)->format('Y-m-d H:i:s'),
+    ];
+    $futureRevision = [
+        'starts_at' => $futureEvent['starts_at'],
+        'ends_at'   => $futureEvent['ends_at'],
+    ];
+    $open = Fixtures::event($futureEvent, array_merge($futureRevision, ['name' => '开放活动']));
     g4Scope($open['id']);
 
-    $upcoming = Fixtures::event([], ['name' => '未开始活动']);
+    $upcoming = Fixtures::event($futureEvent, array_merge($futureRevision, ['name' => '未开始活动']));
     g4Scope($upcoming['id'], [
         'registration_opens_at' => '2099-01-01 00:00:00',
     ]);
 
-    $full = Fixtures::event([], ['name' => '已满活动']);
+    $full = Fixtures::event($futureEvent, array_merge($futureRevision, ['name' => '已满活动']));
     g4Scope($full['id'], ['capacity' => 2, 'confirmed_count' => 2]);
 
-    $closed = Fixtures::event([], ['name' => '已关闭活动']);
+    $closed = Fixtures::event($futureEvent, array_merge($futureRevision, ['name' => '已关闭活动']));
     g4Scope($closed['id'], ['registration_closes_at' => '2020-01-01 00:00:00']);
 
     $ended = Fixtures::event([
@@ -211,14 +220,14 @@ it('G4-01 · registration_state 按 scope 事实过滤', function () {
         'ends_at'        => '2020-01-01 00:00:00',
     ], ['name' => '已结束活动']);
 
-    $canceled = Fixtures::event(['hosting_status' => 'canceled'], ['name' => '已取消活动']);
+    $canceled = Fixtures::event(array_merge($futureEvent, ['hosting_status' => 'canceled']), array_merge($futureRevision, ['name' => '已取消活动']));
 
-    $external = Fixtures::event([], [
+    $external = Fixtures::event($futureEvent, array_merge($futureRevision, [
         'name'                      => '外部活动',
         'external_registration_url' => 'https://example.com/register',
-    ]);
+    ]));
 
-    $unavailable = Fixtures::event([], ['name' => '无报名入口活动']);
+    $unavailable = Fixtures::event($futureEvent, array_merge($futureRevision, ['name' => '无报名入口活动']));
 
     $ids = fn (string $state): array => collect(
         getJson('/api/events?'.http_build_query(['registration_state' => $state]))->assertOk()->json('data')

@@ -20,14 +20,23 @@ final class G3CompetitionFixtures
      * @param  array<string, mixed>  $event
      * @return array{id: int, revision_id: int}
      */
-    public static function event(array $event = []): array
+    public static function event(array $event = [], array $revision = []): array
     {
+        $now = now('UTC');
+        $startsAt = $now->copy()->subHour()->format('Y-m-d H:i:s');
+        $endsAt = $now->copy()->addDays(3)->format('Y-m-d H:i:s');
+
         return G1PublicApiFixtures::event(array_merge([
             'kind'               => 'competition',
             'participation_mode' => 'offline',
             'publish_status'     => 'published',
             'disposition'        => 'normal',
-        ], $event));
+            'starts_at'          => $startsAt,
+            'ends_at'            => $endsAt,
+        ], $event), array_merge([
+            'starts_at' => $startsAt,
+            'ends_at'   => $endsAt,
+        ], $revision));
     }
 
     public static function adminId(): int

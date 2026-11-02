@@ -35,6 +35,10 @@ it('G1-10 · 已发布活动详情返回白名单 DTO 与受控媒体 URL', func
     ]);
     Fixtures::mediaRef('event_revision', $event['revision_id'], $media['id'], 'cover');
 
+    $revision = DB::table('event_revisions')->where('id', $event['revision_id'])->first();
+    $expectedStart = Illuminate\Support\Carbon::parse($revision->starts_at, 'UTC')->setTimezone('Asia/Shanghai')->toIso8601String();
+    $expectedEnd = Illuminate\Support\Carbon::parse($revision->ends_at, 'UTC')->setTimezone('Asia/Shanghai')->toIso8601String();
+
     $response = getJson("/api/events/{$event['id']}")->assertOk();
 
     $response
@@ -50,8 +54,8 @@ it('G1-10 · 已发布活动详情返回白名单 DTO 与受控媒体 URL', func
         ->assertJsonPath('data.city', '上海')
         ->assertJsonPath('data.location_text', '张江科学会堂')
         ->assertJsonPath('data.timezone', 'Asia/Shanghai')
-        ->assertJsonPath('data.starts_at', '2026-11-01T09:00:00+08:00')
-        ->assertJsonPath('data.ends_at', '2026-11-01T18:00:00+08:00')
+        ->assertJsonPath('data.starts_at', $expectedStart)
+        ->assertJsonPath('data.ends_at', $expectedEnd)
         ->assertJsonPath('data.published_at', '2026-10-19T12:00:00+08:00')
         ->assertJsonPath('data.first_published_at', '2026-10-19T12:00:00+08:00')
         ->assertJsonPath('data.revision_no', 1)

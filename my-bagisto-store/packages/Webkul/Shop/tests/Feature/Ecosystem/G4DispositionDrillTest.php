@@ -103,7 +103,12 @@ it('G4-08 · 撤稿后所有分发入口同步降级', function () {
 });
 
 it('G4-08 · 活动取消后报名状态筛选不再把其当作可报名', function () {
-    $event = Fixtures::event(['hosting_status' => 'scheduled']);
+    $now = now('UTC');
+    $window = [
+        'starts_at' => $now->copy()->subHour()->format('Y-m-d H:i:s'),
+        'ends_at'   => $now->copy()->addDays(3)->format('Y-m-d H:i:s'),
+    ];
+    $event = Fixtures::event(array_merge($window, ['hosting_status' => 'scheduled']), $window);
 
     DB::table('event_registration_scopes')->insert([
         'event_id'              => $event['id'],
