@@ -6,7 +6,23 @@
  *  - 真机 / 小程序：需改为局域网 IP 或已部署的服务器域名（如 http://192.168.1.100:8000）
  *  - 微信小程序注意：需在后台配置 request 合法域名
  */
-export const BASE_URL = 'http://127.0.0.1:8008'
+export const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000'
+
+/**
+ * 统一 API 根地址解析。默认端口必须与注释、README 和本地 php artisan serve 一致；
+ * 个人或部署环境通过 .env 中的 VITE_API_BASE_URL / VITE_SSR_BASE_URL 覆盖，禁止直接改源码端口。
+ */
+export function resolveBaseUrl(configured, fallback = DEFAULT_API_BASE_URL) {
+  const value = String(configured || fallback).trim().replace(/\/+$/, '')
+
+  if (!/^https?:\/\/[^/]+/i.test(value)) {
+    throw new Error(`无效的 API 地址：${value}`)
+  }
+
+  return value
+}
+
+export const BASE_URL = resolveBaseUrl(import.meta.env?.VITE_API_BASE_URL)
 
 /**
  * 公开 SSR 站点根（G4-04/G4-05）。
@@ -17,7 +33,7 @@ export const BASE_URL = 'http://127.0.0.1:8008'
  * ⚠ 生产必须改成与 `ECOSYSTEM_PUBLIC_SITE_URL` **完全一致**的域名（含 scheme，不带尾斜杠）；
  *   两者不一致会出现“H5 声明的 canonical 与 SSR 页面自报的 canonical 不同”。
  */
-export const SSR_BASE_URL = 'http://127.0.0.1:8008'
+export const SSR_BASE_URL = resolveBaseUrl(import.meta.env?.VITE_SSR_BASE_URL, BASE_URL)
 
 /**
  * 朗读（TTS）专用的后端地址。留空则回退到 BASE_URL。

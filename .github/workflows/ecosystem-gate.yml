@@ -19,6 +19,8 @@ on:
       - 'tools/ecosystem-gate.sh'
       - 'tools/tests/**'
       - 'utils/api.js'
+      - 'utils/config.js'
+      - '.env.example'
       - '.github/workflows/ecosystem-gate.yml'
   pull_request:
     paths:
@@ -26,6 +28,8 @@ on:
       - 'tools/ecosystem-gate.sh'
       - 'tools/tests/**'
       - 'utils/api.js'
+      - 'utils/config.js'
+      - '.env.example'
       - '.github/workflows/ecosystem-gate.yml'
 
 concurrency:

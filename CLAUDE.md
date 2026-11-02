@@ -74,6 +74,7 @@
 ## 【代码地图(找路用,别满仓库乱翻)】
 
 - **前端** uni-app(Options API):`pages/`、`components/`、`utils/api.js`(唯一 API 入口)、`utils/request.js`
+- **前端 API 地址唯一配置点**:`utils/config.js`,默认必须与 `php artisan serve` 的 `8000` 端口一致;个人/部署环境只通过 `.env` 的 `VITE_API_BASE_URL`、`VITE_SSR_BASE_URL` 覆盖,禁止直接改源码端口;提交前跑 `node --test tools/tests/config-consistency.test.mjs`
 - **后端** Bagisto:`my-bagisto-store/packages/Webkul/Shop/src/`(`Routes/api.php`、`Http/Controllers/API/`、`Services/<业务域>/`、`Database/Migrations/`)
 - **扩展优先走配置注册表**:`config/{skill_delivery,deploy_gateways,payment_gateways,skill_builders,skill_importers,developer_portal}.php`
 - **现状提醒**:队列/缓存是 `database` 驱动。**scheduler 代码已注册 6 条定时任务**(`bootstrap/app.php` 的 `withSchedule`),但**常驻进程未起**;`queue:work` 同理 —— **没起就等于不存在**,别假设定时任务在跑。

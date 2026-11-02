@@ -107,7 +107,7 @@ if [ "$SKIP_PHPTEST" -eq 0 ]; then
 fi
 
 if [ "$SKIP_NODE" -eq 0 ]; then
-    run_step "前端 Node 纯函数测试" bash -c "cd '$ROOT' && node --test tools/tests/ecosystem-g4.test.mjs tools/tests/ecosystem-public.test.mjs tools/tests/ecosystem-events.test.mjs"
+    run_step "前端 Node 纯函数测试" bash -c "cd '$ROOT' && node --test tools/tests/ecosystem-g4.test.mjs tools/tests/ecosystem-public.test.mjs tools/tests/ecosystem-events.test.mjs tools/tests/config-consistency.test.mjs"
 fi
 
 if [ "$WITH_BROWSER" -eq 1 ] || [ "$WITH_ADMIN_BROWSER" -eq 1 ]; then
