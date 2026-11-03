@@ -1,0 +1,23 @@
+{
+  "skills": {
+    "1353": {
+      "skill_id": "1353",
+      "current_version": "1.0.0",
+      "previous_version": null,
+      "status": "installed",
+      "enabled": true,
+      "install_path": "D:\\CodexDeploy\\summon-mecha\\docs\\ai-handoff\\gemini-agent-first-20261103\\stage1-reacceptance-478a036\\tmp\\http-device-tduf5qzb\\skills\\1353\\v1.0.0",
+      "package_sha256": "eff2b84548e6c348a646a46ad8f437ec7c319f2491a69b2e6ca9e07111909197",
+      "manifest_json": "{\"entrypoint\": \"action.py\"}",
+      "files_json": "[\"action.py\", \"manifest.json\"]",
+      "updated_at": 1793719353,
+      "manifest": {
+        "entrypoint": "action.py"
+      },
+      "files": [
+        "action.py",
+        "manifest.json"
+      ]
+    }
+  }
+}

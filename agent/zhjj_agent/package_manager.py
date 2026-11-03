@@ -6,12 +6,15 @@ import os
 import shutil
 import stat
 import tempfile
+import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from typing import Any, Dict, List, Optional, Tuple
 
 from zhjj_agent.constants import (
     ERR_DISK_SPACE,
+    ERR_DOWNLOAD_FAILED,
     ERR_PKG_HASH_MISMATCH,
     ERR_STAGING_FAILED,
     ERR_ZIP_BOMB,
@@ -28,6 +31,25 @@ class PackageManagerError(Exception):
         self.message = message
 
 
+class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """防凭据泄漏重定向处理器：当跨源站重定向时，自动剥离敏感设备凭据头。"""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new_req = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new_req is None:
+            return None
+
+        orig_parsed = urllib.parse.urlparse(req.get_full_url())
+        new_parsed = urllib.parse.urlparse(newurl)
+
+        # 若目标主机或端口与原站不同，剥离 X-Agent-* 与 Authorization 头
+        if orig_parsed.netloc.lower() != new_parsed.netloc.lower():
+            for h in list(new_req.headers.keys()):
+                if h.lower().startswith("x-agent-") or h.lower() == "authorization":
+                    del new_req.headers[h]
+        return new_req
+
+
 class PackageManager:
     # 默认安全阈值
     MAX_DOWNLOAD_BYTES = 500 * 1024 * 1024          # 最大下载 500MB
@@ -39,9 +61,15 @@ class PackageManager:
     def __init__(self, install_dir: Optional[str] = None):
         self.install_dir = install_dir
 
-    def download_and_verify(self, url: str, dest_path: str, expected_sha256: Optional[str] = None) -> str:
+    def download_and_verify(
+        self,
+        url: str,
+        dest_path: str,
+        expected_sha256: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None
+    ) -> str:
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-        got_sha = self.download_package(url, dest_path)
+        got_sha = self.download_package(url, dest_path, headers=headers)
         if expected_sha256 and got_sha.lower() != expected_sha256.lower():
             if os.path.exists(dest_path):
                 os.remove(dest_path)
@@ -115,8 +143,7 @@ class PackageManager:
                     ERR_DISK_SPACE,
                     f"磁盘剩余空间不足: 可用 {usage.free} bytes, 所需 {required_bytes} bytes"
                 )
-        except OSError as e:
-            # 若系统不支持 disk_usage 则忽略或记录
+        except OSError:
             pass
 
     @classmethod
@@ -138,8 +165,10 @@ class PackageManager:
         # 预先检查磁盘空间
         cls.check_disk_space(dest_path, 10 * 1024 * 1024)
 
+        opener = urllib.request.build_opener(SafeRedirectHandler())
+
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with opener.open(req, timeout=60) as r:
                 with open(dest_path, "wb") as out_f:
                     while True:
                         chunk = r.read(65536)
@@ -157,10 +186,20 @@ class PackageManager:
             if os.path.exists(dest_path):
                 os.remove(dest_path)
             raise
+        except urllib.error.HTTPError as e:
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+            if e.code in (401, 403):
+                raise PackageManagerError("AUTH_FAILED", f"下载身份认证失败 HTTP {e.code}: {e.reason}")
+            raise PackageManagerError(ERR_DOWNLOAD_FAILED, f"下载 HTTP 错误 {e.code}: {e.reason}")
+        except urllib.error.URLError as e:
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+            raise PackageManagerError(ERR_DOWNLOAD_FAILED, f"下载网络连接错误: {e.reason}")
         except Exception as e:
             if os.path.exists(dest_path):
                 os.remove(dest_path)
-            raise PackageManagerError(ERR_PKG_HASH_MISMATCH, f"下载网络或IO异常: {e}")
+            raise PackageManagerError(ERR_DOWNLOAD_FAILED, f"下载网络或IO异常: {e}")
 
         return h.hexdigest().lower()
 

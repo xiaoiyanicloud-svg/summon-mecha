@@ -1,0 +1,1 @@
+def run(context=None): return {"status":"SUCCEEDED"}

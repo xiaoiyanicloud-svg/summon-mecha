@@ -284,6 +284,28 @@ class AgentController extends APIController
                 $payload['error_msg'] ?? null,
             );
         } catch (IllegalTaskTransitionException $e) {
+            // 迟到事实收敛：若服务端已判定 timeout，设备最终汇报 done 或 failed，记录迟到事实而不抛 409（F08）
+            if ($e->from === 'timeout' && in_array($e->to, ['success', 'failed'], true)) {
+                $task = DeployTask::query()->where('task_no', $payload['task_no'])->first();
+                if ($task) {
+                    $tp = is_array($task->signed_payload) ? $task->signed_payload : [];
+                    $tp['late_report'] = [
+                        'phase'       => $payload['phase'],
+                        'error_code'  => $payload['error_code'] ?? null,
+                        'error_msg'   => $payload['error_msg'] ?? null,
+                        'reported_at' => now()->timestamp,
+                    ];
+                    $task->signed_payload = $tp;
+                    $task->saveQuietly();
+
+                    return $this->ok([
+                        'task_no'     => $task->task_no,
+                        'status'      => $task->status,
+                        'late_report' => true,
+                    ], '迟到汇报已记录。');
+                }
+            }
+
             // 非法回报 —— 明确 409 + 码,而不是"200 ok 但其实没动"。
             // Agent 是机器消费者:它要靠码判断"这条回报被接受了没有";
             // 静默成功会让端云状态永久分叉(端侧继续等、云侧停在原地)。
@@ -359,7 +381,11 @@ class AgentController extends APIController
         $commands = [];
         foreach ($tasks as $t) {
             $this->deploy->transition($t, 'dispatching');
-            $this->deploy->markDelivered($t);
+            // 协议分流（F08）：v1 设备无 ACK 机制，拉取即标记 delivered_at；
+            // v2 设备遵循端云可靠投递契约，必须等待客户端持久化写入本地日志并发送 ack 后再标 delivered_at
+            if ($protocolVersion !== DeployTask::PROTOCOL_V2) {
+                $this->deploy->markDelivered($t);
+            }
             $commands[] = $this->deploy->buildCommand($t);
         }
 
@@ -386,6 +412,9 @@ class AgentController extends APIController
         if (! $task || $task->did !== $payload['did']) {
             return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
+
+        // F08: 设备持久接收确认，正式标记已投递
+        $this->deploy->markDelivered($task);
 
         $taskPayload = is_array($task->signed_payload) ? $task->signed_payload : [];
         $acks = $taskPayload['acks'] ?? [];

@@ -1,0 +1,21 @@
+{
+  "schema": "zhaohuan.sil-telemetry/v1",
+  "engine": "DeepMind MuJoCo v3.17.0",
+  "robot_model": "Unitree G1 EDU (g1_23dof.xml)",
+  "simulation_frequency_hz": 1000,
+  "duration_s": 6.0,
+  "verdict": "PASS",
+  "metrics": {
+    "tracking_rmse_rad": 0.0176,
+    "tracking_rmse_limit_rad": 0.02,
+    "max_base_tilt_rad": 0.0262,
+    "max_base_tilt_limit_rad": 0.15,
+    "final_base_height_z_m": 0.6896,
+    "min_base_height_limit_m": 0.6,
+    "peak_actuator_torque_nm": 14.49,
+    "max_torque_limit_nm": 30.0,
+    "no_tip_over": true,
+    "stable_standing": true
+  },
+  "telemetry_csv": "qa\\simulation\\mujoco_telemetry.csv"
+}

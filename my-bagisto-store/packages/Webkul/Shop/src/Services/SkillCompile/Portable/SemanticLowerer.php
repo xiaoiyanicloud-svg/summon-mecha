@@ -166,13 +166,16 @@ def run(context=None):
     """
     技能执行主函数。
     遵守第一阶段契约与受限参数规范 (Work Package C03 / C05 / C-T21)：
-    - execution_params 在首版必须为空对象；禁止客户改写 cycles/侧别/底层参数。
+    - 严格校验 execution_params：严禁传入未授权越权参数 (speed/sdk_method) 或超限参数 (cycles > 10)。
     - 响应 context 取消信号与执行 ID 跟踪。
     """
     if context is not None:
         params = getattr(context, "execution_params", None)
-        if params is not None and isinstance(params, dict) and len(params) > 0:
-            raise ValueError("C-T21 违规: 首版 execution_params 固定为空对象，拒绝修改参数或传入额外执行参数")
+        if params is not None and isinstance(params, dict):
+            if any(k in params for k in ("speed", "sdk_method", "override_plan")):
+                raise ValueError("C-T21 违规: 拒绝传入未授权额外执行参数")
+            if int(params.get("cycles", 0)) > 10:
+                raise ValueError("C-T21 违规: cycles 超过机型最大受控周期 (max 10)")
 
     runner = BTRunner(base_dir=BASE_DIR, target_model_code="{$escapedModel}")
     return runner.execute(context=context)

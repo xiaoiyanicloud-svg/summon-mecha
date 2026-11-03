@@ -1,5 +1,7 @@
 """模拟器安装适配器 (MockAdapter) —— 用于本地联调、隔离测试与自动化验证"""
 
+import json
+import os
 import shutil
 import time
 from typing import Any, Dict, Optional

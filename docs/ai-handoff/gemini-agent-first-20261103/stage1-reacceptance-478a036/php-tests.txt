@@ -1,0 +1,205 @@
+
+   FAIL  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 Agent 轮询时过滤掉 OP_EXECUTE(7) 与 OP_CANCEL_EXECUTION(8)                                                     0.51s  
+  ✓ it OP_EXECUTE 执行成功仅更新 SkillExecution 状态，绝不污染 InstallRecord                                                   0.08s  
+  ✓ it POST api/agent/ack 支持端云双向事件确认                                                                             0.08s  
+  ⨯ it POST api/agent/reconcile 端侧安装事实与云端记录准确对账                                                                  0.09s  
+  ✓ it 客户侧能够发起技能执行与取消，流转为 OP 7/8 任务                                                                              0.15s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentDeviceCredentialB12Test
+  ✓ it B-12 · enroll 为设备签发证书 + 独立 secret,服务端只存哈希/证书(不存明文)                                                        0.28s  
+  ✓ it B-12 · per-device secret 能鉴权,错误 secret → 401                                                              0.28s  
+  ✓ it B-12 · 证书请求签名可鉴权,篡改签名 / 过期 ts 被拒                                                                          0.27s  
+  ✓ it B-12 · per-device 身份下用 A 的凭据拉 B 的指令 → 403(冒充被拒)                                                           0.17s  
+  ✓ it B-12 · auth_mode=device 时共享密钥被拒(401)                                                                      0.08s  
+  ✓ it B-12 · auth_mode=auto 时共享密钥仍放行(过渡期)                                                                       0.07s  
+  ✓ it B-12 · 吊销后 secret 立即失效(且不回退共享密钥)                                                                          0.18s  
+  ✓ it B-12 · 用户可单独吊销本人设备凭据(HTTP 入口)                                                                             0.25s  
+  ✓ it B-12 · 无凭据设备吊销 → 404                                                                                      0.11s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\AgentPackageDistributionTest
+  ✓ it S-1 · 安装类下发任务自动带上真实包地址与指纹（不再为空）                                                                           0.15s  
+  ✓ it S-1 · 签名 URL 拉到的字节 sha256 == 指令声明的 package_sha256                                                         0.25s  
+  ✓ it S-1 · 签名覆盖的是真实哈希：改包即让签名对不上                                                                                0.18s  
+  ✓ it S-1 · 改 package_sha256 即失签（端侧复算的靶子真的进了签名串）                                                                0.19s  
+  ✓ it S-1 · 无包（dry install）任务仍能验签通过（空哈希不让整条签名失效）                                                                0.20s  
+  ✓ it S-1 · URL 过期即失效（限时）                                                                                       0.23s  
+  ✓ it S-1 · 篡改 versionId 或去掉签名即失效（防篡改）                                                                          0.20s  
+  ✓ it S-1 · 无 Agent 凭据 → 401（URL 泄露也拿不到包）                                                                       0.23s  
+  ✓ it S-1 · 落盘字节与 file_hash 不符 → 拒绝输出（绝不发出对不上的字节）                                                               0.20s  
+  ✓ it S-1 · 文件整个不在盘上 → 明确报"文件缺失"（不是静默 200 空体）                                                                   0.23s  
+  ✓ it S-1 · 非安装类操作（卸载 / 回收）不带包地址                                                                                0.20s  
+  ✓ it S-1 · 该版本没有文件类交付物 → 不产生可下载的假地址，且如实记录无包                                                                    0.18s  
+  ✓ it S-1 · 显式 packageUrl/packageHash 覆盖仍生效（测试与平台特例的口子）                                                         0.17s  
+  ✓ it S-1 · 参考 Agent 模板带下载→复算→比对逻辑，错误码用常量替换（未真机验证）                                                              0.14s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployAnomalyStateP11Test
+  ✓ it P11 · dry install 报 done + PKG_MISSING → success 被标成空跑,且不落安装事实                                            0.16s  
+  ✓ it P11 · 正常 done(无码)照常落 installed —— 闸门不误伤真实安装                                                               0.15s  
+  ✓ it P11 · downloading 报下载失败 → 进 download_failed 并带 DOWNLOAD_FAILED 码                                          0.13s  
+  ✓ it P11 · download_failed 可重试(device 再报 installing → 继续走)                                                     0.15s  
+  ✓ it P11 · 安装失败报 failed 仍是泛化 failed(与下载失败区分开)                                                                  0.14s  
+  ✓ it P11 · 下发给从未登记的设备 → 直接 failed + NOT_BOUND(不再空等 24 小时)                                                      0.14s  
+  ✓ it P11 · 下发给已登记但离线的设备 → pending_online + OFFLINE(仍保留等它上线)                                                    0.13s  
+  ✓ it P11 · 灰度指标把空跑排除在外(既不算成功也不算失败)                                                                             0.19s  
+  ✓ it P11 · 生成的 agent.py 用常量替换了占位符,空跑带 PKG_MISSING                                                              0.16s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployAuditTrailP10Test
+  ✓ it P10 · 熔断记的是调用方自报身份(不再是 admin)                                                                             0.20s  
+  ✓ it P10 · 不自报身份时记 internal(而非 admin)                                                                          0.16s  
+  ✓ it P10 · 熔断同时进 operation_log,payload 带真实操作者与 IP                                                              0.15s  
+  ✓ it P10 · 不同操作者按不同技能熔断 → operation_log 各记名的真实身份                                                               0.25s  
+  ✓ it P10 · 解除熔断也留痕(否则复盘会看到一条永远生效的熔断)                                                                           0.18s  
+  ✓ it P10 · engage() 直接调用时默认记 internal,绝不退回 admin                                                               0.13s  
+  ✓ it P10 · 人工回滚:rollback_record 落操作者与 IP,并进 operation_log                                                      0.17s  
+  ✓ it P10 · 自动回滚:发起者记 system + trigger=auto(与"人按的"区分开)                                                          0.15s  
+  ✓ it P10 · 开启灰度也留痕(发起者 + 策略)                                                                                   0.16s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployIdempotencyTest
+  ✓ it 建任务去重：同设备 + 同版本 + 同操作连建两次，只有一条任务（双击不再落两条）                                                                 0.18s  
+  ✓ it 去重不挡重来：上一条已终结（failed）之后再建是合法的                                                                             0.19s  
+  ✓ it 去重按 (did, 版本, 操作) 三元组：换版本或换操作都不算重复                                                                        0.20s  
+  ✓ it 投递标记：取走过一次的指令，设备重启后再拉不再返回（不重装）                                                                            0.20s  
+  ✓ it 投递标记不误伤离线挂起：pending_online 从未投递过，设备上线后照常取到                                                                0.20s  
+  ✓ it 灰度 abort 幂等：重复调用不再建第二轮回滚任务，也不再多写 rollback_record                                                          0.20s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployParamValidationP8Test
+  ✓ it P8 · operation=6(回收)是合法下发:不再被参数校验挡死                                                                       0.19s  
+  ✓ it P8 · 白名单外(7)仍被拒 422                                                                                       0.18s  
+  ✓ it P8 · 校验常量本身覆盖全部 OP_*(漏一个就等于线上又少一个合法操作)                                                                    0.12s  
+  ✓ it P8 · 灰度指标 successes > installs 被拒 422(否则成功率能算出 >100%)                                                     0.16s  
+  ✓ it P8 · 灰度指标 successes == installs 照常放行(边界不误伤)                                                               0.19s  
+  ✓ it P8 · 给不存在的版本开灰度 → 422                                                                                     0.15s  
+  ✓ it P8 · 给草稿版本开灰度 → 422(草稿永不下发,灰度只会空转)                                                                        0.19s  
+  ✓ it P8 · 给已发布版本开灰度 → 201(闸门不误伤)                                                                               0.17s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTaskOwnershipTest
+  ✓ it show：看不到别人的 task_no（404，与"不存在"同码）                                                                         0.18s  
+  ✓ it cancel：取消不了别人的任务（404，且对方任务未被改动）                                                                           0.18s  
+  ✓ it 本人任务：show / cancel 正常（归属校验不误伤）                                                                            0.17s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTimeoutReclaimTest
+  ✓ it 24 小时前的 pending_online → 命令转 timeout（用户界面不再永远下发中）                                                         0.28s  
+  ✓ it 在途任务（dispatching）超过阈值未回报 → 转 timeout                                                                      0.16s  
+  ✓ it 未到阈值的不动：刚建 1 小时的 pending_online / 5 分钟前的 dispatching 都留着                                                  0.16s  
+  ✓ it dry-run 只报告不写入                                                                                            0.15s  
+  ✓ it 完成的（success）任务不被超时扫描误伤                                                                                    0.14s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTransitionSerializationTest
+  ✓ it 并发竞态：用过期状态去流转命中 0 行 → 返回 false 且不改库                                                                       0.15s  
+  ✓ it 正常流转仍然生效，且内存态与库同步                                                                                         0.12s  
+  ✓ it 非法流转返回 false（pending 不能直接到 success）                                                                       0.14s  
+  ✓ it 条件更新不丢调用方先设的字段（error_code/error_msg 随流转一起落库）                                                              0.15s  
+  ✓ it 每设备每轮只发一条指令（设备并行双任务 → 串行化）                                                                                0.17s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeviceOnlineTest
+  ✓ it 粘滞位的陷阱：online_status=true 但三小时没有心跳 → 界面显示**离线**                                                           0.18s  
+  ✓ it 刚心跳过 → 在线                                                                                                 0.19s  
+  ✓ it 从未心跳过 → 离线（哪怕粘滞列写着 true）                                                                                  0.19s  
+  ✓ it 窗口边界：89 秒前算在线，91 秒前算离线                                                                                    0.18s  
+  ✓ it 判据一致：设备列表 / 轮询网关 / 模拟网关 对同一台设备给同一个答案                                                                      0.19s  
+  ✓ it 运营总览的「在线设备数」用的也是同一判据 —— 不把"曾经连过"算成在线                                                                      0.19s  
+  ✓ it 绑定总数与在线数是两个不同的数 —— 别把前者读成后者                                                                               0.15s  
+  ✓ it 兼容性校验：设备在线时**不再**说"设备当前离线"（此前那句话是硬编码的恒定输出）                                                                0.15s  
+  ✓ it 兼容性校验：设备真离线时提示离线 —— 但只是提示，不是拒绝                                                                            0.19s  
+  ✓ it 下发：设备只有粘滞位为 true、实际早已掉线 → 任务挂起为 pending_online 而不是"已下发"                                                   0.14s  
+  ✓ it 事故快照不受影响：trace 记的仍是报案时库里的原始值（冻结语义优先于"读时真相"）                                                               0.17s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GrayCrashRateB11Test
+  ✓ it B-11 · 成功率 100% 但崩溃率 > 2% → 仍回滚(崩溃维度真的在起作用)                                                               0.17s  
+  ✓ it B-11 · 崩溃率恰为阈值(2.0)不回滚 —— 判据是严格大于                                                                         0.16s  
+  ✓ it B-11 · 不传崩溃数(旧调用方)行为不变:crash_rate=0,不误触发回滚                                                                0.16s  
+  ✓ it B-11 · installs=0 时 crash_rate 为 null,不得被当成 0 之外的判据                                                       0.14s  
+  ✓ it B-11 · evaluateFromRecords 从 error_code=CRASH 反查崩溃数(自驱路径有真实来源)                                            0.17s  
+  ✓ it B-11 · 崩溃数 > 安装数被拒 422(崩过的设备数不可能超过下发的设备数)                                                                 0.16s  
+  ✓ it B-11 · 带合法崩溃数上报 → 200,crash_rate 落库                                                                       0.18s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GrayRollbackTargetTest
+  ✓ it 首装设备推坏版本 → abort → 回滚任务真发给该设备（旧实现 affected=0）                                                             0.18s  
+  ✓ it 升级设备（旧版已装）也照样回滚                                                                                           0.19s  
+  ✓ it 只回滚本次灰度成功的设备：装失败的设备不背锅                                                                                    0.18s  
+  ✓ it 同一设备多条成功记录只回滚一次（按 did 去重）                                                                                 0.19s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KeyPersistenceS6Test
+  ✓ it a) 配置 AGENT_KEYS_DIR 后，读写都落在新目录                                                                           0.51s  
+  ✓ it b) 私钥在、公钥缺 → 公钥被重建且与私钥匹配（私钥字节不变）                                                                          0.42s  
+  ✓ it c) CA 私钥在、证书缺 → 重签后 CA 公钥不变，老设备证书仍能验证                                                                     0.85s  
+  ✓ it d) 两个文件都缺 → 生成新密钥对/新 CA（既有行为不回归）                                                                          0.74s  
+  ✓ it e1) agent:keys:generate 幂等：已存在不覆盖（hash 与 mtime 不变）                                                        2.09s  
+  ✓ it e2) agent:keys:generate --replace 会先备份再生成                                                                 1.49s  
+  ✓ it f) agent:keys:import 遇已存在默认 FAILURE；--replace 成功且旧文件进 backup-*                                            1.83s  
+  ✓ it g1) agent:keys:import 公私钥不匹配 → FAILURE 且不落盘                                                               1.51s  
+  ✓ it g2) agent:keys:import 私钥损坏 → FAILURE 且不落盘                                                                 0.87s  
+  ✓ it h) export → import 往返：导出目录能原样导入（关键文件 hash 一致）                                                             0.66s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchSaleStopTest
+  ✓ it S-8 · 熔断后:市场搜索搜不到该技能(查询层排除)                                                                               0.24s  
+  ✓ it S-8 · 熔断后:详情**明确报错**(SKILL_BLOCKED),不是静默 404                                                              0.22s  
+  ✓ it S-8 · 熔断后:下单被拦(最早入口),且不产生新的 skill_entitlement                                                             0.18s  
+  ✓ it S-8 · 兜底:SkillDelivery 在创建授权处 fail-closed(下单源不止一条)                                                        0.18s  
+  ✓ it S-8 · block_new 下:已授权用户的 download **仍可**(只停新增)                                                            0.18s  
+  ✓ it S-8 · block_all 下:已授权用户的 download 被拒,assets 给出明确提示                                                        0.19s  
+  ✓ it S-8 · lift 后:市场恢复可见、下载恢复                                                                                  0.29s  
+  ✓ it S-8 · 只影响目标技能:另一个未熔断技能的市场可见性与下载不受影响                                                                       0.25s  
+  ✓ it S-8 · engage 记下该技能真实的已售/已装/已下载数,并落入 operation_log                                                         0.19s  
+  ✓ it S-8 · 熔断后:首页聚合 /api/tob-catalog 的技能段不含该技能;买/租段不受影响                                                        0.79s  
+  ✓ it S-8 · 未熔断时:首页聚合技能段仍含该技能（反向对照，防过滤写宽把技能段清空）                                                                 0.35s  
+  ✓ it S-8 · 熔断后:GET /api/products?category_id=技能分类 不含该技能;非技能分类不受影响                                              0.51s  
+  ✓ it S-8 · 熔断后:GET /api/products/{id} 打开被熔断技能 → 409 SKILL_BLOCKED（不静默 404）                                     0.31s  
+  ✓ it S-8 · 未熔断时:GET /api/products 技能分类列表与详情都正常可见（反向对照）                                                         0.41s  
+  ✓ it S-8 · 后台查询路径不受影响:不带 exclude_ids 的 getAll 仍返回被熔断技能                                                         0.26s  
+  ✓ it S-8 · 熔断后:小召 AI 的技能库(fetchCatalog)不含被熔断技能;机型库不受影响                                                         0.45s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchScopeTest
+  ✓ it S-5 · 在线设备的卸载任务立即进入可被拉取的状态(不是 pending_online)                                                             0.16s  
+  ✓ it S-5 · 离线设备的卸载任务落 pending_online,统计离线 +1、在线不加                                                              0.17s  
+  ✓ it S-5 · 人工通道安装的设备计为"无法自动卸载",且不建 agent 卸载任务                                                                  0.13s  
+  ✓ it S-5 · C 端自报安装 → install_record.channel 与该授权的 delivery_channel 一致                                          0.17s  
+  ✓ it S-5 · 历史 channel=null 的行:跑熔断后仍是 null(不冒充人工通道)                                                             0.12s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchTest
+  ✓ it 熔断生效后：POST /api/deploy/tasks 被拒（409），且不落任何任务                                                              0.17s  
+  ✓ it 未熔断时：同样的请求正常建任务（闸门不误伤）                                                                                    0.18s  
+  ✓ it 熔断只拦新下发：卸载 / 回滚 / 回收任务仍可建（补救动作放行）                                                                         0.12s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\PortableSkillCompilerTest
+  ✓ it TargetProfileService 能够加载各机型 Profile 并计算规范化 JCS 摘要                                                        0.14s  
+  ✓ it PortableSourceValidator 严格校验清单格式与行为树 XML 白名单及安全边界                                                         0.12s  
+  ✓ it SourceParser 正确将 BehaviorTree XML4 转换为结构化 IR 与不可变摘要                                                       0.12s  
+  ✓ it MotionTranscoder 为 Unitree G1 生成平滑且在物理限位内的关节轨迹                                                            0.16s  
+  ✓ it PortableSkillBuilder 成功编译标准源为 Unitree G1 目标成品并打通交付解析                                                      0.20s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillFullChainEndToEndTest
+  ✓ it PackageInspector：app/composite 技能允许合规 .py/.sh 脚本，但拦截高危破坏指令与 motion 脚本夹带                                   0.19s  
+  ✓ it 全链路闭环：开发者上传标准 .skill → L0/L2 审核上架 → 买家下单/未付拦截/模拟支付/下载 → Agent 验签下载落盘解压与启停卸载                               1.87s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\TaskNoCollisionRetryTest
+  ✓ it S-10 · 撞号能自愈:造号器先给一个已存在的号、再给新号 → create() 成功返回新号任务                                                        0.15s  
+  ✓ it S-10 · 试满上限仍撞 → 抛出(不静默返回 null / 半条记录),且库里不留脏数据                                                            0.14s  
+  ✓ it S-10 · 非「本表撞号」的 QueryException 照常抛,且不重试(不允许被 catch 吞掉)                                                    0.15s  
+  ✓ it S-10 · 判重只认本表 uk_deploy_task_no:别的键冲突 / 非唯一键错误都不算「撞号」                                                     0.13s  
+  ✓ it S-10 · 回归:新号仍是 DT + ymdHis 时间戳(运维可按时间检索),同秒多条不再撞                                                          0.16s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\TestUniqueNoGuardS9Test
+  ✓ it S-9 · 放大压力:同秒连造上千条,老写法必撞、testUniqueNo 全唯一且真能落库                                                            1.05s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest > it POST api/agent/reconcile 端侧安装事实与云端记录准确对账    
+  Failed asserting that false is true.
+
+  at packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest.php:206
+    202▕         'X-Agent-Key' => $agentKey,
+    203▕     ]);
+    204▕ 
+    205▕     $res->assertOk();
+  ➜ 206▕     expect($res->json('data.aligned'))->toBeTrue();
+    207▕     $details = $res->json('data.details');
+    208▕     expect($details)->toHaveCount(1);
+    209▕     expect($details[0]['skill_version_id'])->toBe(5001);
+    210▕     expect($details[0]['match'])->toBeTrue();
+
+  1   packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest.php:206
+
+
+  Tests:    1 failed, 141 passed (4431 assertions)
+  Duration: 38.86s
+

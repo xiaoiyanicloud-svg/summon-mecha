@@ -1,0 +1,22 @@
+{
+    "expired_authorization_and_no_install": {
+        "is_usable": false,
+        "http_status": 403,
+        "data": {
+            "success": false,
+            "code": "ENTITLEMENT_REVOKED",
+            "message": "技能授权未激活或已过期，无法执行。"
+        },
+        "install_records": 0
+    },
+    "nonempty_params_same_nonce": [
+        {
+            "status": 202,
+            "execution_id": "exec_0fe8e1b8-facc-4f24-9470-daf916187edb"
+        },
+        {
+            "status": 200,
+            "execution_id": "exec_0fe8e1b8-facc-4f24-9470-daf916187edb"
+        }
+    ]
+}

@@ -1,0 +1,62 @@
+{
+  "head": "c68f7ee2f5675953cb84d13cd027eced28701124",
+  "description": "Stage 1 Round 2 Fixed Acceptance Evidence Manifest (2026-11-03)",
+  "all_rf_gates_passed": true,
+  "files": [
+    {
+      "file": "agent-counterexamples.json",
+      "sha256": "99cd1cbb5eb637886c4644c0f7bb4ef5bfc1b06138a19d703b764f6e9320a63f",
+      "bytes": 1587
+    },
+    {
+      "file": "api-agent-v2-pest-output.txt",
+      "sha256": "3eb48cfc6da0cfe3bb76a5bc0aaf1e1b46ac6dfc3715beac798d308a4d60f3f7",
+      "bytes": 1488
+    },
+    {
+      "file": "contract-check.txt",
+      "sha256": "15912a22ff566c3fa3fa11a28f81c04c0e5628bcb49b0b4bd7833ce19cbeaf7f",
+      "bytes": 592
+    },
+    {
+      "file": "customer-counterexamples.json",
+      "sha256": "13119b0f01102a9779b9b4a19eb95fddde33b7d8889ef8f0dee1942276c11ed4",
+      "bytes": 601
+    },
+    {
+      "file": "deploy-pest-output.txt",
+      "sha256": "a7d6f8b7cc8cc26cd6738207f972731f9f87c27271d1f60a74f82b0a82b6b76d",
+      "bytes": 40362
+    },
+    {
+      "file": "git-diff.patch",
+      "sha256": "ce8c3c376f59e523331ffd7c856be0c4aaead2809ee16e4a909d4e46a3cbb6a1",
+      "bytes": 311290
+    },
+    {
+      "file": "http-counterexamples.json",
+      "sha256": "3ead1122101251e57df384e5e5b9b89b9ec0dfc0e60f488010996ae2333a328b",
+      "bytes": 560
+    },
+    {
+      "file": "python-original-live-http.txt",
+      "sha256": "8b7e6ff90ccb215c8bbdaa4f006280e547399dbefe523b15b7192a5074ad1c43",
+      "bytes": 859
+    },
+    {
+      "file": "python-test-output.txt",
+      "sha256": "84723d941caed851d442f14bb4547e3423a38aa1d70dfddf761aa4769562f6d9",
+      "bytes": 11961
+    },
+    {
+      "file": "rf-gates-fixed-result.json",
+      "sha256": "298e6d74728dd75bc4ffdd7e09ed011fdef8756bbc17ce72bb9acc53ee27fcca",
+      "bytes": 1064
+    },
+    {
+      "file": "source-sha256-after.txt",
+      "sha256": "e3efc08c3c31b52c3729c04e638e8d04e4986192797de81673d26e4ced7b0f8a",
+      "bytes": 1783
+    }
+  ]
+}

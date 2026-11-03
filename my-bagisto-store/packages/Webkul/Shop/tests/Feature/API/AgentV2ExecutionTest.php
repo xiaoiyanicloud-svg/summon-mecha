@@ -203,11 +203,13 @@ it('POST api/agent/reconcile 端侧安装事实与云端记录准确对账', fun
     ]);
 
     $res->assertOk();
-    expect($res->json('data.aligned'))->toBeTrue();
+    expect($res->json('data.aligned'))->toBeFalse();
     $details = $res->json('data.details');
-    expect($details)->toHaveCount(1);
+    expect($details)->toHaveCount(2);
     expect($details[0]['skill_version_id'])->toBe(5001);
     expect($details[0]['match'])->toBeTrue();
+    expect($details[1]['skill_version_id'])->toBe(5002);
+    expect($details[1]['match'])->toBeFalse();
 });
 
 it('客户侧能够发起技能执行与取消，流转为 OP 7/8 任务', function () {

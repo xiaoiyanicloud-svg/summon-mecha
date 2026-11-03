@@ -1,0 +1,55 @@
+{
+  "unsigned_params_fallback": {
+    "accepted": false,
+    "adapter_params": null
+  },
+  "missing_required_signed_fields": {
+    "accepted": false
+  },
+  "recovery_not_connected_to_poll": {
+    "recovery_calls": 1,
+    "journal_status": "FAILED"
+  },
+  "same_execution_after_restart": {
+    "first_journal": "COMMITTED",
+    "second_accepted": true,
+    "new_adapter_start_calls": 0
+  },
+  "reclaim_before_stop_confirmation": {
+    "accepted": false,
+    "observed": {
+      "status": "RUNNING",
+      "is_stopped": false
+    },
+    "lease": "ACTIVE",
+    "payload_directory_exists": true,
+    "local_status": "installed",
+    "last_event": {
+      "task_no": "reclaim-unconfirmed",
+      "phase": "failed",
+      "error_code": "STOP_UNCONFIRMED",
+      "error_msg": "执行 still-running 未能确认安全停止，禁止清理租约与文件",
+      "event_id": "evt_reclaim-unconfirmed_failed_1793719016942"
+    }
+  },
+  "expired_rollback_to_wrong_bytes": {
+    "accepted": false,
+    "actual_version": "2.0.0",
+    "actual_payload": "tampered-not-good",
+    "signed_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "g1_ignores_entrypoint_failure_result": {
+    "status": "FAILED",
+    "is_stopped": false,
+    "error_msg": null
+  },
+  "entrypoint_escapes_package": {
+    "prepare_accepted": false,
+    "outside_entry_executed": false
+  },
+  "jcs_examples": {
+    "1e-06": "{\"x\":0.000001}",
+    "1e+20": "{\"x\":100000000000000000000}",
+    "333333333.3333333": "{\"x\":333333333.3333333}"
+  }
+}

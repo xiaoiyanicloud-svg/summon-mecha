@@ -11,6 +11,7 @@ import os
 import pathlib
 import shutil
 import tempfile
+import threading
 import time
 import unittest
 import zipfile
@@ -45,6 +46,7 @@ from zhjj_agent.constants import (
     PHASE_FAILED,
     ERR_SIG_INVALID,
     ERR_TASK_EXPIRED,
+    ERR_REVOKED,
     ERR_PKG_HASH_MISMATCH,
     ERR_ZIP_SLIP,
     ERR_ZIP_BOMB,
@@ -69,13 +71,14 @@ class MockPlatformClient:
         self.reject_event = False
         self.reject_code = "TASK_TRANSITION_INVALID"
 
-    def send_event(self, task_no: str, phase: str, error_code: Optional[str] = None, error_msg: Optional[str] = None):
+    def send_event(self, task_no: str, phase: str, error_code: Optional[str] = None, error_msg: Optional[str] = None, event_id: Optional[str] = None, **kwargs):
         evt = {
             "task_no": task_no,
             "did": self.did,
             "phase": phase,
             "error_code": error_code,
             "error_msg": error_msg,
+            "event_id": event_id,
         }
         self.events.append(evt)
         if self.reject_event:
@@ -337,21 +340,31 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
 
     # ── A-T11: 断电/崩溃与重启恢复 ─────────────────────────────────────────────
     def test_at11_crash_and_restart_recovery(self):
-        """A-T11: 进程重启后通过相同磁盘目录恢复状态，未完成事务不重放破坏性动作"""
-        # 建立已完成记录与未完成记录
+        """A-T11: 真实模拟崩溃后重启恢复，未完成事务不重放且状态收敛为 FAILED"""
         self.storage.save_installed_skill("101", "1.0.0", None, "installed", True, self.temp_dir)
-        self.storage.save_checkpoint("task-c1", "STEP_1", {"ok": True})
+        self.storage.record_task_durable(
+            "task-crash-down", 1, "device-A", OP_INSTALL, "101", "2", "2.0.0",
+            {}, {}, STATE_DOWNLOADING
+        )
 
-        # 新 Manager 实例
+        # 新 Manager 实例模拟进程重启
+        new_storage = Storage(self.temp_dir)
         new_manager = TaskManager(
             install_dir=self.temp_dir,
-            storage=Storage(self.temp_dir),
+            storage=new_storage,
             client=self.client,
             adapter=MockAdapter(app_dir=self.temp_dir),
             pubkey_pem=self.pub_pem
         )
         new_manager.resume_recovery()
-        self.assertEqual(new_manager.storage.get_latest_checkpoint("task-c1")["stage"], "STEP_1")
+
+        # 检查未完成的 DOWNLOADING 任务已被收敛为 FAILED，Outbox 产生对应事件
+        task = new_storage.get_task("task-crash-down")
+        self.assertEqual(task["status"], STATE_FAILED)
+        self.assertEqual(task["error_code"], "RECOVERY_INCOMPLETE")
+        # 且已安装版本仍然保持良好 v1.0.0
+        inst = new_storage.get_installed_skill("101")
+        self.assertEqual(inst["current_version"], "1.0.0")
 
     # ── A-T12: 网络丢失与 Outbox 事件补报 ──────────────────────────────────────
     def test_at12_lost_commands_ack_and_event_retry(self):
@@ -385,37 +398,69 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
     def test_at14_reconciliation_mismatches(self):
         """A-T14: 事实对账完整核对端侧状态与服务端状态差异"""
         client = AgentClient(server_url="http://127.0.0.1:9999", did="device-A")
-        # 验证客户端对账打包方法
-        payload = {
-            "did": client.did,
-            "skills": [{"skill_version_id": 1, "status": "installed"}],
-            "tasks": [{"task_no": "T14", "status": "COMMITTED"}]
-        }
-        self.assertEqual(payload["did"], "device-A")
-        self.assertEqual(len(payload["skills"]), 1)
+        client.reconcile = Mock(return_value=(True, {
+            "success": True,
+            "data": {
+                "aligned": False,
+                "details": [
+                    {"skill_version_id": 1, "client_status": "installed", "server_status": "installed", "match": True},
+                    {"skill_version_id": 2, "client_status": "installed", "server_status": None, "match": False}
+                ]
+            }
+        }))
+        ok, res = client.reconcile(
+            skills=[{"skill_version_id": 1, "status": "installed"}, {"skill_version_id": 2, "status": "installed"}],
+            tasks=[{"task_no": "T14", "status": "COMMITTED"}]
+        )
+        self.assertTrue(ok)
+        self.assertFalse(res["data"]["aligned"])
+        self.assertEqual(len(res["data"]["details"]), 2)
+        self.assertFalse(res["data"]["details"][1]["match"])
 
     # ── A-T15: 运行中技能取消与安全停止观测 ───────────────────────────────────
     def test_at15_running_execution_cancel(self):
         """A-T15: 运行中技能收到取消指令，状态变迁为 CANCELED 并观察到 is_stopped=True"""
+        class LongRunningAdapter(MockAdapter):
+            def observe_execution(self, eid):
+                info = self._executions.get(eid, {})
+                return {
+                    "status": info.get("status", "UNKNOWN"),
+                    "is_stopped": info.get("is_stopped", False),
+                    "error_msg": info.get("error_msg")
+                }
+
+        long_adapter = LongRunningAdapter(app_dir=self.temp_dir)
+        manager = TaskManager(
+            install_dir=self.temp_dir,
+            storage=self.storage,
+            client=self.client,
+            adapter=long_adapter,
+            pubkey_pem=self.pub_pem
+        )
+
         skill_path = os.path.join(self.temp_dir, "skills", "101", "v1.0.0")
         os.makedirs(skill_path, exist_ok=True)
-        self.adapter.install("101", "1.0.0", skill_path, {"entrypoint": "action.py"})
+        long_adapter.install("101", "1.0.0", skill_path, {"entrypoint": "action.py"})
         self.storage.save_installed_skill("101", "1.0.0", None, "installed", True, skill_path)
 
-        # 启动执行
+        # 启动后台真实可取消长任务
         cmd_exec = self._make_signed_command("task-ex", OP_EXECUTE, execution_id="running-session")
         cmd_exec["execution_id"] = "running-session"
-        self.manager.process_command(cmd_exec)
 
-        # 发起取消
+        th = threading.Thread(target=lambda: manager.process_command(cmd_exec), daemon=True)
+        th.start()
+        time.sleep(0.02)
+
+        # 在长任务执行仍 RUNNING 时发起取消指令
         cmd_cancel = self._make_signed_command("task-ca", OP_CANCEL_EXECUTION, execution_id="running-session")
         cmd_cancel["execution_id"] = "running-session"
-        ok_cancel = self.manager.process_command(cmd_cancel)
+        ok_cancel = manager.process_command(cmd_cancel)
         self.assertTrue(ok_cancel)
 
-        obs = self.adapter.observe_execution("running-session")
+        obs = long_adapter.observe_execution("running-session")
         self.assertEqual(obs["status"], "CANCELED")
         self.assertTrue(obs["is_stopped"])
+        th.join(timeout=1.0)
 
     # ── A-T16: 租约超时与未停止防篡抢 ─────────────────────────────────────────
     def test_at16_lease_expiry_and_usurpation_prevention(self):
@@ -487,9 +532,21 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
 
     # ── A-T20: 机型产物隔离防错发 ─────────────────────────────────────────────
     def test_at20_model_fallback_prevention(self):
-        """A-T20: 平台产物解析器在存在目标机型构建时，拒绝向不兼容机型错发二进制产物"""
-        # 该项已在 platform-probes.php / SkillDeliveryAssetResolver 闭环验证
-        self.assertTrue(True)
+        """A-T20: 平台产物解析器/适配器在存在目标机型构建时，拒绝向不兼容机型错发二进制产物"""
+        from zhjj_agent.adapters.unitree_g1 import UnitreeG1Adapter
+        g1 = UnitreeG1Adapter(app_dir=self.temp_dir)
+        pkg_dir = os.path.join(self.temp_dir, "compat_test")
+        os.makedirs(pkg_dir, exist_ok=True)
+        with open(os.path.join(pkg_dir, "action.py"), "w") as f:
+            f.write("def run(context=None): pass\n")
+
+        # 错机型（如智元 A2）manifest 必须被 G1 适配器明确拒绝
+        incompatible_manifest = {"target_model_code": "zhiyuan_a2", "entrypoint": "action.py"}
+        self.assertFalse(g1.prepare("101", "1.0.0", pkg_dir, incompatible_manifest))
+
+        # 正确机型 unitree_g1 放行
+        compatible_manifest = {"target_model_code": "unitree_g1", "entrypoint": "action.py"}
+        self.assertTrue(g1.prepare("101", "1.0.0", pkg_dir, compatible_manifest))
 
     # ── A-T21: 安装包安全审计（Zip Slip、炸弹、符号链接、缺清单） ───────────────
     def test_at21_package_security_checks(self):
@@ -514,12 +571,14 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
 
     # ── A-T22: 客户参数越权拦截 ───────────────────────────────────────────────
     def test_at22_forbidden_param_and_execution_guard(self):
-        """A-T22: 客户端 API 拒绝 method, sdk_method 等越权参数注入"""
-        # 已在 SkillController 中落地黑名单校验，通过单元验证
-        forbidden = ["method", "sdk_method", "raw_command", "eval", "exec", "system"]
-        test_params = {"method": "format_disk", "speed": 1.0}
-        has_forbidden = any(k in forbidden for k in test_params.keys())
-        self.assertTrue(has_forbidden)
+        """A-T22: 拒绝外层篡改与越权参数注入，适配器绝不接收未签越权参数"""
+        cmd = self._make_signed_command("task-tamper-param", OP_EXECUTE, execution_id="exec-tamper", execution_params={})
+        cmd["execution_params"] = {"method": "format_disk", "speed": 1.0}
+        ok = self.manager.process_command(cmd)
+        self.assertFalse(ok)
+        last_ev = self.client.events[-1]
+        self.assertEqual(last_ev["phase"], "failed")
+        self.assertEqual(last_ev["error_code"], ERR_SIG_INVALID)
 
     # ── A-T23: 技能执行与安装事实严格隔离 ─────────────────────────────────────
     def test_at23_execution_fact_isolation(self):
@@ -533,12 +592,17 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
     # ── A-T24: 熔断闸门拒绝新安装与执行 ───────────────────────────────────────
     def test_at24_killswitch_rejection(self):
         """A-T24: 熔断生效时新任务被拒，恢复与对账通路仍放行"""
-        # 已在 KillSwitchTest / SkillController 验证
-        self.assertTrue(True)
+        self.storage.set_revocation_epoch("skill:101", 10)
+        cmd = self._make_signed_command("task-ks-1", OP_INSTALL, revocation_epoch=5)
+        ok = self.manager.process_command(cmd)
+        self.assertFalse(ok)
+        last_ev = self.client.events[-1]
+        self.assertEqual(last_ev["phase"], "failed")
+        self.assertEqual(last_ev["error_code"], ERR_REVOKED)
 
     # ── A-T25: RFC 8785 JCS 跨语言黄金向量验证 ────────────────────────────────
     def test_at25_rfc8785_cross_language_vectors(self):
-        """A-T25: PHP 与 Python 规范化 JSON 字节完全一致（UTF-16 键排序、ECMAScript 数字格式）"""
+        """A-T25: PHP 与 Python 规范化 JSON 字节完全一致（UTF-16 键排序、ECMAScript 数字格式、1e-6、1e20）"""
         from zhjj_agent.crypto import jcs_canonicalize
         sample = {
             "d": {"€": "euro", "z": 123},
@@ -550,6 +614,10 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
         # 预期 RFC 8785 黄金 hex
         expected_hex = "7b2261223a31652d372c2262223a302c2263223a5b6e756c6c2c747275652c66616c73652c2268656c6c6f225d2c2264223a7b227a223a3132332c22e282ac223a226575726f227d7d"
         self.assertEqual(canonical.hex(), expected_hex)
+        # 针对复验指出的 1e-6 与 1e20 RFC 8785 黄金向量
+        self.assertEqual(jcs_canonicalize({"x": 1e-6}).decode(), '{"x":0.000001}')
+        self.assertEqual(jcs_canonicalize({"x": 1e20}).decode(), '{"x":100000000000000000000}')
+        self.assertEqual(jcs_canonicalize({"x": -0.0}).decode(), '{"x":0}')
 
     # ── A-T26: 设备凭据吊销后阻止共享密钥退路 ─────────────────────────────────
     def test_at26_per_device_credential_revocation(self):

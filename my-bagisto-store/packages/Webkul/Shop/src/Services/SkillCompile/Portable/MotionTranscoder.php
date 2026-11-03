@@ -97,10 +97,13 @@ class MotionTranscoder
 
         $maxVelLimit = (float) ($safetyEnvelope['max_velocity_rad_s'] ?? 3.14);
         $maxAccLimit = (float) ($safetyEnvelope['max_acceleration_rad_s2'] ?? 6.28);
+        $maxJerkLimit = (float) ($safetyEnvelope['max_jerk_rad_s3'] ?? 60.0);
+        $maxTorqueLimit = (float) ($safetyEnvelope['max_torque_nm'] ?? 30.0);
 
         $prevTime = null;
         $prevJoints = null;
         $prevVelocities = [];
+        $prevAccelerations = [];
 
         foreach ($frames as $idx => $frame) {
             $t = (float) $frame['time_s'];
@@ -117,10 +120,11 @@ class MotionTranscoder
                 }
             }
 
-            // 2. 差分速度与加速度校验
+            // 2. 差分速度、加速度、加加速度（Jerk）及力矩可行域校验
             if ($prevTime !== null && $prevJoints !== null) {
                 $dt = max(1e-4, $t - $prevTime);
                 $currVelocities = [];
+                $currAccelerations = [];
 
                 foreach ($joints as $jName => $val) {
                     $prevVal = $prevJoints[$jName] ?? $val;
@@ -133,17 +137,47 @@ class MotionTranscoder
 
                     if (isset($prevVelocities[$jName])) {
                         $acc = ($vel - $prevVelocities[$jName]) / $dt;
+                        $currAccelerations[$jName] = $acc;
+
                         if (abs($acc) > ($maxAccLimit + 1e-3)) {
                             $errors[] = "帧 {$idx} [{$t}s] 关节 {$jName} 加速度 (" . round($acc, 3) . " rad/s²) 超过安全包络上限 ({$maxAccLimit} rad/s²)";
+                        }
+
+                        // 三阶 Jerk 校验
+                        if (isset($prevAccelerations[$jName])) {
+                            $jerk = ($acc - $prevAccelerations[$jName]) / $dt;
+                            if (abs($jerk) > ($maxJerkLimit + 1e-2)) {
+                                $errors[] = "帧 {$idx} [{$t}s] 关节 {$jName} 加加速度 Jerk (" . round($jerk, 3) . " rad/s³) 超过安全急动度包络 ({$maxJerkLimit} rad/s³)";
+                            }
+                        }
+
+                        // 动力学反求力矩简化校验：tau = I * acc + b * vel
+                        $linkInertia = 0.08; // kg*m^2 等效转动惯量
+                        $damping = 0.5;      // N*m*s/rad 粘滞阻尼
+                        $estTorque = abs($linkInertia * $acc) + abs($damping * $vel);
+                        if ($estTorque > ($maxTorqueLimit + 1e-3)) {
+                            $errors[] = "帧 {$idx} [{$t}s] 关节 {$jName} 反求力矩 (" . round($estTorque, 3) . " N·m) 超过安全力矩上限 ({$maxTorqueLimit} N·m)";
                         }
                     }
                 }
 
+                $prevAccelerations = $currAccelerations;
                 $prevVelocities = $currVelocities;
             }
 
             $prevTime = $t;
             $prevJoints = $joints;
+        }
+
+        // 3. 边界零速校验（起止点速度必须平滑自然归零）
+        $firstFrame = $frames[0]['joints'];
+        $secondFrame = $frames[1]['joints'];
+        $initDt = max(1e-4, (float)$frames[1]['time_s'] - (float)$frames[0]['time_s']);
+        foreach ($firstFrame as $jName => $val) {
+            $initVel = abs(($secondFrame[$jName] - $val) / $initDt);
+            if ($initVel > 0.05) {
+                $errors[] = "起点初始速度非零 ({$initVel} rad/s)，违反静止起步动力学平滑约束";
+            }
         }
 
         return $errors;

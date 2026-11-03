@@ -1,0 +1,26 @@
+{
+  "delivered_response_lost_no_ack": {
+    "first_command_count": 1,
+    "second_command_count_without_durable_ack": 0
+  },
+  "authenticated_download_control": {
+    "hash_matches": true
+  },
+  "real_http_install": {
+    "accepted": false,
+    "journal_status": "FAILED",
+    "error_code": "PKG_HASH_MISMATCH",
+    "error_msg": "下载网络或IO异常: HTTP Error 401: Unauthorized",
+    "installed_count": 0
+  },
+  "original_live_suite": {
+    "run": 4,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0
+  },
+  "cleanup": {
+    "test_fixtures_cleaned": true,
+    "live_fixtures_cleaned": 1
+  }
+}

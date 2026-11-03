@@ -3,6 +3,7 @@
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any, Dict, Optional, Tuple
 
@@ -56,6 +57,21 @@ class AgentClient:
             return headers
 
         return headers
+
+    def get_download_headers(self, url: str) -> Dict[str, str]:
+        """为技能包下载生成认证请求头。
+        安全限制：仅允许发往平台源站，绝不向第三方主机泄露设备凭据。
+        """
+        parsed = urllib.parse.urlparse(url)
+        server_parsed = urllib.parse.urlparse(self.server_url)
+
+        # 严格同源校验 (同一 netloc 与 scheme)
+        if parsed.netloc and parsed.netloc.lower() == server_parsed.netloc.lower():
+            headers = self._build_auth_headers("GET", parsed.path)
+            headers["Accept"] = "*/*"
+            return headers
+
+        return {"Accept": "*/*"}
 
     def request(
         self,
@@ -111,7 +127,15 @@ class AgentClient:
 
     pull_commands = fetch_commands
 
-    def send_event(self, task_no: str, phase: str, error_code: Optional[str] = None, error_msg: Optional[str] = None) -> Tuple[bool, Dict[str, Any]]:
+    def send_event(
+        self,
+        task_no: str,
+        phase: str,
+        error_code: Optional[str] = None,
+        error_msg: Optional[str] = None,
+        event_id: Optional[str] = None,
+        event_seq: Optional[int] = None
+    ) -> Tuple[bool, Dict[str, Any]]:
         payload = {
             "task_no": task_no,
             "did": self.did,
@@ -119,6 +143,10 @@ class AgentClient:
             "error_code": error_code,
             "error_msg": error_msg,
         }
+        if event_id is not None:
+            payload["event_id"] = event_id
+        if event_seq is not None:
+            payload["event_seq"] = event_seq
         return self.request("POST", "api/agent/evt", payload=payload)
 
     def send_ack(self, task_no: str, event_id: str, stage: str) -> Tuple[bool, Dict[str, Any]]:

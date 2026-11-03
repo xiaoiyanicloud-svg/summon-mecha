@@ -564,8 +564,25 @@ class SkillController extends APIController
             return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在或不属于当前用户。', 404);
         }
 
-        if ($entitlement->status !== SkillEntitlement::STATUS_ACTIVE) {
+        if (! $entitlement->isUsable()) {
             return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '技能授权未激活或已过期，无法执行。', 403);
+        }
+
+        $nonce = $request->input('nonce');
+        $cacheKey = ! empty($nonce) ? "skill_exec_nonce:{$entitlement->id}:{$nonce}" : null;
+        if ($cacheKey) {
+            $cachedExecId = \Illuminate\Support\Facades\Cache::get($cacheKey);
+            if ($cachedExecId) {
+                $existing = SkillExecution::where('execution_id', $cachedExecId)->first();
+                if ($existing) {
+                    return $this->ok([
+                        'execution_id' => $existing->execution_id,
+                        'status'       => $existing->status,
+                        'task_no'      => $existing->deployTask?->task_no,
+                        'idempotent'   => true,
+                    ], '幂等返回已有执行记录。')->setStatusCode(200);
+                }
+            }
         }
 
         if (! $entitlement->device) {
@@ -626,6 +643,10 @@ class SkillController extends APIController
         );
 
         $execution->update(['deploy_task_id' => $task->id]);
+
+        if ($cacheKey) {
+            \Illuminate\Support\Facades\Cache::put($cacheKey, $executionId, 3600);
+        }
 
         return $this->ok([
             'execution_id' => $executionId,

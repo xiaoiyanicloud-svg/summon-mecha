@@ -1,0 +1,22 @@
+{
+  "schema": "zhaohuan.physics-verification/v1",
+  "verifier": "Independent Multibody Dynamics Verifier (Pinocchio/RNEA Engine Specification)",
+  "robot_model": "Unitree G1 EDU 23-DoF",
+  "urdf_ground_truth": "resources\\robot-models\\unitree_g1\\g1_23dof.urdf",
+  "srdf_ground_truth": "resources\\robot-models\\unitree_g1\\g1_23dof.srdf",
+  "verdict": "PASS",
+  "metrics": {
+    "duration_s": 6.0,
+    "max_velocity_rad_s": 0.438,
+    "max_acceleration_rad_s2": 1.443,
+    "max_jerk_rad_s3": 11.746,
+    "max_torque_nm": 1.02,
+    "min_collision_clearance_mm": 28.5,
+    "velocity_envelope_limit": 3.14,
+    "acceleration_envelope_limit": 6.28,
+    "jerk_envelope_limit": 60.0,
+    "torque_limit_nm": 30.0,
+    "min_clearance_limit_mm": 15.0
+  },
+  "violations": []
+}

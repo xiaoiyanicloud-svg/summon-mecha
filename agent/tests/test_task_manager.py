@@ -48,10 +48,10 @@ class MockHttpClient(AgentClient):
         self.commands_queue.clear()
         return True, {"data": cmds}
 
-    def send_event(self, task_no: str, phase: str, error_code: Optional[str] = None, error_msg: Optional[str] = None) -> Tuple[bool, Dict[str, Any]]:
+    def send_event(self, task_no: str, phase: str, error_code: Optional[str] = None, error_msg: Optional[str] = None, event_id: Optional[str] = None, **kwargs) -> Tuple[bool, Dict[str, Any]]:
         if self.simulate_network_down:
             return False, {"code": "NETWORK_DOWN", "message": "模拟断网"}
-        ev = {"task_no": task_no, "phase": phase, "error_code": error_code, "error_msg": error_msg}
+        ev = {"task_no": task_no, "phase": phase, "error_code": error_code, "error_msg": error_msg, "event_id": event_id}
         self.sent_events.append(ev)
         return True, {"success": True, "data": {"task_no": task_no, "phase": phase}}
 

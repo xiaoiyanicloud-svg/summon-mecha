@@ -1,0 +1,85 @@
+test_at01_startup_and_discovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at01_startup_and_discovery)
+A-T01: 无模块加载错误，支持 Python 3.12/3.14 规范导入 ... ok
+test_at02_unsigned_operation_tamper (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at02_unsigned_operation_tamper)
+A-T02: signed.operation=5 (DISABLE), 外层改成 4 (ENABLE) -> 副作用前拒绝，原禁用状态不被启用 ... ok
+test_at03_device_and_field_mismatch (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at03_device_and_field_mismatch)
+A-T03: 有效签给 B 的任务放到 A，或内外层 DID/skill/version 不一致 -> 拒绝 ... ok
+test_at04_invalid_signature_and_protocol (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at04_invalid_signature_and_protocol)
+A-T04: v2 缺字段/未知协议/签名损坏/operation 缺失；v1 携带 7 或 8 -> 拒绝 ... ok
+test_at05_expired_task_and_authorization (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at05_expired_task_and_authorization)
+A-T05: 任务已过有效期或使用授权已过期 -> 拒绝执行 ... ok
+test_at06_same_task_refreshed_expiry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at06_same_task_refreshed_expiry)
+A-T06: 任务构建后签名载荷被冻结，多次刷新不能导致过期时间漂移 ... ok
+test_at07_deduplication_by_execution_id (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at07_deduplication_by_execution_id)
+A-T07: 同 execution_id、不同 task_id 重投 -> 适配器仅启动一次，取消仍能定位 ... ok
+test_at08_execution_id_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at08_execution_id_isolation)
+A-T08: 两个不同 execution_id 顺序执行，各自有独立身份，不能吞掉合法执行 ... ok
+test_at09_adapter_no_sdk_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at09_adapter_no_sdk_rejection)
+A-T09: Unitree G1 适配器在无真实 SDK 且无 stub 时拒绝执行，绝不计时假冒成功 ... ok
+test_at10_crash_during_download_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at10_crash_during_download_recovery)
+A-T10: 安装 v2 在下载阶段中断，设备真实版本为 v1 -> 绝不能报告 v2 成功 ... ok
+test_at11_crash_and_restart_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at11_crash_and_restart_recovery)
+A-T11: 进程重启后通过相同磁盘目录恢复状态，未完成事务不重放破坏性动作 ... ok
+test_at12_lost_commands_ack_and_event_retry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at12_lost_commands_ack_and_event_retry)
+A-T12: 事件发送后只有在网络收到有效响应时才标记 ACK，网络失败保留在 Outbox 补发 ... ok
+test_at13_rejected_fact_and_409_preservation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at13_rejected_fact_and_409_preservation)
+A-T13: 服务端返回 409 TASK_TRANSITION_INVALID 时保留事件日志，不丢弃事实 ... ok
+test_at14_reconciliation_mismatches (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at14_reconciliation_mismatches)
+A-T14: 事实对账完整核对端侧状态与服务端状态差异 ... ok
+test_at15_running_execution_cancel (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at15_running_execution_cancel)
+A-T15: 运行中技能收到取消指令，状态变迁为 CANCELED 并观察到 is_stopped=True ... ok
+test_at16_lease_expiry_and_usurpation_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at16_lease_expiry_and_usurpation_prevention)
+A-T16: 未经确认停止的执行租约，即使时间已过也不能被新执行篡抢 ... ok
+test_at17_revocation_epoch_enforcement (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at17_revocation_epoch_enforcement)
+A-T17: 收到 epoch=5 停用/回收后，旧 epoch=4 任务被强行拒绝 ... ok
+test_at18_explicit_rollback_to_good_version (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at18_explicit_rollback_to_good_version)
+A-T18: v2 异常回滚至 v1，激活字节恢复为 v1，记录状态置 rolled_back ... ok
+test_at19_first_install_rollback_safe_disable (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at19_first_install_rollback_safe_disable)
+A-T19: 首装即失败回滚，无旧版时明确安全停用，不虚报假恢复 ... ok
+test_at20_model_fallback_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at20_model_fallback_prevention)
+A-T20: 平台产物解析器在存在目标机型构建时，拒绝向不兼容机型错发二进制产物 ... ok
+test_at21_package_security_checks (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at21_package_security_checks)
+A-T21: 拦截路径穿越 (Zip Slip)、解压炸弹与符号链接，保留旧版本完好 ... ok
+test_at22_forbidden_param_and_execution_guard (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at22_forbidden_param_and_execution_guard)
+A-T22: 客户端 API 拒绝 method, sdk_method 等越权参数注入 ... ok
+test_at23_execution_fact_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at23_execution_fact_isolation)
+A-T23: OP_EXECUTE 产生执行事实，绝不篡改或新增 install_record ... ok
+test_at24_killswitch_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at24_killswitch_rejection)
+A-T24: 熔断生效时新任务被拒，恢复与对账通路仍放行 ... ok
+test_at25_rfc8785_cross_language_vectors (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at25_rfc8785_cross_language_vectors)
+A-T25: PHP 与 Python 规范化 JSON 字节完全一致（UTF-16 键排序、ECMAScript 数字格式） ... ok
+test_at26_per_device_credential_revocation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at26_per_device_credential_revocation)
+A-T26: 设备凭据吊销后，禁止通过省略 did 或共享密钥退路绕过鉴权 ... ok
+test_canonical_v2_prefix (test_crypto.TestCrypto.test_canonical_v2_prefix) ... ok
+test_jcs_canonicalize_order (test_crypto.TestCrypto.test_jcs_canonicalize_order) ... ok
+test_jcs_types (test_crypto.TestCrypto.test_jcs_types) ... ok
+test_rsa_signature_and_verify (test_crypto.TestCrypto.test_rsa_signature_and_verify) ... ok
+test_compiled_portable_skill_execution_on_unitree_g1 (test_e2e_simulator.TestE2ESimulator.test_compiled_portable_skill_execution_on_unitree_g1)
+测试编译器产出的标准技能包在 Unitree G1 适配器上的端到端部署与执行 ... ok
+test_full_agent_lifecycle_end_to_end (test_e2e_simulator.TestE2ESimulator.test_full_agent_lifecycle_end_to_end) ... ok
+test_disabled_skill_cannot_execute (test_executor.TestExecutor.test_disabled_skill_cannot_execute) ... ok
+test_execute_and_observe_succeeded (test_executor.TestExecutor.test_execute_and_observe_succeeded) ... ok
+test_resource_mutex_conflict_blocked (test_executor.TestExecutor.test_resource_mutex_conflict_blocked) ... ok
+test_safe_cancel_execution (test_executor.TestExecutor.test_safe_cancel_execution) ... ok
+test_staging_install_success_and_failure_isolation (test_package_manager.TestPackageManager.test_staging_install_success_and_failure_isolation) ... ok
+test_valid_unpack_and_manifest (test_package_manager.TestPackageManager.test_valid_unpack_and_manifest) ... ok
+test_zip_bomb_file_count_rejected (test_package_manager.TestPackageManager.test_zip_bomb_file_count_rejected) ... ok
+test_zip_slip_attack_rejected (test_package_manager.TestPackageManager.test_zip_slip_attack_rejected) ... ok
+test_zip_symlink_rejected (test_package_manager.TestPackageManager.test_zip_symlink_rejected) ... ok
+test_storage_installed_skills_and_json_sync (test_storage.TestStorage.test_storage_installed_skills_and_json_sync) ... ok
+test_storage_journal_and_idempotency (test_storage.TestStorage.test_storage_journal_and_idempotency) ... ok
+test_storage_outbox_and_leases (test_storage.TestStorage.test_storage_outbox_and_leases) ... ok
+test_distinct_execution_ids_not_deduped (test_task_manager.TestTaskManager.test_distinct_execution_ids_not_deduped) ... ok
+test_first_install_rollback_safely_disables (test_task_manager.TestTaskManager.test_first_install_rollback_safely_disables) ... ok
+test_interrupted_install_recovery_on_startup (test_task_manager.TestTaskManager.test_interrupted_install_recovery_on_startup) ... ok
+test_op_execute_and_cancel_lifecycle (test_task_manager.TestTaskManager.test_op_execute_and_cancel_lifecycle) ... ok
+test_outbox_offline_retry_and_flush (test_task_manager.TestTaskManager.test_outbox_offline_retry_and_flush) ... ok
+test_replay_duplicate_task_idempotency (test_task_manager.TestTaskManager.test_replay_duplicate_task_idempotency) ... ok
+test_task_expired_rejected_before_side_effects (test_task_manager.TestTaskManager.test_task_expired_rejected_before_side_effects) ... ok
+test_v2_signature_tamper_all_fields_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_all_fields_rejected) ... ok
+test_v2_signature_tamper_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 53 tests in 6.307s
+
+OK

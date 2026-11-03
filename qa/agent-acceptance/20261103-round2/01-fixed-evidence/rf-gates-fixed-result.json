@@ -1,0 +1,40 @@
+﻿{
+  "RF01": {
+    "pass": true,
+    "detail": "accepted=True, journal_status=COMMITTED, installed_count=1, error=None"
+  },
+  "RF02": {
+    "pass": true,
+    "detail": "observed_stopped=False, lease=ACTIVE, payload_exists=True, last_phase=failed"
+  },
+  "RF03": {
+    "pass": true,
+    "detail": "new_adapter_start_calls=0, second_accepted=True"
+  },
+  "RF04": {
+    "pass": true,
+    "detail": "recovery_calls=1, journal_status=FAILED"
+  },
+  "RF05": {
+    "pass": true,
+    "detail": "params_protected=True, sparse_rejected=True, cust_rejected=True, nonce_deduped=True"
+  },
+  "RF06": {
+    "pass": true,
+    "detail": "g1_handles_fail=True (observed FAILED), escape_blocked=True (executed=False)"
+  },
+  "RF07": {
+    "pass": true,
+    "detail": "accepted=False, payload=tampered-not-good"
+  },
+  "RF08": {
+    "pass": true,
+    "detail": "first_count=1, second_without_ack=1"
+  },
+  "JCS_1e6": {
+    "pass": true,
+    "detail": "jcs_1e6={\"x\":0.000001}, expected={\"x\":0.000001}"
+  }
+}
+
+>>> ALL RF GATES PASSED <<<

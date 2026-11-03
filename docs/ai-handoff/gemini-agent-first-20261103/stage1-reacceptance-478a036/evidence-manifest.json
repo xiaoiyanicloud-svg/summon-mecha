@@ -1,0 +1,55 @@
+{
+  "head": "478a036c97d5e7b93b86bf4a358da60212489c5d",
+  "files": [
+    {
+      "file": "run-offline-tests.py",
+      "sha256": "bd16af2912f9f17ccc3e6ea1678d3c0a447e00cb83a55597e080b899c99cd1eb"
+    },
+    {
+      "file": "python-offline.txt",
+      "sha256": "a6a1899a0e6c3332ecf9044213d21d8df09354a634881049976f0419f74fc589"
+    },
+    {
+      "file": "preflight.php",
+      "sha256": "4604f1af8bb8a9badd228a52c1a6a9324d6458a66ff8f4135194bc37d84819aa"
+    },
+    {
+      "file": "agent-counterexamples.py",
+      "sha256": "e92b06911357d09af110dcb4d6fb2133db7b58faf261e65903ac0ca10a1a2cc1"
+    },
+    {
+      "file": "agent-counterexamples.json",
+      "sha256": "acffe392b68e098732bc9206c9d31b7b4611bc7288d606dac83d0bbdfa1b1cd0"
+    },
+    {
+      "file": "http-fixtures.php",
+      "sha256": "41f082a1624ffda4c4588bbcafdab39eea3a010759ad8fe3673d989e1ef3c441"
+    },
+    {
+      "file": "run-http-audit.py",
+      "sha256": "ce835c0e4b3322b34f68586ce4abae0a66a7c8d2f81a60d2cfc6ea4a5f988175"
+    },
+    {
+      "file": "http-counterexamples.json",
+      "sha256": "8c9f217f82a01e1e1061e864f4a86429832d6f2f4f69d7515923f605b36fff27"
+    },
+    {
+      "file": "customer-counterexamples.json",
+      "sha256": "fae28f06b8eabc64c6602617c21767397e8ac0a9063c75c19e6829e907228e8a"
+    },
+    {
+      "file": "python-original-live-http.txt",
+      "sha256": "a42e2272f8047c30173996ed09c3daff877205eb0c60e6491ef075afa129f043"
+    },
+    {
+      "file": "php-tests.txt",
+      "sha256": "592c6082f0274937d7a31e3d5a126e11e465608aa8cfd5dc1ee64cb9e4a8383d"
+    },
+    {
+      "file": "contract-check.txt",
+      "sha256": "c9629d2851f453e9902dfcc291376b302e4986e9271bd27e8aca5449c4062259"
+    }
+  ],
+  "business_code_modified": false,
+  "robot_actions_executed": false
+}

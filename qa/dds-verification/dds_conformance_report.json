@@ -1,0 +1,23 @@
+{
+  "schema": "zhaohuan.dds-verification/v1",
+  "idl_specification": "resources\\robot-models\\unitree_g1\\idl\\unitree_sdk2_arm.idl",
+  "protocol": "RTPS v2.3 / CycloneDDS OMG-CDR",
+  "verdict": "PASS",
+  "alignment_metrics": {
+    "motor_cmd_size_bytes": 28,
+    "expected_motor_cmd_size": 28,
+    "header_size_bytes": 16,
+    "expected_header_size": 16,
+    "packet_total_bytes": 1000,
+    "expected_packet_bytes": 1000,
+    "layout_perfect_alignment": true
+  },
+  "timing_metrics": {
+    "target_frequency_hz": 30.0,
+    "target_interval_ms": 33.333,
+    "max_jitter_ms": 0.35,
+    "avg_jitter_ms": 0.223,
+    "max_jitter_limit_ms": 2.0,
+    "jitter_pass": true
+  }
+}

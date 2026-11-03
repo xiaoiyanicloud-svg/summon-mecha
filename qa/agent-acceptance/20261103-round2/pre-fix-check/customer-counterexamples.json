@@ -1,0 +1,26 @@
+{
+    "expired_authorization_and_no_install": {
+        "is_usable": false,
+        "http_status": 202,
+        "data": {
+            "success": true,
+            "message": "技能执行已受理。",
+            "data": {
+                "execution_id": "exec_6a7fabe9-4cd3-46a5-b9a8-e51fe45dfb0f",
+                "task_no": "DT261103221504-XUD1LZ",
+                "status": "ACCEPTED"
+            }
+        },
+        "install_records": 0
+    },
+    "nonempty_params_same_nonce": [
+        {
+            "status": 202,
+            "execution_id": "exec_b9a84f23-37d4-45cd-9226-8538fb8aa735"
+        },
+        {
+            "status": 202,
+            "execution_id": "exec_59ea3bea-f20d-4a2a-a83c-65c5ce718c3c"
+        }
+    ]
+}

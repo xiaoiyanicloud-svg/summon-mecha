@@ -1,0 +1,13 @@
+test_live_01_heartbeat (test_live_http_integration.TestLiveHttpIntegration.test_live_01_heartbeat)
+测试 1: 真实 HTTP POST /api/agent/heartbeat 心跳刷新 ... ok
+test_live_02_fetch_and_ack_command (test_live_http_integration.TestLiveHttpIntegration.test_live_02_fetch_and_ack_command)
+测试 2: 真实 HTTP GET /api/agent/commands 拉取指令 -> POST /api/agent/ack 双向 ACK ... ok
+test_live_03_send_event (test_live_http_integration.TestLiveHttpIntegration.test_live_03_send_event)
+测试 3: 真实 HTTP POST /api/agent/evt 上报任务进度事件 ... ok
+test_live_04_reconciliation (test_live_http_integration.TestLiveHttpIntegration.test_live_04_reconciliation)
+测试 4: 真实 HTTP POST /api/agent/reconcile 双向事实对账 ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 3.895s
+
+OK

@@ -97,6 +97,6 @@ class SkillExecutor:
         """独立观测执行状态并管理租约释放。"""
         obs = self.adapter.observe_execution(execution_id)
         status = obs.get("status", EXEC_UNKNOWN)
-        if status in (EXEC_SUCCEEDED, EXEC_FAILED, EXEC_CANCELED):
+        if status in (EXEC_SUCCEEDED, EXEC_FAILED, EXEC_CANCELED) and obs.get("is_stopped"):
             self.storage.release_execution_lease(execution_id)
         return obs

@@ -70,6 +70,9 @@ def run(config_path: str, once: bool = False, adapter_override: Optional[str] = 
     poll_interval = int(config.get("poll_interval", 5))
     print(f"[zhjj-agent] 启动 v{__version__} did={did} adapter={model_code} dir={install_dir}")
 
+    # 启动时执行崩溃恢复与对账
+    manager.resume_recovery()
+
     # 发送首联心跳
     client.heartbeat(
         agent_version=__version__,

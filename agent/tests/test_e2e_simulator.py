@@ -104,7 +104,9 @@ class SimulatedPlatformServer(AgentClient):
         task_no: str,
         phase: str,
         error_code: Optional[str] = None,
-        error_msg: Optional[str] = None
+        error_msg: Optional[str] = None,
+        event_id: Optional[str] = None,
+        **kwargs
     ) -> Tuple[bool, Dict[str, Any]]:
         ev = {
             "task_no": task_no,
@@ -112,6 +114,7 @@ class SimulatedPlatformServer(AgentClient):
             "phase": phase,
             "error_code": error_code,
             "error_msg": error_msg,
+            "event_id": event_id,
             "time": time.time()
         }
         self.event_log.append(ev)

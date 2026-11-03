@@ -1,0 +1,26 @@
+{
+  "delivered_response_lost_no_ack": {
+    "first_command_count": 1,
+    "second_command_count_without_durable_ack": 1
+  },
+  "authenticated_download_control": {
+    "hash_matches": true
+  },
+  "real_http_install": {
+    "accepted": true,
+    "journal_status": "COMMITTED",
+    "error_code": null,
+    "error_msg": null,
+    "installed_count": 1
+  },
+  "original_live_suite": {
+    "run": 4,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0
+  },
+  "cleanup": {
+    "test_fixtures_cleaned": true,
+    "live_fixtures_cleaned": 1
+  }
+}

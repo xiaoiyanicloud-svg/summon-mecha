@@ -1,10 +1,13 @@
 {
-  "snapshot_head": "44ca8ff83ba894450e757b7f5bcf8b0daf4f8804",
+  "packet_version": "stage1-round2-20261103",
+  "scope": "agent-stage1-only",
+  "snapshot_head": "478a036c97d5e7b93b86bf4a358da60212489c5d",
+  "completion_claim": "independent_software_acceptance_failed_rework_required",
   "source_documents": [
     {
       "path": "AGENTS.md",
-      "sha256": "b0c48ccc2aed4f8581646dcc02219428c10253ed6f359f46a08b5f2d3cbf9ead",
-      "bytes": 6056
+      "sha256": "85698a4934653b7cd065c0a4abdd5af0e66ac4e59829b93d4e975430d1b1919e",
+      "bytes": 5859
     },
     {
       "path": "CLAUDE.md",
@@ -50,30 +53,119 @@
       "path": "docs/portable-skill-spec/validation.json",
       "sha256": "ba6620f35d57359094f586224114641bdca76a18bbdf59ff7cd8bd2dad351a76",
       "bytes": 1166
+    },
+    {
+      "path": "docs/skill-dev-step10-agent-independent-reacceptance-20261103.md",
+      "sha256": "a5f32b42177f40b20c2d0448520f4f73375a3ce38c7e25e108b113f7361abad3",
+      "bytes": 14921
     }
   ],
+  "evidence_archive": {
+    "file": "stage1-reacceptance-evidence.zip",
+    "sha256": "4acc20e05d357ac18c6facd4f50d13e4005edcc95a12b8ced97adb48bbc2ab16",
+    "source_head": "478a036c97d5e7b93b86bf4a358da60212489c5d"
+  },
   "outputs": [
     {
       "file": "01-gemini-agent-full-prompt.md",
-      "sha256": "b3fef19823683ac5d2467e4fa68441cf6c85f7320199a05ea7c84b7794d40926",
-      "bytes": 215409
+      "sha256": "f2cf14cfb066e40d09a3135650b68b4dc5d7a5f0f3eef9512f6db37639a1ddd8",
+      "bytes": 316648
     },
     {
-      "file": "02-gemini-transcoder-full-prompt.md",
-      "sha256": "166fe44ae667c8b20fe21edec7f88336356cf0a4f7eb6162f25c67eb06965e40",
-      "bytes": 234529
-    },
-    {
-      "file": "independent-acceptance-evidence.zip",
-      "sha256": "a0644bfd84f1d08cc0c9de7beb0b51fedfaa1ba9b11ac124301f6f3b866a826b",
-      "bytes": 32436
+      "file": "stage1-round2-requirements.md",
+      "sha256": "aaf381451d03a5ff8d268209c1523bc9b0e2bcfc121237a4b26a46d28c179187",
+      "bytes": 23882
     },
     {
       "file": "README.md",
-      "sha256": "a573482ee5ee1f29d1a08099c43e497d966240b47a1602c65952570ff5c259f8",
-      "bytes": 2400
+      "sha256": "587384a051c345c80d616f16cefbfe7b526a3c8261aa5c074700d4edcc5689d5",
+      "bytes": 2528
+    },
+    {
+      "file": "stage1-reacceptance-evidence.zip",
+      "sha256": "4acc20e05d357ac18c6facd4f50d13e4005edcc95a12b8ced97adb48bbc2ab16",
+      "bytes": 30615
+    },
+    {
+      "file": "stage1-reacceptance-478a036/agent-counterexamples.json",
+      "sha256": "acffe392b68e098732bc9206c9d31b7b4611bc7288d606dac83d0bbdfa1b1cd0",
+      "bytes": 1467
+    },
+    {
+      "file": "stage1-reacceptance-478a036/agent-counterexamples.py",
+      "sha256": "e92b06911357d09af110dcb4d6fb2133db7b58faf261e65903ac0ca10a1a2cc1",
+      "bytes": 6332
+    },
+    {
+      "file": "stage1-reacceptance-478a036/contract-check.txt",
+      "sha256": "c9629d2851f453e9902dfcc291376b302e4986e9271bd27e8aca5449c4062259",
+      "bytes": 327
+    },
+    {
+      "file": "stage1-reacceptance-478a036/customer-counterexamples.json",
+      "sha256": "fae28f06b8eabc64c6602617c21767397e8ac0a9063c75c19e6829e907228e8a",
+      "bytes": 733
+    },
+    {
+      "file": "stage1-reacceptance-478a036/evidence-manifest.json",
+      "sha256": "77637cc95093a6e4ebbfa3703b610509f1224bb5ce0c88b442187d54e3f31301",
+      "bytes": 1816
+    },
+    {
+      "file": "stage1-reacceptance-478a036/http-counterexamples.json",
+      "sha256": "8c9f217f82a01e1e1061e864f4a86429832d6f2f4f69d7515923f605b36fff27",
+      "bytes": 624
+    },
+    {
+      "file": "stage1-reacceptance-478a036/http-fixtures.php",
+      "sha256": "41f082a1624ffda4c4588bbcafdab39eea3a010759ad8fe3673d989e1ef3c441",
+      "bytes": 6059
+    },
+    {
+      "file": "stage1-reacceptance-478a036/php-tests.txt",
+      "sha256": "592c6082f0274937d7a31e3d5a126e11e465608aa8cfd5dc1ee64cb9e4a8383d",
+      "bytes": 25881
+    },
+    {
+      "file": "stage1-reacceptance-478a036/preflight.php",
+      "sha256": "4604f1af8bb8a9badd228a52c1a6a9324d6458a66ff8f4135194bc37d84819aa",
+      "bytes": 747
+    },
+    {
+      "file": "stage1-reacceptance-478a036/python-offline.txt",
+      "sha256": "a6a1899a0e6c3332ecf9044213d21d8df09354a634881049976f0419f74fc589",
+      "bytes": 9226
+    },
+    {
+      "file": "stage1-reacceptance-478a036/python-original-live-http.txt",
+      "sha256": "a42e2272f8047c30173996ed09c3daff877205eb0c60e6491ef075afa129f043",
+      "bytes": 859
+    },
+    {
+      "file": "stage1-reacceptance-478a036/run-http-audit.py",
+      "sha256": "ce835c0e4b3322b34f68586ce4abae0a66a7c8d2f81a60d2cfc6ea4a5f988175",
+      "bytes": 3843
+    },
+    {
+      "file": "stage1-reacceptance-478a036/run-offline-tests.py",
+      "sha256": "bd16af2912f9f17ccc3e6ea1678d3c0a447e00cb83a55597e080b899c99cd1eb",
+      "bytes": 838
+    },
+    {
+      "file": "stage1-reacceptance-478a036/skill-dev-step10-agent-independent-reacceptance-20261103.md",
+      "sha256": "a5f32b42177f40b20c2d0448520f4f73375a3ce38c7e25e108b113f7361abad3",
+      "bytes": 14921
     }
   ],
-  "business_code_modified": false,
-  "robot_actions_executed": false
+  "deferred_outputs": [
+    {
+      "file": "02-gemini-transcoder-full-prompt.md",
+      "sha256": "166fe44ae667c8b20fe21edec7f88336356cf0a4f7eb6162f25c67eb06965e40",
+      "snapshot_head": "44ca8ff83ba894450e757b7f5bcf8b0daf4f8804",
+      "state": "unchanged_do_not_execute_stage2"
+    }
+  ],
+  "business_code_modified_by_this_task": false,
+  "robot_actions_executed": false,
+  "backup_directory": "D:\\CodexDeploy\\summon-mecha\\.claude\\backup\\gemini-stage1-round2-20261103"
 }

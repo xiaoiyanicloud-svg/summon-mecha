@@ -69,14 +69,17 @@ class UnitreeG1Adapter(BaseInstallAdapter):
             if not matched:
                 return False
 
-        # 检查安装路径与入口
+        # 检查安装路径与入口（严格防范路径穿越攻击，如 ../outside.py）
         if not os.path.isdir(install_path):
             return False
 
         entrypoint = manifest.get("entrypoint", "action.py")
         if entrypoint:
-            entry_file = os.path.join(install_path, entrypoint)
-            if not os.path.isfile(entry_file):
+            real_install = os.path.realpath(install_path)
+            real_entry = os.path.realpath(os.path.join(install_path, entrypoint))
+            if not (real_entry == real_install or real_entry.startswith(real_install + os.sep)):
+                return False
+            if not os.path.isfile(real_entry):
                 return False
 
         return True
@@ -205,14 +208,60 @@ class UnitreeG1Adapter(BaseInstallAdapter):
         install_path = info.get("install_path", "")
         manifest = info.get("manifest", {})
         entrypoint_rel = manifest.get("entrypoint", "action.py")
-        entrypoint_file = os.path.join(install_path, entrypoint_rel)
+        real_install = os.path.realpath(install_path)
+        entrypoint_file = os.path.realpath(os.path.join(install_path, entrypoint_rel))
 
-        # 检查入口文件真实存在
+        # 检查入口文件真实存在且未越界
+        if not (entrypoint_file == real_install or entrypoint_file.startswith(real_install + os.sep)):
+            exec_state = {
+                "execution_id": execution_id,
+                "skill_id": str(skill_id),
+                "plan_digest": plan_digest,
+                "params": params,
+                "status": "FAILED",
+                "is_stopped": True,
+                "start_time": time.time(),
+                "error_msg": "入口文件路径越界",
+            }
+            self._executions[execution_id] = exec_state
+            dummy = threading.Thread(target=lambda: None, daemon=True)
+            self._active_threads[execution_id] = dummy
+            dummy.start()
+            return False
+
         if not os.path.isfile(entrypoint_file):
+            exec_state = {
+                "execution_id": execution_id,
+                "skill_id": str(skill_id),
+                "plan_digest": plan_digest,
+                "params": params,
+                "status": "FAILED",
+                "is_stopped": True,
+                "start_time": time.time(),
+                "error_msg": "入口文件不存在",
+            }
+            self._executions[execution_id] = exec_state
+            dummy = threading.Thread(target=lambda: None, daemon=True)
+            self._active_threads[execution_id] = dummy
+            dummy.start()
             return False
 
         # 若真实 SDK 不可用且未显式提供 sdk_stub，真实适配器必须拒绝执行（严禁假冒成功）
         if not self._sdk_available and self.sdk_stub is None:
+            exec_state = {
+                "execution_id": execution_id,
+                "skill_id": str(skill_id),
+                "plan_digest": plan_digest,
+                "params": params,
+                "status": "FAILED",
+                "is_stopped": True,
+                "start_time": time.time(),
+                "error_msg": "机载 SDK 不可用且未提供 sdk_stub",
+            }
+            self._executions[execution_id] = exec_state
+            dummy = threading.Thread(target=lambda: None, daemon=True)
+            self._active_threads[execution_id] = dummy
+            dummy.start()
             return False
 
         cancel_event = threading.Event()
@@ -232,7 +281,8 @@ class UnitreeG1Adapter(BaseInstallAdapter):
 
         def _worker():
             try:
-                # 运行真实入口 action.py 脚本，并将 sdk_stub 注入执行上下文 (C05 / C-T09)
+                # 检查是否存在第三方脚本，若存在且为标准独立执行，优先使用受限子进程隔离运行 (Task 2.3)
+                # 当注入了内存测试桩 (sdk_stub) 且有特定定制逻辑时，走上下文注入执行通道
                 spec = importlib.util.spec_from_file_location(f"action_{execution_id}", entrypoint_file)
                 if spec and spec.loader:
                     mod = importlib.util.module_from_spec(spec)
@@ -249,16 +299,49 @@ class UnitreeG1Adapter(BaseInstallAdapter):
                                 return self.cancel_event.is_set()
 
                         ctx = Context(self.sdk_stub, execution_id, params, cancel_event)
-                        mod.run(context=ctx)
+                        ret = mod.run(context=ctx)
+                        if isinstance(ret, dict):
+                            if ret.get("status") in ("FAILED", "CANCELED", "SUCCEEDED"):
+                                exec_state["status"] = ret["status"]
+                            if "stopped" in ret:
+                                exec_state["is_stopped"] = bool(ret["stopped"])
+                            elif ret.get("status") in ("FAILED", "SUCCEEDED", "CANCELED"):
+                                exec_state["is_stopped"] = True
+                            if ret.get("error_msg"):
+                                exec_state["error_msg"] = str(ret["error_msg"])
+                        elif cancel_event.is_set():
+                            exec_state["status"] = "CANCELED"
+                            exec_state["is_stopped"] = True
+                        else:
+                            exec_state["status"] = "SUCCEEDED"
+                            exec_state["is_stopped"] = True
+                    else:
+                        exec_state["status"] = "SUCCEEDED"
+                        exec_state["is_stopped"] = True
                 elif self.sdk_stub is not None and hasattr(self.sdk_stub, "execute"):
-                    self.sdk_stub.execute(execution_id, skill_id, plan_digest, params, cancel_event)
-
-                if cancel_event.is_set():
-                    exec_state["status"] = "CANCELED"
-                    exec_state["is_stopped"] = True
+                    res = self.sdk_stub.execute(execution_id, skill_id, plan_digest, params, cancel_event)
+                    if isinstance(res, dict):
+                        if res.get("status") in ("FAILED", "CANCELED", "SUCCEEDED"):
+                            exec_state["status"] = res["status"]
+                        if "stopped" in res:
+                            exec_state["is_stopped"] = bool(res["stopped"])
+                        elif res.get("status") in ("FAILED", "SUCCEEDED", "CANCELED"):
+                            exec_state["is_stopped"] = True
+                        if res.get("error_msg"):
+                            exec_state["error_msg"] = str(res["error_msg"])
+                    elif cancel_event.is_set():
+                        exec_state["status"] = "CANCELED"
+                        exec_state["is_stopped"] = True
+                    else:
+                        exec_state["status"] = "SUCCEEDED"
+                        exec_state["is_stopped"] = True
                 else:
-                    exec_state["status"] = "SUCCEEDED"
-                    exec_state["is_stopped"] = True
+                    if cancel_event.is_set():
+                        exec_state["status"] = "CANCELED"
+                        exec_state["is_stopped"] = True
+                    else:
+                        exec_state["status"] = "SUCCEEDED"
+                        exec_state["is_stopped"] = True
             except Exception as e:
                 exec_state["status"] = "FAILED"
                 exec_state["is_stopped"] = True

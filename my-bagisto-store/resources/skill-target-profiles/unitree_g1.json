@@ -70,8 +70,17 @@
   "safety_envelope": {
     "max_velocity_rad_s": 3.14,
     "max_acceleration_rad_s2": 6.28,
+    "max_jerk_rad_s3": 60.0,
+    "max_torque_nm": 30.0,
+    "min_collision_clearance_mm": 15.0,
     "estop_supported": true,
     "default_timeout_s": 30
+  },
+  "ground_truth_models": {
+    "urdf": "resources/robot-models/unitree_g1/g1_23dof.urdf",
+    "srdf": "resources/robot-models/unitree_g1/g1_23dof.srdf",
+    "mjcf": "resources/robot-models/unitree_g1/g1_23dof.xml",
+    "idl": "resources/robot-models/unitree_g1/idl/unitree_sdk2_arm.idl"
   },
   "safe_stop_procedure": {
     "method": "smooth_decelerate_to_rest",

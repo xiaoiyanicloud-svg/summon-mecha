@@ -1,0 +1,44 @@
+// OMG IDL Specification for Unitree SDK2 Arm Motion Commands
+// Compatible with CycloneDDS / Fast-DDS (RTPS v2.3 wire format)
+
+module unitree_hg {
+  module msg {
+    module dds_ {
+
+      struct MotorCmd_ {
+        octet mode;
+        float q;
+        float dq;
+        float tau;
+        float kp;
+        float kd;
+        unsigned long reserve;
+      };
+
+      struct LowCmd_ {
+        octet head[2];
+        octet level_flag;
+        octet frame_reserve;
+        unsigned long sn;
+        unsigned long version;
+        unsigned short bandwidth;
+        MotorCmd_ motor_cmd[35];
+        unsigned long crc;
+      };
+
+      struct LowState_ {
+        octet head[2];
+        octet level_flag;
+        octet frame_reserve;
+        unsigned long sn;
+        unsigned long version;
+        unsigned short bandwidth;
+        float imu_rpy[3];
+        float imu_acc[3];
+        float imu_gyro[3];
+        unsigned long crc;
+      };
+
+    };
+  };
+};

@@ -1,0 +1,22 @@
+{
+  "schema": "zhaohuan.security-audit/v1",
+  "verifier": "Subprocess Sandbox & Containment Watchdog Verifier",
+  "verdict": "PASS",
+  "cases": [
+    {
+      "test_case": "SEC-01: 子进程环境隔离与全局抗污染",
+      "pass": true,
+      "details": "子进程退出码 0, 父进程被污染: False"
+    },
+    {
+      "test_case": "SEC-02: 子进程严重异常隔离与主进程存活",
+      "pass": true,
+      "details": "子进程退出码 1, 异常被受控捕获"
+    },
+    {
+      "test_case": "SEC-03: 看门狗强行截断死循环进程",
+      "pass": true,
+      "details": "耗时 1.01s, 强行终止状态: True, 最终退出码 1"
+    }
+  ]
+}

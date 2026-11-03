@@ -98,6 +98,22 @@ class Storage:
                 expires_at INTEGER,
                 released_at INTEGER
             );
+
+            CREATE TABLE IF NOT EXISTS executions (
+                execution_id TEXT PRIMARY KEY,
+                task_id TEXT,
+                skill_id TEXT,
+                version TEXT,
+                plan_digest TEXT,
+                params_json TEXT,
+                status TEXT,
+                error_code TEXT,
+                error_msg TEXT,
+                started_at INTEGER,
+                completed_at INTEGER,
+                created_at INTEGER,
+                updated_at INTEGER
+            );
             """)
 
     # ── 任务 Journal ─────────────────────────────────────────────────────────
@@ -479,3 +495,79 @@ class Storage:
                 (execution_id,)
             ).fetchone()
             return dict(row) if row else None
+
+    # ── 技能执行记录 Executions ────────────────────────────────────────────────
+
+    def record_execution(
+        self,
+        execution_id: str,
+        task_id: str,
+        skill_id: str,
+        version: Optional[str],
+        params: Dict[str, Any],
+        status: str = "ACCEPTED",
+        plan_digest: Optional[str] = None
+    ) -> bool:
+        """记录技能执行意图与幂等身份。若 execution_id 已存在则返回 False。"""
+        now = int(time.time())
+        params_str = json.dumps(params or {}, sort_keys=True)
+        with self._connection() as conn:
+            cur = conn.execute(
+                """
+                INSERT OR IGNORE INTO executions (
+                    execution_id, task_id, skill_id, version, plan_digest,
+                    params_json, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    execution_id,
+                    task_id,
+                    str(skill_id),
+                    str(version or "1.0.0"),
+                    plan_digest,
+                    params_str,
+                    status,
+                    now,
+                    now
+                )
+            )
+            return cur.rowcount > 0
+
+    def get_execution(self, execution_id: str) -> Optional[Dict[str, Any]]:
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM executions WHERE execution_id = ?",
+                (execution_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def update_execution_status(
+        self,
+        execution_id: str,
+        status: str,
+        error_code: Optional[str] = None,
+        error_msg: Optional[str] = None
+    ):
+        now = int(time.time())
+        started_at = now if status == "RUNNING" else None
+        completed_at = now if status in ("SUCCEEDED", "FAILED", "CANCELED") else None
+        with self._connection() as conn:
+            conn.execute(
+                """
+                UPDATE executions SET
+                    status = ?,
+                    error_code = COALESCE(?, error_code),
+                    error_msg = COALESCE(?, error_msg),
+                    started_at = COALESCE(started_at, ?),
+                    completed_at = COALESCE(completed_at, ?),
+                    updated_at = ?
+                WHERE execution_id = ?
+                """,
+                (status, error_code, error_msg, started_at, completed_at, now, execution_id)
+            )
+
+    def get_all_executions(self) -> List[Dict[str, Any]]:
+        with self._connection() as conn:
+            rows = conn.execute("SELECT * FROM executions ORDER BY created_at ASC").fetchall()
+            return [dict(r) for r in rows]
+

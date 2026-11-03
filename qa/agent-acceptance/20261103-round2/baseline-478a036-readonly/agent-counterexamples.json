@@ -1,0 +1,57 @@
+{
+  "unsigned_params_fallback": {
+    "accepted": true,
+    "adapter_params": {
+      "speed": 99,
+      "sdk_method": "unsafe"
+    }
+  },
+  "missing_required_signed_fields": {
+    "accepted": true
+  },
+  "recovery_not_connected_to_poll": {
+    "recovery_calls": 0,
+    "journal_status": "DOWNLOADING"
+  },
+  "same_execution_after_restart": {
+    "first_journal": "COMMITTED",
+    "second_accepted": true,
+    "new_adapter_start_calls": 1
+  },
+  "reclaim_before_stop_confirmation": {
+    "accepted": true,
+    "observed": {
+      "status": "RUNNING",
+      "is_stopped": false
+    },
+    "lease": "RELEASED",
+    "payload_directory_exists": false,
+    "local_status": "expired",
+    "last_event": {
+      "task_no": "reclaim-unconfirmed",
+      "phase": "done",
+      "error_code": null,
+      "error_msg": null
+    }
+  },
+  "expired_rollback_to_wrong_bytes": {
+    "accepted": true,
+    "actual_version": "1.0.0",
+    "actual_payload": "tampered-not-good",
+    "signed_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "g1_ignores_entrypoint_failure_result": {
+    "status": "SUCCEEDED",
+    "is_stopped": true,
+    "error_msg": null
+  },
+  "entrypoint_escapes_package": {
+    "prepare_accepted": true,
+    "outside_entry_executed": true
+  },
+  "jcs_examples": {
+    "1e-06": "{\"x\":1e-6}",
+    "1e+20": "{\"x\":1e+20}",
+    "333333333.3333333": "{\"x\":333333333.3333333}"
+  }
+}

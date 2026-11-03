@@ -1,0 +1,18 @@
+{
+  "skills": {
+    "101": {
+      "skill_id": "101",
+      "current_version": "2.0.0",
+      "previous_version": "1.0.0",
+      "status": "updated",
+      "enabled": true,
+      "install_path": "D:\\CodexDeploy\\summon-mecha\\docs\\ai-handoff\\gemini-agent-first-20261103\\stage1-reacceptance-478a036\\tmp\\new-probe-h_d8dkg4\\skills\\101\\v2.0.0",
+      "package_sha256": null,
+      "manifest_json": "{}",
+      "files_json": "[]",
+      "updated_at": 1793717821,
+      "manifest": {},
+      "files": []
+    }
+  }
+}

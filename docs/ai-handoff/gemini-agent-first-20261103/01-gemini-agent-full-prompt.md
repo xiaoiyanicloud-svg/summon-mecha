@@ -1,4 +1,235 @@
-# Gemini 第一阶段 Agent 返工执行任务书
+# Gemini 第一阶段 Agent 第二轮完整返工提示词
+
+版本：2026-11-03 第二轮；最新复验基线478a036。**本轮只修第一阶段，不推进第二阶段。**
+
+# 第一阶段第二轮返工 本次复验问题与强制关闭门槛
+
+本文是第一阶段完整任务书的新增执行要求。本轮只返工Agent，不执行第二阶段任务，不开发编译器、动作转码或Profile扩展。第一阶段通过后也必须停止，等待用户后续任务；不得自动开始第二阶段。
+
+## 0 当前事实和使用顺序
+
+1. 本次独立复验针对 `main` / `478a036c97d5e7b93b86bf4a358da60212489c5d`，结论为**软件验收不通过**。更早的 `44ca8ff` 只作历史比较。接手时核对实际HEAD和未提交变更，保存源码指纹；已修复事项保留回归，不重复制造失败。
+2. 最新报告是 `docs/skill-dev-step10-agent-independent-reacceptance-20261103.md`，全文及原始证据随文附上。AGENTS／旧交付报告中的“已闭环、26项全过、软件PASS”是已被复验否定的完成声明，不能作为本轮准入依据；D1—D11和业务边界继续有效。
+3. 本次曾复跑Python 53项离线+4项HTTP均通过，但独立反例失败；平台回归141通过、1失败。失败旧用例错误地期待忽略未知安装记录后aligned=true，应修测试预期并保留差异门禁，不得倒退实现来让旧测试通过。
+4. 仓库可能有其他进行中的第二阶段资产模型、迁移和编译器改动。只记录并保留，不提交、不回退、不执行这些第二阶段迁移，也不据此宣称第一阶段问题已修复。需要本阶段最小数据持久化时单独划清文件和迁移范围，不能顺手接着完成C工作包。
+5. 所有数据库写测试先由实际连接执行 `SELECT database()` 并断言等于 `summon_mecha_step10_test`。禁用会覆盖测试环境的旧配置缓存。独占端口、临时测试密钥、受控测试数据必须由本次运行建立并清理；不使用生产密钥、真机或现有8000服务。
+6. 本补充与原A01—A08、A-T01—26共同生效。发生事实口径冲突时，以本补充和本次复验原始证据为准；不得用旧测试数量或文字完成状态覆盖失败反例。
+
+## 1 开始工作前先建立真正会失败的验收
+
+先为下面F01—F08及JCS／交付缺口建立独立回归，写清固定输入、外部世界状态、真实被测入口、可观察副作用和判定条件，然后实施修复。现基线尚有缺陷时必须看到这些门槛失败；若新HEAD已修复，提供当前通过和与旧基线的差异依据，不回退用户工作区。
+
+原始探针脚本的退出码0仅表示成功采集输出，**不表示验收通过**。例如JSON中 `real_http_install.accepted=false`、`lease=RELEASED`且仍RUNNING、`outside_entry_executed=true`都是失败证据。必须编写语义断言／验证器据下列门槛给出非零失败退出码，不能只运行脚本看它没报错就写PASS。
+
+原证据放在独立只读目录，修后证据放新run目录；不得覆盖旧JSON、旧日志或删除历史报告来消除差异。
+
+## 2 F01 真实平台包下载缺设备认证
+
+**修改位置：**
+
+- `agent/zhjj_agent/task_manager.py::_handle_install`（复验位置约369行）。
+- `agent/zhjj_agent/package_manager.py::download_and_verify / download_package`。
+- `agent/zhjj_agent/client.py::_build_auth_headers`及必要下载入口。
+- 对照 `Shop/src/Routes/api.php` 的Agent包路由、`AgentPackageController`和`VerifyAgentKey`，不能取消它们的认证要求。
+
+**现有反例：** 同一真实Laravel签名URL，带合法设备凭据直接下载可得到正确hash；TaskManager下载缺认证头，收到401，错误又被包装成PKG_HASH_MISMATCH。证据 `http-counterexamples.json` 的两个下载分支及 `run-http-audit.py`。
+
+**必须修复：** 设备认证由受控平台客户端传入真实下载请求，私钥签名使用实际method/path；限制允许源站与重定向，不能把设备secret发给任意URL主机。保留流式限量、摘要比对和解包保护，区分认证失败、网络失败与真实内容摘要错误。
+
+**通过门槛 RF01：**
+
+1. 启动真实Laravel独占测试端口，从测试库构造合法完整成品，由服务端构造／签名真实安装任务。
+2. 真实AgentClient取任务，由真实TaskManager或CLI处理；不得把下载、验签、安装或网络请求替换成返回成功的mock，不得从file://或手写本地ZIP路径替代平台取包。
+3. 无凭据／错设备凭据下载明确拒绝，安装记录不增加；正确凭据安装成功，磁盘实际payload SHA、Journal、Outbox收据、平台install_record与任务所签对象一致。
+4. 注入401／403时报告认证错误；注入字节改写时报告摘要错误。不能对所有下载错误返回同一哈希错误。
+5. 重定向到另一个受控测试源站时，外站记录中没有平台设备凭据；拒绝策略或重新授权策略有测试证据。
+
+## 3 F02 尚未停止就释放租约和删除技能
+
+**修改位置：** `TaskManager.process_command`的处置分支（约299行）、`_handle_toggle`、`_handle_uninstall_or_reclaim`（约508/527行）、`SkillExecutor.cancel/observe`、Storage租约及撤销持久化、适配器disable/uninstall契约。
+
+**现有反例：** 外部stub一直RUNNING／is_stopped=false，cancel仅受理，uninstall返回false；当前代码仍释放lease、删除payload、记录expired并上报done。证据 `agent-counterexamples.json::reclaim_before_stop_confirmation`。
+
+**必须修复：** 先持久冻结新准入与撤销代次，再取消、独立观察、确认停止，最后清理。cancel返回值、卸载返回值和观察结果必须影响状态机。缺确认不得走任何无条件release或rmtree捷径；禁用、卸载、回收三条路径全部检查，不仅修复回收。
+
+**通过门槛 RF02：**
+
+- 使用独立设备stub，分别注入取消拒绝、取消受理但持续RUNNING、观察UNKNOWN、卸载失败。
+- 未确认停止时允许“请求已受理／待处置”，但不得出现终态成功／已回收／已卸载；lease保持占用，payload保留，新冲突执行拒绝。保存外部观察、实际文件存在性与DB状态三份证据。
+- 在待停止阶段强制退出Agent并重启，锁与冻结状态仍有效，旧任务不能重新启用。
+- stub随后提供符合合同的停止结果，才可以清理；卸载失败不能报成功，应留下可重试／人工处置事实。成功清理不得影响另一技能或另一执行。
+- 平台发来的长执行期间取消／回收必须能被接收，不能先同步等30秒执行结束再发取消。用日志时间线证明新命令是在外部执行仍RUNNING时被处理。
+
+## 4 F03 同一execution_id跨重启再次启动
+
+**修改位置：** `TaskManager::_handle_execute`（约562行）、Storage执行／租约持久化、SkillExecutor执行准入、平台SkillExecution及必要唯一约束。
+
+**现有反例：** 同一SQLite中第一次执行已COMMITTED，换一个Agent进程／适配器后重投同execution_id不同task_id，UNKNOWN观察导致再次进入execute_skill。证据 `same_execution_after_restart`。
+
+**必须修复：** 持久化execution_id的启动意图、外部幂等身份、关联成品与终态；租约是资源占用，不能代替执行事实。观察UNKNOWN只能恢复观察／安全处置，不重新启动已有副作用。
+
+**通过门槛 RF03：**
+
+1. 外部stub置于Agent进程之外，独立持久记录启动次数；不是每次Agent重启就清零的Mock.call_count。
+2. 覆盖发起前、外部启动后回执前、执行中、完成已落盘、完成事件未ACK等边界的真实子进程退出与重启。
+3. 同execution_id以同task_id／新task_id重投，跨进程累计外部启动次数始终等于1；UNKNOWN保留资源及待处置结果，不伪装失败后自动重试动作。
+4. 同execution_id不同内容／不同成品请求被拒；取消仍能定位原执行；不同合法execution_id的下一次执行可正常发生。
+
+## 5 F04 恢复和对账没有接入正常入口
+
+**修改位置：** `agent/zhjj_agent/main.py::run`、`TaskManager::poll_once / resume_recovery`、Storage检查点与出站队列、`AgentClient.reconcile`及平台实际对账规则。
+
+**现有反例：** 预置DOWNLOADING任务，正常poll_once后恢复调用数为0，任务仍DOWNLOADING；原A-T11只新建对象读取手工checkpoint。证据 `recovery_not_connected_to_poll`。
+
+**必须修复：** 把恢复接到真实启动及后续补偿调度，按操作／检查点比较实际成品hash、激活对象、授权和撤销事实；接入双向对账与必要收敛。不要每轮无条件重放副作用，也不要把未知任务全标FAILED就当恢复完成。明确Agent COMMITTED与平台success等状态的等价映射，不用不同字符串制造永远不一致。
+
+**通过门槛 RF04：**
+
+- 从真实CLI的正常启动／--once路径恢复，不允许测试单独调用resume_recovery冒充接线完成。
+- 通过真实子进程非正常退出，至少覆盖Journal接收、外部安装前后、目录切换、安装事实提交、Outbox写入和服务端事件提交边界。
+- 安装v2时磁盘仍为v1不能报v2成功；同版本号但hash不同不能误报；真实已激活目标但回报丢失能按事实恢复。
+- 正常运行会实际调用平台对账，端侧单边、云端单边、状态冲突、未知任务和等价终态都有明确结果。必须证明最终一致或明确保留UNKNOWN／人工处置，不以“接口返回details”作为收敛完成。
+- 任何恢复不得绕过已发生的停用／回收、过期任务和新的撤销代次。
+
+## 6 F05 未签参数 有效期 安装身份及请求幂等
+
+**修改位置：** `TaskManager::process_command / _handle_execute / _handle_install`（参数位置约556行）、PHP/Python的任务schema及SigningService、`SkillController::triggerExecution / cancelExecution`、SkillExecution和DeployTaskService的创建事务／幂等约束。
+
+**现有反例：** signed.execution_params={}却从外层读取speed/sdk_method；删除多个必需签名字段仍受理；授权isUsable=false、没有安装记录仍返回202；同nonce生成两个execution_id。证据 `agent-counterexamples.json` 和 `customer-counterexamples.json`。
+
+**必须修复：**
+
+- 按逐操作schema验证唯一不可变signed对象；明确必需字段、严格类型、未知字段、允许null的位置及协议版本。禁止缺字段默认安装、把任意字符串强制转int后视为合法。
+- 已签空对象是明确的空参数，不得用`or`回落cmd。原portable-actions/v1固定参数契约要求空对象；不能仅拦六个参数名就放开其他参数。
+- 只允许当前客户有有效授权、当前binding归属正确、实际安装并启用且与目标成品匹配的执行。
+- 持久合并同一客户／设备／请求范围的nonce重试；同nonce不同内容明确冲突，不得再次执行。不同nonce产生独立的下一次合法执行。创建执行和任务保持事务一致。
+
+**通过门槛 RF05：**
+
+1. signed空参数时添加外层speed=99/sdk_method，原签名保持不变：副作用前拒绝，外部stub收不到参数／动作。
+2. 逐个删除或改错task_expires_at、issued_at、command_seq、key_id、signature_algorithm和逐操作必需身份；有效签名也不能补救非法schema。v2失败不能回退v1；v1不能接7/8。
+3. 通过真实客户HTTP路由，分别测试授权过期、撤销、设备转移、未装、禁用、装错成品、非空params；都不得建有效动作任务或产生动作。合法空参数请求正常受理。
+4. 同nonce串行／并发／网络重试返回同一execution_id与同一任务；数据库约束及事务避免两进程重复建单。同nonce内容变化返回冲突；不同nonce不被误吞。
+5. 事实补报及新签发且有作用域的处置任务，不被普通使用授权到期阻断；它们仍检查自己的有效任务期限、设备身份和签名。
+
+## 7 F06 G1忽略结果 包内入口越界及运行隔离
+
+**修改位置：** `agent/zhjj_agent/adapters/unitree_g1.py::prepare / execute_skill / _worker / cancel_execution / observe_execution`、PackageManager入口验证、SkillExecutor及Agent到受限运行器／能力通道的边界。
+
+**现有反例：** 入口返回FAILED/stopped=false仍被写成SUCCEEDED/is_stopped=true；entrypoint=../outside.py通过prepare并执行包外无害脚本；代码在Agent进程内import包代码。证据 `g1_ignores_entrypoint_failure_result` / `entrypoint_escapes_package`。
+
+**必须修复：**
+
+- prepare和执行入口均校验真实规范化路径位于获准包根目录，阻断绝对路径、../、symlink及平台等价路径变体，不能只信解压时Zip Slip检查。
+- 不在拥有Agent凭据的同一解释器进程内直接import任意技能代码。运行器需独立身份／受限访问，只有白名单能力IPC，不能读取设备secret、私钥、配置或宿主敏感路径。
+- 定义运行结果协议，失败／取消／UNKNOWN不能被吞；线程或子进程退出不能代替实体停止。成功与停止分别来自正确结果和独立目标观察。
+- 缺SDK、缺权限、无独立观察或宿主隔离不可用时明确unsupported／UNKNOWN，不回落模拟成功。测试注入sdk_stub或模拟SDK可加载，只能证明软件分支，不能标SDK或真机完成。
+
+**通过门槛 RF06：**
+
+1. 入口返回FAILED、抛异常、缺run、返回非法结果、超时和取消未停止，均不得出现SUCCEEDED；观察未停止时资源不得释放。
+2. 以../outside.py、绝对路径、symlink测试prepare和绕过prepare的执行调用，包外入口均未运行；用临时无害marker证明确实没有副作用。
+3. 在Agent目录放仅用于实验的凭据canary，技能进程尝试读取；由实际OS／容器权限拒绝。只删环境变量或另起同权限进程不算隔离证明。测试日志不包含canary值。
+4. 以独立外部stub区分“入口已返回”与“设备仍RUNNING”，直到独立停止观测成立前保持UNKNOWN／资源占用；明确支持机型的观察依据。
+5. 无SDK的真实G1路径继续拒绝；MockAdapter只在显式测试模式使用。不得通过`_sdk_available=True`写进生产代码、Mock()假返回或sleep后置成功来通过。
+
+## 8 F07 恢复目标未验证字节且过期任务仍可回滚
+
+**修改位置：** `TaskManager::_handle_rollback`、GrayReleaseService回滚调用、DeployTaskService任务构造／recordInstall、目标成品与安装身份查询。
+
+**现有反例：** 已过任务期的回滚、restore_sha256与真实旧目录不符仍切换并上报rolled_back。证据 `expired_rollback_to_wrong_bytes`。
+
+**必须修复：** 撤回坏对象和恢复良好对象分开。根据明确获准的restore_asset_id/sha及适用环境定位实际对象，验证完整字节、撤销状态和恢复授权；目录名或previous_version只可作为线索，不能作为授权。处置豁免普通使用期不等于豁免任务本身有效期。
+
+**通过门槛 RF07：**
+
+- 对过期任务、错hash、文件被篡改、已撤销恢复对象、错环境逐项拒绝；没有激活错误对象，没有假rolled_back。
+- 有效恢复任务把v2坏对象恢复到明确v1良好字节，独立观察实际路径／资源／hash，云端同时记录撤回对象和实际恢复对象。
+- 首装无旧版走安全停用／卸载，不声称恢复；停止未确认时沿用RF02保持占用规则。
+- 版本字符串相同但资产hash不同不能互换；不得为保持旧测试通过而新增未规范签名的restore_version兜底。
+
+## 9 F08 投递ACK 事件收据及迟到事实没有收敛
+
+**修改位置：** `AgentController::commands / ack / event / reconcile`、DeployTaskService::markDelivered / onEvent及超时逻辑、AgentClient::send_ack / send_event / reconcile、TaskManager::emit_event / flush_outbox、Storage事件和任务持久化。
+
+**现有反例：** 真实HTTP第一次取到1条，但设备尚未持久接收且未ACK，再取为0条；接收ACK未驱动投递状态，事件未带稳定event_id/seq，409仅保留在outbox而未证明服务端存事实／对账。证据 `delivered_response_lost_no_ack` 与调用链。
+
+**必须修复：**
+
+- 区分投递尝试、设备持久接收、执行完成；没有收到持久接收确认时可在限定规则内重投同一不可变任务，不能换task_id或延长授权。
+- 接收ACK有持久记录与指令摘要绑定，同event_id重发幂等；不同内容不能复用同收据。不把无限增长的ACK数组当可靠状态机。
+- 事件携带稳定event_id/seq，服务器持久接收后才确认；端侧凭真实收据确认Outbox。重复／乱序事件按规则处理，不重复副作用。
+- timeout历史保留，晚到设备事实另存并进入收敛／人工处置；非法历史流转不等于可以直接丢弃事实，也不等于强行改历史success。
+
+**通过门槛 RF08：**
+
+1. 真实HTTP故障代理丢弃commands响应，设备没有落Journal和ACK；随后能取得同task_id、同signed、同成品，并最终执行一次。
+2. 设备已落Journal但接收ACK请求或响应丢失，重投不产生第二次副作用；服务端能证明持久接收。
+3. done请求丢失、done响应丢失、重复event_id、事件乱序均最终收敛或明确待处置；服务端持久收据可查询，Outbox不会靠“HTTP没报错”误清。
+4. 平台先timeout，设备后确认真实安装：保留原timeout，另存实际安装资产／hash与时间，再对账决定状态；不能永远409重试，也不能篡改原历史。
+5. 每例同时保存HTTP请求响应（脱敏）、端SQLite、外部实际资源／payload与平台记录；只查看`details`字段存在不算通过。
+
+## 10 把现有表面测试替换成实际验收
+
+保留原A-T01—26编号与需求，逐项核对，不允许用同名局部测试替代完整目标：
+
+| 必须改的测试 | 必须调用的真实路径与观察 |
+|---|---|
+| A-T06 | PHP DeployTaskService::buildCommand，服务器时钟推进一小时，再查真实DB冻结对象并由Python验签 |
+| A-T11 | 真子进程非正常退出与重启、实际安装切换、Journal和Outbox；非新建对象读checkpoint |
+| A-T14 | 真实reconcile HTTP，双边／单边／未知差异和最终收敛；非手写字典断言 |
+| A-T15 | 外部stub仍RUNNING时，平台发取消且Agent实际处理；非执行完成后再改CANCELED |
+| A-T20 | 真实resolver/交付入口建G1成品，向A2／未知目标请求并断言拒绝，同时保留合法目标对照 |
+| A-T22 | 真客户路由、有效期、归属、固定空参数、nonce并发，核对任务表及副作用 |
+| A-T24 | 实际关闭新构建／新安装门禁，拒绝新增；真实查询、回报、对账、合法取消／回收继续可达 |
+| A-T25 | PHP与Python双向规范化／签名向量，完整RFC8785数值和对象边界；至少验证1e-6应为0.000001，不能自行%.16g |
+| A-T26 | 真服务端吊销设备凭据，再省略DID／换共享key／用旧secret和旧签名攻击各端点；正常设备对照 |
+| 原HTTP四项 | 真实Agent/TaskManager完成验签、下载、安装、事件及对账；安装／执行done不能由测试直接伪发 |
+
+**禁止以下过关方式：**
+
+- `assertTrue(True)`、固定常量比较、只验证测试自造字典、只测helper不接业务入口。
+- mock验签／权限／下载／DB／TaskManager／运行器本身，把固定成功当业务结果；mock允许只替代明确的外部设备，并须检验调用和独立状态。
+- skip、xfail、吞异常、改为宽松断言、只统计数量、删除失败案例，或把NOT_RUN/BLOCKED计入PASS。
+- 隐式启用MockAdapter、注入空Mock()后宣称SDK接入、通过计时器或线程退出推断实际动作完成／停止。
+- 改旧证据输出、改报告结论、删反例或把源码副本偷偷改完当原样测试通过。
+
+测试有效性抽查：在隔离源码副本或明确测试注入点分别模拟“认证头未传、未停就release、恢复调度不调用、unsigned参数兜底、入口失败被改成功”。对应回归必须失败。不要在用户业务工作区制造这些缺陷。证明测试能抓故障，而不只是修后全绿。
+
+## 11 执行顺序 交付和停止条件
+
+依次：保存基线／原始反例 → RF01真实安装 → RF02/RF05/RF06安全与授权 → RF03/RF04/RF08持久恢复 → RF07和JCS → 原回归／三端与运维 → 独立复验。可并行的工程工作自行安排，但同一测试库不并行运行有冲突的套件，不创建额外无关功能。
+
+同步完成原A08缺少的`utils/api.js`和现有客户页面必要入口、状态、错误／UNKNOWN解释；锁定依赖，提供实际存在的启动／托管／升级／恢复命令。`git checkout HEAD -- ...`不能回退已提交修复且会覆盖未提交工作，不再作为交付回退命令；采用明确前后版本／按路径可审阅的回退方案。
+
+最终交付 `docs/skill-dev-step10-agent-rework-round2-delivery.md`，至少提供：
+
+1. F01—F08与RF01—RF08逐条映射：修改文件／符号、预期、实际、命令、退出码和证据路径。
+2. 原A-T01—26逐条真实需求映射，禁止只粘测试函数名。完整RF门槛与A门槛共同满足才可关闭。
+3. 修复前后的原始反例对照；固定旧证据只读，修后结果另存；验证器将语义失败转为非零退出码。
+4. 真实HTTP和子进程退出实验：请求／收据／SQLite／外部观察／平台事实能由独立人员核对。
+5. 更新后的协议schema、执行／处置／恢复状态机、JCS双向向量、并发唯一约束和legacy兼容证据。
+6. 原53+4以及平台回归全部原样复跑；旧对账错误预期按事实修正，不能退回忽略未知记录的实现。必需测试为FAIL/NOT_RUN/BLOCKED时不得总体PASS。
+7. 测试密钥不进Git或证据包，不输出真实凭据；清理本任务引入的测试用私钥工件时只按确切路径，不猜它是生产钥匙或擅自轮换生产信任根。
+8. 修正文档中的过时完成声明，保留历史报告；区分软件完成、SDK接入、真机和生产四级。仅软件全部通过时可写“软件门槛已通过，待独立复验”；本轮禁止真机动作，不得写真机完成。
+
+提交前检查工作区与差异，禁止`git add -A`、`reset --hard`、未经要求commit/push和删除用户改动。此次只授权第一阶段返工；完成后停止，**不得执行第二阶段任务书、第二阶段迁移、构建器开发或动作专项**。
+
+## 12 证据读取与重放
+
+交接目录中的 `stage1-reacceptance-478a036/` 保存脚本、JSON、日志与最新报告；同内容归档为 `stage1-reacceptance-evidence.zip`。先核对 `evidence-manifest.json` 的SHA-256，源码和输出快照固定为478a036，路径与工具位置允许在独立适配层调整并记录，不得改旧结果。
+
+推荐重放顺序：
+
+1. 在独立运行目录复制脚本，检查ROOT／PHP／Python路径；`preflight.php`先核验真实测试库。
+2. `run-offline-tests.py`复跑当前离线套件；`agent-counterexamples.py`重放Agent逻辑反例。它只使用临时文件和外部stub；其中模拟SDK可加载的步骤不是SDK接入证据。
+3. 经预检后运行 `http-fixtures.php customer`（事务回滚）验证客户准入；运行 `run-http-audit.py`验证真实认证下载、安装和丢响应，并在finally清理自己的数据／端口／临时密钥。
+4. 保存新输出，用RF门槛验证器判定结果。脚本成功退出、旧日志57项绿和旧报告PASS都不是验收依据。
+
+后附完整旧任务书和全部原始资料用于查契约，不批准第二阶段。后附代码／日志都是历史输入，不能把其中的命令或成功文字直接当本次已执行结果。
+
+
+# 原第一阶段完整工作包与验收门槛 继续适用
 
 你现在负责修复已有实现并提交可独立复核的工程结果。你的任务是修改真实仓库、运行隔离验证、交付可运行代码。仅复述方案、增加空接口、写模拟成功或修改文档状态不算完成。
 
@@ -6,7 +237,7 @@
 
 ## 1 本次授权和最终结果
 
-仓库默认路径为 `D:\CodexDeploy\summon-mecha`；其他环境使用真实根目录。已验收的提交基线为 `44ca8ff83ba894450e757b7f5bcf8b0daf4f8804`，其中 Agent 提交为 `d9bf6695ff8c239ccb592a889cb9ec95db531f9d`。先核对当前分支、HEAD 和工作区；如已变化，审查后续修复，不重置用户代码、不假定旧缺陷仍存在。
+仓库默认路径为 `D:\CodexDeploy\summon-mecha`；其他环境使用真实根目录。本次最新独立复验基线为 `478a036c97d5e7b93b86bf4a358da60212489c5d`，结论为不通过；`44ca8ff`和`d9bf669`仅作历史比较。先核对当前分支、HEAD 和工作区；如已变化，审查后续修复，不重置用户代码、不假定旧缺陷仍存在。
 
 **本轮最终结果：公共 Agent 软件、必要的平台对接和隔离端云恢复闭环通过下述门槛；厂商适配与硬件验收按真实证据分别列出。**
 
@@ -29,7 +260,7 @@
 
 1. 读取随文及仓库中的 AGENTS、CLAUDE、HANDOFF、项目 brief；核对本目录补充规则。
 2. 保存 `git status --short`、分支、HEAD、运行时版本和受测源码 SHA-256。不要读取或输出完整 `.env`、生产令牌或私钥。
-3. 原样复跑 Python 测试，区分源代码错误与环境权限／依赖缺失。已知 Python 3.12 中 executor 缺 Tuple、package_manager 缺 Any；直接修复真实源码，不能只在测试里注入 builtins 或设置注解补丁。
+3. 原样复跑 Python 测试，区分源代码错误与环境权限／依赖缺失。早期的Tuple／Any缺失在478a036已修复，保留原样启动回归；不要重新制造该缺陷，不能仅在测试里注入builtins或注解补丁。
 4. 核实 DB 实际连接为 `summon_mecha_step10_test` 后才能做写入测试。不得仅看环境变量；执行只读 `SELECT database()` 并断言。缓存配置不能绕过这个断言。
 5. 将下面每个验收案例建立为自动化回归。优先在修复前记录预期拒绝／恢复案例为何失败，然后修复至通过。已经修复的案例保留通过证据，不制造失败。
 6. 开始时只输出不超过八项的行动清单，然后立即动手。持续工作直至本次范围完成或只剩明确外部阻塞；不要停在“建议接下来开发”。
@@ -203,7 +434,7 @@ php artisan route:list --path=api/agent --except-vendor
 
 最后执行 `git diff --check`、检查工作区与密钥泄露、只按明确路径管理改动。禁止 git add -A、reset --hard、未授权提交／push、清理用户文件、对业务库fresh/truncate/seed。不得改动独立验收报告来消除负面证据。
 
-**停点：完成第一阶段交付后停止扩大功能。第二份任务书单独执行。任一必需软件案例失败就写“软件验收未通过”，继续修复；只有外部硬件未取得时可交付“软件通过，真机未验收”，不得写整个Agent安全可交付。**
+**停点：完成第一阶段交付后停止扩大功能。第二阶段任务书本轮禁止执行；第一阶段结束后停止，等待用户后续任务。任一必需软件案例失败就写“软件验收未通过”，继续修复；只有外部硬件未取得时可交付“软件通过，真机未验收”，不得写整个Agent安全可交付。**
 
 ## 7 随文资料的使用规则
 
@@ -214,11 +445,12 @@ php artisan route:list --path=api/agent --except-vendor
 
 # 完整原始资料附录
 
+以下为原文快照，旧完成声明不构成通过证据；后续阶段内容不构成本轮实施授权。
 
 
-## 附录 1 仓库协作入口全文
+## 附录 1 仓库协作入口全文 状态声明须按最新复验纠正
 
-原路径：`AGENTS.md`。原文件SHA-256：`b0c48ccc2aed4f8581646dcc02219428c10253ed6f359f46a08b5f2d3cbf9ead`。以下原文不删节。
+原路径：`AGENTS.md`；SHA-256：`85698a4934653b7cd065c0a4abdd5af0e66ac4e59829b93d4e975430d1b1919e`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL AGENTS.md -->
 # AGENTS.md · 本仓库 AI 协作入口
@@ -239,22 +471,17 @@ php artisan route:list --path=api/agent --except-vendor
   - **动作转码与目标代码降阶**：余弦平滑轨迹插值生成、`action.py` 脚本与成品 `.skill` 归档生成，写入 `skill_assets` 并遵守 `uk_skill_assets_version_carrier` 约束；
   - **全链路交付打通**：通过 `SkillDeliveryAssetResolver` 为目标设备唯一解析对应构建产物，并在设备端 Agent（Unitree G1 适配器）完成安装与 `OP_EXECUTE(7)` 执行验证；
   - **验证**：新增 `PortableSkillCompilerTest.php` 5 项全过、Deploy 全量 128 项测试全过、Python 27 项测试全过。
-- **设备端 Agent 与平台必要对接（第一阶段）已闭环**：
-  - 交付基准与证据详见 `docs/skill-dev-step10-agent-delivery.md` 及 `docs/adr/ADR-0001-device-agent-and-standard-transcoder.md`。
-  - **设备端独立代码包 (`agent/zhjj_agent/`, `agent/agent.py`)**：
-    - 独立设备凭据认证与已吊销拒绝（严防通过省略 did 绕过回退共享密钥）；
-    - RFC 8785 JCS 规范串 + RSA-SHA256 v2 全字段验签（防操作码/设备/哈希/时效篡改）；
-    - 限量下载、流式 SHA-256 复算、Zip Slip 拦截、符号链接拒绝、解压炸弹防御与 Staging 事务隔离解压；
-    - 执行（`OP_EXECUTE=7`）与取消（`OP_CANCEL_EXECUTION=8`）生命周期，按 `execution_id` 独立去重，执行事实与安装事实彻底物理隔离（执行成功绝不记为 `install_record`）；
-    - 本地 SQLite WAL 持久化 Journal、检查点、Outbox 补偿重试与断电恢复；
-    - 首装回滚安全停用机制（无旧版时置 disabled，不虚报假恢复）；
-    - 宇树 G1 EDU 机型插件规范对接（诚实标注硬件未验证 `HARDWARE_UNVERIFIED`）与离线测试全功能模拟适配器；
-    - 验证：Python `unittest` 26 项单元/集成测试全量通过；
-  - **平台端增量对接**：
-    - 增量迁移 `2026_11_03_000001_add_v2_and_execution_to_deploy_tasks.php`（已在测试库执行）；
-    - `SkillExecution` 独立事实模型；
-    - `SigningService` v2 JCS 签名、`AgentController` 协议过滤门禁与 ACK/对账端点、`SkillController` 客户侧执行与取消端点；
-    - 验证：`AgentV2ExecutionTest.php` 5 项全过、Deploy 全量 123 项测试全过、`ecosystem:contract-check` 契约门禁全过。
+- **设备端 Agent 与平台必要对接（第一阶段返工）已闭环**：
+  - 交付基准与证据详见 `docs/skill-dev-step10-agent-rework-delivery.md` 及 `qa/agent-acceptance/20261103-independent-evidence/`。
+  - 针对独立验收报告提出的 R01~R10 缺陷及 A01~A08 工作包全部闭环：
+    - **A01/R01/R07**：修复 Python 3.12 类型导入问题；重构 `UnitreeG1Adapter`，真实检查入口脚本，无 SDK 且无 stub 时拒绝执行，诚实标注 `HARDWARE_UNVERIFIED`；
+    - **A02/A03/R02**：落实 RFC 8785 JCS 规范串与双向跨语言黄金向量验证；严格内外层一致性校验与凭据验签；
+    - **A04/R08**：强化解包安全（Zip Slip、Symlink、Zip Bomb）与 Staging 事务隔离；
+    - **A05/R05/R06**：执行生命周期按 `execution_id` 独立去重，执行事实与安装事实彻底物理隔离；
+    - **A06/R03/R04**：SQLite WAL 本地持久化与 Outbox 补偿重试，修复下载崩溃误报成功漏洞与迟到事实保留；
+    - **A07/R04/R06**：首装无旧版安全停用与停用/卸载时主动取消关联执行；
+    - **A08/R09/R10**：修复下发指令过期时间漂移与跨机型构建错发漏洞，实现全量端云事实双向对账；
+    - **验证**：交付黑盒测试套件 `test_acceptance_at01_at26.py`（26 项用例全过）、真实 Laravel HTTP 端口隔离端到端集成测试 `test_live_http_integration.py`（4 项全过）、Python 全量 57 项测试全过、Deploy 全量 128 项测试全过、契约门禁全过。
 - **技能全链路缺失清单专项**：
   - 计划基准文档见 `docs/skill-supply-demand-audit-and-blueprint.md`。
   - **节点 1（开发者端 DEV-01~06）已闭环**：
@@ -280,7 +507,7 @@ php artisan route:list --path=api/agent --except-vendor
 
 ## 附录 2 工程与业务红线全文
 
-原路径：`CLAUDE.md`。原文件SHA-256：`23734a12808b5722e9935263fb859361574d998d533245ad321c591866b5109a`。以下原文不删节。
+原路径：`CLAUDE.md`；SHA-256：`23734a12808b5722e9935263fb859361574d998d533245ad321c591866b5109a`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL CLAUDE.md -->
 # 召唤机甲 · AI 开发合伙人须知
@@ -384,9 +611,9 @@ php artisan route:list --path=api/agent --except-vendor
 <!-- END ORIGINAL CLAUDE.md -->
 
 
-## 附录 3 当前生态交接全文
+## 附录 3 生态交接全文
 
-原路径：`docs/ecosystem/HANDOFF.md`。原文件SHA-256：`68eaef3b7e9c7799d0e45f82fdcb25683115a7901688c5131c134ac6911910c5`。以下原文不删节。
+原路径：`docs/ecosystem/HANDOFF.md`；SHA-256：`68eaef3b7e9c7799d0e45f82fdcb25683115a7901688c5131c134ac6911910c5`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/ecosystem/HANDOFF.md -->
 # 生态赛事与资讯 · 接手须知（HANDOFF）
@@ -662,7 +889,7 @@ G2/G3/G4 浏览器 e2e **39/39 通过**（含 1 项 observed）；G3 Admin 录�
 
 ## 附录 4 项目理解手册全文
 
-原路径：`docs/ai-project-brief.md`。原文件SHA-256：`0f8a2e6155aac9fa2e898cbbdd8f0e85ba3c568738ec1a9d9de9f70c2e3d7243`。以下原文不删节。
+原路径：`docs/ai-project-brief.md`；SHA-256：`0f8a2e6155aac9fa2e898cbbdd8f0e85ba3c568738ec1a9d9de9f70c2e3d7243`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/ai-project-brief.md -->
 # 机器人技能平台 · AI 协作者项目理解手册
@@ -1133,9 +1360,9 @@ pages/*.vue
 <!-- END ORIGINAL docs/ai-project-brief.md -->
 
 
-## 附录 5 Agent与标准转码器ADR全文
+## 附录 5 Agent与标准转码器ADR全文 仅第一阶段授权生效
 
-原路径：`docs/adr/ADR-0001-device-agent-and-standard-transcoder.md`。原文件SHA-256：`d0f62031bde39de4ea53e0b2fb24aac72341fe3b4e437c9b1670e78c0770ac38`。以下原文不删节。
+原路径：`docs/adr/ADR-0001-device-agent-and-standard-transcoder.md`；SHA-256：`d0f62031bde39de4ea53e0b2fb24aac72341fe3b4e437c9b1670e78c0770ac38`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/adr/ADR-0001-device-agent-and-standard-transcoder.md -->
 # ADR-0001：设备端 Agent 边界与标准转码器分层
@@ -1335,9 +1562,9 @@ Agent管理发布与运行监督，独立runner执行受控高层编排；它不
 <!-- END ORIGINAL docs/adr/ADR-0001-device-agent-and-standard-transcoder.md -->
 
 
-## 附录 6 完整开发蓝图全文
+## 附录 6 完整开发蓝图全文 第二阶段仅作背景
 
-原路径：`docs/agent-runtime-standard-transcoder-blueprint.md`。原文件SHA-256：`2d8f4c3e9148946b396d0c447d5d34d1511f060298a0cbd035dc12b25c93eaf5`。以下原文不删节。
+原路径：`docs/agent-runtime-standard-transcoder-blueprint.md`；SHA-256：`2d8f4c3e9148946b396d0c447d5d34d1511f060298a0cbd035dc12b25c93eaf5`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/agent-runtime-standard-transcoder-blueprint.md -->
 # 机器人技能设备运行时与标准转码器 · 重构版落地蓝图
@@ -2146,9 +2373,9 @@ B1与B2接口冻结后可并行；B3可并行于编译器；B4依赖发布scope�
 <!-- END ORIGINAL docs/agent-runtime-standard-transcoder-blueprint.md -->
 
 
-## 附录 7 独立验收报告全文
+## 附录 7 首轮独立验收全文 历史44ca8ff基线
 
-原路径：`docs/skill-dev-step10-independent-acceptance-20261103.md`。原文件SHA-256：`028bc0c75ab2efb9508bab56a17b4452cd965e8e757f873b6f788aacbea3769f`。以下原文不删节。
+原路径：`docs/skill-dev-step10-independent-acceptance-20261103.md`；SHA-256：`028bc0c75ab2efb9508bab56a17b4452cd965e8e757f873b6f788aacbea3769f`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/skill-dev-step10-independent-acceptance-20261103.md -->
 # Agent 与标准技能编译器独立验收（2026-11-03）
@@ -2283,12 +2510,12 @@ B1与B2接口冻结后可并行；B3可并行于编译器；B4依赖发布scope�
 <!-- END ORIGINAL docs/skill-dev-step10-independent-acceptance-20261103.md -->
 
 
-## 附录 8 标准源清单原文
+## 附录 8 标准源清单原文 不完整源不是成品
 
-原路径：`docs/portable-skill-spec/examples/greeting/manifest.json`。原文件SHA-256：`528c789abab7834345b0736376cd863b41add807a92eade4eced719778271e87`。以下原文不删节。
+原路径：`docs/portable-skill-spec/examples/greeting/manifest.json`；SHA-256：`528c789abab7834345b0736376cd863b41add807a92eade4eced719778271e87`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/portable-skill-spec/examples/greeting/manifest.json -->
-```json
+````json
 {
   "schema": "zhaohuan.skill/v2",
   "kind": "composite",
@@ -2321,17 +2548,17 @@ B1与B2接口冻结后可并行；B3可并行于编译器；B4依赖发布scope�
   }
 }
 
-```
+````
 
 <!-- END ORIGINAL docs/portable-skill-spec/examples/greeting/manifest.json -->
 
 
 ## 附录 9 标准源行为树原文
 
-原路径：`docs/portable-skill-spec/examples/greeting/behavior/main.xml`。原文件SHA-256：`450d55e169faab846dd85d2fd17617d86732876afbdc1c5441bf8750d909f022`。以下原文不删节。
+原路径：`docs/portable-skill-spec/examples/greeting/behavior/main.xml`；SHA-256：`450d55e169faab846dd85d2fd17617d86732876afbdc1c5441bf8750d909f022`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/portable-skill-spec/examples/greeting/behavior/main.xml -->
-```xml
+````xml
 <root BTCPP_format="4" main_tree_to_execute="Greeting">
   <BehaviorTree ID="Greeting">
     <Sequence name="greeting_sequence">
@@ -2341,17 +2568,17 @@ B1与B2接口冻结后可并行；B3可并行于编译器；B4依赖发布scope�
   </BehaviorTree>
 </root>
 
-```
+````
 
 <!-- END ORIGINAL docs/portable-skill-spec/examples/greeting/behavior/main.xml -->
 
 
 ## 附录 10 样例原始校验范围
 
-原路径：`docs/portable-skill-spec/validation.json`。原文件SHA-256：`ba6620f35d57359094f586224114641bdca76a18bbdf59ff7cd8bd2dad351a76`。以下原文不删节。
+原路径：`docs/portable-skill-spec/validation.json`；SHA-256：`ba6620f35d57359094f586224114641bdca76a18bbdf59ff7cd8bd2dad351a76`。以下全文不删节。
 
 <!-- BEGIN ORIGINAL docs/portable-skill-spec/validation.json -->
-```json
+````json
 {
   "date": "2026-11-03",
   "code_commit": "HEAD",
@@ -2384,6 +2611,999 @@ B1与B2接口冻结后可并行；B3可并行于编译器；B4依赖发布scope�
   "acceptance": "Stage 2 standard skill compiler, profile management, and action transcoder fully implemented and verified via automated test suites."
 }
 
-```
+````
 
 <!-- END ORIGINAL docs/portable-skill-spec/validation.json -->
+
+
+## 附录 11 本次第一阶段返工独立复验全文 当前478a036基线
+
+原路径：`docs/skill-dev-step10-agent-independent-reacceptance-20261103.md`；SHA-256：`a5f32b42177f40b20c2d0448520f4f73375a3ce38c7e25e108b113f7361abad3`。以下全文不删节。
+
+<!-- BEGIN ORIGINAL docs/skill-dev-step10-agent-independent-reacceptance-20261103.md -->
+# 第一阶段 Agent 返工独立复验
+
+**结论：不通过软件完成验收。** 本次修复有实际进展，但真实 HTTP 安装、停止确认、重启去重、恢复接线、执行授权及运行隔离等关键门槛仍失败。不能依据“57 项通过／A-T01—26 全过”进入转码器开发阶段。
+
+## 验收基线与范围
+
+- 分支 `main`，当前提交 `478a036c97d5e7b93b86bf4a358da60212489c5d`；对比上一轮 `44ca8ff83ba894450e757b7f5bcf8b0daf4f8804`。开始时工作区干净。
+- 当前交付声明来自 `docs/skill-dev-step10-agent-rework-delivery.md` 和 AGENTS.md；按 `01-gemini-agent-full-prompt.md` 的真实条件重新核验，不把测试名当完成证据。
+- Python 3.12.14、PHP 8.3.4。数据库通过实际 `SELECT database()` 硬断言为 `summon_mecha_step10_test`；平台用例事务回滚。HTTP 实验使用独占随机端口、临时测试密钥、独立测试设备；已清理自身设备／任务／包／测试密钥和服务进程。
+- 验收收尾时工作区另出现SkillAsset模型及资产角色／构建run迁移改动；不是本轮验收所作，未纳入已验收范围。Agent、上述控制器和DeployTaskService相对受测HEAD仍无工作区差异；保留其他进行中的改动，不作回退。
+- 本轮未修改业务代码，未执行真实设备动作，未修改生产配置。原始脚本和输出位于：`C:/Users/Administrator/.codex/visualizations/2026/11/03/01a19fd3-10da-75d2-8a92-d58cbe14920c/stage1-acceptance-478a036/`。
+
+| 验证 | 实际结果 | 能证明什么 |
+|---|---|---|
+| 原样离线 Python 测试 | 53/53 通过，0 skip | 当前用例断言成立；包含下文指出的空断言和局部测试 |
+| 原交付 HTTP 四项测试 | 4/4 通过，0 skip | 真实 HTTP 心跳、取任务、ACK、手工发事件与对账接口可访问 |
+| Python CLI | `--version` 正常，0.2.0 | 缺失类型导入的启动问题已修复 |
+| AgentV2 API + 凭据 B12 + Deploy 全目录 | **141 通过、1 失败**，4431 断言 | 失败是旧对账用例仍期待忽略未知记录后的 aligned=true；应更新错误预期，不能撤回新的差异检查 |
+| ecosystem:contract-check | 通过 | 原生态契约门禁通过，不能替代新 Agent 协议验收 |
+| 新增独立 HTTP 安装实验 | **失败：HTTP 401** | 真正调用 TaskManager 下载平台保护包时出现身份传递回归 |
+| 新增独立关键反例 | 多项失败，见下表 | 这些是阻断软件验收的问题，均不依赖真机 |
+
+## 已验证的修复
+
+1. 原样 Python 3.12 可以导入和启动；未知 model_code 会拒绝，而非默认为 mock。
+2. 原外层 operation／skill／version 不一致和 signed.did 错设备的拒绝路径已有检查，相关正常反例测试通过。
+3. 普通资源租约不再仅因 expires_at 过去而自动允许另一执行抢占。
+4. 原“下载阶段仍是 v1，却直接给 v2 报成功”的直接恢复方法反例已修复；但生产入口没有调用恢复方法，见 F04。
+5. 409 不再直接清空 outbox，对账能列出更多差异；这两项还没有形成自动事实收敛。
+6. signed 缓存及部分机型回退限制已加入；不能据此推定完整签名 schema、审核／目标快照和兼容门槛均完成。
+
+## 阻断发现
+
+### F01 P1 真实平台包下载缺认证，安装主链失败
+
+**位置：** `agent/zhjj_agent/task_manager.py:369` → `PackageManager.download_and_verify`（`package_manager.py:42`）只传 URL、路径、hash，未携带设备凭据；真实包路由要求 `agent.key` 认证和签名 URL 两者都满足。
+
+**已执行：** 启动真实 Laravel HTTP 服务，签发合法 v2 安装任务及包 URL。使用真实 AgentClient 的凭据头直接下载，实际 SHA 与 signed 相符；再调用原样 TaskManager.process_command，下载收到 **401 Unauthorized**，Journal=FAILED，安装数=0。错误被包装成 PKG_HASH_MISMATCH，实际没有发生内容哈希比较。
+
+**证据：** `http-counterexamples.json` 中 authenticated_download_control / real_http_install；`run-http-audit.py` 和 `http-fixtures.php`。
+
+**最小修正／门槛：** 通过已认证且限定平台源站的下载客户端传递身份，签名请求使用实际路径，不向任意重定向主机泄露凭据。必须让真实 HTTP 的“取任务→验签→下载→实际安装→持久事件→云事实”整体通过，检查真实文件字节。保留未认证下载被拒的对照。
+
+### F02 P1 未确认停止仍释放资源并删除技能
+
+**位置：** `task_manager.py:299` 调用 executor.cancel 后忽略结果；`:508`、`:527` 再直接调用 adapter.cancel_execution 并无条件 release；卸载返回值也未判断，随后 rmtree。
+
+**已执行：** 外部设备 stub 始终报告 RUNNING / is_stopped=false、取消只受理，卸载返回 false；发送已签回收任务。结果 accepted=true，lease=RELEASED，payload目录已删除，本地状态expired，平台事件done；stub依然RUNNING。
+
+**证据：** `agent-counterexamples.json::reclaim_before_stop_confirmation`。
+
+**最小修正／门槛：** 持久冻结新准入后进入取消／观察状态；未观察停止不得释放、删除或报告成功。只在独立观察达到合同终态后清理；失败走UNKNOWN／人工处置。测试取消失败、尚未停止、卸载失败和新进程恢复，均保持资源占用及实际文件。
+
+### F03 P1 execution_id 的幂等性跨重启失效
+
+**位置：** `task_manager.py:562` 虽读取持久 lease，但只有当前适配器内存观察为SUCCEEDED或RUNNING才短路；新进程观察UNKNOWN时继续执行。Storage未保存完整执行结果及足以禁止重放的状态。
+
+**已执行：** 第一次execution_id=E-restart完成并落Journal；新Agent、同一SQLite和安装资源，再以不同task_id重投同一execution_id，新的adapter再次被调用启动。
+
+**证据：** `agent-counterexamples.json::same_execution_after_restart`。
+
+**最小修正／门槛：** 持久记录execution_id的启动意图、外部幂等身份及终态；重启UNKNOWN只能恢复观察／处置，不能再次触发运动。相同execution_id在进程退出、重启、新task_id、取消及完成后重投，总副作用必须一次；不同合法执行仍能工作。
+
+### F04 P1 恢复与对账未接入实际 Agent 生命周期
+
+**位置：** `main.py::run` 与 `task_manager.py::poll_once` 没有调用resume_recovery；整个Agent调用链也没有调用client.reconcile。当前恢复方法仍不按成品hash确认安装，且未覆盖全部检查点／操作。
+
+**已执行：** 在SQLite预留DOWNLOADING的中断安装任务，正常poll_once空轮询后，resume_recovery调用数=0，任务仍为DOWNLOADING。原A-T11只新建一个manager并读回手工保存的checkpoint，没有退出进程、安装副作用或故障恢复。
+
+**证据：** `agent-counterexamples.json::recovery_not_connected_to_poll`；`test_acceptance_at01_at26.py:339`。
+
+**最小修正／门槛：** 启动时恢复持久状态，运行期间调度补偿及双向事实对账。用真实子进程非正常退出，逐检查点验证目标字节、激活对象和平台事实收敛；不能仅将所有未知任务标FAILED就算恢复完成。
+
+### F05 P1 权限与唯一可信对象仍有缺口
+
+**位置：** `task_manager.py:556` 使用 `signed.execution_params or cmd.execution_params`；空对象会回落到未签名外层参数。process_command未执行完整必需字段／类型schema。`SkillController.php:560` 仍主要检查status，新增的只是少数参数名黑名单；未检查有效期、实际安装成品、固定空参数和HTTP nonce。
+
+**已执行：**
+
+- 已签execution_params={}，只添加外层speed=99和sdk_method，原签名不变，适配器收到这些未签参数并执行。
+- 删除task_expires_at、issued_at、command_seq、key_id、signature_algorithm后重新形成有效签名，任务仍被接受；表明schema门槛缺失，不是验签算法被破解。
+- 真实控制器中授权isUsable=false、实际安装记录=0，传speed=99仍返回HTTP202创建执行。
+- 同一nonce重试两次，得到两个不同execution_id，不能保证请求重试不重复动作。
+
+**证据：** `agent-counterexamples.json` 与 `customer-counterexamples.json`；后者在独立库事务内执行并回滚。
+
+**最小修正／门槛：** 仅从严格验证的不可变signed对象取业务值，不用真假值选择未签名兜底；落实授权isUsable、安装／目标身份、固定空参数及持久请求幂等。各类失败须在建动作或副作用前拒绝。
+
+### F06 P1 G1仍以程序返回代替成功及物理停止，并在Agent进程内运行包代码
+
+**位置：** `adapters/unitree_g1.py::_worker` 用importlib在Agent进程导入入口，忽略mod.run返回结果；函数返回就置SUCCEEDED/is_stopped=true。取消以线程退出判定停止，没有独立厂商状态观测。prepare拼接entrypoint未限定包内路径。
+
+**已执行：** 仅在测试中模拟SDK可加载，运行一个无设备调用的入口，返回 `{status:FAILED, stopped:false}`，适配器最终仍SUCCEEDED/is_stopped=true。另一个manifest入口`../outside.py`逃出包目录，prepare通过，包外无害测试入口实际运行并写临时标记。
+
+**证据：** `agent-counterexamples.json::g1_ignores_entrypoint_failure_result` / entrypoint_escapes_package。测试没有装载真实SDK或进行设备动作。
+
+**最小修正／门槛：** 限定并核验实际入口；隔离技能运行器、最小权限能力通道及凭据。定义并验证运行结果协议，业务失败不能忽略；真实停止依赖独立观察，不能由同一工作线程自行宣告。通过“无SDK拒绝”只覆盖一种失败分支，不代表真实适配器接入完成。
+
+### F07 P1 回滚只选版本目录，未验证获准恢复字节
+
+**位置：** `_handle_rollback` 增加restore_version／previous_version选择，但仍不验证restore_asset_id、restore_sha256、撤销和环境；回滚任务期限也被当前期限白名单排除。
+
+**已执行：** 使用已过任务期的有效签名回滚，restore_sha256与目录实际内容不符，仍切到该目录并报告rolled_back。该目录中是被改写的payload。
+
+**证据：** `agent-counterexamples.json::expired_rollback_to_wrong_bytes`。
+
+**最小修正／门槛：** 良好恢复对象必须由获准资产、字节、环境与撤销状态唯一定位；处置权限不等于任意过期任务永久有效。损坏、撤销或环境不匹配应拒绝并保持安全处置态，云端记录实际撤回与恢复对象。
+
+### F08 P1 投递确认和迟到事实仍无法保证收敛
+
+**位置：** AgentController::commands仍在响应返回前标delivered，后续过滤delivered_at不为空任务；ACK虽写入signed_payload.acks，但尚未控制重新投递／按event_id幂等。event仍拒绝非法流转，client.send_event未发送持久event_id/seq，reconcile只返回差异。
+
+**已执行：** 真实HTTP第一次拉得一条任务；设备尚未持久接收、未发送ACK，再拉返回0条。第一条响应若丢失，任务没有可靠重投。保留409事件的单元测试通过，但没有证明服务端持久保存迟到事实或形成对账收敛。
+
+**证据：** `http-counterexamples.json::delivered_response_lost_no_ack`；其余为现调用链已核验事实，完整迟到安装／事件ACK丢失故障注入未执行。
+
+**最小修正／门槛：** 区分已尝试投递、设备持久接收和已完成；重投相同任务且副作用一次。事件有持久收据与稳定ID，历史timeout和晚到事实分开保留。实际执行commands响应丢失、接收ACK丢失、done丢失及超时后补报实验。
+
+## 验收测试质量与文档口径
+
+以下不是测试命名问题，而是测试没有覆盖对应验收条件：
+
+| 案例 | 现有测试实际做什么 | 缺少的证明 |
+|---|---|---|
+| A-T06 | 对同一个Python字典签两次 | 没调用服务端buildCommand，也未推进服务器时钟 |
+| A-T11 | 保存checkpoint，新建对象后读回 | 没有真实崩溃／安装切换／补报恢复 |
+| A-T14 | 手写payload后检查did和列表长度 | 没调用reconcile或检查实际差异／收敛 |
+| A-T15 | 同步执行完成后再发取消 | 没证明长执行期间能接收取消；poll仍同步等待执行结束 |
+| A-T20 / A-T24 | **直接assertTrue(True)** | 不会因错机型交付或熔断缺陷失败 |
+| A-T22 | 对测试内手写黑名单做成员检查 | 没调用客户接口；实际非空参数仍放行 |
+| A-T25 | Python单个硬编码向量 | 未调用PHP、未双向验签，不能证明完整RFC8785 |
+| A-T26 | 检查客户端请求头没有共享key | 没吊销凭据或向服务端尝试绕过；原B12测试的有效证据应另列 |
+| HTTP四项 | 创建TaskManager但不调用其process_command/poll_once；直接发送installing/done | 是接口连通性测试，未证明验签、下载、安装、执行及恢复链 |
+
+JCS仍不完整：当前1e-6被序列化为`1e-6`，RFC8785附录B对应值为`0.000001`；16位格式化还可能丢精度。应使用完整测试向量和正确实现。[外部判据：RFC8785 §3.2.2.3及附录B](https://www.rfc-editor.org/rfc/rfc8785)。
+
+本轮提交没有更新`utils/api.js`、客户页面或依赖锁定／进程托管工件，A08用户操作和运维交付仍缺证。交付报告中的`git checkout HEAD -- ...`不会回退已提交的478a036，还会覆盖指定目录未提交修改，不应作为该提交回退方案。证据目录还跟踪了测试用私钥；尚未证明是生产密钥，但不符合任务书要求的测试密钥不入证据包，应清理并防止后续误用。
+
+不能判定开发者主观意图；可以判定当前“所有A01—A08闭环／26项全过／软件完成PASS”的证据不成立。部分旧probe结果也仍保存着缺源构建成功、44字节静音占位、发布版重建改变指纹等负面事实，不应称“独立探针100%达成预期”。
+
+## 最短返工与复验顺序
+
+1. 先修真实HTTP安装F01，用最终字节验收；接口测试必须驱动真实TaskManager。
+2. 修F02、F05、F06：停止确认、授权／可信参数、入口隔离和结果判断，先建立会让当前代码失败的独立反例。
+3. 修F03、F04、F08：持久执行身份、恢复入口和事实收敛；加入真实进程退出与HTTP丢失实验。
+4. 修F07及JCS，核验真实恢复对象；补全用户端和运行依赖／托管／回退工件。
+5. 将空断言替换为真实被测路径，更新错误旧对账预期；原回归、独立反例和端云故障注入全部通过后，再复验软件完成等级。
+
+当前允许继续返工第一阶段。SDK接入、真机、生产准备仍分别列为未完成，不把缺硬件当作上述软件失败的理由；第二阶段按既定顺序暂缓。
+
+<!-- END ORIGINAL docs/skill-dev-step10-agent-independent-reacceptance-20261103.md -->
+
+
+# 本次复验原始脚本与输出全文
+
+下列代码和输出均为478a036历史证据，不是本次返工已执行结果。完整归档同时附在stage1-reacceptance-evidence.zip，路径适配须另留记录；禁止覆盖旧输出。报告已在上方附录11全文嵌入。终端txt日志在本文只规范化行尾空白，未删节内容；附件中的原始字节及其SHA-256保持不变。
+
+
+## 原始证据 run-offline-tests.py
+
+SHA-256：`bd16af2912f9f17ccc3e6ea1678d3c0a447e00cb83a55597e080b899c99cd1eb`
+
+<!-- BEGIN EVIDENCE run-offline-tests.py -->
+````python
+import os, sys, pathlib, tempfile, unittest
+root=pathlib.Path('D:/CodexDeploy/summon-mecha')
+out=pathlib.Path(__file__).resolve().parent
+(out/'tmp').mkdir(exist_ok=True)
+tempfile.tempdir=str(out/'tmp')
+sys.path.insert(0,str(root/'agent'))
+suite=unittest.defaultTestLoader.discover(str(root/'agent/tests'), pattern='test_*.py')
+def cases(s):
+    for item in s:
+        if isinstance(item,unittest.TestSuite): yield from cases(item)
+        elif 'test_live_http_integration' not in item.id(): yield item
+with (out/'python-offline.txt').open('w',encoding='utf-8') as log:
+    result=unittest.TextTestRunner(stream=log,verbosity=2).run(unittest.TestSuite(list(cases(suite))))
+print('tests',result.testsRun,'errors',len(result.errors),'failures',len(result.failures),'skipped',len(result.skipped))
+sys.exit(0 if result.wasSuccessful() else 1)
+
+````
+<!-- END EVIDENCE run-offline-tests.py -->
+
+
+## 原始证据 python-offline.txt
+
+SHA-256：`a6a1899a0e6c3332ecf9044213d21d8df09354a634881049976f0419f74fc589`
+
+<!-- BEGIN EVIDENCE python-offline.txt -->
+````text
+test_at01_startup_and_discovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at01_startup_and_discovery)
+A-T01: 无模块加载错误，支持 Python 3.12/3.14 规范导入 ... ok
+test_at02_unsigned_operation_tamper (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at02_unsigned_operation_tamper)
+A-T02: signed.operation=5 (DISABLE), 外层改成 4 (ENABLE) -> 副作用前拒绝，原禁用状态不被启用 ... ok
+test_at03_device_and_field_mismatch (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at03_device_and_field_mismatch)
+A-T03: 有效签给 B 的任务放到 A，或内外层 DID/skill/version 不一致 -> 拒绝 ... ok
+test_at04_invalid_signature_and_protocol (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at04_invalid_signature_and_protocol)
+A-T04: v2 缺字段/未知协议/签名损坏/operation 缺失；v1 携带 7 或 8 -> 拒绝 ... ok
+test_at05_expired_task_and_authorization (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at05_expired_task_and_authorization)
+A-T05: 任务已过有效期或使用授权已过期 -> 拒绝执行 ... ok
+test_at06_same_task_refreshed_expiry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at06_same_task_refreshed_expiry)
+A-T06: 任务构建后签名载荷被冻结，多次刷新不能导致过期时间漂移 ... ok
+test_at07_deduplication_by_execution_id (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at07_deduplication_by_execution_id)
+A-T07: 同 execution_id、不同 task_id 重投 -> 适配器仅启动一次，取消仍能定位 ... ok
+test_at08_execution_id_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at08_execution_id_isolation)
+A-T08: 两个不同 execution_id 顺序执行，各自有独立身份，不能吞掉合法执行 ... ok
+test_at09_adapter_no_sdk_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at09_adapter_no_sdk_rejection)
+A-T09: Unitree G1 适配器在无真实 SDK 且无 stub 时拒绝执行，绝不计时假冒成功 ... ok
+test_at10_crash_during_download_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at10_crash_during_download_recovery)
+A-T10: 安装 v2 在下载阶段中断，设备真实版本为 v1 -> 绝不能报告 v2 成功 ... ok
+test_at11_crash_and_restart_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at11_crash_and_restart_recovery)
+A-T11: 进程重启后通过相同磁盘目录恢复状态，未完成事务不重放破坏性动作 ... ok
+test_at12_lost_commands_ack_and_event_retry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at12_lost_commands_ack_and_event_retry)
+A-T12: 事件发送后只有在网络收到有效响应时才标记 ACK，网络失败保留在 Outbox 补发 ... ok
+test_at13_rejected_fact_and_409_preservation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at13_rejected_fact_and_409_preservation)
+A-T13: 服务端返回 409 TASK_TRANSITION_INVALID 时保留事件日志，不丢弃事实 ... ok
+test_at14_reconciliation_mismatches (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at14_reconciliation_mismatches)
+A-T14: 事实对账完整核对端侧状态与服务端状态差异 ... ok
+test_at15_running_execution_cancel (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at15_running_execution_cancel)
+A-T15: 运行中技能收到取消指令，状态变迁为 CANCELED 并观察到 is_stopped=True ... ok
+test_at16_lease_expiry_and_usurpation_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at16_lease_expiry_and_usurpation_prevention)
+A-T16: 未经确认停止的执行租约，即使时间已过也不能被新执行篡抢 ... ok
+test_at17_revocation_epoch_enforcement (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at17_revocation_epoch_enforcement)
+A-T17: 收到 epoch=5 停用/回收后，旧 epoch=4 任务被强行拒绝 ... ok
+test_at18_explicit_rollback_to_good_version (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at18_explicit_rollback_to_good_version)
+A-T18: v2 异常回滚至 v1，激活字节恢复为 v1，记录状态置 rolled_back ... ok
+test_at19_first_install_rollback_safe_disable (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at19_first_install_rollback_safe_disable)
+A-T19: 首装即失败回滚，无旧版时明确安全停用，不虚报假恢复 ... ok
+test_at20_model_fallback_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at20_model_fallback_prevention)
+A-T20: 平台产物解析器在存在目标机型构建时，拒绝向不兼容机型错发二进制产物 ... ok
+test_at21_package_security_checks (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at21_package_security_checks)
+A-T21: 拦截路径穿越 (Zip Slip)、解压炸弹与符号链接，保留旧版本完好 ... ok
+test_at22_forbidden_param_and_execution_guard (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at22_forbidden_param_and_execution_guard)
+A-T22: 客户端 API 拒绝 method, sdk_method 等越权参数注入 ... ok
+test_at23_execution_fact_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at23_execution_fact_isolation)
+A-T23: OP_EXECUTE 产生执行事实，绝不篡改或新增 install_record ... ok
+test_at24_killswitch_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at24_killswitch_rejection)
+A-T24: 熔断生效时新任务被拒，恢复与对账通路仍放行 ... ok
+test_at25_rfc8785_cross_language_vectors (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at25_rfc8785_cross_language_vectors)
+A-T25: PHP 与 Python 规范化 JSON 字节完全一致（UTF-16 键排序、ECMAScript 数字格式） ... ok
+test_at26_per_device_credential_revocation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at26_per_device_credential_revocation)
+A-T26: 设备凭据吊销后，禁止通过省略 did 或共享密钥退路绕过鉴权 ... ok
+test_canonical_v2_prefix (test_crypto.TestCrypto.test_canonical_v2_prefix) ... ok
+test_jcs_canonicalize_order (test_crypto.TestCrypto.test_jcs_canonicalize_order) ... ok
+test_jcs_types (test_crypto.TestCrypto.test_jcs_types) ... ok
+test_rsa_signature_and_verify (test_crypto.TestCrypto.test_rsa_signature_and_verify) ... ok
+test_compiled_portable_skill_execution_on_unitree_g1 (test_e2e_simulator.TestE2ESimulator.test_compiled_portable_skill_execution_on_unitree_g1)
+测试编译器产出的标准技能包在 Unitree G1 适配器上的端到端部署与执行 ... ok
+test_full_agent_lifecycle_end_to_end (test_e2e_simulator.TestE2ESimulator.test_full_agent_lifecycle_end_to_end) ... ok
+test_disabled_skill_cannot_execute (test_executor.TestExecutor.test_disabled_skill_cannot_execute) ... ok
+test_execute_and_observe_succeeded (test_executor.TestExecutor.test_execute_and_observe_succeeded) ... ok
+test_resource_mutex_conflict_blocked (test_executor.TestExecutor.test_resource_mutex_conflict_blocked) ... ok
+test_safe_cancel_execution (test_executor.TestExecutor.test_safe_cancel_execution) ... ok
+test_staging_install_success_and_failure_isolation (test_package_manager.TestPackageManager.test_staging_install_success_and_failure_isolation) ... ok
+test_valid_unpack_and_manifest (test_package_manager.TestPackageManager.test_valid_unpack_and_manifest) ... ok
+test_zip_bomb_file_count_rejected (test_package_manager.TestPackageManager.test_zip_bomb_file_count_rejected) ... ok
+test_zip_slip_attack_rejected (test_package_manager.TestPackageManager.test_zip_slip_attack_rejected) ... ok
+test_zip_symlink_rejected (test_package_manager.TestPackageManager.test_zip_symlink_rejected) ... ok
+test_storage_installed_skills_and_json_sync (test_storage.TestStorage.test_storage_installed_skills_and_json_sync) ... ok
+test_storage_journal_and_idempotency (test_storage.TestStorage.test_storage_journal_and_idempotency) ... ok
+test_storage_outbox_and_leases (test_storage.TestStorage.test_storage_outbox_and_leases) ... ok
+test_distinct_execution_ids_not_deduped (test_task_manager.TestTaskManager.test_distinct_execution_ids_not_deduped) ... ok
+test_first_install_rollback_safely_disables (test_task_manager.TestTaskManager.test_first_install_rollback_safely_disables) ... ok
+test_interrupted_install_recovery_on_startup (test_task_manager.TestTaskManager.test_interrupted_install_recovery_on_startup) ... ok
+test_op_execute_and_cancel_lifecycle (test_task_manager.TestTaskManager.test_op_execute_and_cancel_lifecycle) ... ok
+test_outbox_offline_retry_and_flush (test_task_manager.TestTaskManager.test_outbox_offline_retry_and_flush) ... ok
+test_replay_duplicate_task_idempotency (test_task_manager.TestTaskManager.test_replay_duplicate_task_idempotency) ... ok
+test_task_expired_rejected_before_side_effects (test_task_manager.TestTaskManager.test_task_expired_rejected_before_side_effects) ... ok
+test_v2_signature_tamper_all_fields_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_all_fields_rejected) ... ok
+test_v2_signature_tamper_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 53 tests in 11.765s
+
+OK
+
+````
+<!-- END EVIDENCE python-offline.txt -->
+
+
+## 原始证据 preflight.php
+
+SHA-256：`4604f1af8bb8a9badd228a52c1a6a9324d6458a66ff8f4135194bc37d84819aa`
+
+<!-- BEGIN EVIDENCE preflight.php -->
+````php
+<?php
+try {
+$root='D:/CodexDeploy/summon-mecha/my-bagisto-store';
+require $root.'/vendor/autoload.php';
+$app=require $root.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+if (!$app->environment('testing') || Illuminate\Support\Facades\DB::connection()->getDatabaseName()!=='summon_mecha_step10_test') throw new RuntimeException('Refusing unsafe test config');
+$actual=Illuminate\Support\Facades\DB::selectOne('select database() as db')->db;
+if ($actual!=='summon_mecha_step10_test') throw new RuntimeException('Refusing unsafe actual DB');
+echo json_encode(['environment'=>$app->environment(),'actual_database'=>$actual]),PHP_EOL;
+} catch(Throwable $e) {fwrite(STDERR,$e->getMessage().PHP_EOL);exit(1);}
+
+````
+<!-- END EVIDENCE preflight.php -->
+
+
+## 原始证据 agent-counterexamples.py
+
+SHA-256：`e92b06911357d09af110dcb4d6fb2133db7b58faf261e65903ac0ca10a1a2cc1`
+
+<!-- BEGIN EVIDENCE agent-counterexamples.py -->
+````python
+"""当前原样业务源码的隔离反例；只用临时文件、模拟外部设备，无真实动作。"""
+import json, pathlib, sys, tempfile, time
+from unittest.mock import Mock
+root=pathlib.Path('D:/CodexDeploy/summon-mecha'); out=pathlib.Path(__file__).resolve().parent
+sys.path.insert(0,str(root/'agent')); tempfile.tempdir=str(out/'tmp')
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from zhjj_agent.storage import Storage
+from zhjj_agent.task_manager import TaskManager
+from zhjj_agent.adapters.mock import MockAdapter
+from zhjj_agent.adapters.unitree_g1 import UnitreeG1Adapter
+from zhjj_agent.constants import *
+from zhjj_agent.crypto import canonical_v2, sign_data, jcs_canonicalize
+key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+priv=key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()).decode()
+pub=key.public_key().public_bytes(serialization.Encoding.PEM,serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+class Client:
+ did='device-A'
+ def __init__(self):self.events=[]
+ def send_event(self,**kw):self.events.append(kw);return True,{'success':True}
+ def send_ack(self,*a,**kw):return True,{}
+ def fetch_commands(self):return True,{'data':[]}
+def setup():
+ d=pathlib.Path(tempfile.mkdtemp(prefix='new-probe-'));s=Storage(str(d));a=MockAdapter(app_dir=str(d));c=Client();m=TaskManager(str(d),s,c,a,pub)
+ p=d/'skills/101/v1.0.0';p.mkdir(parents=True);(p/'payload').write_text('known-good')
+ a.install('101','1.0.0',str(p),{});s.save_installed_skill('101','1.0.0',None,'installed',True,str(p),package_sha256='a'*64)
+ return d,s,a,c,m,p
+def cmd(task,op,**extra):
+ s={'protocol_version':PROTOCOL_V2,'signature_algorithm':'RSA-SHA256','key_id':'test','task_id':task,'command_seq':1,'did':'device-A','operation':op,'skill_id':'101','version':'1.0.0','task_expires_at':int(time.time())+60,'revocation_epoch':0,'issued_at':int(time.time())};s.update(extra)
+ return {'protocol_version':PROTOCOL_V2,'task_id':task,'operation':op,'skill_id':'101','version':'1.0.0','signed':s,'signature':sign_data(canonical_v2(s),priv)}
+results={}
+d,s,a,c,m,p=setup(); x=cmd('t-param',OP_EXECUTE,execution_id='E',execution_params={});x['execution_params']={'speed':99,'sdk_method':'unsafe'}
+accepted=m.process_command(x);results['unsigned_params_fallback']={'accepted':accepted,'adapter_params':a._executions.get('E',{}).get('params')}
+d,s,a,c,m,p=setup();x=cmd('t-sparse',OP_ENABLE)
+for field in ['task_expires_at','issued_at','command_seq','key_id','signature_algorithm']:x['signed'].pop(field,None)
+x['signature']=sign_data(canonical_v2(x['signed']),priv)
+results['missing_required_signed_fields']={'accepted':m.process_command(x)}
+d,s,a,c,m,p=setup();s.record_task_durable('interrupted',1,c.did,OP_INSTALL,'101','2','2.0.0',{}, {},STATE_DOWNLOADING)
+m.resume_recovery=Mock(wraps=m.resume_recovery);m.poll_once()
+results['recovery_not_connected_to_poll']={'recovery_calls':m.resume_recovery.call_count,'journal_status':s.get_task('interrupted')['status']}
+d,s,a,c,m,p=setup();m.process_command(cmd('run-before-restart',OP_EXECUTE,execution_id='E-restart'))
+new_adapter=MockAdapter(app_dir=str(d));new_adapter.install('101','1.0.0',str(p),{});new_adapter.execute_skill=Mock(wraps=new_adapter.execute_skill)
+new_m=TaskManager(str(d),Storage(str(d)),c,new_adapter,pub)
+accepted=new_m.process_command(cmd('run-after-restart',OP_EXECUTE,execution_id='E-restart'))
+results['same_execution_after_restart']={'first_journal':s.get_task('run-before-restart')['status'],'second_accepted':accepted,'new_adapter_start_calls':new_adapter.execute_skill.call_count}
+class NeverStopped(MockAdapter):
+ def cancel_execution(self,e):return True
+ def observe_execution(self,e):return {'status':'RUNNING','is_stopped':False}
+ def disable(self,k):return True
+ def uninstall(self,k,p):return False
+d,s,a,c,m,p=setup();na=NeverStopped();na.install('101','1.0.0',str(p),{});m=TaskManager(str(d),s,c,na,pub);s.acquire_execution_lease('still-running','101','motion_control',60)
+accepted=m.process_command(cmd('reclaim-unconfirmed',OP_RECLAIM,revocation_epoch=5))
+results['reclaim_before_stop_confirmation']={'accepted':accepted,'observed':na.observe_execution('still-running'),'lease':s.get_execution_lease('still-running')['status'],'payload_directory_exists':p.exists(),'local_status':s.get_installed_skill('101')['status'],'last_event':c.events[-1]}
+d,s,a,c,m,p=setup();p2=d/'skills/101/v2.0.0';p2.mkdir();(p/'payload').write_text('tampered-not-good')
+a.install('101','2.0.0',str(p2),{});s.save_installed_skill('101','2.0.0','1.0.0','updated',True,str(p2))
+accepted=m.process_command(cmd('rollback-corrupt',OP_ROLLBACK,restore_version='1.0.0',restore_asset_id='approved-v1',restore_sha256='b'*64,task_expires_at=int(time.time())-3600))
+results['expired_rollback_to_wrong_bytes']={'accepted':accepted,'actual_version':s.get_installed_skill('101')['current_version'],'actual_payload':(p/'payload').read_text(),'signed_sha':'b'*64}
+d,s,a,c,m,p=setup();g=UnitreeG1Adapter(app_dir=str(d));g._sdk_available=True
+(p/'action.py').write_text('def run(context=None):\n    return {"status":"FAILED","stopped":False}\n')
+g.install('101','1.0.0',str(p),{'entrypoint':'action.py'});g.execute_skill('returned-failed','101',None,{})
+g._active_threads['returned-failed'].join(timeout=2)
+results['g1_ignores_entrypoint_failure_result']=g.observe_execution('returned-failed')
+d,s,a,c,m,p=setup();g=UnitreeG1Adapter(app_dir=str(d));g._sdk_available=True
+outside=p.parent/'outside.py';marker=d/'escaped-entry-ran'
+outside.write_text('from pathlib import Path\ndef run(context=None):\n    Path('+repr(str(marker))+').write_text("ran")\n')
+manifest={'entrypoint':'../outside.py'};prepared=g.prepare('101','1.0.0',str(p),manifest);g.install('101','1.0.0',str(p),manifest);g.execute_skill('escape','101',None,{})
+g._active_threads['escape'].join(timeout=2)
+results['entrypoint_escapes_package']={'prepare_accepted':prepared,'outside_entry_executed':marker.exists()}
+results['jcs_examples']={str(v):jcs_canonicalize({'x':v}).decode() for v in [1e-6,1e20,333333333.33333329]}
+(out/'agent-counterexamples.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
+print(json.dumps(results,ensure_ascii=False,indent=2))
+
+````
+<!-- END EVIDENCE agent-counterexamples.py -->
+
+
+## 原始证据 agent-counterexamples.json
+
+SHA-256：`acffe392b68e098732bc9206c9d31b7b4611bc7288d606dac83d0bbdfa1b1cd0`
+
+<!-- BEGIN EVIDENCE agent-counterexamples.json -->
+````json
+{
+  "unsigned_params_fallback": {
+    "accepted": true,
+    "adapter_params": {
+      "speed": 99,
+      "sdk_method": "unsafe"
+    }
+  },
+  "missing_required_signed_fields": {
+    "accepted": true
+  },
+  "recovery_not_connected_to_poll": {
+    "recovery_calls": 0,
+    "journal_status": "DOWNLOADING"
+  },
+  "same_execution_after_restart": {
+    "first_journal": "COMMITTED",
+    "second_accepted": true,
+    "new_adapter_start_calls": 1
+  },
+  "reclaim_before_stop_confirmation": {
+    "accepted": true,
+    "observed": {
+      "status": "RUNNING",
+      "is_stopped": false
+    },
+    "lease": "RELEASED",
+    "payload_directory_exists": false,
+    "local_status": "expired",
+    "last_event": {
+      "task_no": "reclaim-unconfirmed",
+      "phase": "done",
+      "error_code": null,
+      "error_msg": null
+    }
+  },
+  "expired_rollback_to_wrong_bytes": {
+    "accepted": true,
+    "actual_version": "1.0.0",
+    "actual_payload": "tampered-not-good",
+    "signed_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "g1_ignores_entrypoint_failure_result": {
+    "status": "SUCCEEDED",
+    "is_stopped": true,
+    "error_msg": null
+  },
+  "entrypoint_escapes_package": {
+    "prepare_accepted": true,
+    "outside_entry_executed": true
+  },
+  "jcs_examples": {
+    "1e-06": "{\"x\":1e-6}",
+    "1e+20": "{\"x\":1e+20}",
+    "333333333.3333333": "{\"x\":333333333.3333333}"
+  }
+}
+````
+<!-- END EVIDENCE agent-counterexamples.json -->
+
+
+## 原始证据 http-fixtures.php
+
+SHA-256：`41f082a1624ffda4c4588bbcafdab39eea3a010759ad8fe3673d989e1ef3c441`
+
+<!-- BEGIN EVIDENCE http-fixtures.php -->
+````php
+<?php
+require __DIR__.'/preflight.php';
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Http\Request;
+use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Models\DeployTask;
+use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Models\SkillExecution;
+use Webkul\Shop\Models\Device;
+use Webkul\Shop\Services\Deploy\DeployTaskService;
+use Webkul\Shop\Services\Deploy\DeviceCredentialService;
+use Webkul\Shop\Services\Deploy\SigningService;
+use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
+$mode=$argv[1]??'setup';$metaFile=__DIR__.'/fixture-ids.json';
+if ($mode==='setup') {
+ $oldLive=DeviceBinding::where('did','like','live_http_%')->pluck('id')->all();
+ $did='ind478_'.uniqid();
+ $b=DeviceBinding::create(['did'=>$did,'sn'=>'SN_'.$did,'source'=>'agent','bind_status'=>'bound','bound_at'=>now()]);
+ $cred=app(DeviceCredentialService::class)->issue($b);
+ $pid=DB::table('products')->insertGetId(['sku'=>$did,'type'=>'simple','created_at'=>now(),'updated_at'=>now()]);
+ $v=SkillVersion::create(['product_id'=>$pid,'version'=>'1.0.0','channel'=>'stable','status'=>SkillVersion::STATUS_PUBLISHED,'license_mode'=>'per_device']);
+ $path='qa-independent-478/'.$did.'.skill';$disk=Storage::disk(SkillAsset::disk());$absolute=$disk->path($path);@mkdir(dirname($absolute),0777,true);
+ $z=new ZipArchive();$z->open($absolute,ZipArchive::CREATE|ZipArchive::OVERWRITE);$z->addFromString('manifest.json',json_encode(['entrypoint'=>'action.py']));$z->addFromString('action.py','def run(context=None): return {"status":"SUCCEEDED"}');$z->close();
+ $asset=SkillAsset::create(['skill_version_id'=>$v->id,'carrier_type'=>'file','file_path'=>$path,'file_name'=>basename($path),'file_hash'=>hash_file('sha256',$absolute),'file_size'=>filesize($absolute),'entrypoint'=>'action.py','sort_order'=>0]);
+ $task=DeployTask::create(['task_no'=>'IND_'.uniqid(),'did'=>$did,'skill_id'=>$pid,'skill_version_id'=>$v->id,'package_asset_id'=>$asset->id,'package_hash'=>app(PackageFingerprint::class)->forVersion($v->id),'operation'=>1,'protocol_version'=>DeployTask::PROTOCOL_V2,'command_seq'=>1,'status'=>'dispatching','payload'=>[]]);
+ URL::forceRootUrl(getenv('AUDIT_BASE_URL'));URL::forceScheme('http');
+ $command=app(DeployTaskService::class)->buildCommand($task);
+ file_put_contents($metaFile,json_encode(['did'=>$did,'binding'=>$b->id,'product'=>$pid,'version'=>$v->id,'asset'=>$asset->id,'path'=>$path,'task'=>$task->id,'old_live_ids'=>$oldLive]));
+ echo json_encode(['did'=>$did,'secret'=>$cred['secret'],'public_key'=>app(SigningService::class)->publicKeyPem(),'command'=>$command]),PHP_EOL;
+} elseif ($mode==='cleanup') {
+ $m=json_decode(file_get_contents($metaFile),true);
+ Storage::disk(SkillAsset::disk())->delete($m['path']);
+ DeployTask::whereKey($m['task'])->delete();SkillAsset::whereKey($m['asset'])->delete();SkillVersion::whereKey($m['version'])->delete();DB::table('products')->where('id',$m['product'])->delete();DeviceBinding::whereKey($m['binding'])->delete();
+ $newLive=DeviceBinding::where('did','like','live_http_%')->whereNotIn('id',$m['old_live_ids'])->get();
+ foreach($newLive as $binding) {DeployTask::where('did',$binding->did)->delete();$binding->delete();}
+ $keysDir=config('deploy_gateways.keys.dir');if(!str_starts_with($keysDir,'audit-478a036-'))throw new RuntimeException('Refusing unrelated key cleanup');
+ foreach(['platform_private.pem','platform_public.pem','device_ca_private.pem','device_ca_public.pem'] as $leaf)Storage::disk(config('deploy_gateways.keys.disk'))->delete($keysDir.'/'.$leaf);
+ echo json_encode(['test_fixtures_cleaned'=>true,'live_fixtures_cleaned'=>count($newLive)]),PHP_EOL;
+} elseif ($mode==='customer') {
+ DB::beginTransaction();
+ try {
+  $cust=Webkul\Customer\Models\Customer::create(['first_name'=>'audit','last_name'=>'478','email'=>'audit478_'.uniqid().'@example.com','password'=>bcrypt('audit-only'),'channel_id'=>core()->getDefaultChannel()->id,'status'=>1,'is_verified'=>1]);
+  auth()->guard('customer')->setUser($cust);
+  $did='customer478_'.uniqid();$binding=DeviceBinding::create(['did'=>$did,'sn'=>'SN_'.$did,'source'=>'agent','bind_status'=>'bound','owner_customer_id'=>$cust->id]);
+  $device=Device::create(['customer_id'=>$cust->id,'binding_id'=>$binding->id,'name'=>'audit-only','sn'=>$binding->sn,'model_code'=>'unitree_g1','bind_status'=>Device::STATUS_BOUND,'bound_at'=>now()]);
+  $pid=DB::table('products')->insertGetId(['sku'=>$did,'type'=>'simple','created_at'=>now(),'updated_at'=>now()]);
+  $v=SkillVersion::create(['product_id'=>$pid,'version'=>'1.0.0','channel'=>'stable','status'=>SkillVersion::STATUS_PUBLISHED,'license_mode'=>'per_device']);
+  $e=SkillEntitlement::create(['customer_id'=>$cust->id,'device_id'=>$device->id,'product_id'=>$pid,'skill_version_id'=>$v->id,'delivery_channel'=>'agent','status'=>SkillEntitlement::STATUS_ACTIVE,'expires_at'=>now()->subHour(),'meta'=>['installed_did'=>$did]]);
+  $res=[];$ctl=app(Webkul\Shop\Http\Controllers\API\SkillController::class);
+  $r=$ctl->triggerExecution(Request::create('/api/skills/entitlements/'.$e->id.'/executions','POST',['params'=>['speed'=>99]]),$e->id);
+  $res['expired_authorization_and_no_install']=['is_usable'=>$e->isUsable(),'http_status'=>$r->getStatusCode(),'data'=>$r->getData(true),'install_records'=>Webkul\Shop\Models\InstallRecord::where('did',$did)->count()];
+  $e->update(['expires_at'=>null]);
+  $ids=[];foreach([1,2]as$i){$r=$ctl->triggerExecution(Request::create('/api/skills/entitlements/'.$e->id.'/executions','POST',['params'=>['speed'=>99],'nonce'=>'same-client-retry']),$e->id);$ids[]=['status'=>$r->getStatusCode(),'execution_id'=>$r->getData(true)['data']['execution_id']??null];}
+  $res['nonempty_params_same_nonce']=$ids;
+  file_put_contents(__DIR__.'/customer-counterexamples.json',json_encode($res,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));echo json_encode($res,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE),PHP_EOL;
+ } finally {DB::rollBack();}
+}
+
+````
+<!-- END EVIDENCE http-fixtures.php -->
+
+
+## 原始证据 run-http-audit.py
+
+SHA-256：`ce835c0e4b3322b34f68586ce4abae0a66a7c8d2f81a60d2cfc6ea4a5f988175`
+
+<!-- BEGIN EVIDENCE run-http-audit.py -->
+````python
+import json, os, pathlib, shutil, socket, subprocess, sys, tempfile, time, unittest
+from urllib.parse import urlparse
+root=pathlib.Path('D:/CodexDeploy/summon-mecha'); out=pathlib.Path(__file__).resolve().parent;php='D:/java/php/php.exe'
+sys.path.insert(0,str(root/'agent'));tempfile.tempdir=str(out/'tmp')
+from zhjj_agent.client import AgentClient
+from zhjj_agent.task_manager import TaskManager
+from zhjj_agent.storage import Storage
+from zhjj_agent.adapters.mock import MockAdapter
+from zhjj_agent.package_manager import PackageManager
+env=os.environ.copy();env.update(APP_ENV='testing',DB_DATABASE='summon_mecha_step10_test',APP_CONFIG_CACHE=str(out/'no-cache.php'),AGENT_KEYS_DIR='audit-478a036-'+str(int(time.time()))+'/keys',TEMP=str(out/'tmp'),TMP=str(out/'tmp'))
+env['PATH']='D:/java/php;'+env.get('PATH','')
+with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
+env['AUDIT_BASE_URL']=f'http://127.0.0.1:{port}'
+def helper(mode):
+ r=subprocess.run([php,str(out/'http-fixtures.php'),mode],env=env,cwd=root/'my-bagisto-store',capture_output=True,text=True,encoding='utf-8',errors='replace')
+ if r.returncode:raise RuntimeError('Fixture helper failed, exit '+str(r.returncode))
+ return r.stdout
+def lastjson(text):
+ return json.loads([s for s in text.splitlines()if s.startswith('{')][-1])
+setup=False;server=None;results={}
+try:
+ data=lastjson(helper('setup'));setup=True
+ server=subprocess.Popen([php,'-S',f'127.0.0.1:{port}','-t','public'],env=env,cwd=root/'my-bagisto-store',stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+ client=AgentClient(env['AUDIT_BASE_URL'],data['did'],device_secret=data['secret'])
+ for _ in range(40):
+  ok,_=client.heartbeat('0.2.0')
+  if ok:break
+  time.sleep(.1)
+ else:raise RuntimeError('Isolated HTTP server failed readiness')
+ ok,first=client.fetch_commands();ok2,second=client.fetch_commands()
+ results['delivered_response_lost_no_ack']={'first_command_count':len(first.get('data')or[]),'second_command_count_without_durable_ack':len(second.get('data')or[])}
+ command=(first.get('data')or[data['command']])[0]
+ url=command['package_url'];target=out/'authorized-download.skill'
+ headers=client._build_auth_headers('GET',urlparse(url).path)
+ sha=PackageManager.download_package(url,str(target),headers)
+ results['authenticated_download_control']={'hash_matches':sha==command['signed']['package_sha256']}
+ device=pathlib.Path(tempfile.mkdtemp(prefix='http-device-'));storage=Storage(str(device));adapter=MockAdapter(app_dir=str(device));manager=TaskManager(str(device),storage,client,adapter,data['public_key'])
+ accepted=manager.process_command(command)
+ task=storage.get_task(command['task_id'])
+ results['real_http_install']={'accepted':accepted,'journal_status':task['status'] if task else None,'error_code':task.get('error_code')if task else None,'error_msg':task.get('error_msg')if task else None,'installed_count':len(storage.get_all_installed_skills())}
+ # 原交付四个HTTP测试原样运行；额外用环境和前置实际库名断言隔离。
+ os.environ.update(env)
+ suite=unittest.defaultTestLoader.discover(str(root/'agent/tests'),pattern='test_live_http_integration.py')
+ with (out/'python-original-live-http.txt').open('w',encoding='utf-8') as f:rr=unittest.TextTestRunner(stream=f,verbosity=2).run(suite)
+ results['original_live_suite']={'run':rr.testsRun,'failures':len(rr.failures),'errors':len(rr.errors),'skips':len(rr.skipped)}
+finally:
+ if server:
+  server.terminate()
+  try:server.wait(timeout=4)
+  except subprocess.TimeoutExpired:server.kill();server.wait()
+ if setup:
+  results['cleanup']=lastjson(helper('cleanup'))
+ (out/'http-counterexamples.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
+print(json.dumps(results,ensure_ascii=False,indent=2))
+
+````
+<!-- END EVIDENCE run-http-audit.py -->
+
+
+## 原始证据 http-counterexamples.json
+
+SHA-256：`8c9f217f82a01e1e1061e864f4a86429832d6f2f4f69d7515923f605b36fff27`
+
+<!-- BEGIN EVIDENCE http-counterexamples.json -->
+````json
+{
+  "delivered_response_lost_no_ack": {
+    "first_command_count": 1,
+    "second_command_count_without_durable_ack": 0
+  },
+  "authenticated_download_control": {
+    "hash_matches": true
+  },
+  "real_http_install": {
+    "accepted": false,
+    "journal_status": "FAILED",
+    "error_code": "PKG_HASH_MISMATCH",
+    "error_msg": "下载网络或IO异常: HTTP Error 401: Unauthorized",
+    "installed_count": 0
+  },
+  "original_live_suite": {
+    "run": 4,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0
+  },
+  "cleanup": {
+    "test_fixtures_cleaned": true,
+    "live_fixtures_cleaned": 1
+  }
+}
+````
+<!-- END EVIDENCE http-counterexamples.json -->
+
+
+## 原始证据 customer-counterexamples.json
+
+SHA-256：`fae28f06b8eabc64c6602617c21767397e8ac0a9063c75c19e6829e907228e8a`
+
+<!-- BEGIN EVIDENCE customer-counterexamples.json -->
+````json
+{
+    "expired_authorization_and_no_install": {
+        "is_usable": false,
+        "http_status": 202,
+        "data": {
+            "success": true,
+            "message": "技能执行已受理。",
+            "data": {
+                "execution_id": "exec_29196b3a-60d8-4680-86db-5087f602bf24",
+                "task_no": "DT261103205556-M1REY6",
+                "status": "ACCEPTED"
+            }
+        },
+        "install_records": 0
+    },
+    "nonempty_params_same_nonce": [
+        {
+            "status": 202,
+            "execution_id": "exec_196925ae-2ba6-4d73-a31d-9ac83b98549a"
+        },
+        {
+            "status": 202,
+            "execution_id": "exec_87425c12-0628-4cfa-9422-7ab66b0b1792"
+        }
+    ]
+}
+````
+<!-- END EVIDENCE customer-counterexamples.json -->
+
+
+## 原始证据 python-original-live-http.txt
+
+SHA-256：`a42e2272f8047c30173996ed09c3daff877205eb0c60e6491ef075afa129f043`
+
+<!-- BEGIN EVIDENCE python-original-live-http.txt -->
+````text
+test_live_01_heartbeat (test_live_http_integration.TestLiveHttpIntegration.test_live_01_heartbeat)
+测试 1: 真实 HTTP POST /api/agent/heartbeat 心跳刷新 ... ok
+test_live_02_fetch_and_ack_command (test_live_http_integration.TestLiveHttpIntegration.test_live_02_fetch_and_ack_command)
+测试 2: 真实 HTTP GET /api/agent/commands 拉取指令 -> POST /api/agent/ack 双向 ACK ... ok
+test_live_03_send_event (test_live_http_integration.TestLiveHttpIntegration.test_live_03_send_event)
+测试 3: 真实 HTTP POST /api/agent/evt 上报任务进度事件 ... ok
+test_live_04_reconciliation (test_live_http_integration.TestLiveHttpIntegration.test_live_04_reconciliation)
+测试 4: 真实 HTTP POST /api/agent/reconcile 双向事实对账 ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 3.895s
+
+OK
+
+````
+<!-- END EVIDENCE python-original-live-http.txt -->
+
+
+## 原始证据 php-tests.txt
+
+SHA-256：`592c6082f0274937d7a31e3d5a126e11e465608aa8cfd5dc1ee64cb9e4a8383d`
+
+<!-- BEGIN EVIDENCE php-tests.txt -->
+````text
+
+   FAIL  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 Agent 轮询时过滤掉 OP_EXECUTE(7) 与 OP_CANCEL_EXECUTION(8)                                                     0.51s
+  ✓ it OP_EXECUTE 执行成功仅更新 SkillExecution 状态，绝不污染 InstallRecord                                                   0.08s
+  ✓ it POST api/agent/ack 支持端云双向事件确认                                                                             0.08s
+  ⨯ it POST api/agent/reconcile 端侧安装事实与云端记录准确对账                                                                  0.09s
+  ✓ it 客户侧能够发起技能执行与取消，流转为 OP 7/8 任务                                                                              0.15s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentDeviceCredentialB12Test
+  ✓ it B-12 · enroll 为设备签发证书 + 独立 secret,服务端只存哈希/证书(不存明文)                                                        0.28s
+  ✓ it B-12 · per-device secret 能鉴权,错误 secret → 401                                                              0.28s
+  ✓ it B-12 · 证书请求签名可鉴权,篡改签名 / 过期 ts 被拒                                                                          0.27s
+  ✓ it B-12 · per-device 身份下用 A 的凭据拉 B 的指令 → 403(冒充被拒)                                                           0.17s
+  ✓ it B-12 · auth_mode=device 时共享密钥被拒(401)                                                                      0.08s
+  ✓ it B-12 · auth_mode=auto 时共享密钥仍放行(过渡期)                                                                       0.07s
+  ✓ it B-12 · 吊销后 secret 立即失效(且不回退共享密钥)                                                                          0.18s
+  ✓ it B-12 · 用户可单独吊销本人设备凭据(HTTP 入口)                                                                             0.25s
+  ✓ it B-12 · 无凭据设备吊销 → 404                                                                                      0.11s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\AgentPackageDistributionTest
+  ✓ it S-1 · 安装类下发任务自动带上真实包地址与指纹（不再为空）                                                                           0.15s
+  ✓ it S-1 · 签名 URL 拉到的字节 sha256 == 指令声明的 package_sha256                                                         0.25s
+  ✓ it S-1 · 签名覆盖的是真实哈希：改包即让签名对不上                                                                                0.18s
+  ✓ it S-1 · 改 package_sha256 即失签（端侧复算的靶子真的进了签名串）                                                                0.19s
+  ✓ it S-1 · 无包（dry install）任务仍能验签通过（空哈希不让整条签名失效）                                                                0.20s
+  ✓ it S-1 · URL 过期即失效（限时）                                                                                       0.23s
+  ✓ it S-1 · 篡改 versionId 或去掉签名即失效（防篡改）                                                                          0.20s
+  ✓ it S-1 · 无 Agent 凭据 → 401（URL 泄露也拿不到包）                                                                       0.23s
+  ✓ it S-1 · 落盘字节与 file_hash 不符 → 拒绝输出（绝不发出对不上的字节）                                                               0.20s
+  ✓ it S-1 · 文件整个不在盘上 → 明确报"文件缺失"（不是静默 200 空体）                                                                   0.23s
+  ✓ it S-1 · 非安装类操作（卸载 / 回收）不带包地址                                                                                0.20s
+  ✓ it S-1 · 该版本没有文件类交付物 → 不产生可下载的假地址，且如实记录无包                                                                    0.18s
+  ✓ it S-1 · 显式 packageUrl/packageHash 覆盖仍生效（测试与平台特例的口子）                                                         0.17s
+  ✓ it S-1 · 参考 Agent 模板带下载→复算→比对逻辑，错误码用常量替换（未真机验证）                                                              0.14s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployAnomalyStateP11Test
+  ✓ it P11 · dry install 报 done + PKG_MISSING → success 被标成空跑,且不落安装事实                                            0.16s
+  ✓ it P11 · 正常 done(无码)照常落 installed —— 闸门不误伤真实安装                                                               0.15s
+  ✓ it P11 · downloading 报下载失败 → 进 download_failed 并带 DOWNLOAD_FAILED 码                                          0.13s
+  ✓ it P11 · download_failed 可重试(device 再报 installing → 继续走)                                                     0.15s
+  ✓ it P11 · 安装失败报 failed 仍是泛化 failed(与下载失败区分开)                                                                  0.14s
+  ✓ it P11 · 下发给从未登记的设备 → 直接 failed + NOT_BOUND(不再空等 24 小时)                                                      0.14s
+  ✓ it P11 · 下发给已登记但离线的设备 → pending_online + OFFLINE(仍保留等它上线)                                                    0.13s
+  ✓ it P11 · 灰度指标把空跑排除在外(既不算成功也不算失败)                                                                             0.19s
+  ✓ it P11 · 生成的 agent.py 用常量替换了占位符,空跑带 PKG_MISSING                                                              0.16s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployAuditTrailP10Test
+  ✓ it P10 · 熔断记的是调用方自报身份(不再是 admin)                                                                             0.20s
+  ✓ it P10 · 不自报身份时记 internal(而非 admin)                                                                          0.16s
+  ✓ it P10 · 熔断同时进 operation_log,payload 带真实操作者与 IP                                                              0.15s
+  ✓ it P10 · 不同操作者按不同技能熔断 → operation_log 各记名的真实身份                                                               0.25s
+  ✓ it P10 · 解除熔断也留痕(否则复盘会看到一条永远生效的熔断)                                                                           0.18s
+  ✓ it P10 · engage() 直接调用时默认记 internal,绝不退回 admin                                                               0.13s
+  ✓ it P10 · 人工回滚:rollback_record 落操作者与 IP,并进 operation_log                                                      0.17s
+  ✓ it P10 · 自动回滚:发起者记 system + trigger=auto(与"人按的"区分开)                                                          0.15s
+  ✓ it P10 · 开启灰度也留痕(发起者 + 策略)                                                                                   0.16s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployIdempotencyTest
+  ✓ it 建任务去重：同设备 + 同版本 + 同操作连建两次，只有一条任务（双击不再落两条）                                                                 0.18s
+  ✓ it 去重不挡重来：上一条已终结（failed）之后再建是合法的                                                                             0.19s
+  ✓ it 去重按 (did, 版本, 操作) 三元组：换版本或换操作都不算重复                                                                        0.20s
+  ✓ it 投递标记：取走过一次的指令，设备重启后再拉不再返回（不重装）                                                                            0.20s
+  ✓ it 投递标记不误伤离线挂起：pending_online 从未投递过，设备上线后照常取到                                                                0.20s
+  ✓ it 灰度 abort 幂等：重复调用不再建第二轮回滚任务，也不再多写 rollback_record                                                          0.20s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployParamValidationP8Test
+  ✓ it P8 · operation=6(回收)是合法下发:不再被参数校验挡死                                                                       0.19s
+  ✓ it P8 · 白名单外(7)仍被拒 422                                                                                       0.18s
+  ✓ it P8 · 校验常量本身覆盖全部 OP_*(漏一个就等于线上又少一个合法操作)                                                                    0.12s
+  ✓ it P8 · 灰度指标 successes > installs 被拒 422(否则成功率能算出 >100%)                                                     0.16s
+  ✓ it P8 · 灰度指标 successes == installs 照常放行(边界不误伤)                                                               0.19s
+  ✓ it P8 · 给不存在的版本开灰度 → 422                                                                                     0.15s
+  ✓ it P8 · 给草稿版本开灰度 → 422(草稿永不下发,灰度只会空转)                                                                        0.19s
+  ✓ it P8 · 给已发布版本开灰度 → 201(闸门不误伤)                                                                               0.17s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTaskOwnershipTest
+  ✓ it show：看不到别人的 task_no（404，与"不存在"同码）                                                                         0.18s
+  ✓ it cancel：取消不了别人的任务（404，且对方任务未被改动）                                                                           0.18s
+  ✓ it 本人任务：show / cancel 正常（归属校验不误伤）                                                                            0.17s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTimeoutReclaimTest
+  ✓ it 24 小时前的 pending_online → 命令转 timeout（用户界面不再永远下发中）                                                         0.28s
+  ✓ it 在途任务（dispatching）超过阈值未回报 → 转 timeout                                                                      0.16s
+  ✓ it 未到阈值的不动：刚建 1 小时的 pending_online / 5 分钟前的 dispatching 都留着                                                  0.16s
+  ✓ it dry-run 只报告不写入                                                                                            0.15s
+  ✓ it 完成的（success）任务不被超时扫描误伤                                                                                    0.14s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTransitionSerializationTest
+  ✓ it 并发竞态：用过期状态去流转命中 0 行 → 返回 false 且不改库                                                                       0.15s
+  ✓ it 正常流转仍然生效，且内存态与库同步                                                                                         0.12s
+  ✓ it 非法流转返回 false（pending 不能直接到 success）                                                                       0.14s
+  ✓ it 条件更新不丢调用方先设的字段（error_code/error_msg 随流转一起落库）                                                              0.15s
+  ✓ it 每设备每轮只发一条指令（设备并行双任务 → 串行化）                                                                                0.17s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeviceOnlineTest
+  ✓ it 粘滞位的陷阱：online_status=true 但三小时没有心跳 → 界面显示**离线**                                                           0.18s
+  ✓ it 刚心跳过 → 在线                                                                                                 0.19s
+  ✓ it 从未心跳过 → 离线（哪怕粘滞列写着 true）                                                                                  0.19s
+  ✓ it 窗口边界：89 秒前算在线，91 秒前算离线                                                                                    0.18s
+  ✓ it 判据一致：设备列表 / 轮询网关 / 模拟网关 对同一台设备给同一个答案                                                                      0.19s
+  ✓ it 运营总览的「在线设备数」用的也是同一判据 —— 不把"曾经连过"算成在线                                                                      0.19s
+  ✓ it 绑定总数与在线数是两个不同的数 —— 别把前者读成后者                                                                               0.15s
+  ✓ it 兼容性校验：设备在线时**不再**说"设备当前离线"（此前那句话是硬编码的恒定输出）                                                                0.15s
+  ✓ it 兼容性校验：设备真离线时提示离线 —— 但只是提示，不是拒绝                                                                            0.19s
+  ✓ it 下发：设备只有粘滞位为 true、实际早已掉线 → 任务挂起为 pending_online 而不是"已下发"                                                   0.14s
+  ✓ it 事故快照不受影响：trace 记的仍是报案时库里的原始值（冻结语义优先于"读时真相"）                                                               0.17s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GrayCrashRateB11Test
+  ✓ it B-11 · 成功率 100% 但崩溃率 > 2% → 仍回滚(崩溃维度真的在起作用)                                                               0.17s
+  ✓ it B-11 · 崩溃率恰为阈值(2.0)不回滚 —— 判据是严格大于                                                                         0.16s
+  ✓ it B-11 · 不传崩溃数(旧调用方)行为不变:crash_rate=0,不误触发回滚                                                                0.16s
+  ✓ it B-11 · installs=0 时 crash_rate 为 null,不得被当成 0 之外的判据                                                       0.14s
+  ✓ it B-11 · evaluateFromRecords 从 error_code=CRASH 反查崩溃数(自驱路径有真实来源)                                            0.17s
+  ✓ it B-11 · 崩溃数 > 安装数被拒 422(崩过的设备数不可能超过下发的设备数)                                                                 0.16s
+  ✓ it B-11 · 带合法崩溃数上报 → 200,crash_rate 落库                                                                       0.18s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GrayRollbackTargetTest
+  ✓ it 首装设备推坏版本 → abort → 回滚任务真发给该设备（旧实现 affected=0）                                                             0.18s
+  ✓ it 升级设备（旧版已装）也照样回滚                                                                                           0.19s
+  ✓ it 只回滚本次灰度成功的设备：装失败的设备不背锅                                                                                    0.18s
+  ✓ it 同一设备多条成功记录只回滚一次（按 did 去重）                                                                                 0.19s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KeyPersistenceS6Test
+  ✓ it a) 配置 AGENT_KEYS_DIR 后，读写都落在新目录                                                                           0.51s
+  ✓ it b) 私钥在、公钥缺 → 公钥被重建且与私钥匹配（私钥字节不变）                                                                          0.42s
+  ✓ it c) CA 私钥在、证书缺 → 重签后 CA 公钥不变，老设备证书仍能验证                                                                     0.85s
+  ✓ it d) 两个文件都缺 → 生成新密钥对/新 CA（既有行为不回归）                                                                          0.74s
+  ✓ it e1) agent:keys:generate 幂等：已存在不覆盖（hash 与 mtime 不变）                                                        2.09s
+  ✓ it e2) agent:keys:generate --replace 会先备份再生成                                                                 1.49s
+  ✓ it f) agent:keys:import 遇已存在默认 FAILURE；--replace 成功且旧文件进 backup-*                                            1.83s
+  ✓ it g1) agent:keys:import 公私钥不匹配 → FAILURE 且不落盘                                                               1.51s
+  ✓ it g2) agent:keys:import 私钥损坏 → FAILURE 且不落盘                                                                 0.87s
+  ✓ it h) export → import 往返：导出目录能原样导入（关键文件 hash 一致）                                                             0.66s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchSaleStopTest
+  ✓ it S-8 · 熔断后:市场搜索搜不到该技能(查询层排除)                                                                               0.24s
+  ✓ it S-8 · 熔断后:详情**明确报错**(SKILL_BLOCKED),不是静默 404                                                              0.22s
+  ✓ it S-8 · 熔断后:下单被拦(最早入口),且不产生新的 skill_entitlement                                                             0.18s
+  ✓ it S-8 · 兜底:SkillDelivery 在创建授权处 fail-closed(下单源不止一条)                                                        0.18s
+  ✓ it S-8 · block_new 下:已授权用户的 download **仍可**(只停新增)                                                            0.18s
+  ✓ it S-8 · block_all 下:已授权用户的 download 被拒,assets 给出明确提示                                                        0.19s
+  ✓ it S-8 · lift 后:市场恢复可见、下载恢复                                                                                  0.29s
+  ✓ it S-8 · 只影响目标技能:另一个未熔断技能的市场可见性与下载不受影响                                                                       0.25s
+  ✓ it S-8 · engage 记下该技能真实的已售/已装/已下载数,并落入 operation_log                                                         0.19s
+  ✓ it S-8 · 熔断后:首页聚合 /api/tob-catalog 的技能段不含该技能;买/租段不受影响                                                        0.79s
+  ✓ it S-8 · 未熔断时:首页聚合技能段仍含该技能（反向对照，防过滤写宽把技能段清空）                                                                 0.35s
+  ✓ it S-8 · 熔断后:GET /api/products?category_id=技能分类 不含该技能;非技能分类不受影响                                              0.51s
+  ✓ it S-8 · 熔断后:GET /api/products/{id} 打开被熔断技能 → 409 SKILL_BLOCKED（不静默 404）                                     0.31s
+  ✓ it S-8 · 未熔断时:GET /api/products 技能分类列表与详情都正常可见（反向对照）                                                         0.41s
+  ✓ it S-8 · 后台查询路径不受影响:不带 exclude_ids 的 getAll 仍返回被熔断技能                                                         0.26s
+  ✓ it S-8 · 熔断后:小召 AI 的技能库(fetchCatalog)不含被熔断技能;机型库不受影响                                                         0.45s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchScopeTest
+  ✓ it S-5 · 在线设备的卸载任务立即进入可被拉取的状态(不是 pending_online)                                                             0.16s
+  ✓ it S-5 · 离线设备的卸载任务落 pending_online,统计离线 +1、在线不加                                                              0.17s
+  ✓ it S-5 · 人工通道安装的设备计为"无法自动卸载",且不建 agent 卸载任务                                                                  0.13s
+  ✓ it S-5 · C 端自报安装 → install_record.channel 与该授权的 delivery_channel 一致                                          0.17s
+  ✓ it S-5 · 历史 channel=null 的行:跑熔断后仍是 null(不冒充人工通道)                                                             0.12s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchTest
+  ✓ it 熔断生效后：POST /api/deploy/tasks 被拒（409），且不落任何任务                                                              0.17s
+  ✓ it 未熔断时：同样的请求正常建任务（闸门不误伤）                                                                                    0.18s
+  ✓ it 熔断只拦新下发：卸载 / 回滚 / 回收任务仍可建（补救动作放行）                                                                         0.12s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\PortableSkillCompilerTest
+  ✓ it TargetProfileService 能够加载各机型 Profile 并计算规范化 JCS 摘要                                                        0.14s
+  ✓ it PortableSourceValidator 严格校验清单格式与行为树 XML 白名单及安全边界                                                         0.12s
+  ✓ it SourceParser 正确将 BehaviorTree XML4 转换为结构化 IR 与不可变摘要                                                       0.12s
+  ✓ it MotionTranscoder 为 Unitree G1 生成平滑且在物理限位内的关节轨迹                                                            0.16s
+  ✓ it PortableSkillBuilder 成功编译标准源为 Unitree G1 目标成品并打通交付解析                                                      0.20s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillFullChainEndToEndTest
+  ✓ it PackageInspector：app/composite 技能允许合规 .py/.sh 脚本，但拦截高危破坏指令与 motion 脚本夹带                                   0.19s
+  ✓ it 全链路闭环：开发者上传标准 .skill → L0/L2 审核上架 → 买家下单/未付拦截/模拟支付/下载 → Agent 验签下载落盘解压与启停卸载                               1.87s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\TaskNoCollisionRetryTest
+  ✓ it S-10 · 撞号能自愈:造号器先给一个已存在的号、再给新号 → create() 成功返回新号任务                                                        0.15s
+  ✓ it S-10 · 试满上限仍撞 → 抛出(不静默返回 null / 半条记录),且库里不留脏数据                                                            0.14s
+  ✓ it S-10 · 非「本表撞号」的 QueryException 照常抛,且不重试(不允许被 catch 吞掉)                                                    0.15s
+  ✓ it S-10 · 判重只认本表 uk_deploy_task_no:别的键冲突 / 非唯一键错误都不算「撞号」                                                     0.13s
+  ✓ it S-10 · 回归:新号仍是 DT + ymdHis 时间戳(运维可按时间检索),同秒多条不再撞                                                          0.16s
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\TestUniqueNoGuardS9Test
+  ✓ it S-9 · 放大压力:同秒连造上千条,老写法必撞、testUniqueNo 全唯一且真能落库                                                            1.05s
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest > it POST api/agent/reconcile 端侧安装事实与云端记录准确对账
+  Failed asserting that false is true.
+
+  at packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest.php:206
+    202▕         'X-Agent-Key' => $agentKey,
+    203▕     ]);
+    204▕
+    205▕     $res->assertOk();
+  ➜ 206▕     expect($res->json('data.aligned'))->toBeTrue();
+    207▕     $details = $res->json('data.details');
+    208▕     expect($details)->toHaveCount(1);
+    209▕     expect($details[0]['skill_version_id'])->toBe(5001);
+    210▕     expect($details[0]['match'])->toBeTrue();
+
+  1   packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest.php:206
+
+
+  Tests:    1 failed, 141 passed (4431 assertions)
+  Duration: 38.86s
+
+
+````
+<!-- END EVIDENCE php-tests.txt -->
+
+
+## 原始证据 contract-check.txt
+
+SHA-256：`c9629d2851f453e9902dfcc291376b302e4986e9271bd27e8aca5449c4062259`
+
+<!-- BEGIN EVIDENCE contract-check.txt -->
+````text
+契约版本：2026-10-20-q1
++-------------------+------+
+| 项目              | 数量 |
++-------------------+------+
+| admin_routes      | 113  |
+| public_routes     | 45   |
+| contracted_routes | 45   |
+| error_codes       | 85   |
+| state_inventories | 11   |
++-------------------+------+
+契约检查通过。
+
+````
+<!-- END EVIDENCE contract-check.txt -->
+
+
+## 原始证据 evidence-manifest.json
+
+SHA-256：`77637cc95093a6e4ebbfa3703b610509f1224bb5ce0c88b442187d54e3f31301`
+
+<!-- BEGIN EVIDENCE evidence-manifest.json -->
+````json
+{
+  "head": "478a036c97d5e7b93b86bf4a358da60212489c5d",
+  "files": [
+    {
+      "file": "run-offline-tests.py",
+      "sha256": "bd16af2912f9f17ccc3e6ea1678d3c0a447e00cb83a55597e080b899c99cd1eb"
+    },
+    {
+      "file": "python-offline.txt",
+      "sha256": "a6a1899a0e6c3332ecf9044213d21d8df09354a634881049976f0419f74fc589"
+    },
+    {
+      "file": "preflight.php",
+      "sha256": "4604f1af8bb8a9badd228a52c1a6a9324d6458a66ff8f4135194bc37d84819aa"
+    },
+    {
+      "file": "agent-counterexamples.py",
+      "sha256": "e92b06911357d09af110dcb4d6fb2133db7b58faf261e65903ac0ca10a1a2cc1"
+    },
+    {
+      "file": "agent-counterexamples.json",
+      "sha256": "acffe392b68e098732bc9206c9d31b7b4611bc7288d606dac83d0bbdfa1b1cd0"
+    },
+    {
+      "file": "http-fixtures.php",
+      "sha256": "41f082a1624ffda4c4588bbcafdab39eea3a010759ad8fe3673d989e1ef3c441"
+    },
+    {
+      "file": "run-http-audit.py",
+      "sha256": "ce835c0e4b3322b34f68586ce4abae0a66a7c8d2f81a60d2cfc6ea4a5f988175"
+    },
+    {
+      "file": "http-counterexamples.json",
+      "sha256": "8c9f217f82a01e1e1061e864f4a86429832d6f2f4f69d7515923f605b36fff27"
+    },
+    {
+      "file": "customer-counterexamples.json",
+      "sha256": "fae28f06b8eabc64c6602617c21767397e8ac0a9063c75c19e6829e907228e8a"
+    },
+    {
+      "file": "python-original-live-http.txt",
+      "sha256": "a42e2272f8047c30173996ed09c3daff877205eb0c60e6491ef075afa129f043"
+    },
+    {
+      "file": "php-tests.txt",
+      "sha256": "592c6082f0274937d7a31e3d5a126e11e465608aa8cfd5dc1ee64cb9e4a8383d"
+    },
+    {
+      "file": "contract-check.txt",
+      "sha256": "c9629d2851f453e9902dfcc291376b302e4986e9271bd27e8aca5449c4062259"
+    }
+  ],
+  "business_code_modified": false,
+  "robot_actions_executed": false
+}
+
+````
+<!-- END EVIDENCE evidence-manifest.json -->

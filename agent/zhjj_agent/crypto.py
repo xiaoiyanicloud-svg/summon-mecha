@@ -16,25 +16,58 @@ def _utf16_sort_key(s: str) -> bytes:
 
 
 def format_es_number(val: Union[int, float]) -> str:
-    """按 ECMAScript 标准格式化数字（RFC 8785 §3.2.2.3 规范表示）。"""
+    """按 ECMAScript 标准格式化数字（RFC 8785 §3.2.2.3 规范表示）。
+    精确符合 ECMAScript Number.prototype.toString(10) 规则：
+    - 0 与 -0 均为 "0"
+    - 1e-6 到 1e20 之间使用定点十进制表示（例如 1e-6 -> "0.000001"）
+    - 指数表示法格式为 "1e-7", "1e+21"
+    """
     if isinstance(val, bool):
         return "true" if val else "false"
-    if isinstance(val, int):
-        return str(val)
-    if isinstance(val, float):
-        if val != val or val == float('inf') or val == float('-inf'):
-            raise ValueError("NaN and Infinity are not permitted in JCS")
-        if val == 0.0 or val == -0.0:
-            return "0"
-        s = f"{val:.16g}"
-        if "e" in s or "E" in s:
-            parts = s.lower().split("e")
-            base = parts[0]
-            exp = parts[1]
-            exp_sign = exp[0]
-            exp_val = exp[1:].lstrip("0") or "0"
-            return f"{base}e{exp_sign}{exp_val}"
-        return s
+    import math
+    if math.isnan(val) or math.isinf(val):
+        raise ValueError("NaN and Infinity are not permitted in JCS")
+    if val == 0:
+        return "0"
+    sign = "-" if math.copysign(1.0, val) < 0 else ""
+    val_abs = abs(val)
+    if isinstance(val, int) or (isinstance(val, float) and val_abs.is_integer() and val_abs < 1e21):
+        return f"{sign}{int(val_abs)}"
+
+    s = str(val_abs)
+    if "e" in s or "E" in s:
+        mantissa, exp_s = s.lower().split("e")
+        exp = int(exp_s)
+    else:
+        mantissa = s
+        exp = 0
+
+    if "." in mantissa:
+        dot_idx = mantissa.index(".")
+        digits = mantissa.replace(".", "")
+        n = dot_idx + exp
+    else:
+        digits = mantissa
+        n = len(digits) + exp
+
+    digits = digits.lstrip("0")
+    k = len(digits)
+
+    # 6. If k <= n <= 21: return digits + '0' * (n - k)
+    if k <= n <= 21:
+        return sign + digits + ("0" * (n - k))
+    # 7. If 0 < n <= 21: return digits[:n] + '.' + digits[n:]
+    if 0 < n <= 21:
+        return sign + digits[:n] + "." + digits[n:]
+    # 8. If -6 < n <= 0: return '0.' + ('0' * -n) + digits
+    if -6 < n <= 0:
+        return sign + "0." + ("0" * -n) + digits
+
+    exp_sign = "+" if (n - 1) >= 0 else "-"
+    exp_val = str(abs(n - 1))
+    if k == 1:
+        return sign + digits + "e" + exp_sign + exp_val
+    return sign + digits[0] + "." + digits[1:] + "e" + exp_sign + exp_val
 
 
 def _jcs_serialize(obj: Any) -> str:

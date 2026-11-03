@@ -138,25 +138,48 @@ class SigningService
         if ($val === 0.0 || $val === -0.0 || $val === 0) {
             return "0";
         }
-        if (is_int($val)) {
-            return (string) $val;
+        $sign = ($val < 0) ? '-' : '';
+        $abs = abs($val);
+        if (is_int($val) || (is_float($val) && floor($abs) === $abs && $abs < 1e21)) {
+            return $sign . sprintf('%.0f', $abs);
         }
-        $str = sprintf('%.16g', $val);
-        if (str_contains($str, 'e') || str_contains($str, 'E')) {
-            $parts = preg_split('/[eE]/', $str);
-            $base = $parts[0];
-            if (str_contains($base, '.')) {
-                $base = rtrim(rtrim($base, '0'), '.');
-            }
-            $exp = $parts[1];
-            $expSign = $exp[0];
-            $expVal = ltrim(substr($exp, 1), '0');
-            if ($expVal === '') {
-                $expVal = '0';
-            }
-            return strtolower($base) . 'e' . $expSign . $expVal;
+        $s = json_encode($abs);
+        if (str_contains($s, 'e') || str_contains($s, 'E')) {
+            $parts = preg_split('/[eE]/', $s);
+            $mantissa = $parts[0];
+            $exp = (int) $parts[1];
+        } else {
+            $mantissa = $s;
+            $exp = 0;
         }
-        return $str;
+        if (str_contains($mantissa, '.')) {
+            $mantissa = rtrim(rtrim($mantissa, '0'), '.');
+        }
+        if (str_contains($mantissa, '.')) {
+            $dot_idx = strpos($mantissa, '.');
+            $digits = str_replace('.', '', $mantissa);
+            $n = $dot_idx + $exp;
+        } else {
+            $digits = $mantissa;
+            $n = strlen($digits) + $exp;
+        }
+        $digits = ltrim($digits, '0');
+        $k = strlen($digits);
+        if ($k <= $n && $n <= 21) {
+            return $sign . $digits . str_repeat('0', $n - $k);
+        }
+        if (0 < $n && $n <= 21) {
+            return $sign . substr($digits, 0, $n) . '.' . substr($digits, $n);
+        }
+        if (-6 < $n && $n <= 0) {
+            return $sign . '0.' . str_repeat('0', -$n) . $digits;
+        }
+        $exp_sign = ($n - 1 >= 0) ? '+' : '-';
+        $exp_val = (string) abs($n - 1);
+        if ($k === 1) {
+            return $sign . $digits . 'e' . $exp_sign . $exp_val;
+        }
+        return $sign . $digits[0] . '.' . substr($digits, 1) . 'e' . $exp_sign . $exp_val;
     }
 
     public static function jcsCanonicalize(mixed $data): string

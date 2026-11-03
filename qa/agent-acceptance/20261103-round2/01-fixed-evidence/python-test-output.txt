@@ -1,0 +1,148 @@
+﻿python.exe : test_at01_startup_and_discovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at01_startup_and_
+discovery)
+At line:1 char:51
++ ... cha\agent"; & "C:\Users\Administrator\.cache\codex-runtimes\codex-pri ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_at01_start..._and_discovery):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+A-T01: ��ģ����ش���֧�� Python 3.12/3.14 �淶���� ... ok
+test_at02_unsigned_operation_tamper (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at02_unsigned_operation_ta
+mper)
+A-T02: signed.operation=5 (DISABLE), ���ĳ� 4 (ENABLE) -> ������ǰ�ܾ���ԭ����״̬�������� ... ok
+test_at03_device_and_field_mismatch (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at03_device_and_field_mism
+atch)
+A-T03: ��Чǩ�� B ������ŵ� A��������� DID/skill/version ��һ�� -> �ܾ� ... ok
+test_at04_invalid_signature_and_protocol (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at04_invalid_signatur
+e_and_protocol)
+A-T04: v2 ȱ�ֶ�/δ֪Э��/ǩ����/operation ȱʧ��v1 Я�� 7 �� 8 -> �ܾ� ... ok
+test_at05_expired_task_and_authorization (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at05_expired_task_and
+_authorization)
+A-T05: �����ѹ���Ч�ڻ�ʹ����Ȩ�ѹ��� -> �ܾ�ִ�� ... ok
+test_at06_same_task_refreshed_expiry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at06_same_task_refreshed_
+expiry)
+A-T06: ���񹹽���ǩ���غɱ����ᣬ���ˢ�²��ܵ��¹���ʱ��Ư�� ... ok
+test_at07_deduplication_by_execution_id (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at07_deduplication_by_
+execution_id)
+A-T07: ͬ execution_id����ͬ task_id ��Ͷ -> �����������һ�Σ�ȡ�����ܶ�λ ... ok
+test_at08_execution_id_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at08_execution_id_isolation)
+A-T08: ������ͬ execution_id ˳��ִ�У������ж�����ݣ������̵�Ϸ�ִ�� ... ok
+test_at09_adapter_no_sdk_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at09_adapter_no_sdk_rejecti
+on)
+A-T09: Unitree G1 ������������ʵ SDK ���� stub ʱ�ܾ�ִ�У�������ʱ��ð�ɹ� ... ok
+test_at10_crash_during_download_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at10_crash_during_dow
+nload_recovery)
+A-T10: ��װ v2 �����ؽ׶��жϣ��豸��ʵ�汾Ϊ v1 -> �����ܱ��� v2 �ɹ� ... ok
+test_at11_crash_and_restart_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at11_crash_and_restart_re
+covery)
+A-T11: ��ʵģ�����������ָ���δ��������ط���״̬����Ϊ FAILED ... ok
+test_at12_lost_commands_ack_and_event_retry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at12_lost_commands
+_ack_and_event_retry)
+A-T12: �¼����ͺ�ֻ���������յ���Ч��Ӧʱ�ű�� ACK������ʧ�ܱ����� Outbox ���� ... ok
+test_at13_rejected_fact_and_409_preservation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at13_rejected_fac
+t_and_409_preservation)
+A-T13: ����˷��� 409 TASK_TRANSITION_INVALID ʱ�����¼���־����������ʵ ... ok
+test_at14_reconciliation_mismatches (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at14_reconciliation_mismat
+ches)
+A-T14: ��ʵ���������˶Զ˲�״̬������״̬���� ... ok
+test_at15_running_execution_cancel (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at15_running_execution_canc
+el)
+A-T15: �����м����յ�ȡ��ָ�״̬��ǨΪ CANCELED ���۲쵽 is_stopped=True ... FAIL
+test_at16_lease_expiry_and_usurpation_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at16_lease_ex
+piry_and_usurpation_prevention)
+A-T16: δ��ȷ��ֹͣ��ִ����Լ����ʹʱ���ѹ�Ҳ���ܱ���ִ�д��� ... ok
+test_at17_revocation_epoch_enforcement (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at17_revocation_epoch_e
+nforcement)
+A-T17: �յ� epoch=5 ͣ��/���պ󣬾� epoch=4 ����ǿ�оܾ� ... ok
+test_at18_explicit_rollback_to_good_version (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at18_explicit_roll
+back_to_good_version)
+A-T18: v2 �쳣�ع��� v1�������ֽڻָ�Ϊ v1����¼״̬�� rolled_back ... ok
+test_at19_first_install_rollback_safe_disable (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at19_first_insta
+ll_rollback_safe_disable)
+A-T19: ��װ��ʧ�ܻع����޾ɰ�ʱ��ȷ��ȫͣ�ã����鱨�ٻָ� ... ok
+test_at20_model_fallback_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at20_model_fallback_preven
+tion)
+A-T20: ƽ̨���������/�������ڴ���Ŀ����͹���ʱ���ܾ��򲻼��ݻ��ʹ�������Ʋ��� ... ok
+test_at21_package_security_checks (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at21_package_security_checks
+)
+A-T21: ����·����Խ (Zip Slip)����ѹը����������ӣ�����ɰ汾��� ... ok
+test_at22_forbidden_param_and_execution_guard (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at22_forbidden_p
+aram_and_execution_guard)
+A-T22: �ܾ����۸���ԽȨ����ע�룬��������������δǩԽȨ���� ... ok
+test_at23_execution_fact_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at23_execution_fact_isolati
+on)
+A-T23: OP_EXECUTE ����ִ����ʵ�������۸Ļ����� install_record ... ok
+test_at24_killswitch_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at24_killswitch_rejection)
+A-T24: �۶���Чʱ�����񱻾ܣ��ָ������ͨ·�Է��� ... ok
+test_at25_rfc8785_cross_language_vectors (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at25_rfc8785_cross_la
+nguage_vectors)
+A-T25: PHP �� Python �淶�� JSON �ֽ���ȫһ�£�UTF-16 ������ECMAScript ���ָ�ʽ��1e-6��1e20�� ... ok
+test_at26_per_device_credential_revocation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at26_per_device_cre
+dential_revocation)
+A-T26: �豸ƾ�ݵ����󣬽�ֹͨ��ʡ�� did ������Կ��·�ƹ���Ȩ ... ok
+test_canonical_v2_prefix (test_crypto.TestCrypto.test_canonical_v2_prefix) ... ok
+test_jcs_canonicalize_order (test_crypto.TestCrypto.test_jcs_canonicalize_order) ... ok
+test_jcs_types (test_crypto.TestCrypto.test_jcs_types) ... ok
+test_rsa_signature_and_verify (test_crypto.TestCrypto.test_rsa_signature_and_verify) ... ok
+test_compiled_portable_skill_execution_on_unitree_g1 (test_e2e_simulator.TestE2ESimulator.test_compiled_portable_skill_
+execution_on_unitree_g1)
+���Ա����������ı�׼���ܰ��� Unitree G1 �������ϵĶ˵��˲�����ִ�� ... ok
+test_full_agent_lifecycle_end_to_end (test_e2e_simulator.TestE2ESimulator.test_full_agent_lifecycle_end_to_end) ... ok
+test_disabled_skill_cannot_execute (test_executor.TestExecutor.test_disabled_skill_cannot_execute) ... ok
+test_execute_and_observe_succeeded (test_executor.TestExecutor.test_execute_and_observe_succeeded) ... ok
+test_resource_mutex_conflict_blocked (test_executor.TestExecutor.test_resource_mutex_conflict_blocked) ... ok
+test_safe_cancel_execution (test_executor.TestExecutor.test_safe_cancel_execution) ... ok
+test_live_01_heartbeat (test_live_http_integration.TestLiveHttpIntegration.test_live_01_heartbeat)
+���� 1: ��ʵ HTTP POST /api/agent/heartbeat ����ˢ�� ... ok
+test_live_02_fetch_and_ack_command (test_live_http_integration.TestLiveHttpIntegration.test_live_02_fetch_and_ack_comma
+nd)
+���� 2: ��ʵ HTTP GET /api/agent/commands ��ȡָ�� -> POST /api/agent/ack ˫�� ACK ... ok
+test_live_03_send_event (test_live_http_integration.TestLiveHttpIntegration.test_live_03_send_event)
+���� 3: ��ʵ HTTP POST /api/agent/evt �ϱ���������¼� ... ok
+test_live_04_reconciliation (test_live_http_integration.TestLiveHttpIntegration.test_live_04_reconciliation)
+���� 4: ��ʵ HTTP POST /api/agent/reconcile ˫����ʵ���� ... ok
+test_staging_install_success_and_failure_isolation (test_package_manager.TestPackageManager.test_staging_install_succes
+s_and_failure_isolation) ... ok
+test_valid_unpack_and_manifest (test_package_manager.TestPackageManager.test_valid_unpack_and_manifest) ... ok
+test_zip_bomb_file_count_rejected (test_package_manager.TestPackageManager.test_zip_bomb_file_count_rejected) ... ok
+test_zip_slip_attack_rejected (test_package_manager.TestPackageManager.test_zip_slip_attack_rejected) ... ok
+test_zip_symlink_rejected (test_package_manager.TestPackageManager.test_zip_symlink_rejected) ... ok
+test_storage_installed_skills_and_json_sync (test_storage.TestStorage.test_storage_installed_skills_and_json_sync) ... 
+ok
+test_storage_journal_and_idempotency (test_storage.TestStorage.test_storage_journal_and_idempotency) ... ok
+test_storage_outbox_and_leases (test_storage.TestStorage.test_storage_outbox_and_leases) ... ok
+test_distinct_execution_ids_not_deduped (test_task_manager.TestTaskManager.test_distinct_execution_ids_not_deduped) ...
+ ok
+test_first_install_rollback_safely_disables (test_task_manager.TestTaskManager.test_first_install_rollback_safely_disab
+les) ... ok
+test_interrupted_install_recovery_on_startup (test_task_manager.TestTaskManager.test_interrupted_install_recovery_on_st
+artup) ... ok
+test_op_execute_and_cancel_lifecycle (test_task_manager.TestTaskManager.test_op_execute_and_cancel_lifecycle) ... ok
+test_outbox_offline_retry_and_flush (test_task_manager.TestTaskManager.test_outbox_offline_retry_and_flush) ... ok
+test_replay_duplicate_task_idempotency (test_task_manager.TestTaskManager.test_replay_duplicate_task_idempotency) ... o
+k
+test_task_expired_rejected_before_side_effects (test_task_manager.TestTaskManager.test_task_expired_rejected_before_sid
+e_effects) ... ok
+test_v2_signature_tamper_all_fields_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_all_fields_rej
+ected) ... ok
+test_v2_signature_tamper_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_rejected) ... ok
+
+======================================================================
+FAIL: test_at15_running_execution_cancel (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at15_running_executio
+n_cancel)
+A-T15: �����м����յ�ȡ��ָ�״̬��ǨΪ CANCELED ���۲쵽 is_stopped=True
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\CodexDeploy\summon-mecha\agent\tests\test_acceptance_at01_at26.py", line 444, in test_at15_running_execution
+_cancel
+    self.assertEqual(obs["status"], "CANCELED")
+AssertionError: 'SUCCEEDED' != 'CANCELED'
+- SUCCEEDED
++ CANCELED
+
+
+----------------------------------------------------------------------
+Ran 57 tests in 13.028s
+
+FAILED (failures=1)
+G1 wave running
