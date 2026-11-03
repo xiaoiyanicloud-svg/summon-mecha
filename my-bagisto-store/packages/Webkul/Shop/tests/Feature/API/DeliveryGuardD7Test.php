@@ -138,7 +138,7 @@ it('D7 · 登记设备时认领授权,一条通道坏了不拖垮整批,也不�
         ->assertJsonPath('claim.failed', 1)
         ->assertJsonPath('claim.claimed', 1);
 
-    expect($res->json('message'))->toContain('未能自动下发');
+    expect($res->json('message'))->toContain('技能交付待平台处理');
 
     // ⚠ 后一条不能被前一条的异常跳过 —— 这正是"逐条 try/catch"与"整段 try/catch"的区别
     expect((int) $okEntitlement->fresh()->device_id)->not->toBe(0);

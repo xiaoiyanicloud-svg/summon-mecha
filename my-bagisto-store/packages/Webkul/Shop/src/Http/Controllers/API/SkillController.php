@@ -599,7 +599,7 @@ class SkillController extends APIController
 
         // 熔断闸：执行前校验
         if (app(KillSwitchService::class)->isBlocked($entitlement->product_id, DeployTask::OP_EXECUTE)) {
-            return $this->fail('SKILL_BLOCKED', '该技能已被熔断禁用，禁止启动新执行。', 403);
+            return $this->fail(ApiErrorCode::SKILL_BLOCKED, '该技能已被熔断禁用，禁止启动新执行。', 403);
         }
 
         $params = $request->input('params', []);

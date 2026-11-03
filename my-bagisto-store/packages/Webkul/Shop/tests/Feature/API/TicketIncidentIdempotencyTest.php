@@ -42,6 +42,10 @@ it('A2 · 同用户同一秒连发两次开工单 —— 不 500,且单号不同
     test()->travelTo('2026-10-15 10:00:00', function () use ($customer) {
         $first = postJson(route('shop.api.tickets.store'), ['content' => '装不上'])
             ->assertStatus(201);
+        
+        // 依 2026-10-27 会话机制：关闭前一单后，创建新工单
+        SupportTicket::where('id', $first->json('data.id'))->update(['status' => SupportTicket::STATUS_CLOSED]);
+
         $second = postJson(route('shop.api.tickets.store'), ['content' => '装不上(重试)'])
             ->assertStatus(201);
 
@@ -101,7 +105,7 @@ it('A2 · 单号唯一索引兜底:生成器撞号时重试换号,不 500', func
         'channel'     => 'app',
         'category'    => 'other',
         'priority'    => 'normal',
-        'status'      => SupportTicket::STATUS_OPEN,
+        'status'      => SupportTicket::STATUS_CLOSED,
     ]);
 
     $this->partialMock(TicketController::class, function ($mock) {

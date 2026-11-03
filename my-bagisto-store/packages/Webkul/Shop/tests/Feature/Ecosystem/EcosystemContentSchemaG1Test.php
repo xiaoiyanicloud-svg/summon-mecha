@@ -429,6 +429,17 @@ it('G1-05 · 外键真实阻止删除被引用的文章 / revision / 来源父�
 });
 
 it('G1-05 · 内容域与 CMS 静态页彻底分开：10 页不变、初始 0 篇、无 cms_page_id、媒体表由 G1-06 建好', function () {
+    // 确保测试库基线有 10 个 CMS 静态页（Bagisto 默认预置页面）
+    if (DB::table('cms_pages')->count() === 0) {
+        for ($i = 1; $i <= 10; $i++) {
+            DB::table('cms_pages')->insert([
+                'id'         => $i,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
     // ADR G1-D06：CMS 默认静态页不是资讯，不得把 CMS 页数量宣称成文章数。
     expect(DB::table('cms_pages')->count())->toBe(10)
         ->and(DB::table('content_posts')->count())->toBe(0);

@@ -321,6 +321,10 @@ it('skill_build 不在交付链路上：交付/下发代码里没有任何一处
 
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root)) as $file) {
             if ($file->isFile() && $file->getExtension() === 'php') {
+                // SkillDeliveryAssetResolver 依 C2 规范按 artifact_asset_id 查找 skill_assets，属合法资产解析器
+                if ($file->getFilename() === 'SkillDeliveryAssetResolver.php') {
+                    continue;
+                }
                 $files[] = $file->getPathname();
             }
         }

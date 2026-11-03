@@ -39,6 +39,14 @@ class TobOrderController extends APIController
      */
     public function store(Request $request): JsonResponse
     {
+        $type = (string) $request->input('type', 'rent');
+        if (in_array($type, ['custom', 'plan'], true)) {
+            $checkId = (int) $request->input('product_id', 0);
+            if ($checkId && app(\Webkul\Shop\Services\SkillDelivery\SkillMarketService::class)->isSkill($checkId)) {
+                return $this->fail(ApiErrorCode::SKILL_ORDER_TYPE_MISMATCH, '技能商品请通过技能详情页购买。', 409);
+            }
+        }
+
         // 旧 custom 只适配成独立需求，永不创建零元订单；旧客户端必须展示需求回执。
         if ($request->input('type') === 'custom') {
             return app(SceneWorkflowController::class)->store($this->adaptLegacyCustom($request), app(\Webkul\Shop\Services\Scenes\SceneRequestService::class));
@@ -137,22 +145,6 @@ class TobOrderController extends APIController
             $rentPeriod = (string) $request->input('rentPeriod', '');
             $sceneName = (string) $request->input('scene', '');
 
-            // 配件单的类型安全:只接受「配件」分类下、已上架的商品。
-            // 前端曾把 mock/旧缓存商品的 id 传进来,而 products 表里恰好存在同 id 的
-            // 租用/购买商品 —— 不校验分类就会把订单挂到完全不同的商品上。
-            $accessoryCategoryId = null;
-            if ($type === 'accessory') {
-                $accessoryCategoryId = \Webkul\Category\Models\Category::query()
-                    ->whereHas('translations', fn ($q) => $q->where('slug', 'accessory'))
-                    ->value('id');
-
-                if (! $accessoryCategoryId) {
-                    return $this->fail(ApiErrorCode::ACCESSORY_UNAVAILABLE, '配件目录暂不可用，请稍后再试。', 503);
-                }
-            }
-
-            $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制', 'skill' => '技能', 'accessory' => '配件'];
-
             // 统一归一化成「行」:多机合单来自 items[],单商品来自顶层参数
             if ($isMulti) {
                 $lines = collect($itemsInput)->map(fn ($it) => [
@@ -169,6 +161,26 @@ class TobOrderController extends APIController
                     'rent_days' => $type === 'rent' ? max(1, (int) $request->input('rent_days', 1)) : 1,
                 ]];
             }
+
+            if ($problem = app(SkillMarketService::class)->purchaseProblem(array_column($lines, 'product_id'), $customer?->id, $type)) {
+                return $this->fail($problem['code'], $problem['message'], $problem['status']);
+            }
+
+            // 配件单的类型安全:只接受「配件」分类下、已上架的商品。
+            // 前端曾把 mock/旧缓存商品的 id 传进来,而 products 表里恰好存在同 id 的
+            // 租用/购买商品 —— 不校验分类就会把订单挂到完全不同的商品上。
+            $accessoryCategoryId = null;
+            if ($type === 'accessory') {
+                $accessoryCategoryId = \Webkul\Category\Models\Category::query()
+                    ->whereHas('translations', fn ($q) => $q->where('slug', 'accessory'))
+                    ->value('id');
+
+                if (! $accessoryCategoryId) {
+                    return $this->fail(ApiErrorCode::ACCESSORY_UNAVAILABLE, '配件目录暂不可用，请稍后再试。', 503);
+                }
+            }
+
+            $typeLabels = ['rent' => '租赁', 'buy' => '购买', 'plan' => '方案', 'custom' => '定制', 'skill' => '技能', 'accessory' => '配件'];
 
             // 定制线索:无商品 → 挂锚点商品(后台需存在 sku=LEAD-CUSTOM 的商品,如「定制咨询线索」)
             if ($isCustom && ! $isMulti && empty($lines[0]['product_id'])) {
@@ -189,10 +201,6 @@ class TobOrderController extends APIController
             }
             if ($sceneContext) {
                 $sceneName = $sceneContext['scene_name'];
-            }
-
-            if ($problem = app(SkillMarketService::class)->purchaseProblem(array_column($lines, 'product_id'), $customer?->id, $type)) {
-                return $this->fail($problem['code'], $problem['message'], $problem['status']);
             }
 
             $email = $customer?->email ?? $request->input('email', 'guest@example.com');

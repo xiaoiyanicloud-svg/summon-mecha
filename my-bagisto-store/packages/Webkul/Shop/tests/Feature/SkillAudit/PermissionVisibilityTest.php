@@ -120,12 +120,39 @@ function permUploadAndSubmit(SkillVersion $version, array $manifestOverrides = [
 /** 直插一个商品（读取路径的用例只需要它存在）。 */
 function permSeedProduct(): int
 {
-    return (int) DB::table('products')->insertGetId([
+    $id = (int) DB::table('products')->insertGetId([
         'sku'        => 'perm-'.uniqid(),
         'type'       => 'simple',
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+
+    $channel = core()->getCurrentChannel();
+    $channelCode = $channel?->code ?? 'default';
+    $locale = app()->getLocale();
+
+    DB::table('product_flat')->insert([
+        'product_id'           => $id,
+        'sku'                  => 'perm-'.$id,
+        'name'                 => '权限测试商品'.$id,
+        'price'                => 100,
+        'status'               => 1,
+        'visible_individually' => 1,
+        'channel'              => $channelCode,
+        'locale'               => $locale,
+        'created_at'           => now(),
+        'updated_at'           => now(),
+    ]);
+
+    $skillCatId = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+    if ($skillCatId) {
+        DB::table('product_categories')->insert([
+            'product_id'  => $id,
+            'category_id' => $skillCatId,
+        ]);
+    }
+
+    return $id;
 }
 
 /** 直插一个已发布版本（读取路径的用例只需版本在库）。 */

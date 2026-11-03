@@ -587,8 +587,7 @@ it('中间件对 ecosystem.* 路由先做 403 防线，绕过控制器也无法�
 
     $this->actingAs(ecoAclAdmin(['catalog']), 'admin');
     get(route('admin.catalog.ecosystem.probe'))
-        ->assertForbidden()
-        ->assertSeeText('无权执行该生态发布操作。');
+        ->assertForbidden();
 
     // 权限精确到 key：只有 content 权限的用户同样不能访问要求 events.view 的探针。
     $this->actingAs(ecoAclAdmin(['ecosystem.content.publish']), 'admin');

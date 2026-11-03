@@ -57,6 +57,31 @@ function hr3Product(string $slug = 'skill'): int
 
     DB::table('product_categories')->insert(['product_id' => $id, 'category_id' => $categoryId]);
 
+    if ($slug === 'skill') {
+        DB::table('product_flat')->insert([
+            'product_id'           => $id,
+            'sku'                  => 'HR3-'.uniqid(),
+            'name'                 => 'HR3 Skill',
+            'url_key'              => 'hr3-skill-'.uniqid(),
+            'status'               => 1,
+            'visible_individually' => 1,
+            'channel'              => core()->getCurrentChannel()->code,
+            'locale'               => app()->getLocale(),
+            'price'                => 10.00,
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        DB::table('skill_versions')->insert([
+            'product_id'  => $id,
+            'version'     => '1.0.0',
+            'status'      => 'published',
+            'released_at' => now(),
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+    }
+
     return $id;
 }
 

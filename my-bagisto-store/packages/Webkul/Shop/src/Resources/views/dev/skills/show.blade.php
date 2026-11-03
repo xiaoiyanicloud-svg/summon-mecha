@@ -394,7 +394,7 @@
                         </div>
                     </div>
                     <p class="muted" style="margin-top:8px;margin-bottom:8px">
-                        上传规范：包内必须包含根级 <code>manifest.json</code> 声明清单；文件类载体将在上传时执行即时安检（Fail-Fast）。
+                        上传规范：包内必须包含根级 <code>manifest.json</code> 声明清单；文件类载体将在上传时执行即时安检（Fail-Fast）。平台不做自动编译，多机型适配需自行产出后登记。
                         <span style="margin-left:8px">
                             <a href="{{ route('shop.dev.versions.sample', ['versionId' => $version->id, 'kind' => 'motion']) }}">下载动作类模板</a> ·
                             <a href="{{ route('shop.dev.versions.sample', ['versionId' => $version->id, 'kind' => 'app']) }}">下载应用类模板</a>

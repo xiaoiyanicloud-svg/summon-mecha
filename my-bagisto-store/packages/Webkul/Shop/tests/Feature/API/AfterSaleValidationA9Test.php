@@ -58,6 +58,9 @@ it('A9 · 工单 category 合法值(delivery)与省略时默认 other 都通过'
         'category' => SupportTicket::CATEGORY_DELIVERY,
     ])->assertStatus(201);
 
+    // 依 2026-10-27 会话机制：关闭前一单后创建新单
+    SupportTicket::where('customer_id', $customer->id)->update(['status' => SupportTicket::STATUS_CLOSED]);
+
     postJson(route('shop.api.tickets.store'), ['content' => '随便说说'])->assertStatus(201);
 
     expect(SupportTicket::where('customer_id', $customer->id)->orderBy('id')->pluck('category')->all())

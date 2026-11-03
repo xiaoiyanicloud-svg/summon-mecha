@@ -1,11 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Webkul\Customer\Models\Customer;
 use Webkul\Shop\Http\Controllers\API\ApiErrorCode;
 use Webkul\Shop\Models\Event;
 use Webkul\Shop\Models\EventRegistration;
+use Webkul\Shop\Models\EventRegistrationScope;
 use Webkul\Shop\Tests\Feature\Ecosystem\G1PublicApiFixtures as G1Fixtures;
+use Webkul\Shop\Tests\Feature\Ecosystem\G2RegistrationFixtures as G2Fixtures;
 
+use function Pest\Laravel\actingAs;
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\postJson;
 
@@ -97,7 +101,7 @@ it('G0-06 双重闸:只打开产品开关、未通过写能力验收仍返回 40
     expect(EventRegistration::where('event_id', $event->id)->count())->toBe(0);
 });
 
-it('G0-06 双重闸都打开时,只有 registering 状态允许报名', function () {
+it('G0-06 双重闸都打开时,参数校验与 G2 规则门禁生效', function () {
     g0EnableEventRegistration();
 
     $upcoming = Event::create([
@@ -110,26 +114,40 @@ it('G0-06 双重闸都打开时,只有 registering 状态允许报名', function
         'phone' => '13800000003',
     ])
         ->assertStatus(422)
-        ->assertJsonPath('code', ApiErrorCode::EVENT_NOT_REGISTERING);
+        ->assertJsonPath('code', ApiErrorCode::VALIDATION_ERROR);
 
     expect(EventRegistration::where('event_id', $upcoming->id)->count())->toBe(0);
 
-    $registering = Event::create([
-        'name'   => '报名中赛事',
-        'status' => 'registering',
-    ]);
+    // G2 全字段与认证通过后允许提交报名
+    config(['ecosystem_registration.enabled' => true]);
 
-    postJson("/api/events/{$registering->id}/register", [
-        'name'  => '测试用户',
-        'phone' => '13800000004',
+    $event = G1Fixtures::event(['kind' => 'salon', 'name' => '报名中赛事']);
+    $scopeId = G2Fixtures::scope($event['id'], [
+        'status'              => 'open',
+        'policy_confirmed_at' => now('UTC')->format('Y-m-d H:i:s'),
+        'capacity'            => 10,
+    ]);
+    $scope = EventRegistrationScope::findOrFail($scopeId);
+
+    $customer = Customer::factory()->create([
+        'email'  => 'g0-g2-'.bin2hex(random_bytes(4)).'@example.test',
+        'status' => 1,
+    ]);
+    actingAs($customer, 'customer');
+
+    postJson("/api/events/{$event['id']}/register", [
+        'request_key'     => 'api-'.bin2hex(random_bytes(8)),
+        'form_version'    => (int) $scope->form_version,
+        'privacy_version' => (string) $scope->privacy_version,
+        'consent'         => true,
+        'name'            => '测试用户',
+        'phone'           => '13800000004',
+        'city'            => '上海',
     ])
         ->assertOk()
         ->assertJsonPath('success', true);
 
-    $this->assertDatabaseHas('event_registrations', [
-        'event_id' => $registering->id,
-        'phone'    => '13800000004',
-    ]);
+    expect(EventRegistration::where('event_id', $event['id'])->count())->toBe(1);
 });
 
 it('G0-02 公开合同只下发 registration 白名单,且不返回 hot/teams/fav', function () {
