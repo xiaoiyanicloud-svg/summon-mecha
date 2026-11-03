@@ -2,10 +2,10 @@
   "profile_schema": "zhaohuan.target-profile/v1",
   "model_code": "agibot_a2",
   "vendor": "agibot",
-  "display_name": "Agibot A2 Humanoid (AimDK X2)",
+  "display_name": "Agibot A2 Humanoid",
+  "sku": "agibot_a2_standard",
   "hardware_variants": [
-    "agibot_a2_standard",
-    "agibot_a3_ultra"
+    "agibot_a2_standard"
   ],
   "os_arch": [
     "linux-x86_64",
@@ -14,7 +14,8 @@
   "sdk": {
     "name": "aimdk",
     "min_version": "1.3.0",
-    "transport": "rpc"
+    "transport": "rpc",
+    "evidence_ref": "https://github.com/AgibotTech"
   },
   "carrier_type": "file",
   "capabilities": {
@@ -24,13 +25,22 @@
         "supported_hands": ["left", "right"],
         "max_cycles": 8,
         "default_timeout_ms": 12000,
-        "required_permissions": ["motion_control"]
+        "required_permissions": ["motion_control"],
+        "evidence_status": "sdk_available"
       },
       "SM_AudioPlay": {
         "description": "Agibot onboard audio playback",
         "supported_formats": ["wav", "mp3"],
         "sample_rates": [16000, 48000],
-        "required_permissions": ["audio_play"]
+        "required_permissions": ["audio_play"],
+        "evidence_status": "sdk_available"
+      },
+      "SM_Wait": {
+        "description": "Bounded duration wait",
+        "max_duration_ms": 60000,
+        "default_timeout_ms": 65000,
+        "required_permissions": [],
+        "evidence_status": "builtin"
       }
     }
   },
@@ -45,5 +55,10 @@
     "method": "smooth_decelerate_to_rest",
     "timeout_s": 1.5,
     "observe_verification": "aimdk_motion_stopped"
+  },
+  "verification_status": {
+    "software_driver": "PASS",
+    "sdk_contract": "PASS",
+    "hardware_execution": "HARDWARE_UNVERIFIED"
   }
 }

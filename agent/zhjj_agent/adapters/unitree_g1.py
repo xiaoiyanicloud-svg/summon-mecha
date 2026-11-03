@@ -232,23 +232,26 @@ class UnitreeG1Adapter(BaseInstallAdapter):
 
         def _worker():
             try:
-                # 优先调用注入的 sdk_stub 进行契约验证
-                if self.sdk_stub is not None:
-                    if hasattr(self.sdk_stub, "execute"):
-                        self.sdk_stub.execute(execution_id, skill_id, plan_digest, params, cancel_event)
-                    else:
-                        time.sleep(0.02)
-                else:
-                    # 运行真实入口 action.py 脚本
-                    spec = importlib.util.spec_from_file_location(f"action_{execution_id}", entrypoint_file)
-                    if spec and spec.loader:
-                        mod = importlib.util.module_from_spec(spec)
-                        spec.loader.exec_module(mod)
-                        if hasattr(mod, "run"):
-                            class Context:
-                                def is_canceled(self):
-                                    return cancel_event.is_set()
-                            mod.run(context=Context())
+                # 运行真实入口 action.py 脚本，并将 sdk_stub 注入执行上下文 (C05 / C-T09)
+                spec = importlib.util.spec_from_file_location(f"action_{execution_id}", entrypoint_file)
+                if spec and spec.loader:
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    if hasattr(mod, "run"):
+                        class Context:
+                            def __init__(self, stub, eid, p, cev):
+                                self.stub = stub
+                                self.execution_id = eid
+                                self.execution_params = p
+                                self.cancel_event = cev
+
+                            def is_canceled(self):
+                                return self.cancel_event.is_set()
+
+                        ctx = Context(self.sdk_stub, execution_id, params, cancel_event)
+                        mod.run(context=ctx)
+                elif self.sdk_stub is not None and hasattr(self.sdk_stub, "execute"):
+                    self.sdk_stub.execute(execution_id, skill_id, plan_digest, params, cancel_event)
 
                 if cancel_event.is_set():
                     exec_state["status"] = "CANCELED"

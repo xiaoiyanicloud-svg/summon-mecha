@@ -3,6 +3,7 @@
   "model_code": "unitree_g1",
   "vendor": "unitree",
   "display_name": "Unitree G1 EDU (23/29 DOF)",
+  "sku": "unitree_g1_edu",
   "hardware_variants": [
     "unitree_g1_23dof",
     "unitree_g1_29dof"
@@ -15,7 +16,8 @@
     "name": "unitree_sdk2py",
     "min_version": "1.1.0",
     "transport": "dds",
-    "domain_id": 0
+    "domain_id": 0,
+    "evidence_ref": "https://github.com/unitreerobotics/unitree_sdk2_python"
   },
   "carrier_type": "file",
   "capabilities": {
@@ -25,18 +27,22 @@
         "supported_hands": ["left", "right", "both"],
         "max_cycles": 10,
         "default_timeout_ms": 12000,
-        "required_permissions": ["motion_control"]
+        "required_permissions": ["motion_control"],
+        "evidence_status": "sdk_available"
       },
       "SM_AudioPlay": {
         "description": "Onboard speaker audio playback",
         "supported_formats": ["wav", "mp3", "pcm"],
         "sample_rates": [16000, 24000, 44100, 48000],
-        "required_permissions": ["audio_play"]
+        "required_permissions": ["audio_play"],
+        "evidence_status": "sdk_available"
       },
-      "SM_MotionSequence": {
-        "description": "Custom joint trajectory execution",
-        "interpolation": "cosine",
-        "required_permissions": ["motion_control"]
+      "SM_Wait": {
+        "description": "Bounded duration wait",
+        "max_duration_ms": 60000,
+        "default_timeout_ms": 65000,
+        "required_permissions": [],
+        "evidence_status": "builtin"
       }
     }
   },
@@ -71,5 +77,10 @@
     "method": "smooth_decelerate_to_rest",
     "timeout_s": 2.0,
     "observe_verification": "joint_velocity_near_zero"
+  },
+  "verification_status": {
+    "software_driver": "PASS",
+    "sdk_contract": "PASS",
+    "hardware_execution": "HARDWARE_UNVERIFIED"
   }
 }

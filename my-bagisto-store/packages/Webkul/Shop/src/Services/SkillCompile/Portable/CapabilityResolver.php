@@ -30,7 +30,7 @@ class CapabilityResolver
             $params = $action['params'];
 
             if (! $this->profileService->hasCapability($targetModelCode, $actionId, $params)) {
-                $reasons[] = "机型 {$targetModelCode} 不支持动作 {$actionId} 或参数超出范围: " . json_encode($params, JSON_UNESCAPED_UNICODE);
+                $reasons[] = "UNSUPPORTED_CAPABILITY: 机型 {$targetModelCode} 不支持动作 {$actionId} 或参数超出范围: " . json_encode($params, JSON_UNESCAPED_UNICODE);
             } else {
                 $resolvedActions[] = [
                     'action_id' => $actionId,

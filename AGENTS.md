@@ -9,13 +9,16 @@
 
 ## 当前状态（2026-11-03）
 
-- **标准技能编译器与动作转码器（第二阶段）已闭环**：
-  - 交付基准与证据详见 `docs/skill-dev-step10-stage2-compiler-delivery.md` 及 `docs/portable-skill-spec/validation.json`。
-  - **中立标准源解析与校验**：严格校验 `zhaohuan.skill/v2` 与 BTCPP XML4，白名单过滤与 XXE 防御；
-  - **机型 Profile 与能力仲裁**：宇树 G1 EDU（23/29 DoF，官方 SDK2 物理限位与 DDS）、智元 A2、离线模拟机型 Profile 及 JCS SHA-256 摘要（`target_profile_digest`）；
-  - **动作转码与目标代码降阶**：余弦平滑轨迹插值生成、`action.py` 脚本与成品 `.skill` 归档生成，写入 `skill_assets` 并遵守 `uk_skill_assets_version_carrier` 约束；
-  - **全链路交付打通**：通过 `SkillDeliveryAssetResolver` 为目标设备唯一解析对应构建产物，并在设备端 Agent（Unitree G1 适配器）完成安装与 `OP_EXECUTE(7)` 执行验证；
-  - **验证**：新增 `PortableSkillCompilerTest.php` 5 项全过、Deploy 全量 128 项测试全过、Python 27 项测试全过。
+- **标准技能编译器与动作转码器（第二阶段返工）已闭环**：
+  - 交付基准与证据详见 `docs/skill-dev-step10-compiler-rework-delivery.md` 及 `packages/Webkul/Shop/tests/Feature/Deploy/PortableSkillCompilerAcceptanceTest.php`。
+  - **资产角色与不可变对象化（C01）**：`skill_assets` 扩充 `asset_role`（`source`/`artifact`/`legacy`）、`build_key`、`source_digest` 等加性字段；新增 `skill_build_runs`（按 `(build_key, run_number)` 记录不可变构建事实）与 `skill_target_releases`（按机型管理独立审核与发布状态）；
+  - **标准源严格校验与语法边界收敛（C02）**：防范 XXE/DTD/包含注入；强制限定控制节点仅允许 `Sequence`，显式拒绝复合控制节点；语法深度 $\le 16$，节点总数 $\le 128$，文件大小 $\le 512$KB；`cycles` 强校验为纯正整数；未引用旁支树（如 `Unused`）严格隔离；规范化 JCS 计算 `ir_digest`；
+  - **严格能力绑定与机型 Profile 收束（C03/C04）**：剥离未实现且无算法的 `SM_MotionSequence`，首批支持受控节点 `SM_GestureWave`、`SM_AudioPlay`、`SM_Wait`；能力不足时以 `UNSUPPORTED_CAPABILITY` 明确拒绝；机型 Profile（宇树 G1 EDU、智元 A2、模拟人形）收敛为单 SKU，计算 JCS SHA-256 摘要（`target_profile_digest`），诚实标定 `HARDWARE_UNVERIFIED`；
+  - **真实受限 BT.CPP Runner 与 Broker 运行时（C05）**：生成 `action.py` 入口、`runner/bt_runner.py`、`runner/broker.py`、`plan.json` 与 `bindings/target_binding.json`；入口防范非法 `execution_params` 越权覆盖；真实核验音频等素材文件存在性，拒绝 print/sleep 虚构成功；长节点取消安全监听 `cancel_event`，日志独立输出至 `ZHJJ_BROKER_LOG_PATH`；
+  - **确定性构建与按目标安全交付（C06）**：采用固定时间戳 `1700000000` 与字典序排列文件消除 ZIP 漂移，双无缓存环境构建产物最终 SHA-256 绝对一致；严格阻断 source 资产直发与跨机型成品错发；
+  - **黑盒验收套件 C-T01 ~ C-T24（C07）**：交付 24 项黑盒验收测试（Pest Feature 测试），覆盖源拒绝、XXE 拦截、语义隔离、真机 Python 执行、动力学约束、生命周期与容灾对账，24 项全过（74 项断言）；
+  - **全平台回归保证（C08）**：平台端 Deploy 测试套件 152 项全过（5,714 项断言）、设备端 Agent 57 项全过、`ecosystem:contract-check` 契约门禁全绿；
+  - **完成等级判定**：软件完成 **PASS**，SDK 接入 **PARTIAL**，真机完成 **HARDWARE_UNVERIFIED**，生产可交付 **BLOCKED**。
 - **设备端 Agent 与平台必要对接（第一阶段返工）已闭环**：
   - 交付基准与证据详见 `docs/skill-dev-step10-agent-rework-delivery.md` 及 `qa/agent-acceptance/20261103-independent-evidence/`。
   - 针对独立验收报告提出的 R01~R10 缺陷及 A01~A08 工作包全部闭环：

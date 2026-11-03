@@ -3,33 +3,32 @@
 namespace Webkul\Shop\Services\SkillCompile\Portable;
 
 /**
- * 标准技能源包语义与安全校验器。
- * 校验 btcpp/xml4 标准格式、行为树结构合法性、白名单能力动作及安全边界。
+ * 标准技能源包语义与安全校验器 (Work Package C02)。
+ * 严格校验 btcpp/xml4 标准格式、行为树结构、首版受限控制流、白名单动作及安全边界。
  */
 class PortableSourceValidator
 {
+    /**
+     * 首版仅允许 Sequence 控制流，拒绝 Parallel/Fallback/Reactive/Repeat/Retry。
+     */
     public const ALLOWED_CONTROL_NODES = [
         'Sequence',
-        'Fallback',
-        'Parallel',
-        'ReactiveSequence',
-        'ReactiveFallback',
     ];
 
-    public const ALLOWED_DECORATORS = [
-        'Inverter',
-        'RetryUntilSuccessful',
-        'Repeat',
-        'Timeout',
-        'ForceSuccess',
-        'ForceFailure',
-    ];
+    public const ALLOWED_DECORATORS = [];
 
+    /**
+     * 首版白名单动作：彻底移除 SM_MotionSequence 假支持。
+     */
     public const ALLOWED_ACTIONS = [
         'SM_GestureWave',
         'SM_AudioPlay',
-        'SM_MotionSequence',
+        'SM_Wait',
     ];
+
+    public const MAX_XML_SIZE = 524288; // 512 KB
+    public const MAX_TREE_DEPTH = 16;
+    public const MAX_TOTAL_NODES = 128;
 
     /**
      * 校验清单中的 runtime 配置是否符合标准可移植契约。
@@ -70,13 +69,23 @@ class PortableSourceValidator
     {
         $errors = [];
 
-        // 1. 防御 XXE 与高危实体解析
-        if (preg_match('/<!ENTITY|<!DOCTYPE|SYSTEM|PUBLIC/i', $xmlContent)) {
-            $errors[] = "禁止使用 XML DTD / 外部实体注入 (XXE)";
+        // 1. 大小预算检查
+        if (strlen($xmlContent) > self::MAX_XML_SIZE) {
+            $errors[] = "XML 大小超过预算上限 (" . self::MAX_XML_SIZE . " 字节)";
             return $errors;
         }
 
-        // 2. 检查危险代码模式与路径穿越
+        // 2. 防御 XXE、外部实体、XInclude、外部 URL
+        if (preg_match('/<!ENTITY|<!DOCTYPE|SYSTEM|PUBLIC|<xi:include/i', $xmlContent)) {
+            $errors[] = "禁止使用 XML DTD / 外部实体注入 (XXE) / XInclude";
+            return $errors;
+        }
+
+        if (preg_match('/(https?|ftp|file):\/\//i', $xmlContent)) {
+            $errors[] = "XML 属性中禁止包含外部 URL 或外部协议";
+        }
+
+        // 3. 检查危险代码模式与路径穿越
         if (preg_match('/\.\.[\/\\\\]/', $xmlContent)) {
             $errors[] = "XML 属性中包含非法路径穿越字符 (../)";
         }
@@ -85,7 +94,7 @@ class PortableSourceValidator
             $errors[] = "XML 属性中检测到疑似系统命令或恶意注入代码";
         }
 
-        // 3. XML 解析
+        // 4. XML 解析
         $prevEntityLoader = libxml_disable_entity_loader(true);
         $prevErrors = libxml_use_internal_errors(true);
         libxml_clear_errors();
@@ -106,7 +115,7 @@ class PortableSourceValidator
             }
         }
 
-        // 4. 校验根节点格式
+        // 5. 校验根节点格式
         if ($xml->getName() !== 'root') {
             $errors[] = "根元素必须是 <root>";
             return $errors;
@@ -120,28 +129,91 @@ class PortableSourceValidator
         $mainTree = (string) $xml['main_tree_to_execute'];
         if ($mainTree === '') {
             $errors[] = "缺少 main_tree_to_execute 属性";
+            return $errors;
         }
 
-        // 5. 递归遍历树节点校验
+        // 6. 查找主执行树
         $trees = $xml->xpath('//BehaviorTree');
         if (empty($trees)) {
             $errors[] = "未定义任何 <BehaviorTree>";
             return $errors;
         }
 
-        $hasMainTree = false;
+        $mainTreeNode = null;
         foreach ($trees as $t) {
             if ((string) $t['ID'] === $mainTree) {
-                $hasMainTree = true;
+                $mainTreeNode = $t;
+                break;
             }
-            $this->validateNode($t, $errors);
         }
 
-        if (! $hasMainTree) {
+        if (! $mainTreeNode) {
             $errors[] = "未找到主执行树: {$mainTree}";
+            return $errors;
+        }
+
+        // 7. 递归校验主执行树深度与节点总数
+        $nodeCount = 0;
+        $maxDepth = 0;
+        $this->inspectNodeBudget($mainTreeNode, 1, $nodeCount, $maxDepth);
+
+        if ($maxDepth > self::MAX_TREE_DEPTH) {
+            $errors[] = "行为树深度 ({$maxDepth}) 超过最大限制 (" . self::MAX_TREE_DEPTH . ")";
+        }
+
+        if ($nodeCount > self::MAX_TOTAL_NODES) {
+            $errors[] = "行为树节点总数 ({$nodeCount}) 超过最大限制 (" . self::MAX_TOTAL_NODES . ")";
+        }
+
+        // 8. 递归校验主树节点语法
+        $this->validateNode($mainTreeNode, $errors);
+
+        return $errors;
+    }
+
+    /**
+     * 交叉校验清单与 XML 语义一致性（权限、资源、超时）。
+     */
+    public function validateCrossSemantics(array $manifest, array $ir): array
+    {
+        $errors = [];
+        $declaredPerms = $manifest['permissions'] ?? [];
+
+        // 校验权限声明是否涵盖全部所需动作权限
+        foreach ($ir['required_permissions'] as $reqPerm) {
+            if (! in_array($reqPerm, $declaredPerms, true)) {
+                $errors[] = "源声明权限不足：行为树需要权限 '{$reqPerm}'，但清单未声明";
+            }
+        }
+
+        // 校验执行总时长是否超过清单安全上限
+        $maxDurationS = (int) ($manifest['safety']['max_duration_s'] ?? 0);
+        if ($maxDurationS > 0) {
+            $totalTimeoutMs = 0;
+            foreach ($ir['actions'] as $act) {
+                $totalTimeoutMs += (int) ($act['timeout_ms'] ?? 10000);
+            }
+            if ($totalTimeoutMs > ($maxDurationS * 1000)) {
+                $errors[] = "行为树总预估超时 ({$totalTimeoutMs}ms) 超过清单 safety.max_duration_s ({$maxDurationS}s)";
+            }
         }
 
         return $errors;
+    }
+
+    /**
+     * 计算树的深度与节点数量。
+     */
+    protected function inspectNodeBudget(\SimpleXMLElement $node, int $currentDepth, int &$nodeCount, int &$maxDepth): void
+    {
+        $nodeCount++;
+        if ($currentDepth > $maxDepth) {
+            $maxDepth = $currentDepth;
+        }
+
+        foreach ($node->children() as $child) {
+            $this->inspectNodeBudget($child, $currentDepth + 1, $nodeCount, $maxDepth);
+        }
     }
 
     /**
@@ -159,16 +231,16 @@ class PortableSourceValidator
                 } else {
                     $this->validateActionAttributes($actionId, $child, $errors);
                 }
-            } elseif (in_array($tag, self::ALLOWED_CONTROL_NODES, true) || in_array($tag, self::ALLOWED_DECORATORS, true)) {
+            } elseif (in_array($tag, self::ALLOWED_CONTROL_NODES, true)) {
                 $this->validateNode($child, $errors);
             } else {
-                $errors[] = "不支持的控制或装饰节点标签: <{$tag}>";
+                $errors[] = "首版仅支持受限 Sequence 控制流，不支持的控制或装饰节点: <{$tag}>";
             }
         }
     }
 
     /**
-     * 校验具体动作属性。
+     * 校验具体动作属性（严格类型检查，杜绝盲目强制转换）。
      */
     protected function validateActionAttributes(string $actionId, \SimpleXMLElement $node, array &$errors): void
     {
@@ -178,9 +250,22 @@ class PortableSourceValidator
                 if (! in_array($hand, ['left', 'right', 'both'], true)) {
                     $errors[] = "SM_GestureWave hand 属性必须为 left/right/both，实际为: '{$hand}'";
                 }
-                $cycles = (int) $node['cycles'];
-                if ($cycles <= 0 || $cycles > 50) {
-                    $errors[] = "SM_GestureWave cycles 必须在 1~50 之间，实际为: '{$cycles}'";
+
+                $rawCycles = (string) $node['cycles'];
+                if (! preg_match('/^[1-9]\d*$/', $rawCycles)) {
+                    $errors[] = "SM_GestureWave cycles 必须为正整数且不可为空，实际为: '{$rawCycles}'";
+                } else {
+                    $cycles = (int) $rawCycles;
+                    if ($cycles > 50) {
+                        $errors[] = "SM_GestureWave cycles 必须在 1~50 之间，实际为: {$cycles}";
+                    }
+                }
+
+                if (isset($node['timeout_ms'])) {
+                    $rawTimeout = (string) $node['timeout_ms'];
+                    if (! preg_match('/^[1-9]\d*$/', $rawTimeout)) {
+                        $errors[] = "SM_GestureWave timeout_ms 必须为正整数，实际为: '{$rawTimeout}'";
+                    }
                 }
                 break;
 
@@ -191,9 +276,32 @@ class PortableSourceValidator
                 } elseif (preg_match('/^[a-zA-Z0-9_\-\.\/]+$/', $asset) !== 1) {
                     $errors[] = "SM_AudioPlay asset 包含非法字符: '{$asset}'";
                 }
+
+                if (isset($node['wait'])) {
+                    $waitStr = strtolower((string) $node['wait']);
+                    if (! in_array($waitStr, ['true', 'false', '1', '0'], true)) {
+                        $errors[] = "SM_AudioPlay wait 必须为布尔值 (true/false)，实际为: '{$node['wait']}'";
+                    }
+                }
+
+                if (isset($node['timeout_ms'])) {
+                    $rawTimeout = (string) $node['timeout_ms'];
+                    if (! preg_match('/^[1-9]\d*$/', $rawTimeout)) {
+                        $errors[] = "SM_AudioPlay timeout_ms 必须为正整数，实际为: '{$rawTimeout}'";
+                    }
+                }
                 break;
 
-            case 'SM_MotionSequence':
+            case 'SM_Wait':
+                $rawDuration = (string) ($node['duration_ms'] ?? $node['duration'] ?? '');
+                if (! preg_match('/^[1-9]\d*$/', $rawDuration)) {
+                    $errors[] = "SM_Wait 缺少有效 duration_ms 正整数参数，实际为: '{$rawDuration}'";
+                } else {
+                    $dur = (int) $rawDuration;
+                    if ($dur > 60000) {
+                        $errors[] = "SM_Wait duration_ms 超过最大单步等待限制 (60000ms)，实际为: {$dur}";
+                    }
+                }
                 break;
         }
     }

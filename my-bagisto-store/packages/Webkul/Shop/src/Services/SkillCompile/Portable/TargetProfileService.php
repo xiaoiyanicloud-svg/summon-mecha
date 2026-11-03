@@ -98,9 +98,13 @@ class TargetProfileService
             }
         }
 
-        // 校验周期数限制
-        if (isset($params['cycles']) && isset($spec['max_cycles'])) {
-            if ((int) $params['cycles'] > (int) $spec['max_cycles']) {
+        // 校验周期数限制与合法性 (cycles 必须为正整数且不超过上限)
+        if (isset($params['cycles'])) {
+            $cycles = (int) $params['cycles'];
+            if ($cycles <= 0) {
+                return false;
+            }
+            if (isset($spec['max_cycles']) && $cycles > (int) $spec['max_cycles']) {
                 return false;
             }
         }

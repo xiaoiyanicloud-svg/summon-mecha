@@ -4,21 +4,11 @@ namespace Webkul\Shop\Services\SkillDelivery;
 
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillBuild;
+use Webkul\Shop\Models\SkillTargetRelease;
 
 /**
- * 交付物唯一解析 —— 一次下发只交付**一个**文件，本类回答"是哪一个"。
- *
- * 选择顺序（越靠前越显式）：
- *   1. 调用方显式 asset_id；
- *   2. 调用方显式 carrier_type / sort_order；
- *   3. 该机型下**成功** build 的产物；
- *   4. 版本内唯一的文件类交付物；
- *   5. 调用方给出声明 sha256 时，按哈希唯一命中；
- *   6. 仍有多份 → {@see SkillAssetAmbiguousException}（绝不默认取第一个）；
- *   7. 一份都没有 → null。
- *
- * ⚠ 只有 `carrier_type='file'` 进入本类：下载/指纹/端侧复算都是按字节定义的，
- *   `cloud_config` 等没有字节的载体不能冒充"包"（不改 `SkillAsset::isFile()`）。
+ * 交付物唯一解析 —— 一次下发只交付一个文件，本类回答"是哪一个" (Work Package C01 / C06)。
+ * 严格执行机型隔离与审核准入检查，杜绝跨机型错发或利用 asset_id 绕过审核 (C-T13 / C-T14)。
  */
 class SkillDeliveryAssetResolver
 {
@@ -33,15 +23,31 @@ class SkillDeliveryAssetResolver
         ?int $sortOrder = null,
         ?string $declaredSha256 = null,
     ): ?SkillAsset {
+        // 1. 显式 asset_id（仍严格核验目标机型与发布准入 C01 / C-T13 / C-T14）
         if ($assetId !== null) {
             $asset = SkillAsset::query()
                 ->where('skill_version_id', $versionId)
                 ->whereKey($assetId)
                 ->first();
 
-            return $asset && $asset->isFile() ? $asset : null;
+            if (! $asset || ! $asset->isFile()) {
+                return null;
+            }
+
+            if ($modelCode !== null && trim($modelCode) !== '') {
+                if ($asset->target_model_code !== null && $asset->target_model_code !== $modelCode) {
+                    return null; // 目标机型不符，禁止通过 asset_id 绕过
+                }
+            }
+
+            if (! $this->isAssetApprovedForDelivery($asset, $versionId)) {
+                return null;
+            }
+
+            return $asset;
         }
 
+        // 2. 显式 carrier_type / sort_order
         if ($carrierType !== null || $sortOrder !== null) {
             $query = SkillAsset::query()
                 ->where('skill_version_id', $versionId)
@@ -55,15 +61,17 @@ class SkillDeliveryAssetResolver
             }
 
             $assets = $query->orderBy('sort_order')->get()
-                ->filter(fn (SkillAsset $asset) => $asset->isFile())
+                ->filter(fn (SkillAsset $asset) => $asset->isFile() && $this->isAssetApprovedForDelivery($asset, $versionId))
                 ->values();
+
+            if ($modelCode !== null && trim($modelCode) !== '') {
+                $assets = $assets->filter(fn (SkillAsset $a) => $a->target_model_code === null || $a->target_model_code === $modelCode)->values();
+            }
 
             if ($assets->count() === 1) {
                 return $assets->first();
             }
 
-            // 只给了 carrier_type（没给 sort_order）且有多份文件：调用方没有说清是哪一份。
-            // 绝不取排序第一个 —— 那等于让排序实现决定这次下发/验证的是哪份字节。
             if ($assets->count() > 1) {
                 throw new SkillAssetAmbiguousException($versionId, $assets->pluck('id')->all());
             }
@@ -71,12 +79,12 @@ class SkillDeliveryAssetResolver
             return null;
         }
 
-        $files = SkillAsset::fileAssetsForVersion($versionId);
-
+        $files = SkillAsset::fileAssetsForVersion($versionId)->filter(fn (SkillAsset $a) => ! $a->isSource())->values();
         if ($files->isEmpty()) {
             return null;
         }
 
+        // 3. 该机型下成功 build 且已准入的产物
         $built = $this->successfulBuildArtifacts($versionId, $modelCode)
             ->filter(fn (SkillAsset $asset) => $files->contains('id', $asset->id))
             ->unique('id')
@@ -90,10 +98,10 @@ class SkillDeliveryAssetResolver
             throw new SkillAssetAmbiguousException($versionId, $built->pluck('id')->all());
         }
 
+        // 4. 机型守卫：若存在机型构建记录，未命中时严禁回退到其他机型产物
         $hasTargetBuilds = SkillBuild::where('skill_version_id', $versionId)->exists();
         if ($modelCode !== null && trim($modelCode) !== '') {
             if ($hasTargetBuilds) {
-                // 该版本存在机型构建目标。如果未找到当前机型的成功产物，绝不能回退到其他机型的产物或单一文件！
                 return null;
             }
         }
@@ -107,12 +115,21 @@ class SkillDeliveryAssetResolver
             }
         }
 
-        if ($files->count() === 1) {
-            return $files->first();
+        // 5. 传统唯一文件（仅限 legacy 或通用已准入文件）
+        $eligibleFiles = $files->filter(function (SkillAsset $a) use ($versionId, $modelCode) {
+            if ($modelCode !== null && trim($modelCode) !== '' && $a->target_model_code !== null && $a->target_model_code !== $modelCode) {
+                return false;
+            }
+            return $this->isAssetApprovedForDelivery($a, $versionId);
+        })->values();
+
+        if ($eligibleFiles->count() === 1) {
+            return $eligibleFiles->first();
         }
 
+        // 6. 哈希匹配
         if (is_string($declaredSha256) && $declaredSha256 !== '') {
-            $matched = $files->filter(
+            $matched = $eligibleFiles->filter(
                 fn (SkillAsset $asset) => is_string($asset->file_hash)
                     && $asset->file_hash !== ''
                     && hash_equals($declaredSha256, $asset->file_hash)
@@ -123,23 +140,44 @@ class SkillDeliveryAssetResolver
             }
         }
 
-        throw new SkillAssetAmbiguousException($versionId, $files->pluck('id')->all());
+        if ($eligibleFiles->count() > 1) {
+            throw new SkillAssetAmbiguousException($versionId, $eligibleFiles->pluck('id')->all());
+        }
+
+        return null;
     }
 
     /**
-     * 版本内成功 build 的产物。
-     *
-     * ⚠ 平台侧当前没有稳定生产者，通常为空 —— 空了就继续走"唯一文件"，
-     *   不能把 pending build 当成已产出。
-     *
-     * @return \Illuminate\Support\Collection<int, SkillAsset>
+     * 判断资产是否已获得交付审核准入 (C-T14)。
+     */
+    protected function isAssetApprovedForDelivery(SkillAsset $asset, int $versionId): bool
+    {
+        // 源包绝不作为最终可交付成品 (C01 / C-T13)
+        if ($asset->isSource()) {
+            return false;
+        }
+
+        // 历史旧资产默认准入
+        if ($asset->isLegacy()) {
+            return true;
+        }
+
+        // 成品包必须处于 approved 状态
+        if ($asset->review_status === SkillAsset::REVIEW_APPROVED) {
+            return true;
+        }
+
+        return SkillTargetRelease::where('skill_version_id', $versionId)
+            ->where('artifact_asset_id', $asset->id)
+            ->where('review_status', SkillTargetRelease::STATUS_APPROVED)
+            ->exists();
+    }
+
+    /**
+     * 版本内成功 build 且已审核获准的产物。
      */
     protected function successfulBuildArtifacts(int $versionId, ?string $modelCode)
     {
-        // 机型未知时**不查任何 build**。
-        //   skill_builds.target_model_code 是必填的具体机型，不存在"通用 build"；
-        //   放宽条件会把某机型的成功产物当成这台未知设备的产物，进而错发字节。
-        //   未知机型只允许走后面的"版本内唯一文件"保守路径。
         if (! is_string($modelCode) || trim($modelCode) === '') {
             return collect();
         }
@@ -151,7 +189,6 @@ class SkillDeliveryAssetResolver
             ->where('target_model_code', $modelCode);
 
         $ids = $query->pluck('artifact_asset_id')->unique()->values()->all();
-
         if ($ids === []) {
             return collect();
         }
@@ -162,7 +199,7 @@ class SkillDeliveryAssetResolver
             ->orderBy('carrier_type')
             ->orderBy('sort_order')
             ->get()
-            ->filter(fn (SkillAsset $asset) => $asset->isFile())
+            ->filter(fn (SkillAsset $asset) => $asset->isFile() && $this->isAssetApprovedForDelivery($asset, $versionId))
             ->values();
     }
 }

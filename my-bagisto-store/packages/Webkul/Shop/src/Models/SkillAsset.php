@@ -139,6 +139,27 @@ class SkillAsset extends Model
     public const DISK = 'private';
 
     /**
+     * 资产角色体系 (Work Package C01)
+     * - legacy: 历史旧资产，默认保持原有兼容与指纹逻辑
+     * - source: 标准技能源包（声明 btcpp/xml4，包含 behavior 与素材）
+     * - artifact: 针对特定目标机型编译产出的交付成品包
+     */
+    public const ROLE_LEGACY = 'legacy';
+    public const ROLE_SOURCE = 'source';
+    public const ROLE_ARTIFACT = 'artifact';
+
+    public const ROLES = [
+        self::ROLE_LEGACY,
+        self::ROLE_SOURCE,
+        self::ROLE_ARTIFACT,
+    ];
+
+    public const REVIEW_PENDING = 'pending';
+    public const REVIEW_APPROVED = 'approved';
+    public const REVIEW_REJECTED = 'rejected';
+    public const REVIEW_REVOKED = 'revoked';
+
+    /**
      * 当前技能包该落在哪个盘。
      *
      * ⚠ 不能写成 `(string) config('skill_delivery.asset_disk', self::DISK)` ——
@@ -165,6 +186,12 @@ class SkillAsset extends Model
         'skill_version_id',
         'seller_id',
         'carrier_type',
+        'asset_role',
+        'asset_key',
+        'target_model_code',
+        'build_key',
+        'source_digest',
+        'review_status',
         'file_path',
         'file_name',
         'file_size',
@@ -202,6 +229,21 @@ class SkillAsset extends Model
     public function isFile(): bool
     {
         return $this->carrier_type === self::CARRIER_FILE;
+    }
+
+    public function isSource(): bool
+    {
+        return $this->asset_role === self::ROLE_SOURCE;
+    }
+
+    public function isArtifact(): bool
+    {
+        return $this->asset_role === self::ROLE_ARTIFACT;
+    }
+
+    public function isLegacy(): bool
+    {
+        return $this->asset_role === self::ROLE_LEGACY || empty($this->asset_role);
     }
 
     /**

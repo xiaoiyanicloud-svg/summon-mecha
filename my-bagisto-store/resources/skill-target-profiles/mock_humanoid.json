@@ -30,10 +30,11 @@
         "sample_rates": [16000, 44100],
         "required_permissions": ["audio_play"]
       },
-      "SM_MotionSequence": {
-        "description": "Mock trajectory execution",
-        "interpolation": "cosine",
-        "required_permissions": ["motion_control"]
+      "SM_Wait": {
+        "description": "Bounded duration wait",
+        "max_duration_ms": 60000,
+        "default_timeout_ms": 65000,
+        "required_permissions": []
       }
     }
   },
