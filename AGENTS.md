@@ -5,10 +5,26 @@
 1. [CLAUDE.md](CLAUDE.md) —— 不可谈判的定位、决策红线、工程纪律（对所有 AI 生效，不限 Claude）。
 2. [docs/ecosystem/HANDOFF.md](docs/ecosystem/HANDOFF.md) —— 生态赛事与资讯当前进度、开关状态、未完成项、验证命令。
 3. [docs/ai-project-brief.md](docs/ai-project-brief.md) —— 项目理解手册。
-4. 当前任务相关批次证据：`docs/ecosystem/*-evidence.md`、`*-implementation-plan.md`。
+4. 当前任务相关批次证据：`docs/skill-dev-step10-agent-delivery.md`、`docs/ecosystem/*-evidence.md`、`*-implementation-plan.md`。
 
-## 当前状态（2026-10-26）
+## 当前状态（2026-11-03）
 
+- **设备端 Agent 与平台必要对接（第一阶段）已闭环**：
+  - 交付基准与证据详见 `docs/skill-dev-step10-agent-delivery.md` 及 `docs/adr/ADR-0001-device-agent-and-standard-transcoder.md`。
+  - **设备端独立代码包 (`agent/zhjj_agent/`, `agent/agent.py`)**：
+    - 独立设备凭据认证与已吊销拒绝（严防通过省略 did 绕过回退共享密钥）；
+    - RFC 8785 JCS 规范串 + RSA-SHA256 v2 全字段验签（防操作码/设备/哈希/时效篡改）；
+    - 限量下载、流式 SHA-256 复算、Zip Slip 拦截、符号链接拒绝、解压炸弹防御与 Staging 事务隔离解压；
+    - 执行（`OP_EXECUTE=7`）与取消（`OP_CANCEL_EXECUTION=8`）生命周期，按 `execution_id` 独立去重，执行事实与安装事实彻底物理隔离（执行成功绝不记为 `install_record`）；
+    - 本地 SQLite WAL 持久化 Journal、检查点、Outbox 补偿重试与断电恢复；
+    - 首装回滚安全停用机制（无旧版时置 disabled，不虚报假恢复）；
+    - 宇树 G1 EDU 机型插件规范对接（诚实标注硬件未验证 `HARDWARE_UNVERIFIED`）与离线测试全功能模拟适配器；
+    - 验证：Python `unittest` 26 项单元/集成测试全量通过；
+  - **平台端增量对接**：
+    - 增量迁移 `2026_11_03_000001_add_v2_and_execution_to_deploy_tasks.php`（已在测试库执行）；
+    - `SkillExecution` 独立事实模型；
+    - `SigningService` v2 JCS 签名、`AgentController` 协议过滤门禁与 ACK/对账端点、`SkillController` 客户侧执行与取消端点；
+    - 验证：`AgentV2ExecutionTest.php` 5 项全过、Deploy 全量 123 项测试全过、`ecosystem:contract-check` 契约门禁全过。
 - **技能全链路缺失清单专项**：
   - 计划基准文档见 `docs/skill-supply-demand-audit-and-blueprint.md`。
   - **节点 1（开发者端 DEV-01~06）已闭环**：

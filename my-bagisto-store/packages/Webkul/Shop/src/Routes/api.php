@@ -412,6 +412,11 @@ Route::group(['prefix' => 'api'], function () {
 
         // 兜底通道终点:用户自报"已装到机器上"。平台无法验证,见控制器注释。
         Route::post('entitlements/{entitlementId}/confirm-install', 'confirmInstall')->name('shop.api.skills.confirm-install');
+
+        // 技能执行生命周期（OP_EXECUTE / OP_CANCEL_EXECUTION）
+        Route::post('entitlements/{id}/executions', 'triggerExecution')->name('shop.api.skills.executions.trigger');
+        Route::get('executions/{id}', 'executionStatus')->name('shop.api.skills.executions.status');
+        Route::post('executions/{id}/cancel', 'cancelExecution')->name('shop.api.skills.executions.cancel');
     });
 
     /**
@@ -557,6 +562,8 @@ Route::group(['prefix' => 'api'], function () {
         Route::post('heartbeat', 'heartbeat')->name('shop.api.agent.heartbeat');
         Route::post('evt', 'event')->name('shop.api.agent.event');
         Route::get('commands', 'commands')->name('shop.api.agent.commands');
+        Route::post('ack', 'ack')->name('shop.api.agent.ack');
+        Route::post('reconcile', 'reconcile')->name('shop.api.agent.reconcile');
         // §4.22 F1(B-13):Agent 自更新工件(只提供更高版本,防降级)
         Route::get('self-update', 'selfUpdate')->name('shop.api.agent.self-update');
 

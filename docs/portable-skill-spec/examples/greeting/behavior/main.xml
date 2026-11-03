@@ -1,0 +1,8 @@
+<root BTCPP_format="4" main_tree_to_execute="Greeting">
+  <BehaviorTree ID="Greeting">
+    <Sequence name="greeting_sequence">
+      <Action ID="SM_GestureWave" name="wave_right_3" hand="right" cycles="3" timeout_ms="12000"/>
+      <Action ID="SM_AudioPlay" name="welcome_audio" asset="assets/welcome.wav" wait="true" timeout_ms="6000"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

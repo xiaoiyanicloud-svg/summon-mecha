@@ -1,0 +1,31 @@
+{
+  "schema": "zhaohuan.skill/v2",
+  "kind": "composite",
+  "name": {
+    "zh_CN": "标准迎宾",
+    "en": "Portable Greeting"
+  },
+  "version": "1.0.0",
+  "description": "在支持右臂挥手和本地音频播放的目标机型上执行相同迎宾行为契约。",
+  "pricing_mode": "buyout",
+  "delivery_channels": [
+    "agent",
+    "manual"
+  ],
+  "permissions": [
+    "motion_control",
+    "audio_play"
+  ],
+  "resource_type": "skill",
+  "safety": {
+    "risk_level": "medium",
+    "requires_open_area": true,
+    "estop_required": true,
+    "max_duration_s": 20
+  },
+  "runtime": {
+    "source_format": "btcpp/xml4",
+    "capability_contract": "portable-actions/v1",
+    "source_entrypoint": "behavior/main.xml"
+  }
+}

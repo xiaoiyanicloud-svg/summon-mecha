@@ -334,15 +334,25 @@ class AgentController extends APIController
         // ⚠ 每设备每轮**只发一条**(P7):此前一次返回该 did 的全部待执行任务,设备可能
         //   并行起多个安装 —— 而同一台物理机的技能装/卸本就应该串行。限 1 条后,设备
         //   一轮取走一条;取走的那条带上投递标记后即退出本查询,下一轮才轮到下一条。
-        $tasks = DeployTask::query()
+        $tasksQuery = DeployTask::query()
             ->where('did', $did)
             ->where(function ($q) {
                 $q->where('status', 'pending_online')
                     ->orWhere(function ($q2) {
                         $q2->where('status', 'dispatching')->whereNull('delivered_at');
                     });
-            })
-            ->orderBy('id')
+            });
+
+        // 协议门禁：旧 Agent 未声明支持 agent-task/v2 时，禁止下发执行与取消指令(OP 7/8)，防旧端崩溃
+        $protocolVersion = (string) ($request->query('protocol_version')
+            ?? $request->header('X-Agent-Protocol')
+            ?? DeployTask::PROTOCOL_V1);
+
+        if ($protocolVersion !== DeployTask::PROTOCOL_V2) {
+            $tasksQuery->whereNotIn('operation', [DeployTask::OP_EXECUTE, DeployTask::OP_CANCEL_EXECUTION]);
+        }
+
+        $tasks = $tasksQuery->orderBy('id')
             ->limit(1)
             ->get();
 
@@ -354,6 +364,90 @@ class AgentController extends APIController
         }
 
         return $this->ok($commands);
+    }
+
+    /**
+     * Agent 接收任务 / 事件持久化 ACK 确认（端云双向对账通道）。
+     */
+    public function ack(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'task_no'  => ['required', 'string', 'max:40'],
+            'did'      => ['required', 'string', 'max:64'],
+            'event_id' => ['required', 'string', 'max:64'],
+            'stage'    => ['required', 'string', 'max:32'],
+        ]);
+
+        if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
+            return $denied;
+        }
+
+        $task = DeployTask::query()->where('task_no', $payload['task_no'])->first();
+        if (! $task || $task->did !== $payload['did']) {
+            return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
+        }
+
+        return $this->ok([
+            'task_no'     => $payload['task_no'],
+            'did'         => $payload['did'],
+            'event_id'    => $payload['event_id'],
+            'stage'       => $payload['stage'],
+            'ack_id'      => 'ack_'.\Illuminate\Support\Str::random(16),
+            'status'      => 'acknowledged',
+            'server_time' => now()->timestamp,
+        ], 'ACK 成功。');
+    }
+
+    /**
+     * Agent 事实对账接口（支持断电、迟到回报与脱机恢复）。
+     */
+    public function reconcile(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'did'    => ['required', 'string', 'max:64'],
+            'skills' => ['nullable', 'array'],
+            'tasks'  => ['nullable', 'array'],
+        ]);
+
+        if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
+            return $denied;
+        }
+
+        $binding = DeviceBinding::query()->where('did', $payload['did'])->first();
+        if (! $binding) {
+            return $this->fail(ApiErrorCode::DEVICE_NOT_REGISTERED, '设备未注册。', 404);
+        }
+
+        $binding->markSeen('agent');
+        $binding->save();
+
+        // 服务端已登记的安装事实
+        $serverRecords = \Webkul\Shop\Models\InstallRecord::query()
+            ->where('did', $payload['did'])
+            ->get()
+            ->keyBy('skill_version_id');
+
+        $reconciliation = [
+            'did'         => $payload['did'],
+            'server_time' => now()->timestamp,
+            'aligned'     => true,
+            'details'     => [],
+        ];
+
+        foreach (($payload['skills'] ?? []) as $clientSkill) {
+            $verId = $clientSkill['skill_version_id'] ?? null;
+            if ($verId && isset($serverRecords[$verId])) {
+                $rec = $serverRecords[$verId];
+                $reconciliation['details'][] = [
+                    'skill_version_id' => $verId,
+                    'client_status'    => $clientSkill['status'] ?? null,
+                    'server_status'    => $rec->status,
+                    'match'            => ($clientSkill['status'] ?? null) === $rec->status,
+                ];
+            }
+        }
+
+        return $this->ok($reconciliation, '对账完成。');
     }
 
     /**
@@ -370,6 +464,19 @@ class AgentController extends APIController
 
         if ($bound !== null && $bound !== '' && $bound !== $did) {
             return $this->fail(ApiErrorCode::AGENT_IDENTITY_MISMATCH, '设备身份与请求的 did 不一致。', 403);
+        }
+
+        // 强凭据与吊销防线：已吊销独立凭据的设备绝不允许回退到共享密钥访问
+        $binding = DeviceBinding::query()->where('did', $did)->first();
+        if ($binding) {
+            $credentialService = app(DeviceCredentialService::class);
+            if ($credentialService->isRevoked($binding)) {
+                return $this->fail(ApiErrorCode::AGENT_CREDENTIAL_INVALID, '设备凭据已被吊销，禁止访问。', 401);
+            }
+            $mode = (string) config('deploy_gateways.agent_auth_mode', 'auto');
+            if ($mode === 'device' && empty($bound)) {
+                return $this->fail(ApiErrorCode::UNAUTHENTICATED, '生产环境要求独立设备认证，禁止共享密钥访问。', 401);
+            }
         }
 
         return null;

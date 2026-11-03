@@ -26,13 +26,16 @@ class DeployTask extends Model
 
     public const OP_RECLAIM = 6; // 试用到期回收
 
+    public const OP_EXECUTE = 7; // 技能执行（提案）
+
+    public const OP_CANCEL_EXECUTION = 8; // 取消技能执行（提案）
+
+    public const PROTOCOL_V1 = 'agent-task/v1';
+
+    public const PROTOCOL_V2 = 'agent-task/v2';
+
     /**
-     * 全部合法操作码 —— **参数校验的唯一事实源**。
-     *
-     * ⚠ 为什么要有它:此前 `DeployController::store()` 把白名单写成字面量 `'in:1,2,3,4,5'`,
-     *   而本类早已有 `OP_RECLAIM=6`(迁移注释也写「6回收」)。两条清单各写各的 →
-     *   合法的「试用到期回收」下发被参数校验挡死,报的还是"参数非法",看不出是漏了一个码。
-     *   以后新增操作只改这里,校验规则自动跟上。
+     * 下发/生命周期合法操作码（1..6） —— DeployController 参数校验的唯一事实源。
      */
     public const OPERATIONS = [
         self::OP_INSTALL,
@@ -41,6 +44,28 @@ class DeployTask extends Model
         self::OP_ENABLE,
         self::OP_DISABLE,
         self::OP_RECLAIM,
+    ];
+
+    /**
+     * 技能执行与取消操作码（7..8）。
+     */
+    public const EXECUTION_OPERATIONS = [
+        self::OP_EXECUTE,
+        self::OP_CANCEL_EXECUTION,
+    ];
+
+    /**
+     * 全量任务操作码。
+     */
+    public const ALL_OPERATIONS = [
+        self::OP_INSTALL,
+        self::OP_UNINSTALL,
+        self::OP_ROLLBACK,
+        self::OP_ENABLE,
+        self::OP_DISABLE,
+        self::OP_RECLAIM,
+        self::OP_EXECUTE,
+        self::OP_CANCEL_EXECUTION,
     ];
 
     /**
@@ -128,11 +153,14 @@ class DeployTask extends Model
 
     protected $fillable = [
         'task_no',
+        'command_seq',
         'did',
         'channel',
+        'protocol_version',
         'skill_id',
         'skill_version_id',
         'entitlement_id',
+        'execution_id',
         'operation',
         'status',
         'retry_count',
@@ -143,18 +171,23 @@ class DeployTask extends Model
         // C2：任务钉住当时决定发出的那一个文件资产（历史行 NULL → 回退默认文件）
         'package_asset_id',
         'signature',
+        'signed_payload',
         'error_code',
         'error_msg',
         'created_by',
+        'task_expires_at',
         'completed_at',
     ];
 
     protected $casts = [
+        'command_seq'      => 'integer',
         'operation'        => 'integer',
         'package_asset_id' => 'integer',
         'retry_count'      => 'integer',
+        'signed_payload'   => 'array',
         'next_retry_at'    => 'datetime',
         'delivered_at'     => 'datetime',
+        'task_expires_at'  => 'datetime',
         'completed_at'     => 'datetime',
     ];
 

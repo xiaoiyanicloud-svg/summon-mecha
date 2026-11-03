@@ -228,6 +228,14 @@ class DeviceCredentialService
         return true;
     }
 
+    /** 这台设备的凭据是否已被吊销。 */
+    public function isRevoked(DeviceBinding $binding): bool
+    {
+        $cred = $this->credential($binding);
+
+        return $cred !== null && ! empty($cred['revoked_at']);
+    }
+
     /** 这台设备当前是否持有可用 per-device 凭据。 */
     public function hasCredential(DeviceBinding $binding): bool
     {

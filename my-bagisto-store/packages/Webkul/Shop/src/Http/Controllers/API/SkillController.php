@@ -8,13 +8,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 use Webkul\Sales\Models\OrderProxy;
+use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Models\SkillExecution;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Deploy\DeployTaskService;
 use Webkul\Shop\Services\Deploy\KillSwitchService;
 use Webkul\Shop\Services\Ops\OperationLogger;
 use Webkul\Shop\Services\SkillDelivery\DeliveryResult;
@@ -549,5 +552,152 @@ class SkillController extends APIController
     protected function assetsOf(SkillEntitlement $entitlement)
     {
         return $this->versionOf($entitlement)?->assets()->get() ?? collect();
+    }
+
+    /**
+     * 触发技能执行（OP_EXECUTE=7，返回 HTTP 202 异步任务）。
+     */
+    public function triggerExecution(Request $request, int $id): JsonResponse
+    {
+        $entitlement = $this->findOwnedEntitlement($id);
+        if (! $entitlement) {
+            return $this->fail(ApiErrorCode::ENTITLEMENT_NOT_FOUND, '技能授权不存在或不属于当前用户。', 404);
+        }
+
+        if ($entitlement->status !== SkillEntitlement::STATUS_ACTIVE) {
+            return $this->fail(ApiErrorCode::ENTITLEMENT_REVOKED, '技能授权未激活或已过期，无法执行。', 403);
+        }
+
+        if (! $entitlement->device) {
+            return $this->fail(ApiErrorCode::DEVICE_BINDING_MISSING, '设备真相源缺失，请重新绑定设备。', 404);
+        }
+
+        $resolved = app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)
+            ->resolveForCustomer($entitlement->device, (int) $entitlement->customer_id, heal: true);
+        if (! $resolved['ok'] || ! $resolved['binding']) {
+            return $this->fail(ApiErrorCode::DEVICE_BINDING_MISSING, '设备真相源缺失，请重新绑定设备。', 404);
+        }
+
+        $binding = $resolved['binding'];
+
+        // 熔断闸：执行前校验
+        if (app(KillSwitchService::class)->isBlocked($entitlement->product_id, DeployTask::OP_EXECUTE)) {
+            return $this->fail('SKILL_BLOCKED', '该技能已被熔断禁用，禁止启动新执行。', 403);
+        }
+
+        $version = $this->versionOf($entitlement);
+        $executionId = 'exec_'.\Illuminate\Support\Str::uuid()->toString();
+
+        $execution = SkillExecution::create([
+            'execution_id'     => $executionId,
+            'did'              => $binding->did,
+            'skill_id'         => $entitlement->product_id,
+            'skill_version_id' => $version?->id,
+            'entitlement_id'   => $entitlement->id,
+            'status'           => SkillExecution::STATUS_ACCEPTED,
+            'execution_params' => $request->input('params', []),
+        ]);
+
+        $task = app(DeployTaskService::class)->create(
+            did: $binding->did,
+            skillId: $entitlement->product_id,
+            skillVersionId: $version?->id,
+            entitlementId: $entitlement->id,
+            operation: DeployTask::OP_EXECUTE,
+            channel: 'agent',
+            createdBy: 'customer:'.auth()->guard('customer')->id(),
+            executionId: $executionId,
+            protocolVersion: DeployTask::PROTOCOL_V2,
+            signedPayload: [
+                'execution_id'     => $executionId,
+                'execution_params' => $request->input('params', []),
+            ]
+        );
+
+        $execution->update(['deploy_task_id' => $task->id]);
+
+        return $this->ok([
+            'execution_id' => $executionId,
+            'task_no'      => $task->task_no,
+            'status'       => SkillExecution::STATUS_ACCEPTED,
+        ], '技能执行已受理。')->setStatusCode(202);
+    }
+
+    /**
+     * 查询技能执行状态。
+     */
+    public function executionStatus(Request $request, string $id): JsonResponse
+    {
+        $execution = SkillExecution::where('execution_id', $id)->first();
+        if (! $execution) {
+            return $this->fail(ApiErrorCode::NOT_FOUND, '技能执行记录不存在。', 404);
+        }
+
+        // 归属权限：必须由当前客户持有
+        $customerId = auth()->guard('customer')->id();
+        $entitlement = SkillEntitlement::whereKey($execution->entitlement_id)
+            ->where('customer_id', $customerId)
+            ->first();
+
+        if (! $entitlement) {
+            return $this->fail(ApiErrorCode::FORBIDDEN, '无权查看该执行记录。', 403);
+        }
+
+        return $this->ok([
+            'execution_id'     => $execution->execution_id,
+            'status'           => $execution->status,
+            'error_code'       => $execution->error_code,
+            'error_msg'        => $execution->error_msg,
+            'started_at'       => $execution->started_at?->toDateTimeString(),
+            'completed_at'     => $execution->completed_at?->toDateTimeString(),
+            'observed_at'      => $execution->observed_at?->toDateTimeString(),
+        ], 'ok');
+    }
+
+    /**
+     * 取消技能执行（OP_CANCEL_EXECUTION=8）。
+     */
+    public function cancelExecution(Request $request, string $id): JsonResponse
+    {
+        $execution = SkillExecution::where('execution_id', $id)->first();
+        if (! $execution) {
+            return $this->fail(ApiErrorCode::NOT_FOUND, '技能执行记录不存在。', 404);
+        }
+
+        $customerId = auth()->guard('customer')->id();
+        $entitlement = SkillEntitlement::whereKey($execution->entitlement_id)
+            ->where('customer_id', $customerId)
+            ->first();
+
+        if (! $entitlement) {
+            return $this->fail(ApiErrorCode::FORBIDDEN, '无权操作该执行记录。', 403);
+        }
+
+        if ($execution->isTerminal()) {
+            return $this->fail(ApiErrorCode::CONFLICT, '该执行已处于终态，无法取消。', 409);
+        }
+
+        $execution->update(['status' => SkillExecution::STATUS_CANCEL_REQUESTED]);
+
+        $task = app(DeployTaskService::class)->create(
+            did: $execution->did,
+            skillId: $execution->skill_id,
+            skillVersionId: $execution->skill_version_id,
+            entitlementId: $execution->entitlement_id,
+            operation: DeployTask::OP_CANCEL_EXECUTION,
+            channel: 'agent',
+            createdBy: 'customer:'.$customerId,
+            executionId: $execution->execution_id,
+            protocolVersion: DeployTask::PROTOCOL_V2,
+            signedPayload: [
+                'execution_id' => $execution->execution_id,
+            ]
+        );
+
+        return $this->ok([
+            'execution_id' => $execution->execution_id,
+            'task_no'      => $task->task_no,
+            'status'       => SkillExecution::STATUS_CANCEL_REQUESTED,
+        ], '取消执行已受理。')->setStatusCode(202);
     }
 }

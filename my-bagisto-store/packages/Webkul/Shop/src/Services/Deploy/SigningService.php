@@ -92,6 +92,70 @@ class SigningService
         return $this->keyGet(self::PUBLIC_FILE);
     }
 
+    public const V2_PREFIX = "summon-mecha/agent-task/v2\n";
+
+    public function keyId(): string
+    {
+        return hash('sha256', $this->publicKeyPem());
+    }
+
+    /**
+     * 构造 v2 规范串字节并签名：
+     * UTF-8("summon-mecha/agent-task/v2") || 0x0A || UTF-8(JCS(signed))
+     */
+    public function canonicalV2(array $signed): string
+    {
+        return self::V2_PREFIX . self::jcsCanonicalize($signed);
+    }
+
+    public function signV2(array $signed): string
+    {
+        return $this->sign($this->canonicalV2($signed));
+    }
+
+    public function verifyV2(array $signed, string $signatureB64): bool
+    {
+        return $this->verify($this->canonicalV2($signed), $signatureB64);
+    }
+
+    /**
+     * RFC 8785 JSON Canonicalization Scheme (JCS) 纯函数实现。
+     */
+    public static function jcsCanonicalize(mixed $data): string
+    {
+        if (is_array($data)) {
+            $isAssoc = empty($data) ? false : (array_keys($data) !== range(0, count($data) - 1));
+            if ($isAssoc) {
+                uksort($data, 'strcmp');
+                $entries = [];
+                foreach ($data as $k => $v) {
+                    $entries[] = json_encode((string) $k, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ':' . self::jcsCanonicalize($v);
+                }
+                return '{' . implode(',', $entries) . '}';
+            } else {
+                $elements = array_map([self::class, 'jcsCanonicalize'], $data);
+                return '[' . implode(',', $elements) . ']';
+            }
+        } elseif (is_object($data)) {
+            $arr = (array) $data;
+            uksort($arr, 'strcmp');
+            $entries = [];
+            foreach ($arr as $k => $v) {
+                $entries[] = json_encode((string) $k, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ':' . self::jcsCanonicalize($v);
+            }
+            return '{' . implode(',', $entries) . '}';
+        } elseif (is_string($data)) {
+            return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        } elseif (is_int($data) || is_float($data)) {
+            return (string) $data;
+        } elseif (is_bool($data)) {
+            return $data ? 'true' : 'false';
+        } elseif (is_null($data)) {
+            return 'null';
+        }
+        return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
     /**
      * 构造待签名的规范串 —— 集中一处,避免端上各写各的。
      *

@@ -103,6 +103,14 @@ class Device extends Model
     }
 
     /**
+     * 强验证真相源绑定。
+     */
+    public function binding(): BelongsTo
+    {
+        return $this->belongsTo(DeviceBinding::class, 'binding_id');
+    }
+
+    /**
      * 是否处于正常绑定状态。
      */
     public function isBound(): bool

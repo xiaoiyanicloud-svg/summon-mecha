@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-03",
+  "code_commit": "542502b64b817f35ab9f31f382564a2ea9dfe849",
+  "document_checks": "passed",
+  "documents": [
+    {
+      "path": "docs/adr/ADR-0001-device-agent-and-standard-transcoder.md",
+      "lines": 193,
+      "sha256": "d0f62031bde39de4ea53e0b2fb24aac72341fe3b4e437c9b1670e78c0770ac38"
+    },
+    {
+      "path": "docs/agent-runtime-standard-transcoder-blueprint.md",
+      "lines": 802,
+      "sha256": "2d8f4c3e9148946b396d0c447d5d34d1511f060298a0cbd035dc12b25c93eaf5"
+    }
+  ],
+  "manifest_shape_validation": {
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  },
+  "xml_well_formed": true,
+  "source_profile_semantic_compiler_implemented": false,
+  "btcpp_compiled_or_executed": false,
+  "vendor_sdk_or_hardware_executed": false,
+  "database_accessed": false,
+  "sample_deployable": false,
+  "missing_sample_media": [
+    "assets/welcome.wav"
+  ],
+  "acceptance": "Draft examples and plan only; no E1-E4 or B0-B7 production acceptance has passed."
+}

@@ -48,4 +48,6 @@ backups/
 # 临时与测试目录
 .claude/sc45*
 scratch/
+__pycache__/
+*.pyc
 召唤机甲/

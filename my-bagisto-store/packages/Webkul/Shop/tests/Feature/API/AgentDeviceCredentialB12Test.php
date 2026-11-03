@@ -204,8 +204,14 @@ it('B-12 · 吊销后 secret 立即失效(且不回退共享密钥)', function (
 
     app(DeviceCredentialService::class)->revoke($binding);
 
+    // 1. 带已吊销 secret -> 401
     postJson(route('shop.api.agent.heartbeat'), ['did' => $binding->did], b12SecretHeaders($binding, $cred['secret']))
         ->assertStatus(401);
+
+    // 2. 省略 X-Agent-Did，企图用共享密钥 X-Agent-Key 回退访问已吊销设备 -> 依然 401 拒掉
+    postJson(route('shop.api.agent.heartbeat'), ['did' => $binding->did], ['X-Agent-Key' => b12Key()])
+        ->assertStatus(401)
+        ->assertJsonPath('code', 'AGENT_CREDENTIAL_INVALID');
 });
 
 it('B-12 · 用户可单独吊销本人设备凭据(HTTP 入口)', function () {

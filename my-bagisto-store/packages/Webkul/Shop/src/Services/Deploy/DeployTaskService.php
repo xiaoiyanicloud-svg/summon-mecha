@@ -12,6 +12,7 @@ use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
+use Webkul\Shop\Models\SkillExecution;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\LifecycleNotifier;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryAssetResolver;
@@ -42,6 +43,7 @@ class DeployTaskService
         DeployTask::OP_UNINSTALL,
         DeployTask::OP_ROLLBACK,
         DeployTask::OP_RECLAIM,
+        DeployTask::OP_CANCEL_EXECUTION,
     ];
 
     /**
@@ -121,9 +123,12 @@ class DeployTaskService
         ?string $packageUrl = null,
         ?string $packageHash = null,
         bool $allowDowngrade = false,
+        ?string $executionId = null,
+        string $protocolVersion = DeployTask::PROTOCOL_V1,
+        ?array $signedPayload = null,
+        ?int $taskExpiresAt = null,
     ): DeployTask {
-        // 熔断闸:命中即拒建(不落库)。补救类动作(卸/回滚/回收)放行 —— 见 REMEDIATION_OPS。
-        // 这是 D9「熔断可一键禁用」的硬缺口:此前 isBlocked() 全仓零调用,按钮按下去不下闸。
+        // 熔断闸:命中即拒建(不落库)。补救类动作(卸/回滚/回收/取消)放行 —— 见 REMEDIATION_OPS。
         $this->assertNotBlocked($skillId, $operation);
 
         // 版本单调闸(§4.22 F1 / B-13):**安装**时拒绝低于本机已装版本的包。
@@ -132,50 +137,28 @@ class DeployTaskService
             $this->assertNotDowngrade($did, $skillVersionId);
         }
 
-        // 幂等 + 事务边界,两个问题一次解决:
-        //
-        //   1. **幂等**:迁移 `create_deploy_and_audit_tables.php` 写着「幂等由应用层保证」,
-        //      而应用层此前没有做 —— 双击一次下发就落两条任务,设备取指令时两条都拿到,
-        //      同一个版本装两遍。现在对 (did, skill_version_id, operation) 的**未终态**记录短路。
-        //      终态不进判定:失败之后重来一次是合法动作,不能挡。
-        //
-        //   2. **事务**:create → dispatch 此前不是事务,崩在中间会留下一条永远没人推进的
-        //      `pending` —— 设备看不到它(只取 dispatching/pending_online),用户那边的
-        //      "下发中"也永远不结束。
-        //
-        // ⚠ 并发下"查了再建"仍然是 check-then-act,故拿**设备那一行**做互斥:
-        //   锁 device_binding 而不是 deploy_task —— 首次下发时 deploy_task 里**还没有行**,
-        //   `SELECT ... FOR UPDATE` 对不存在的行不产生任何锁,两个并发请求会双双"查无重复"
-        //   然后各建一条,等于没锁。
-        // ⚠ 造号撞唯一键 → 换号重试(Task S-10)。
-        //
-        //   任务号是 `DT` + 秒级时间戳 + 随机后缀。同一秒内**跨设备**下发并不互斥
-        //   (下面只锁各自的 device_binding 行,是刻意的),于是"两台不同设备在同一秒
-        //   抽到同一个后缀"就会撞 `uk_deploy_task_no`。此前这里**没有任何兜底** ——
-        //   裸 QueryException 直接冒到接口层 = 下发 500。这是交付主路径上的崩溃,
-        //   必须自愈,不能让用户看到一次 500。
-        //
-        //   照抄 `TicketController::createTicket()` 的既有模式(同仓唯一一处成型写法):
-        //   try 包住事务 → 捕获 QueryException → 只认本表唯一键 → 换号重试,上限一致(5)。
-        //
-        //   ⚠ 重试重跑的是整段事务,但撞号发生在 `DeployTask::create` 这**最早**的一点,
-        //     此刻事务里还没有任何副作用(dispatch 尚未执行),故重跑等价于"只重插一次"。
-        //     事务回滚保证失败那一轮不留半条记录。
         $attempts = 0;
 
         while (true) {
             try {
                 return DB::transaction(function () use (
                     $did, $skillId, $skillVersionId, $entitlementId, $operation,
-                    $channel, $createdBy, $packageUrl, $packageHash
+                    $channel, $createdBy, $packageUrl, $packageHash,
+                    $executionId, $protocolVersion, $signedPayload, $taskExpiresAt
                 ) {
                     $this->lockDevice($did);
 
-                    $existing = $this->findOpenTask($did, $skillVersionId, $operation);
+                    // 执行/取消类任务按 execution_id 独立去重；安装/生命周期任务按 (did, version, op) 去重
+                    $existing = in_array($operation, [DeployTask::OP_EXECUTE, DeployTask::OP_CANCEL_EXECUTION], true)
+                        ? ($executionId ? $this->findOpenExecutionTask($did, $operation, $executionId) : null)
+                        : $this->findOpenTask($did, $skillVersionId, $operation);
 
                     if ($existing) {
                         return $existing;
                     }
+
+                    $maxSeq = (int) (DeployTask::where('did', $did)->max('command_seq') ?? 0);
+                    $commandSeq = $maxSeq + 1;
 
                     // 包地址/哈希在**这唯一漏斗**里推导 —— 三个调用点(用户下发 / 试用 / 回收)
                     // 谁都不用改,也不会各写一套(见 resolvePackage)。
@@ -189,17 +172,22 @@ class DeployTaskService
 
                     $task = DeployTask::create([
                         'task_no'          => $this->newTaskNo(),
+                        'command_seq'      => $commandSeq,
                         'did'              => $did,
                         'channel'          => $channel,
+                        'protocol_version' => $protocolVersion,
                         'skill_id'         => $skillId,
                         'skill_version_id' => $skillVersionId,
                         'entitlement_id'   => $entitlementId,
+                        'execution_id'     => $executionId,
                         'operation'        => $operation,
                         'status'           => 'pending',
                         'package_url'      => $resolvedUrl,
                         'package_hash'     => $resolvedHash,
                         // C2：把"当时决定发的那一个文件"钉住，重签 URL / 端侧复算都以它为准。
                         'package_asset_id' => $resolvedAssetId,
+                        'signed_payload'   => $signedPayload,
+                        'task_expires_at'  => $taskExpiresAt ? now()->setTimestamp($taskExpiresAt) : null,
                         'created_by'       => $createdBy,
                     ]);
 
@@ -408,6 +396,20 @@ class DeployTaskService
     }
 
     /**
+     * 执行/取消类任务按 execution_id 独立去重（严防合并不同合法执行）。
+     */
+    protected function findOpenExecutionTask(string $did, int $operation, string $executionId): ?DeployTask
+    {
+        return DeployTask::query()
+            ->where('did', $did)
+            ->where('operation', $operation)
+            ->where('execution_id', $executionId)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
      * 记一次"这条指令已经投递给设备了"(投递标记)。
      *
      * 与 `DeviceBinding::markSeen()` 是**两件事**:那个记"这台设备来过"
@@ -557,24 +559,68 @@ class DeployTaskService
             )
             : null;
 
-        return [
-            'task_id'      => $task->task_no,
-            'operation'    => $task->operation,
-            'skill_id'     => $task->skill_id,
-            'version'      => $version?->version,
-            'package_url'  => $packageUrl,
-            'package_hash' => $task->package_hash,
-            // 端侧复算的靶子：被下载的**那个文件**的 sha256（= skill_assets.file_hash）。
-            // 与 package_hash（整个交付物集合的指纹）分工不同：
-            //   · package_hash   —— 集合指纹，锁定"审的就是这一套交付物"；
-            //   · package_sha256 —— 单文件字节 sha256，端侧下载后能自己复算并与指令比对，
-            //                       不符即拒装（PKG_HASH_MISMATCH）。
-            // 两者都进签名串（见 canonical），端侧一次只下到一个文件，能复算的是后者。
-            // （契约只加不改：既有键一个未动，这里补一个 package_sha256。）
-            'package_sha256' => $packageSha256,
-            'signature'    => $this->signing->sign($canonical),
-            'ts'           => $ts,
+        $keyId = $this->signing->keyId();
+        $payload = is_array($task->signed_payload) ? $task->signed_payload : [];
+        $signed = [
+            'protocol_version'              => DeployTask::PROTOCOL_V2,
+            'signature_algorithm'           => 'RSA-SHA256',
+            'key_id'                        => $keyId,
+            'task_id'                       => (string) $task->task_no,
+            'command_seq'                   => (int) ($task->command_seq ?: 1),
+            'did'                           => (string) $task->did,
+            'operation'                     => (int) $task->operation,
+            'skill_id'                      => (string) $task->skill_id,
+            'skill_version_id'              => $task->skill_version_id ? (string) $task->skill_version_id : null,
+            'version'                       => $version?->version ? (string) $version->version : null,
+            'package_asset_id'              => $task->package_asset_id ? (string) $task->package_asset_id : null,
+            'package_hash'                  => $task->package_hash ?: null,
+            'package_sha256'                => $packageSha256 ?: null,
+            'build_key'                     => $payload['build_key'] ?? null,
+            'target_model_code'             => $payload['target_model_code'] ?? null,
+            'target_profile_digest'         => $payload['target_profile_digest'] ?? null,
+            'verification_digest'           => $payload['verification_digest'] ?? null,
+            'revoked_version_id'            => $payload['revoked_version_id'] ?? null,
+            'restore_asset_id'              => $payload['restore_asset_id'] ?? null,
+            'restore_sha256'                => $payload['restore_sha256'] ?? null,
+            'execution_id'                  => $task->execution_id ?: null,
+            'target_release_id'             => $payload['target_release_id'] ?? null,
+            'installed_asset_id'            => $payload['installed_asset_id'] ?? null,
+            'installed_sha256'              => $payload['installed_sha256'] ?? null,
+            'plan_digest'                   => $payload['plan_digest'] ?? null,
+            'runtime_digest'                => $payload['runtime_digest'] ?? null,
+            'execution_params'              => $payload['execution_params'] ?? null,
+            'execution_deadline'            => isset($payload['execution_deadline']) ? (int) $payload['execution_deadline'] : null,
+            'entitlement_id'                => $task->entitlement_id ? (string) $task->entitlement_id : null,
+            'authorization_policy_version'  => 'v1',
+            'authorization_not_before'      => isset($payload['authorization_not_before']) ? (int) $payload['authorization_not_before'] : null,
+            'authorization_expires_at'      => isset($payload['authorization_expires_at']) ? (int) $payload['authorization_expires_at'] : null,
+            'revocation_epoch'              => (int) ($payload['revocation_epoch'] ?? 0),
+            'issued_at'                     => (int) $ts,
+            'task_expires_at'               => $task->task_expires_at ? $task->task_expires_at->timestamp : ($ts + 3600),
         ];
+
+        $signatureV1 = $this->signing->sign($canonical);
+        $signatureV2 = $this->signing->signV2($signed);
+
+        $cmd = [
+            'task_id'          => $task->task_no,
+            'command_seq'      => (int) ($task->command_seq ?: 1),
+            'operation'        => $task->operation,
+            'skill_id'         => $task->skill_id,
+            'version'          => $version?->version,
+            'execution_id'     => $task->execution_id,
+            'protocol_version' => $task->protocol_version ?: DeployTask::PROTOCOL_V1,
+            'package_url'      => $packageUrl,
+            'package_hash'     => $task->package_hash,
+            'package_sha256'   => $packageSha256,
+            'signature'        => $task->protocol_version === DeployTask::PROTOCOL_V2 ? $signatureV2 : $signatureV1,
+            'signature_v1'     => $signatureV1,
+            'signature_v2'     => $signatureV2,
+            'signed'           => $signed,
+            'ts'               => $ts,
+        ];
+
+        return $cmd;
     }
 
     /**
@@ -661,6 +707,33 @@ class DeployTaskService
                 $this->markEntitlementExpired($task);
                 $this->notifier->trialExpired($task);
             }
+        }
+
+        // 技能执行事实同步（与安装事实严格隔离，执行成功绝不记为安装事实）
+        if ($task->execution_id) {
+            $execStatus = match ($target) {
+                'success' => $task->operation === DeployTask::OP_CANCEL_EXECUTION ? SkillExecution::STATUS_CANCELED : SkillExecution::STATUS_SUCCEEDED,
+                'failed' => SkillExecution::STATUS_FAILED,
+                'timeout' => SkillExecution::STATUS_UNKNOWN,
+                'downloading', 'installing' => SkillExecution::STATUS_RUNNING,
+                default => SkillExecution::STATUS_RUNNING,
+            };
+
+            SkillExecution::updateOrCreate(
+                ['execution_id' => $task->execution_id],
+                [
+                    'deploy_task_id'   => $task->id,
+                    'did'              => $task->did,
+                    'skill_id'         => $task->skill_id,
+                    'skill_version_id' => $task->skill_version_id,
+                    'entitlement_id'   => $task->entitlement_id,
+                    'status'           => $execStatus,
+                    'error_code'       => $task->error_code,
+                    'error_msg'        => $task->error_msg,
+                    'completed_at'     => in_array($execStatus, SkillExecution::TERMINAL_STATUSES, true) ? now() : null,
+                    'observed_at'      => now(),
+                ]
+            );
         }
 
         // 灰度自驱:本版本若有进行中的灰度,回报后重算指标并评估。
@@ -810,6 +883,17 @@ class DeployTaskService
         $key = ['did' => $task->did, 'skill_version_id' => $task->skill_version_id];
 
         switch ($task->operation) {
+            case DeployTask::OP_INSTALL:
+                // 安装:此前已装同 skill 的其它版本 → updated,否则 installed
+                $status = $this->isUpgrade($task, $version) ? 'updated' : 'installed';
+                InstallRecord::updateOrCreate($key, $attrs + [
+                    'status'       => $status,
+                    'installed_at' => now(),
+                    // S-5 · 落**真实交付通道**,让熔断能分清"能自动卸载"与"不能"(见 installChannelFor)。
+                    'channel'      => $this->installChannelFor($task),
+                ]);
+                break;
+
             case DeployTask::OP_UNINSTALL:
             case DeployTask::OP_RECLAIM:
                 InstallRecord::updateOrCreate($key, $attrs + ['status' => 'uninstalled', 'removed_at' => now()]);
@@ -822,18 +906,11 @@ class DeployTaskService
 
             case DeployTask::OP_ENABLE:
             case DeployTask::OP_DISABLE:
-                // 启停不改安装事实
-                break;
-
+            case DeployTask::OP_EXECUTE:
+            case DeployTask::OP_CANCEL_EXECUTION:
             default:
-                // 安装:此前已装同 skill 的其它版本 → updated,否则 installed
-                $status = $this->isUpgrade($task, $version) ? 'updated' : 'installed';
-                InstallRecord::updateOrCreate($key, $attrs + [
-                    'status'       => $status,
-                    'installed_at' => now(),
-                    // S-5 · 落**真实交付通道**,让熔断能分清"能自动卸载"与"不能"(见 installChannelFor)。
-                    'channel'      => $this->installChannelFor($task),
-                ]);
+                // 启停不改安装事实，技能执行与取消绝不落安装事实！
+                break;
         }
     }
 
