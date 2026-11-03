@@ -1,0 +1,49 @@
+{
+  "profile_schema": "zhaohuan.target-profile/v1",
+  "model_code": "agibot_a2",
+  "vendor": "agibot",
+  "display_name": "Agibot A2 Humanoid (AimDK X2)",
+  "hardware_variants": [
+    "agibot_a2_standard",
+    "agibot_a3_ultra"
+  ],
+  "os_arch": [
+    "linux-x86_64",
+    "linux-aarch64"
+  ],
+  "sdk": {
+    "name": "aimdk",
+    "min_version": "1.3.0",
+    "transport": "rpc"
+  },
+  "carrier_type": "file",
+  "capabilities": {
+    "actions": {
+      "SM_GestureWave": {
+        "description": "Agibot arm gesture execution",
+        "supported_hands": ["left", "right"],
+        "max_cycles": 8,
+        "default_timeout_ms": 12000,
+        "required_permissions": ["motion_control"]
+      },
+      "SM_AudioPlay": {
+        "description": "Agibot onboard audio playback",
+        "supported_formats": ["wav", "mp3"],
+        "sample_rates": [16000, 48000],
+        "required_permissions": ["audio_play"]
+      }
+    }
+  },
+  "dof": 26,
+  "safety_envelope": {
+    "max_velocity_rad_s": 2.8,
+    "max_acceleration_rad_s2": 5.0,
+    "estop_supported": true,
+    "default_timeout_s": 30
+  },
+  "safe_stop_procedure": {
+    "method": "smooth_decelerate_to_rest",
+    "timeout_s": 1.5,
+    "observe_verification": "aimdk_motion_stopped"
+  }
+}

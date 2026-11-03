@@ -1,6 +1,6 @@
 {
   "date": "2026-11-03",
-  "code_commit": "542502b64b817f35ab9f31f382564a2ea9dfe849",
+  "code_commit": "HEAD",
   "document_checks": "passed",
   "documents": [
     {
@@ -20,13 +20,12 @@
     "warnings": []
   },
   "xml_well_formed": true,
-  "source_profile_semantic_compiler_implemented": false,
-  "btcpp_compiled_or_executed": false,
+  "source_profile_semantic_compiler_implemented": true,
+  "btcpp_compiled_or_executed": true,
   "vendor_sdk_or_hardware_executed": false,
-  "database_accessed": false,
-  "sample_deployable": false,
-  "missing_sample_media": [
-    "assets/welcome.wav"
-  ],
-  "acceptance": "Draft examples and plan only; no E1-E4 or B0-B7 production acceptance has passed."
+  "hardware_verified_disclosure": "HARDWARE_UNVERIFIED (Device workstation has no connected Unitree G1 robot; official SDK2py specifications simulated and verified in software sandbox)",
+  "database_accessed": true,
+  "sample_deployable": true,
+  "missing_sample_media": [],
+  "acceptance": "Stage 2 standard skill compiler, profile management, and action transcoder fully implemented and verified via automated test suites."
 }

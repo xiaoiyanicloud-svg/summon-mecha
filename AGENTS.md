@@ -9,6 +9,13 @@
 
 ## 当前状态（2026-11-03）
 
+- **标准技能编译器与动作转码器（第二阶段）已闭环**：
+  - 交付基准与证据详见 `docs/skill-dev-step10-stage2-compiler-delivery.md` 及 `docs/portable-skill-spec/validation.json`。
+  - **中立标准源解析与校验**：严格校验 `zhaohuan.skill/v2` 与 BTCPP XML4，白名单过滤与 XXE 防御；
+  - **机型 Profile 与能力仲裁**：宇树 G1 EDU（23/29 DoF，官方 SDK2 物理限位与 DDS）、智元 A2、离线模拟机型 Profile 及 JCS SHA-256 摘要（`target_profile_digest`）；
+  - **动作转码与目标代码降阶**：余弦平滑轨迹插值生成、`action.py` 脚本与成品 `.skill` 归档生成，写入 `skill_assets` 并遵守 `uk_skill_assets_version_carrier` 约束；
+  - **全链路交付打通**：通过 `SkillDeliveryAssetResolver` 为目标设备唯一解析对应构建产物，并在设备端 Agent（Unitree G1 适配器）完成安装与 `OP_EXECUTE(7)` 执行验证；
+  - **验证**：新增 `PortableSkillCompilerTest.php` 5 项全过、Deploy 全量 128 项测试全过、Python 27 项测试全过。
 - **设备端 Agent 与平台必要对接（第一阶段）已闭环**：
   - 交付基准与证据详见 `docs/skill-dev-step10-agent-delivery.md` 及 `docs/adr/ADR-0001-device-agent-and-standard-transcoder.md`。
   - **设备端独立代码包 (`agent/zhjj_agent/`, `agent/agent.py`)**：

@@ -13,6 +13,11 @@
  */
 return [
     'builders' => [
+        // 标准可移植技能编译器（btcpp/xml4，第二阶段核心实现）
+        [
+            'class' => Webkul\Shop\Services\SkillCompile\Builders\PortableSkillBuilder::class,
+        ],
+
         // 动作类(可跨本体重定向):P0 唯一实现
         [
             'class' => Webkul\Shop\Services\SkillCompile\Builders\MotionCarrierBuilder::class,

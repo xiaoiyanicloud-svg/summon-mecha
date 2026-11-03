@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from zhjj_agent.adapters.mock import MockAdapter
+from zhjj_agent.adapters.unitree_g1 import UnitreeG1Adapter
 from zhjj_agent.client import AgentClient
 from zhjj_agent.constants import (
     ERR_SIG_INVALID,
@@ -266,6 +267,83 @@ class TestE2ESimulator(unittest.TestCase):
         )
         self.assertTrue(ok_rec)
         self.assertTrue(rec_data["data"]["aligned"])
+
+    def test_compiled_portable_skill_execution_on_unitree_g1(self):
+        """测试编译器产出的标准技能包在 Unitree G1 适配器上的端到端部署与执行"""
+        g1_dir = os.path.join(self.temp_dir, "g1_device")
+        os.makedirs(g1_dir, exist_ok=True)
+        g1_adapter = UnitreeG1Adapter()
+        g1_storage = Storage(g1_dir)
+        g1_manager = TaskManager(
+            install_dir=g1_dir,
+            storage=g1_storage,
+            client=self.server,
+            adapter=g1_adapter,
+            pubkey_pem=self.pub_pem
+        )
+
+        # 构建模拟编译器产出的标准技能包结构
+        skill_zip_path = os.path.join(self.temp_dir, "unitree_g1_compiled.skill")
+        with zipfile.ZipFile(skill_zip_path, "w") as zf:
+            manifest_content = {
+                "schema": "zhaohuan.skill/v2",
+                "kind": "composite",
+                "name": {"zh_CN": "G1标准迎宾", "en": "G1 Greeting"},
+                "version": "2.0.0",
+                "compatibility": {
+                    "models": [{"model": "unitree_g1", "vendor": "unitree"}]
+                },
+                "runtime": {
+                    "source_format": "btcpp/xml4",
+                    "source_entrypoint": "behavior/main.xml"
+                },
+                "entrypoint": "action.py"
+            }
+            zf.writestr("manifest.json", json.dumps(manifest_content))
+            zf.writestr("action.py", "#!/usr/bin/env python3\nprint('G1 wave running')\n")
+            zf.writestr("data/wave_right_3.json", json.dumps({"frames": [{"time_s": 0.0, "joints": {}}]}))
+            zf.writestr("assets/welcome.wav", b"RIFF....WAVEfmt ....data....")
+
+        pkg_sha256 = sha256_file(skill_zip_path)
+        file_url = f"file:///{os.path.abspath(skill_zip_path).replace(os.sep, '/')}"
+
+        # 平台下发 OP_INSTALL 任务
+        self.server.enqueue_v2_task(
+            task_id="T_G1_INSTALL_001",
+            command_seq=10,
+            operation=OP_INSTALL,
+            skill_id="skill_g1_greet",
+            version="2.0.0",
+            package_sha256=pkg_sha256,
+            package_url=file_url
+        )
+
+        poll_res = g1_manager.poll_once()
+        self.assertEqual(poll_res, 1)
+
+        installed = g1_storage.get_installed_skill("skill_g1_greet")
+        self.assertIsNotNone(installed)
+        self.assertEqual(installed["current_version"], "2.0.0")
+        self.assertTrue(installed["enabled"])
+
+        # 平台下发 OP_EXECUTE
+        self.server.enqueue_v2_task(
+            task_id="T_G1_EXEC_001",
+            command_seq=11,
+            operation=OP_EXECUTE,
+            skill_id="skill_g1_greet",
+            version="2.0.0",
+            execution_id="exec_g1_session_101",
+            execution_params={"hand": "right", "cycles": 3}
+        )
+
+        exec_res = g1_manager.poll_once()
+        self.assertEqual(exec_res, 1)
+
+        time.sleep(0.06)
+        obs = g1_manager.executor.observe("exec_g1_session_101")
+        self.assertEqual(obs["status"], EXEC_SUCCEEDED)
+        self.assertTrue(obs["is_stopped"])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,52 @@
+{
+  "profile_schema": "zhaohuan.target-profile/v1",
+  "model_code": "mock",
+  "vendor": "mock",
+  "display_name": "Mock Humanoid Simulator",
+  "hardware_variants": [
+    "mock_v1"
+  ],
+  "os_arch": [
+    "any"
+  ],
+  "sdk": {
+    "name": "mock_sdk",
+    "min_version": "0.1.0",
+    "transport": "inprocess"
+  },
+  "carrier_type": "file",
+  "capabilities": {
+    "actions": {
+      "SM_GestureWave": {
+        "description": "Mock arm wave gesture",
+        "supported_hands": ["left", "right", "both"],
+        "max_cycles": 50,
+        "default_timeout_ms": 10000,
+        "required_permissions": ["motion_control"]
+      },
+      "SM_AudioPlay": {
+        "description": "Mock audio playback",
+        "supported_formats": ["wav", "mp3", "pcm"],
+        "sample_rates": [16000, 44100],
+        "required_permissions": ["audio_play"]
+      },
+      "SM_MotionSequence": {
+        "description": "Mock trajectory execution",
+        "interpolation": "cosine",
+        "required_permissions": ["motion_control"]
+      }
+    }
+  },
+  "dof": 20,
+  "safety_envelope": {
+    "max_velocity_rad_s": 5.0,
+    "max_acceleration_rad_s2": 10.0,
+    "estop_supported": true,
+    "default_timeout_s": 30
+  },
+  "safe_stop_procedure": {
+    "method": "instant_halt",
+    "timeout_s": 0.5,
+    "observe_verification": "mock_stopped"
+  }
+}

@@ -32,7 +32,7 @@ class SkillBuildService
     public function compile(int $skillVersionId, array $manifest, array $targetModelCodes): array
     {
         $kind = (string) ($manifest['kind'] ?? '');
-        $builder = $this->resolveBuilder($kind);
+        $builder = $this->resolveBuilder($kind, $manifest);
 
         if (! $builder) {
             return array_map(fn ($m) => ['model' => $m, 'status' => 'failed', 'error' => "无匹配的构建器(kind={$kind})"], $targetModelCodes);
@@ -51,10 +51,15 @@ class SkillBuildService
     }
 
     /**
-     * 按 kind 解析构建器(配置注册表 + 容器)。
+     * 按 kind 与 manifest 解析构建器(配置注册表 + 容器)。
      */
-    protected function resolveBuilder(string $kind): ?CarrierBuilder
+    protected function resolveBuilder(string $kind, array $manifest = []): ?CarrierBuilder
     {
+        $sourceFormat = $manifest['runtime']['source_format'] ?? null;
+        if ($sourceFormat === 'btcpp/xml4') {
+            return app(\Webkul\Shop\Services\SkillCompile\Builders\PortableSkillBuilder::class);
+        }
+
         foreach ((array) config('skill_builders.builders', []) as $entry) {
             $class = $entry['class'] ?? null;
             if (! $class || ! class_exists($class)) {
