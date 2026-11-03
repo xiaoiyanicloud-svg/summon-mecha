@@ -449,7 +449,11 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
 
         th = threading.Thread(target=lambda: manager.process_command(cmd_exec), daemon=True)
         th.start()
-        time.sleep(0.02)
+        # 等待后台长任务真正进入 RUNNING 状态（消除线程调度时间差）
+        for _ in range(100):
+            if "running-session" in long_adapter._executions:
+                break
+            time.sleep(0.01)
 
         # 在长任务执行仍 RUNNING 时发起取消指令
         cmd_cancel = self._make_signed_command("task-ca", OP_CANCEL_EXECUTION, execution_id="running-session")
