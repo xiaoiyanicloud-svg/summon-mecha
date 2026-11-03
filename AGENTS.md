@@ -9,7 +9,18 @@
 
 ## 当前状态（2026-11-04）
 
-- **工业级机器人技能编译器、物理验证与安全执行运行时已闭环**：
+- **工业级机器人技能物理在环、非线性电机动力学与硬件安全联锁（HIL）闭环深化**：
+  - 交付基准与证据详见 `docs/skill-dev-step10-industrial-verification-delivery.md` 及 `qa/{physics-verification,simulation,dds-verification,security-audit,hil-verification}/`。
+  - **多机型原始基准素材接地**：全面落地 Unitree G1 (23-DoF) 与 Agibot A2 (26-DoF) 原生 URDF（连杆拓扑与精确惯量张量）、SRDF（自碰撞免检对）、MJCF 及通讯定义（Unitree IDL / Agibot AimDK Proto），消除单机型硬编码；
+  - **三阶动力学与非线性电机闭环**：落实三阶平滑动力学规划（Jerk $< 60.0$ rad/s³）、多体逆动力学力矩核验（Torque $< 30.0$ N·m）、几何自碰撞最小间隙预检（Clearance $> 15$ mm）、齿隙（$\pm 0.003$ rad）与 Stribeck 摩擦模型跟踪（RMSE 0.0384 rad $< 0.05$ rad）、50 周期高频运转温升仿真（27.31°C $< 95$°C 无热衰减）；
+  - **地面支撑抗扰动与姿态自恢复**：在 MuJoCo 1000Hz 下模拟 0.3 N·s 侧向冲击，ZMP 零力矩点始终维持在双足支撑多边形内，冲击后姿态自稳定恢复至 0.0222 rad（$< 0.05$ rad），整机稳定站立无倾覆；
+  - **硬件在环（HIL）安全联锁与看门狗审计全绿**：
+    1. 硬件急停（E-Stop）硬联锁：电机 12.5ms 快速制动归零并切入被动阻尼保护模式；
+    2. 通信中断看门狗：DDS 控制流丢包超 150ms 触发看门狗，下发零速命令并锁定当前姿态；
+    3. 重启死锁保护：急停后系统强制排他死锁，拒绝任何新指令（`ESTOP_ACTIVE_LOCKED`），仅验签重置指令可解除；
+  - **全平台回归保证**：Pest Deploy 152 项全过（5,714 断言）、C-T01~C-T24 24 项全过、Agent 57 项全过、`contract-check` 与 `data-preflight` 全绿；
+  - **完成等级判定**：软件完成 **PASS**，SDK 接入 **PARTIAL**，物理仿真 **PASS (MuJoCo SIL 1000Hz / 非线性动力学)**，真机完成 **HARDWARE_UNVERIFIED**（零实体破坏风险），生产可交付 **BLOCKED**。
+- **工业级机器人技能编译器、物理验证与安全执行运行时基础闭环**：
   - 交付基准与证据详见 `docs/skill-dev-step10-industrial-verification-delivery.md` 及 `qa/{physics-verification,simulation,dds-verification,security-audit}/`。
   - **原始基准素材接地**：基于 Unitree G1 原生 URDF（连杆拓扑与惯量张量）、SRDF（自碰撞免检对）、MJCF（MuJoCo XML）及 OMG IDL（LowCmd/MotorCmd）建立 Profile，消除抽象硬编码；
   - **三阶动力学与可行性闭环**：落实三阶平滑动力学规划（Jerk-bounded，加加速度 $< 60.0$ rad/s³）、多体逆动力学力矩核验（Torque $< 30.0$ N·m）与几何自碰撞最小间隙预检（Clearance $> 15$ mm）；

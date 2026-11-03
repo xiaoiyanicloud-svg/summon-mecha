@@ -83,6 +83,23 @@
 - **生态契约门禁 (`php artisan ecosystem:contract-check`)**：全绿（113 admin 路由、45 public 路由、85 错误码、11 状态机全核对一致）；
 - **只读数据预检 (`php artisan ecosystem:data-preflight`)**：全绿（无重复、孤儿、计数或脏状态）。
 
+### 证据链 F：电机非线性动力学（齿隙/Stribeck摩擦/热衰减）与地面抗扰动审计
+- **执行脚本**：`qa/simulation/run_actuator_dynamics_audit.py`
+- **报告归档**：[actuator_dynamics_report.json](file:///d:/CodexDeploy/summon-mecha/qa/simulation/actuator_dynamics_report.json)
+- **核验指标与结果**：
+  - 减速机齿隙（$\pm 0.003$ rad）与非线性 Stribeck 摩擦跟踪：RMSE **0.0384 rad**（$< 0.05$ rad 工业上限），峰值误差 0.0936 rad（PASS）；
+  - 连续 50 周期高频运转集总参数温升：最高绕组温度 **27.31°C**（远低于 95.0°C 绝缘降额阈值，无热衰减触发，PASS）；
+  - 侧向 0.3 N·s 外力冲量冲击：最大倾斜 0.0252 rad，恢复至 **0.0222 rad**（$< 0.05$ rad），ZMP 稳定位于双足多边形内，无倾覆（PASS）。
+
+### 证据链 G：硬件在环（HIL）故障注入与安全联锁审计
+- **执行脚本**：`qa/hil-verification/verify_hil_safety_interlock.py`
+- **报告归档**：[hil_safety_report.json](file:///d:/CodexDeploy/summon-mecha/qa/hil-verification/hil_safety_report.json)
+- **行业标准依据**：ISO 13849-1（Cat 3/PL d）、ISO 10218-1（Stop Category 1）、IEC 61508
+- **测试用例审计结论**：
+  - **HIL-01（硬件急停联锁与阻尼保护）**：电机 12.5ms 内降速归零并切入被动阻尼保护模式（PASS）；
+  - **HIL-02（通信中断看门狗）**：DDS 控制流丢包 160ms 触发看门狗，下发零速命令并锁定当前姿态（PASS）；
+  - **HIL-03（急停排他死锁与受控恢复）**：急停后系统强制排他死锁，拒绝新指令（`ESTOP_ACTIVE_LOCKED`），仅验签重置指令可解除（PASS）。
+
 ---
 
 ## 4. 完成等级诚实判定（Honest Completion Verdict）
@@ -102,19 +119,21 @@
 ## 5. 变更文件清单
 
 1. **机器人原生资产**：
-   - `resources/robot-models/unitree_g1/g1_23dof.urdf`
-   - `resources/robot-models/unitree_g1/g1_23dof.srdf`
-   - `resources/robot-models/unitree_g1/g1_23dof.xml`
-   - `resources/robot-models/unitree_g1/idl/unitree_sdk2_arm.idl`
+   - `resources/robot-models/unitree_g1/{g1_23dof.urdf, srdf, xml, idl/unitree_sdk2_arm.idl}`
+   - `resources/robot-models/agibot_a2/{a2_26dof.urdf, srdf, xml, proto/aimdk_motion.proto}`
 2. **机型 Profile 与核心算法**：
    - `my-bagisto-store/resources/skill-target-profiles/unitree_g1.json`
+   - `my-bagisto-store/resources/skill-target-profiles/agibot_a2.json`
    - `my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/MotionTranscoder.php`
    - `my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/SemanticLowerer.php`
 3. **第三方客观验证脚本与数据**：
    - `qa/physics-verification/verify_kinematics_dynamics.py` / `dynamics_verification_report.json`
    - `qa/simulation/run_mujoco_sil.py` / `sil_simulation_report.json` / `mujoco_telemetry.csv`
+   - `qa/simulation/run_actuator_dynamics_audit.py` / `actuator_dynamics_report.json`
    - `qa/dds-verification/verify_idl_layout.py` / `dds_conformance_report.json`
    - `qa/security-audit/verify_sandbox_containment.py` / `sandbox_containment_report.json`
+   - `qa/hil-verification/verify_hil_safety_interlock.py` / `hil_safety_report.json`
 4. **设备端 Agent 修复与端到端测试**：
    - `agent/zhjj_agent/adapters/unitree_g1.py`
    - `agent/tests/test_e2e_simulator.py`
+   - `agent/tests/test_acceptance_at01_at26.py`

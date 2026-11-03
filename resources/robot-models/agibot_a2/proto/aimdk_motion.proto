@@ -1,0 +1,60 @@
+// Protobuf Specification for Agibot AimDK RPC Motion Service
+// AimDK API v1.3 - Arm & Whole-Body Trajectory Dispatch
+
+syntax = "proto3";
+
+package aimdk.motion.v1;
+
+enum MotionMode {
+  MOTION_MODE_UNSPECIFIED = 0;
+  MOTION_MODE_POSITION = 1;
+  MOTION_MODE_TORQUE = 2;
+  MOTION_MODE_IMPEDANCE = 3;
+  MOTION_MODE_ESTOP = 4;
+}
+
+message JointCmd {
+  string joint_name = 1;
+  double target_position_rad = 2;
+  double target_velocity_rad_s = 3;
+  double feedforward_torque_nm = 4;
+  double kp = 5;
+  double kd = 6;
+}
+
+message TrajectoryFrame {
+  double timestamp_s = 1;
+  repeated JointCmd joint_commands = 2;
+}
+
+message ArmTrajectoryRequest {
+  string execution_id = 1;
+  string arm = 2; // "left", "right", or "both"
+  MotionMode mode = 3;
+  repeated TrajectoryFrame frames = 4;
+  double max_velocity_limit = 5;
+  double max_acceleration_limit = 6;
+}
+
+message ArmTrajectoryResponse {
+  string execution_id = 1;
+  bool accepted = 2;
+  string reject_reason = 3;
+  uint64 estimated_duration_ms = 4;
+}
+
+message EStopRequest {
+  string source = 1;
+  string reason = 2;
+  uint64 timestamp_ns = 3;
+}
+
+message EStopResponse {
+  bool acknowledged = 1;
+  uint64 stopped_at_ns = 2;
+}
+
+service AimDKMotionService {
+  rpc ExecuteArmTrajectory (ArmTrajectoryRequest) returns (ArmTrajectoryResponse);
+  rpc TriggerEStop (EStopRequest) returns (EStopResponse);
+}

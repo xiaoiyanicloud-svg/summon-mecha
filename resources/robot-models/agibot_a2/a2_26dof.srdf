@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="agibot_a2_26dof">
+  <!-- Adjacent link collision disable matrix for Agibot A2 -->
+  <disable_collisions link1="pelvis" link2="waist_yaw_link" reason="Adjacent"/>
+  <disable_collisions link1="waist_yaw_link" link2="torso_link" reason="Adjacent"/>
+  <disable_collisions link1="torso_link" link2="head_link" reason="Adjacent"/>
+
+  <!-- Right Arm Adjacent Pairings -->
+  <disable_collisions link1="torso_link" link2="right_shoulder_pitch_link" reason="Adjacent"/>
+  <disable_collisions link1="right_shoulder_pitch_link" link2="right_shoulder_roll_link" reason="Adjacent"/>
+  <disable_collisions link1="right_shoulder_roll_link" link2="right_shoulder_yaw_link" reason="Adjacent"/>
+  <disable_collisions link1="right_shoulder_yaw_link" link2="right_elbow_link" reason="Adjacent"/>
+  <disable_collisions link1="right_elbow_link" link2="right_wrist_roll_link" reason="Adjacent"/>
+  <disable_collisions link1="right_wrist_roll_link" link2="right_wrist_pitch_link" reason="Adjacent"/>
+  <disable_collisions link1="right_wrist_pitch_link" link2="right_palm_link" reason="Adjacent"/>
+
+  <!-- Left Arm Adjacent Pairings -->
+  <disable_collisions link1="torso_link" link2="left_shoulder_pitch_link" reason="Adjacent"/>
+  <disable_collisions link1="left_shoulder_pitch_link" link2="left_shoulder_roll_link" reason="Adjacent"/>
+  <disable_collisions link1="left_shoulder_roll_link" link2="left_shoulder_yaw_link" reason="Adjacent"/>
+  <disable_collisions link1="left_shoulder_yaw_link" link2="left_elbow_link" reason="Adjacent"/>
+  <disable_collisions link1="left_elbow_link" link2="left_wrist_roll_link" reason="Adjacent"/>
+  <disable_collisions link1="left_wrist_roll_link" link2="left_wrist_pitch_link" reason="Adjacent"/>
+  <disable_collisions link1="left_wrist_pitch_link" link2="left_palm_link" reason="Adjacent"/>
+
+  <!-- Legs Adjacent Pairings -->
+  <disable_collisions link1="pelvis" link2="right_hip_pitch_link" reason="Adjacent"/>
+  <disable_collisions link1="right_hip_pitch_link" link2="right_knee_link" reason="Adjacent"/>
+  <disable_collisions link1="right_knee_link" link2="right_ankle_link" reason="Adjacent"/>
+  <disable_collisions link1="pelvis" link2="left_hip_pitch_link" reason="Adjacent"/>
+  <disable_collisions link1="left_hip_pitch_link" link2="left_knee_link" reason="Adjacent"/>
+  <disable_collisions link1="left_knee_link" link2="left_ankle_link" reason="Adjacent"/>
+
+  <!-- Non-adjacent naturally separated links under joint limits -->
+  <disable_collisions link1="head_link" link2="right_palm_link" reason="NeverInContactUnderNormalLimits"/>
+  <disable_collisions link1="head_link" link2="left_palm_link" reason="NeverInContactUnderNormalLimits"/>
+  <disable_collisions link1="pelvis" link2="right_palm_link" reason="NeverInContactUnderNormalLimits"/>
+  <disable_collisions link1="pelvis" link2="left_palm_link" reason="NeverInContactUnderNormalLimits"/>
+</robot>

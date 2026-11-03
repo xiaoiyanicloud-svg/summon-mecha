@@ -11,6 +11,12 @@
     "linux-x86_64",
     "linux-aarch64"
   ],
+  "ground_truth_models": {
+    "urdf": "resources/robot-models/agibot_a2/a2_26dof.urdf",
+    "srdf": "resources/robot-models/agibot_a2/a2_26dof.srdf",
+    "mjcf": "resources/robot-models/agibot_a2/a2_26dof.xml",
+    "idl": "resources/robot-models/agibot_a2/proto/aimdk_motion.proto"
+  },
   "sdk": {
     "name": "aimdk",
     "min_version": "1.3.0",
@@ -45,9 +51,32 @@
     }
   },
   "dof": 26,
+  "joints": {
+    "left_arm": {
+      "L_SHOULDER_PITCH": { "joint_id": 1, "min_rad": -2.80, "max_rad": 2.80 },
+      "L_SHOULDER_ROLL":  { "joint_id": 2, "min_rad": -1.57, "max_rad": 2.10 },
+      "L_SHOULDER_YAW":   { "joint_id": 3, "min_rad": -2.50, "max_rad": 2.50 },
+      "L_ELBOW":          { "joint_id": 4, "min_rad": -1.20, "max_rad": 2.10 },
+      "L_WRIST_ROLL":     { "joint_id": 5, "min_rad": -1.90, "max_rad": 1.90 },
+      "L_WRIST_PITCH":    { "joint_id": 6, "min_rad": -1.57, "max_rad": 1.57 },
+      "L_WRIST_YAW":      { "joint_id": 7, "min_rad": -1.57, "max_rad": 1.57 }
+    },
+    "right_arm": {
+      "R_SHOULDER_PITCH": { "joint_id": 8, "min_rad": -2.80, "max_rad": 2.80 },
+      "R_SHOULDER_ROLL":  { "joint_id": 9, "min_rad": -2.10, "max_rad": 1.57 },
+      "R_SHOULDER_YAW":   { "joint_id": 10, "min_rad": -2.50, "max_rad": 2.50 },
+      "R_ELBOW":          { "joint_id": 11, "min_rad": -1.20, "max_rad": 2.10 },
+      "R_WRIST_ROLL":     { "joint_id": 12, "min_rad": -1.90, "max_rad": 1.90 },
+      "R_WRIST_PITCH":    { "joint_id": 13, "min_rad": -1.57, "max_rad": 1.57 },
+      "R_WRIST_YAW":      { "joint_id": 14, "min_rad": -1.57, "max_rad": 1.57 }
+    }
+  },
   "safety_envelope": {
     "max_velocity_rad_s": 2.8,
     "max_acceleration_rad_s2": 5.0,
+    "max_jerk_rad_s3": 60.0,
+    "max_torque_nm": 30.0,
+    "min_collision_clearance_mm": 15.0,
     "estop_supported": true,
     "default_timeout_s": 30
   },
