@@ -561,46 +561,66 @@ class DeployTaskService
 
         $keyId = $this->signing->keyId();
         $payload = is_array($task->signed_payload) ? $task->signed_payload : [];
-        $signed = [
-            'protocol_version'              => DeployTask::PROTOCOL_V2,
-            'signature_algorithm'           => 'RSA-SHA256',
-            'key_id'                        => $keyId,
-            'task_id'                       => (string) $task->task_no,
-            'command_seq'                   => (int) ($task->command_seq ?: 1),
-            'did'                           => (string) $task->did,
-            'operation'                     => (int) $task->operation,
-            'skill_id'                      => (string) $task->skill_id,
-            'skill_version_id'              => $task->skill_version_id ? (string) $task->skill_version_id : null,
-            'version'                       => $version?->version ? (string) $version->version : null,
-            'package_asset_id'              => $task->package_asset_id ? (string) $task->package_asset_id : null,
-            'package_hash'                  => $task->package_hash ?: null,
-            'package_sha256'                => $packageSha256 ?: null,
-            'build_key'                     => $payload['build_key'] ?? null,
-            'target_model_code'             => $payload['target_model_code'] ?? null,
-            'target_profile_digest'         => $payload['target_profile_digest'] ?? null,
-            'verification_digest'           => $payload['verification_digest'] ?? null,
-            'revoked_version_id'            => $payload['revoked_version_id'] ?? null,
-            'restore_asset_id'              => $payload['restore_asset_id'] ?? null,
-            'restore_sha256'                => $payload['restore_sha256'] ?? null,
-            'execution_id'                  => $task->execution_id ?: null,
-            'target_release_id'             => $payload['target_release_id'] ?? null,
-            'installed_asset_id'            => $payload['installed_asset_id'] ?? null,
-            'installed_sha256'              => $payload['installed_sha256'] ?? null,
-            'plan_digest'                   => $payload['plan_digest'] ?? null,
-            'runtime_digest'                => $payload['runtime_digest'] ?? null,
-            'execution_params'              => $payload['execution_params'] ?? null,
-            'execution_deadline'            => isset($payload['execution_deadline']) ? (int) $payload['execution_deadline'] : null,
-            'entitlement_id'                => $task->entitlement_id ? (string) $task->entitlement_id : null,
-            'authorization_policy_version'  => 'v1',
-            'authorization_not_before'      => isset($payload['authorization_not_before']) ? (int) $payload['authorization_not_before'] : null,
-            'authorization_expires_at'      => isset($payload['authorization_expires_at']) ? (int) $payload['authorization_expires_at'] : null,
-            'revocation_epoch'              => (int) ($payload['revocation_epoch'] ?? 0),
-            'issued_at'                     => (int) $ts,
-            'task_expires_at'               => $task->task_expires_at ? $task->task_expires_at->timestamp : ($ts + 3600),
-        ];
 
-        $signatureV1 = $this->signing->sign($canonical);
-        $signatureV2 = $this->signing->signV2($signed);
+        if (isset($payload['signed']) && is_array($payload['signed']) && isset($payload['signature_v2'])) {
+            $signed = $payload['signed'];
+            $signatureV2 = $payload['signature_v2'];
+            $signatureV1 = $payload['signature_v1'] ?? $this->signing->sign($canonical);
+            $ts = $signed['issued_at'] ?? $ts;
+        } else {
+            $expiresAtTimestamp = $task->task_expires_at ? $task->task_expires_at->timestamp : ($ts + 3600);
+            $signed = [
+                'protocol_version'              => DeployTask::PROTOCOL_V2,
+                'signature_algorithm'           => 'RSA-SHA256',
+                'key_id'                        => $keyId,
+                'task_id'                       => (string) $task->task_no,
+                'command_seq'                   => (int) ($task->command_seq ?: 1),
+                'did'                           => (string) $task->did,
+                'operation'                     => (int) $task->operation,
+                'skill_id'                      => (string) $task->skill_id,
+                'skill_version_id'              => $task->skill_version_id ? (string) $task->skill_version_id : null,
+                'version'                       => $version?->version ? (string) $version->version : null,
+                'package_asset_id'              => $task->package_asset_id ? (string) $task->package_asset_id : null,
+                'package_hash'                  => $task->package_hash ?: null,
+                'package_sha256'                => $packageSha256 ?: null,
+                'build_key'                     => $payload['build_key'] ?? null,
+                'target_model_code'             => $payload['target_model_code'] ?? null,
+                'target_profile_digest'         => $payload['target_profile_digest'] ?? null,
+                'verification_digest'           => $payload['verification_digest'] ?? null,
+                'revoked_version_id'            => $payload['revoked_version_id'] ?? null,
+                'restore_asset_id'              => $payload['restore_asset_id'] ?? null,
+                'restore_sha256'                => $payload['restore_sha256'] ?? null,
+                'execution_id'                  => $task->execution_id ?: null,
+                'target_release_id'             => $payload['target_release_id'] ?? null,
+                'installed_asset_id'            => $payload['installed_asset_id'] ?? null,
+                'installed_sha256'              => $payload['installed_sha256'] ?? null,
+                'plan_digest'                   => $payload['plan_digest'] ?? null,
+                'runtime_digest'                => $payload['runtime_digest'] ?? null,
+                'execution_params'              => $payload['execution_params'] ?? null,
+                'execution_deadline'            => isset($payload['execution_deadline']) ? (int) $payload['execution_deadline'] : null,
+                'entitlement_id'                => $task->entitlement_id ? (string) $task->entitlement_id : null,
+                'authorization_policy_version'  => 'v1',
+                'authorization_not_before'      => isset($payload['authorization_not_before']) ? (int) $payload['authorization_not_before'] : null,
+                'authorization_expires_at'      => isset($payload['authorization_expires_at']) ? (int) $payload['authorization_expires_at'] : null,
+                'revocation_epoch'              => (int) ($payload['revocation_epoch'] ?? 0),
+                'issued_at'                     => (int) $ts,
+                'task_expires_at'               => (int) $expiresAtTimestamp,
+            ];
+
+            $signatureV1 = $this->signing->sign($canonical);
+            $signatureV2 = $this->signing->signV2($signed);
+
+            $payload['signed'] = $signed;
+            $payload['signature_v1'] = $signatureV1;
+            $payload['signature_v2'] = $signatureV2;
+            $task->signed_payload = $payload;
+            if (! $task->task_expires_at) {
+                $task->task_expires_at = \Illuminate\Support\Carbon::createFromTimestamp($expiresAtTimestamp);
+            }
+            if ($task->exists) {
+                $task->saveQuietly();
+            }
+        }
 
         $cmd = [
             'task_id'          => $task->task_no,

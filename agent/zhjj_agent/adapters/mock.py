@@ -8,7 +8,8 @@ from zhjj_agent.adapters.base import BaseInstallAdapter
 
 
 class MockAdapter(BaseInstallAdapter):
-    def __init__(self):
+    def __init__(self, app_dir: Optional[str] = None):
+        self.app_dir = app_dir
         self._skills: Dict[str, Dict[str, Any]] = {}
         self._executions: Dict[str, Dict[str, Any]] = {}
 
@@ -36,6 +37,26 @@ class MockAdapter(BaseInstallAdapter):
 
     def observe(self, skill_id: str) -> Dict[str, Any]:
         info = self._skills.get(str(skill_id))
+        if not info and self.app_dir:
+            state_file = os.path.join(self.app_dir, "state", "installed.json")
+            if os.path.isfile(state_file):
+                try:
+                    with open(state_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    rec = data.get(str(skill_id))
+                    if rec:
+                        info = {
+                            "skill_id": str(skill_id),
+                            "version": rec.get("current_version", "1.0.0"),
+                            "install_path": rec.get("install_path", ""),
+                            "manifest": rec.get("manifest", {}),
+                            "enabled": rec.get("enabled", True),
+                            "installed_at": int(time.time()),
+                        }
+                        self._skills[str(skill_id)] = info
+                except Exception:
+                    pass
+
         if not info:
             return {"installed": False, "status": "not_installed"}
         return {
@@ -56,11 +77,17 @@ class MockAdapter(BaseInstallAdapter):
         info = self._skills.get(str(skill_id))
         if info:
             info["enabled"] = False
+            for eid, ex in list(self._executions.items()):
+                if ex.get("skill_id") == str(skill_id) and not ex.get("is_stopped"):
+                    self.cancel_execution(eid)
             return True
         return False
 
     def uninstall(self, skill_id: str, install_path: str) -> bool:
         self._skills.pop(str(skill_id), None)
+        for eid, ex in list(self._executions.items()):
+            if ex.get("skill_id") == str(skill_id) and not ex.get("is_stopped"):
+                self.cancel_execution(eid)
         return True
 
     def rollback(self, skill_id: str, restore_version: str, restore_path: str) -> bool:
@@ -113,7 +140,7 @@ class MockAdapter(BaseInstallAdapter):
         if not exec_info:
             return {
                 "status": "UNKNOWN",
-                "is_stopped": True,
+                "is_stopped": False,
                 "error_msg": "执行记录不存在",
             }
 

@@ -15,33 +15,54 @@ def _utf16_sort_key(s: str) -> bytes:
     return s.encode("utf-16-be")
 
 
-def jcs_canonicalize(obj: Any) -> bytes:
-    """RFC 8785 (JSON Canonicalization Scheme - JCS) 规范化编码。
-    
-    规则：
-    1. 对象键按 UTF-16 码元顺序升序排序
-    2. 无多余空白字符（separators=(',', ':')）
-    3. 浮点数/整数紧凑表示
-    4. 严格输出 UTF-8 字节
-    """
-    def _normalize(item: Any) -> Any:
-        if isinstance(item, dict):
-            # 递归排序所有键
-            sorted_keys = sorted(item.keys(), key=_utf16_sort_key)
-            return {k: _normalize(item[k]) for k in sorted_keys}
-        elif isinstance(item, (list, tuple)):
-            return [_normalize(x) for x in item]
-        return item
+def format_es_number(val: Union[int, float]) -> str:
+    """按 ECMAScript 标准格式化数字（RFC 8785 §3.2.2.3 规范表示）。"""
+    if isinstance(val, bool):
+        return "true" if val else "false"
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, float):
+        if val != val or val == float('inf') or val == float('-inf'):
+            raise ValueError("NaN and Infinity are not permitted in JCS")
+        if val == 0.0 or val == -0.0:
+            return "0"
+        s = f"{val:.16g}"
+        if "e" in s or "E" in s:
+            parts = s.lower().split("e")
+            base = parts[0]
+            exp = parts[1]
+            exp_sign = exp[0]
+            exp_val = exp[1:].lstrip("0") or "0"
+            return f"{base}e{exp_sign}{exp_val}"
+        return s
 
-    normalized = _normalize(obj)
-    # separators=(',', ':') 保证 token 间无空格，ensure_ascii=False 输出纯 UTF-8
-    canonical_json_str = json.dumps(
-        normalized,
-        ensure_ascii=False,
-        separators=(',', ':'),
-        allow_nan=False
-    )
-    return canonical_json_str.encode("utf-8")
+
+def _jcs_serialize(obj: Any) -> str:
+    if obj is None:
+        return "null"
+    if isinstance(obj, bool):
+        return "true" if obj else "false"
+    if isinstance(obj, (int, float)):
+        return format_es_number(obj)
+    if isinstance(obj, str):
+        return json.dumps(obj, ensure_ascii=False, separators=(',', ':'))
+    if isinstance(obj, dict):
+        sorted_keys = sorted(obj.keys(), key=_utf16_sort_key)
+        items = []
+        for k in sorted_keys:
+            key_str = json.dumps(str(k), ensure_ascii=False, separators=(',', ':'))
+            val_str = _jcs_serialize(obj[k])
+            items.append(f"{key_str}:{val_str}")
+        return "{" + ",".join(items) + "}"
+    if isinstance(obj, (list, tuple)):
+        items = [_jcs_serialize(x) for x in obj]
+        return "[" + ",".join(items) + "]"
+    return json.dumps(obj, ensure_ascii=False, separators=(',', ':'))
+
+
+def jcs_canonicalize(obj: Any) -> bytes:
+    """RFC 8785 (JSON Canonicalization Scheme - JCS) 规范化编码。"""
+    return _jcs_serialize(obj).encode("utf-8")
 
 
 def canonical_v1(cmd: Dict[str, Any]) -> bytes:

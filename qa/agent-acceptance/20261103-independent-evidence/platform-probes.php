@@ -1,0 +1,52 @@
+<?php
+// 唯一允许的 DB 为独立测试库；事务回滚，文件写入本证据目录。
+require __DIR__.'/preflight.php';
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
+use Illuminate\Http\Request;
+use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Models\InstallRecord;
+use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillBuild;
+use Webkul\Shop\Models\DeployTask;
+use Webkul\Shop\Http\Controllers\API\AgentController;
+use Webkul\Shop\Services\SkillCompile\SkillBuildService;
+use Webkul\Shop\Services\SkillDelivery\SkillDeliveryAssetResolver;
+use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
+use Webkul\Shop\Services\Deploy\DeployTaskService;
+$res=[];
+config(['filesystems.disks.private.root'=>__DIR__.'/artifact-store', 'filesystems.disks.audit_keys'=>['driver'=>'local','root'=>__DIR__.'/ephemeral-test-keys'], 'deploy_gateways.keys.disk'=>'audit_keys','deploy_gateways.keys.dir'=>'keys']);
+DB::beginTransaction();
+try {
+ $did='audit_'.uniqid();
+ DeviceBinding::create(['did'=>$did,'sn'=>'SN_'.$did,'source'=>'agent','bind_status'=>'bound']);
+ InstallRecord::create(['did'=>$did,'skill_version_id'=>987651,'status'=>'installed','current_version'=>'1.0.0','installed_at'=>now(),'channel'=>'agent']);
+ $req=Request::create('/api/agent/reconcile','POST',['did'=>$did,'skills'=>[['skill_version_id'=>987651,'status'=>'uninstalled'],['skill_version_id'=>987652,'status'=>'installed']]]);
+ $req->attributes->set('agent.did',$did);
+ $res['reconciliation_with_mismatch_and_unknown']=app(AgentController::class)->reconcile($req)->getData(true);
+ $pid=DB::table('products')->insertGetId(['sku'=>'audit_'.uniqid(),'type'=>'simple','created_at'=>now(),'updated_at'=>now()]);
+ $v=SkillVersion::create(['product_id'=>$pid,'version'=>'1.0.0','channel'=>'stable','status'=>SkillVersion::STATUS_PUBLISHED,'license_mode'=>'per_device']);
+ $manifest=json_decode(file_get_contents(base_path('../docs/portable-skill-spec/examples/greeting/manifest.json')),true);
+ $assetCount=SkillAsset::where('skill_version_id',$v->id)->count();
+ $first=app(SkillBuildService::class)->compile($v->id,$manifest,['unitree_g1']);
+ $b1=SkillBuild::where('skill_version_id',$v->id)->first();
+ $a1=SkillAsset::find($b1->artifact_asset_id);
+ $fingerprint1=app(PackageFingerprint::class)->forVersion($v->id);
+ $wrong=app(SkillDeliveryAssetResolver::class)->resolveForVersion($v->id,modelCode:'agibot_a2');
+ $zip=new ZipArchive();$zip->open(Storage::disk(SkillAsset::disk())->path($a1->file_path));
+ $res['missing_source_and_audio']=['version_status'=>$v->status,'source_assets_before'=>$assetCount,'compile'=>$first,'generated_welcome_wav_bytes'=>strlen($zip->getFromName('assets/welcome.wav'))];$zip->close();
+ $res['wrong_model_fallback']=['requested'=>'agibot_a2','received_asset_name'=>$wrong?->file_name,'received_same_g1_asset'=>$wrong?->id===$a1->id];
+ Carbon::setTestNow(now()->addSeconds(60));
+ $second=app(SkillBuildService::class)->compile($v->id,$manifest,['unitree_g1']);
+ $b2=SkillBuild::where('skill_version_id',$v->id)->first(); $a2=SkillAsset::find($b2->artifact_asset_id);
+ $res['published_recompile']=['same_build_key'=>$b1->retarget_conf['build_key']===$b2->retarget_conf['build_key'],'same_sha'=>$a1->file_hash===$a2->file_hash,'changed_asset_id'=>$a1->id!==$a2->id,'changed_version_fingerprint'=>$fingerprint1!==app(PackageFingerprint::class)->forVersion($v->id),'historical_build_rows'=>SkillBuild::where('skill_version_id',$v->id)->count()];
+ $task=DeployTask::create(['task_no'=>'AUD_'.uniqid(),'did'=>$did,'skill_id'=>$pid,'operation'=>DeployTask::OP_ENABLE,'protocol_version'=>DeployTask::PROTOCOL_V2,'command_seq'=>1,'status'=>'dispatching','payload'=>[]]);
+ $c1=app(DeployTaskService::class)->buildCommand($task);
+ Carbon::setTestNow(now()->addSeconds(3600));
+ $c2=app(DeployTaskService::class)->buildCommand($task);
+ $res['same_task_refreshed_expiry']=['first_expiry'=>$c1['signed']['task_expires_at'],'second_expiry'=>$c2['signed']['task_expires_at'],'extended_seconds'=>$c2['signed']['task_expires_at']-$c1['signed']['task_expires_at'],'signed_changed'=>$c1['signed']!==$c2['signed']];
+ file_put_contents(__DIR__.'/platform-probes.json',json_encode($res,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+ echo json_encode($res,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),PHP_EOL;
+} finally { Carbon::setTestNow(); DB::rollBack(); }

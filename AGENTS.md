@@ -16,22 +16,17 @@
   - **动作转码与目标代码降阶**：余弦平滑轨迹插值生成、`action.py` 脚本与成品 `.skill` 归档生成，写入 `skill_assets` 并遵守 `uk_skill_assets_version_carrier` 约束；
   - **全链路交付打通**：通过 `SkillDeliveryAssetResolver` 为目标设备唯一解析对应构建产物，并在设备端 Agent（Unitree G1 适配器）完成安装与 `OP_EXECUTE(7)` 执行验证；
   - **验证**：新增 `PortableSkillCompilerTest.php` 5 项全过、Deploy 全量 128 项测试全过、Python 27 项测试全过。
-- **设备端 Agent 与平台必要对接（第一阶段）已闭环**：
-  - 交付基准与证据详见 `docs/skill-dev-step10-agent-delivery.md` 及 `docs/adr/ADR-0001-device-agent-and-standard-transcoder.md`。
-  - **设备端独立代码包 (`agent/zhjj_agent/`, `agent/agent.py`)**：
-    - 独立设备凭据认证与已吊销拒绝（严防通过省略 did 绕过回退共享密钥）；
-    - RFC 8785 JCS 规范串 + RSA-SHA256 v2 全字段验签（防操作码/设备/哈希/时效篡改）；
-    - 限量下载、流式 SHA-256 复算、Zip Slip 拦截、符号链接拒绝、解压炸弹防御与 Staging 事务隔离解压；
-    - 执行（`OP_EXECUTE=7`）与取消（`OP_CANCEL_EXECUTION=8`）生命周期，按 `execution_id` 独立去重，执行事实与安装事实彻底物理隔离（执行成功绝不记为 `install_record`）；
-    - 本地 SQLite WAL 持久化 Journal、检查点、Outbox 补偿重试与断电恢复；
-    - 首装回滚安全停用机制（无旧版时置 disabled，不虚报假恢复）；
-    - 宇树 G1 EDU 机型插件规范对接（诚实标注硬件未验证 `HARDWARE_UNVERIFIED`）与离线测试全功能模拟适配器；
-    - 验证：Python `unittest` 26 项单元/集成测试全量通过；
-  - **平台端增量对接**：
-    - 增量迁移 `2026_11_03_000001_add_v2_and_execution_to_deploy_tasks.php`（已在测试库执行）；
-    - `SkillExecution` 独立事实模型；
-    - `SigningService` v2 JCS 签名、`AgentController` 协议过滤门禁与 ACK/对账端点、`SkillController` 客户侧执行与取消端点；
-    - 验证：`AgentV2ExecutionTest.php` 5 项全过、Deploy 全量 123 项测试全过、`ecosystem:contract-check` 契约门禁全过。
+- **设备端 Agent 与平台必要对接（第一阶段返工）已闭环**：
+  - 交付基准与证据详见 `docs/skill-dev-step10-agent-rework-delivery.md` 及 `qa/agent-acceptance/20261103-independent-evidence/`。
+  - 针对独立验收报告提出的 R01~R10 缺陷及 A01~A08 工作包全部闭环：
+    - **A01/R01/R07**：修复 Python 3.12 类型导入问题；重构 `UnitreeG1Adapter`，真实检查入口脚本，无 SDK 且无 stub 时拒绝执行，诚实标注 `HARDWARE_UNVERIFIED`；
+    - **A02/A03/R02**：落实 RFC 8785 JCS 规范串与双向跨语言黄金向量验证；严格内外层一致性校验与凭据验签；
+    - **A04/R08**：强化解包安全（Zip Slip、Symlink、Zip Bomb）与 Staging 事务隔离；
+    - **A05/R05/R06**：执行生命周期按 `execution_id` 独立去重，执行事实与安装事实彻底物理隔离；
+    - **A06/R03/R04**：SQLite WAL 本地持久化与 Outbox 补偿重试，修复下载崩溃误报成功漏洞与迟到事实保留；
+    - **A07/R04/R06**：首装无旧版安全停用与停用/卸载时主动取消关联执行；
+    - **A08/R09/R10**：修复下发指令过期时间漂移与跨机型构建错发漏洞，实现全量端云事实双向对账；
+    - **验证**：交付黑盒测试套件 `test_acceptance_at01_at26.py`（26 项用例全过）、真实 Laravel HTTP 端口隔离端到端集成测试 `test_live_http_integration.py`（4 项全过）、Python 全量 57 项测试全过、Deploy 全量 128 项测试全过、契约门禁全过。
 - **技能全链路缺失清单专项**：
   - 计划基准文档见 `docs/skill-supply-demand-audit-and-blueprint.md`。
   - **节点 1（开发者端 DEV-01~06）已闭环**：

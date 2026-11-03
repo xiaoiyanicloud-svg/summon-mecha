@@ -30,6 +30,7 @@ from zhjj_agent.constants import (
     PHASE_DOWNLOADING,
     PHASE_FAILED,
     PHASE_INSTALLING,
+    PROTOCOL_V1,
     PROTOCOL_V2,
     STATE_COMMITTED,
     STATE_DOWNLOADING,
@@ -81,32 +82,74 @@ class TaskManager:
                 error_code=payload.get("error_code"),
                 error_msg=payload.get("error_msg")
             )
-            # 无论服务端返回成功还是合法业务拒绝（409/404 等 X1 信封），均视为平台已知晓并记录 ACK
-            if ok or resp.get("code") in ("TASK_TRANSITION_INVALID", "TASK_NOT_FOUND"):
+            # 只有取得平台确认才标记已确认，严禁因 TASK_TRANSITION_INVALID / TASK_NOT_FOUND 无条件丢弃待发事件
+            if ok:
                 self.storage.mark_event_acked(event_id, resp)
 
     def resume_recovery(self):
-        """断网/重启后的崩溃恢复与事实对账。"""
-        # 1. 优先冲刷积压事件
+        """断网/重启后的崩溃恢复与事实对账。按操作类型与检查点精细化对账，严禁将旧版错报为新安装完成。"""
         self.flush_outbox()
 
-        # 2. 检查未完结的持久化任务
         uncompleted = self.storage.get_uncompleted_tasks()
         for task in uncompleted:
             task_id = task["task_id"]
             op = task["operation"]
             skill_id = task["skill_id"]
+            target_version = task.get("version")
+            status = task.get("status")
 
-            # 通过底层适配器独立观测设备侧实际状态
+            # 独立观测设备侧实际状态
             obs = self.adapter.observe(skill_id)
-            if obs.get("installed") and obs.get("status") == "active":
-                # 实际已安装完成，补充持久化提交并上报 done
-                self.storage.update_task_status(task_id, STATE_COMMITTED)
-                self.emit_event(task_id, PHASE_DONE)
+
+            if op == OP_INSTALL:
+                # 只有当此前确实进入过 staging/installing 阶段，且适配器实际版本与目标一致时才视为安装完成
+                if status in (STATE_STAGED, STATE_INSTALLING) and obs.get("installed") and obs.get("version") == target_version:
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(task_id, PHASE_DONE)
+                else:
+                    self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "进程重启后未能确认外部安装状态")
+                    self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "进程重启后未能确认外部安装状态")
+
+            elif op == OP_ENABLE:
+                if obs.get("installed") and obs.get("enabled"):
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(task_id, PHASE_DONE)
+                else:
+                    self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "未能确认启用状态")
+                    self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "未能确认启用状态")
+
+            elif op == OP_DISABLE:
+                if not obs.get("enabled") or obs.get("status") == "disabled":
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(task_id, PHASE_DONE)
+                else:
+                    self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "未能确认停用状态")
+                    self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "未能确认停用状态")
+
+            elif op in (OP_UNINSTALL, OP_RECLAIM):
+                if not obs.get("installed") or obs.get("status") in ("uninstalled", "not_installed"):
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(task_id, PHASE_DONE)
+                else:
+                    self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "未能确认卸载状态")
+                    self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "未能确认卸载状态")
+
+            elif op == OP_EXECUTE:
+                exec_id = task.get("execution_id") or f"exec_{task_id}"
+                exec_obs = self.executor.observe(exec_id)
+                if exec_obs.get("is_stopped"):
+                    if exec_obs.get("status") == "SUCCEEDED":
+                        self.storage.update_task_status(task_id, STATE_COMMITTED)
+                        self.emit_event(task_id, PHASE_DONE)
+                    else:
+                        self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_FAILED", exec_obs.get("error_msg"))
+                        self.emit_event(task_id, PHASE_FAILED, "EXECUTION_FAILED", exec_obs.get("error_msg"))
+                else:
+                    self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "执行状态未知")
+                    self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "执行状态未知")
             else:
-                # 无法确认完成，标记需人工处置，绝不伪造成功，并入队回报事件
-                self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "进程重启后未能确认外部安装状态")
-                self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "进程重启后未能确认外部安装状态")
+                self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "未识别的在途任务操作")
+                self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "未识别的在途任务操作")
 
     # ── 事件发射封装 ─────────────────────────────────────────────────────────
 
@@ -134,33 +177,89 @@ class TaskManager:
             error_code=error_code,
             error_msg=error_msg
         )
-        if ok or resp.get("code") in ("TASK_TRANSITION_INVALID", "TASK_NOT_FOUND"):
+        if ok:
             self.storage.mark_event_acked(event_id, resp)
 
     # ── 指令处理核心流水线 ───────────────────────────────────────────────────
 
     def process_command(self, cmd: Dict[str, Any]) -> bool:
-        task_id = cmd.get("task_id")
-        operation = int(cmd.get("operation") or OP_INSTALL)
-        skill_id = str(cmd.get("skill_id") or "")
-        version = str(cmd.get("version") or "1.0.0")
-        command_seq = int(cmd.get("command_seq") or 1)
+        raw_op = cmd.get("operation")
         protocol = cmd.get("protocol_version") or cmd.get("signed", {}).get("protocol_version")
+
+        # 拒绝未知协议或缺少操作码（严禁将缺操作码默认成安装）
+        if raw_op is None and (protocol != PROTOCOL_V2 or "operation" not in cmd.get("signed", {})):
+            self.emit_event(cmd.get("task_id", "unknown"), PHASE_FAILED, "MISSING_OPERATION", "指令缺少必需的操作码")
+            return False
 
         # ── 1. 验签与防重放 ───────────────────────────────────────────────────
         if protocol == PROTOCOL_V2 and "signed" in cmd:
             signed = cmd["signed"]
+            if not isinstance(signed, dict):
+                self.emit_event(cmd.get("task_id", "unknown"), PHASE_FAILED, ERR_SIG_INVALID, "v2 signed 格式非法")
+                return False
+
+            task_id = signed.get("task_id")
+            operation = signed.get("operation")
+            skill_id = str(signed.get("skill_id") or "")
+            version = str(signed.get("version") or "1.0.0")
+            command_seq = int(signed.get("command_seq") or 1)
+
+            if operation is None or not task_id:
+                self.emit_event(task_id or "unknown", PHASE_FAILED, ERR_SIG_INVALID, "v2 signed 缺少必需字段")
+                return False
+
+            operation = int(operation)
+
+            # 外层与内层重复字段强制一致性校验（防外层篡改或内层绕过）
+            if cmd.get("operation") is not None and int(cmd["operation"]) != operation:
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令外层 operation 与签名内层不一致")
+                return False
+            if cmd.get("task_id") and cmd["task_id"] != task_id:
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令外层 task_id 与签名内层不一致")
+                return False
+            if cmd.get("did") and cmd["did"] != signed.get("did"):
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令外层 did 与签名内层不一致")
+                return False
+            if cmd.get("skill_id") and str(cmd["skill_id"]) != skill_id:
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令外层 skill_id 与签名内层不一致")
+                return False
+            if cmd.get("version") and str(cmd["version"]) != version:
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令外层 version 与签名内层不一致")
+                return False
+            if cmd.get("package_sha256") and cmd["package_sha256"].lower() != (signed.get("package_sha256") or "").lower():
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令外层 package_sha256 与签名内层不一致")
+                return False
+
+            # 核对 signed.did 与当前设备 Client 真实身份
+            signed_did = signed.get("did")
+            if signed_did != self.client.did:
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, f"签名目标设备 ({signed_did}) 与当前设备 ({self.client.did}) 不匹配")
+                return False
+
+            # RSA-SHA256 签名检验
             sig_b64 = cmd.get("signature") or cmd.get("signature_v2")
             if not verify_signature(canonical_v2(signed), sig_b64, self.pubkey_pem):
                 self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "v2 签名校验失败")
                 return False
 
-            # 时效检查
+            # 任务期限检查
             task_expires_at = signed.get("task_expires_at")
             if task_expires_at and int(time.time()) > int(task_expires_at):
-                # 处置类操作不被过期阻断，安装/启用/执行类阻断
                 if operation in (OP_INSTALL, OP_ENABLE, OP_EXECUTE):
                     self.emit_event(task_id, PHASE_FAILED, ERR_TASK_EXPIRED, "指令已过任务有效期")
+                    return False
+
+            # 授权窗口检查 (authorization_expires_at / authorization_not_before)
+            auth_expires_at = signed.get("authorization_expires_at")
+            if auth_expires_at and int(time.time()) > int(auth_expires_at):
+                if operation in (OP_INSTALL, OP_ENABLE, OP_EXECUTE):
+                    self.emit_event(task_id, PHASE_FAILED, ERR_REVOKED, "技能使用授权已过期")
+                    return False
+
+            auth_not_before = signed.get("authorization_not_before")
+            if auth_not_before and int(time.time()) < int(auth_not_before):
+                if operation in (OP_INSTALL, OP_ENABLE, OP_EXECUTE):
+                    self.emit_event(task_id, PHASE_FAILED, ERR_REVOKED, "技能使用授权尚未生效")
                     return False
 
             # 撤销代次检查
@@ -169,12 +268,37 @@ class TaskManager:
             if revocation_epoch < known_epoch and operation in (OP_INSTALL, OP_ENABLE, OP_EXECUTE):
                 self.emit_event(task_id, PHASE_FAILED, ERR_REVOKED, "该技能已被更高代次撤销，拒绝启用或安装")
                 return False
-        else:
-            # v1 回退验签
+
+        elif protocol == PROTOCOL_V1 or (protocol is None and "signature_v1" in cmd):
+            task_id = cmd.get("task_id")
+            operation = int(cmd.get("operation") or 0)
+            skill_id = str(cmd.get("skill_id") or "")
+            version = str(cmd.get("version") or "1.0.0")
+            command_seq = int(cmd.get("command_seq") or 1)
+
+            # v1 协议绝不接收 OP 7/8
+            if operation in (OP_EXECUTE, OP_CANCEL_EXECUTION):
+                self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "旧版协议禁止执行技能动作")
+                return False
+
             sig_b64 = cmd.get("signature") or cmd.get("signature_v1")
             if not verify_signature(canonical_v1(cmd), sig_b64, self.pubkey_pem):
                 self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "v1 签名校验未通过")
                 return False
+        else:
+            self.emit_event(cmd.get("task_id", "unknown"), PHASE_FAILED, ERR_SIG_INVALID, f"未知协议版本: {protocol}")
+            return False
+
+        # 若是停用、卸载或回收处置类操作：原子持久冻结准入、提升撤销代次，并取消在途执行
+        if operation in (OP_DISABLE, OP_UNINSTALL, OP_RECLAIM):
+            in_epoch = cmd.get("signed", {}).get("revocation_epoch") if protocol == PROTOCOL_V2 else cmd.get("revocation_epoch")
+            if in_epoch is not None and int(in_epoch) > 0:
+                self.storage.set_revocation_epoch(f"skill:{skill_id}", int(in_epoch))
+
+            # 取消活动执行并观察停止
+            active_leases = self.storage.get_active_leases_for_skill(skill_id)
+            for l in active_leases:
+                self.executor.cancel(l["execution_id"])
 
         # ── 2. 先持久接收落 Journal ──────────────────────────────────────────
         is_new = self.storage.record_task_durable(
@@ -199,7 +323,7 @@ class TaskManager:
         # 发送持久接收 ACK
         self.client.send_ack(task_id, f"ack_recv_{task_id}", STATE_RECEIVED_DURABLE)
 
-        # ── 3. 按操作分支执行 ─────────────────────────────────────────────────
+        # ── 3. 按操作分支执行（全部读取可信 signed 字段） ───────────────────────
         if operation == OP_INSTALL:
             return self._handle_install(task_id, skill_id, version, cmd)
         elif operation == OP_ROLLBACK:
@@ -217,85 +341,75 @@ class TaskManager:
             return False
 
     def _handle_install(self, task_id: str, skill_id: str, version: str, cmd: Dict[str, Any]) -> bool:
-        expected_sha = (cmd.get("package_sha256") or "").lower()
-        url = cmd.get("package_url")
+        signed = cmd.get("signed") or {}
+        # 严格使用已签名的 package_sha256
+        expected_sha = (signed.get("package_sha256") or cmd.get("package_sha256") or "").lower()
+        package_url = cmd.get("package_url")
 
-        if not expected_sha and not url:
-            # 无包 dry install
-            self.emit_event(task_id, PHASE_INSTALLING)
+        # 检查是否为 Dry Install（无包安装）
+        if not package_url and not expected_sha:
+            self.emit_event(task_id, PHASE_DONE, ERR_PKG_MISSING, "无包任务 (dry install)")
             self.storage.update_task_status(task_id, STATE_COMMITTED)
-            self.emit_event(task_id, PHASE_DONE, ERR_PKG_MISSING, "未分发技能包(dry install)，仅走通状态机")
             return True
 
-        if expected_sha and not url:
-            self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令声明了包哈希却没有包下载地址")
+        if not package_url:
+            self.emit_event(task_id, PHASE_DOWNLOAD_FAILED, ERR_PKG_MISSING, "任务声明有包但 package_url 为空")
+            self.storage.update_task_status(task_id, STATE_FAILED, ERR_PKG_MISSING, "缺少下载地址")
             return False
 
-        if url and not expected_sha:
-            self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "指令带有包地址却没有签住的哈希，拒绝下载")
-            return False
-
-        # 开始下载
-        self.emit_event(task_id, PHASE_DOWNLOADING)
+        # 阶段 A: 下载
         self.storage.update_task_status(task_id, STATE_DOWNLOADING)
+        self.emit_event(task_id, PHASE_DOWNLOADING)
 
-        tmp_fd, tmp_pkg_path = tempfile.mkstemp(prefix="zhskill_", suffix=".skill")
-        os.close(tmp_fd)
-
-        try:
-            got_sha = PackageManager.download_package(url, tmp_pkg_path, self.client._build_auth_headers("GET", url))
-        except PackageManagerError as e:
-            if os.path.exists(tmp_pkg_path):
-                os.remove(tmp_pkg_path)
-            self.emit_event(task_id, PHASE_DOWNLOAD_FAILED, e.code, str(e))
-            return False
-        except Exception as e:
-            if os.path.exists(tmp_pkg_path):
-                os.remove(tmp_pkg_path)
-            self.emit_event(task_id, PHASE_DOWNLOAD_FAILED, ERR_DOWNLOAD_FAILED, f"下载网络异常: {e}")
-            return False
-
-        # 核验哈希
-        if got_sha != expected_sha:
-            if os.path.exists(tmp_pkg_path):
-                os.remove(tmp_pkg_path)
-            self.emit_event(task_id, PHASE_FAILED, ERR_PKG_HASH_MISMATCH, f"下载包哈希不符: 期望 {expected_sha}, 实际 {got_sha}")
-            return False
-
-        # 进入解包与 Staging 事务
-        self.emit_event(task_id, PHASE_INSTALLING)
-        self.storage.update_task_status(task_id, STATE_STAGED)
-        self.storage.save_checkpoint(task_id, STATE_STAGED, {"sha256": got_sha})
+        pkg_mgr = PackageManager(self.install_dir)
+        download_dest = os.path.join(self.install_dir, "downloads", f"{skill_id}_{version}.skill")
+        staging_dir = os.path.join(self.install_dir, "staging", f"{skill_id}_{version}_{int(time.time())}")
 
         try:
-            final_dir, manifest, files = PackageManager.install_with_staging(
-                tmp_pkg_path, self.install_dir, skill_id, version
-            )
+            got_sha = pkg_mgr.download_and_verify(package_url, download_dest, expected_sha)
         except PackageManagerError as e:
+            self.storage.update_task_status(task_id, STATE_FAILED, e.code, e.message)
+            self.emit_event(task_id, PHASE_DOWNLOAD_FAILED, e.code, e.message)
+            return False
+
+        # 阶段 B: 解压与 Staging
+        try:
+            pkg_mgr.unpack_to_staging(download_dest, staging_dir)
+            manifest = pkg_mgr.read_and_validate_manifest(staging_dir)
+        except PackageManagerError as e:
+            self.storage.update_task_status(task_id, STATE_FAILED, e.code, e.message)
             self.emit_event(task_id, PHASE_FAILED, e.code, e.message)
             return False
-        finally:
-            if os.path.exists(tmp_pkg_path):
-                os.remove(tmp_pkg_path)
 
-        # 底层适配器安装
+        self.storage.update_task_status(task_id, STATE_STAGED)
+
+        # 阶段 C: 适配器 prepare 与环境检查
+        if not self.adapter.prepare(skill_id, version, staging_dir, manifest):
+            self.storage.update_task_status(task_id, STATE_FAILED, "PREPARE_REJECTED", "适配器环境或机型预检拒绝")
+            self.emit_event(task_id, PHASE_FAILED, "PREPARE_REJECTED", "适配器环境或机型预检拒绝")
+            return False
+
+        # 阶段 D: 事务原子提交与激活
         self.storage.update_task_status(task_id, STATE_INSTALLING)
-        if not self.adapter.prepare(skill_id, version, final_dir, manifest):
-            self.emit_event(task_id, PHASE_FAILED, "PREPARE_FAILED", "底层适配器预检环境失败")
-            return False
+        self.emit_event(task_id, PHASE_INSTALLING)
 
+        final_dir, files = pkg_mgr.commit_staging_to_final(staging_dir, skill_id, version)
+
+        # 调用底层适配器正式安装
         if not self.adapter.install(skill_id, version, final_dir, manifest):
-            self.emit_event(task_id, PHASE_FAILED, "INSTALL_FAILED", "底层适配器安装注册失败")
+            self.storage.update_task_status(task_id, STATE_FAILED, "ADAPTER_INSTALL_FAILED", "底层适配器安装失败")
+            self.emit_event(task_id, PHASE_FAILED, "ADAPTER_INSTALL_FAILED", "底层适配器安装失败")
             return False
 
-        # 独立健康观测
+        # 阶段 E: 健康探针核验
         self.storage.update_task_status(task_id, STATE_HEALTH_CHECKING)
         obs = self.adapter.observe(skill_id)
         if not obs.get("installed"):
-            self.emit_event(task_id, PHASE_FAILED, "OBSERVE_FAILED", "安装后设备独立观测失败")
+            self.storage.update_task_status(task_id, STATE_FAILED, "OBSERVE_FAILED", "安装后健康观测未通过")
+            self.emit_event(task_id, PHASE_FAILED, "OBSERVE_FAILED", "安装后健康观测未通过")
             return False
 
-        # 持久化提交
+        # 更新本地安装事实表与 state/installed.json
         prev = self.storage.get_installed_skill(skill_id)
         prev_ver = prev["current_version"] if prev and prev["current_version"] != version else None
         status_str = "updated" if prev_ver else "installed"
@@ -318,14 +432,24 @@ class TaskManager:
         return True
 
     def _handle_rollback(self, task_id: str, skill_id: str, target_version: str, cmd: Dict[str, Any]) -> bool:
-        """显式回滚：区分坏版本与良好恢复目标。首装无旧版时安全停用，不报假恢复。"""
+        """显式回滚：严格区分坏版本与良好恢复目标。首装无旧版时安全停用，不报假恢复。"""
         self.emit_event(task_id, PHASE_INSTALLING)
 
         current = self.storage.get_installed_skill(skill_id)
-        restore_ver = target_version or (current.get("previous_version") if current else None)
+        signed = cmd.get("signed") or {}
 
-        if not restore_ver or (current and restore_ver == current.get("current_version")):
-            # 首装或无良好旧版：按规则安全停用
+        # 优先读取签名内层指定的良好恢复目标版本
+        restore_ver = signed.get("restore_version")
+        if not restore_ver:
+            # 若 target_version 与当前版本不同，说明 target_version 为恢复目标
+            if target_version and current and target_version != current.get("current_version"):
+                restore_ver = target_version
+            else:
+                # 否则取历史良好旧版本 previous_version
+                restore_ver = current.get("previous_version") if current else None
+
+        if not restore_ver:
+            # 首装无良好旧版：按规则安全停用
             self.adapter.disable(skill_id)
             if current:
                 self.storage.save_installed_skill(
@@ -370,7 +494,6 @@ class TaskManager:
             return False
 
         if operation == OP_ENABLE:
-            # enable 只调用适配器允许调用，不能自动触发物理动作
             self.adapter.enable(skill_id)
             self.storage.save_installed_skill(
                 skill_id=skill_id,
@@ -381,8 +504,11 @@ class TaskManager:
                 install_path=current["install_path"]
             )
         else:
-            # disable：先停执行
             self.adapter.disable(skill_id)
+            for lease in self.storage.get_active_leases_for_skill(skill_id):
+                eid = lease["execution_id"]
+                self.adapter.cancel_execution(eid)
+                self.storage.release_execution_lease(eid)
             self.storage.save_installed_skill(
                 skill_id=skill_id,
                 current_version=current["current_version"],
@@ -398,6 +524,11 @@ class TaskManager:
 
     def _handle_uninstall_or_reclaim(self, task_id: str, skill_id: str, operation: int) -> bool:
         self.emit_event(task_id, PHASE_INSTALLING)
+        for lease in self.storage.get_active_leases_for_skill(skill_id):
+            eid = lease["execution_id"]
+            self.adapter.cancel_execution(eid)
+            self.storage.release_execution_lease(eid)
+
         skill_dir = os.path.join(self.install_dir, "skills", str(skill_id))
         self.adapter.uninstall(skill_id, skill_dir)
         if os.path.isdir(skill_dir):
@@ -421,11 +552,23 @@ class TaskManager:
 
     def _handle_execute(self, task_id: str, skill_id: str, cmd: Dict[str, Any]) -> bool:
         signed = cmd.get("signed", {})
-        execution_id = cmd.get("execution_id") or signed.get("execution_id") or f"exec_{task_id}"
+        execution_id = signed.get("execution_id") or cmd.get("execution_id") or f"exec_{task_id}"
         params = signed.get("execution_params") or cmd.get("execution_params") or {}
         plan_digest = signed.get("plan_digest")
 
-        self.emit_event(task_id, PHASE_INSTALLING)  # 对齐平台执行中状态
+        self.emit_event(task_id, PHASE_INSTALLING)
+
+        # 按 execution_id 独立去重，严禁同一 execution_id 触发多次物理执行副作用
+        existing_lease = self.storage.get_execution_lease(execution_id)
+        if existing_lease and existing_lease.get("status") in ("ACTIVE", "RELEASED"):
+            # 已经启动或已结束的执行：直接观测，不重复调用适配器启动
+            obs = self.executor.observe(execution_id)
+            if obs.get("status") == "SUCCEEDED":
+                self.storage.update_task_status(task_id, STATE_COMMITTED)
+                self.emit_event(task_id, PHASE_DONE)
+                return True
+            elif obs.get("status") == "RUNNING":
+                return True
 
         ok, status, err = self.executor.execute(
             execution_id=execution_id,
@@ -439,7 +582,14 @@ class TaskManager:
 
         # 观测执行直到完成或停止
         start_t = time.time()
-        timeout = float(signed.get("execution_deadline") or 30)
+        raw_deadline = signed.get("execution_deadline")
+        if raw_deadline and float(raw_deadline) > 1e9:
+            timeout = max(0.5, float(raw_deadline) - time.time())
+        else:
+            timeout = float(raw_deadline or 30)
+
+        timeout = min(timeout, 30.0)
+
         while time.time() - start_t < timeout:
             obs = self.executor.observe(execution_id)
             if obs.get("is_stopped"):
@@ -458,7 +608,8 @@ class TaskManager:
         return False
 
     def _handle_cancel_execution(self, task_id: str, cmd: Dict[str, Any]) -> bool:
-        execution_id = cmd.get("execution_id") or cmd.get("signed", {}).get("execution_id")
+        signed = cmd.get("signed", {})
+        execution_id = signed.get("execution_id") or cmd.get("execution_id")
         if not execution_id:
             self.emit_event(task_id, PHASE_FAILED, "EXECUTION_ID_MISSING", "取消任务缺少 execution_id")
             return False
@@ -469,24 +620,29 @@ class TaskManager:
             self.emit_event(task_id, PHASE_DONE)
             return True
         else:
-            self.emit_event(task_id, PHASE_FAILED, "CANCEL_NOT_STOPPED", err or "未能确认安全停止")
+            self.emit_event(task_id, PHASE_FAILED, "CANCEL_FAILED", err or "取消执行未能在时限内确认安全停止")
             return False
 
-    # ── 轮询单次循环 ─────────────────────────────────────────────────────────
-
     def poll_once(self) -> int:
-        """执行一次轮询循环：自愈补报 -> 拉取指令 -> 执行 -> 冲刷事件。返回处理的任务数。"""
-        self.resume_recovery()
+        """单次轮询：冲刷积压、拉取指令并处理。返回成功处理的指令数。"""
+        self.flush_outbox()
 
-        ok, resp = self.client.fetch_commands()
-        if not ok:
+        fetch_fn = getattr(self.client, "fetch_commands", None) or getattr(self.client, "pull_commands", None)
+        if not fetch_fn:
+            return 0
+        ok, res = fetch_fn()
+        if not ok or not res or not res.get("data"):
             return 0
 
-        commands = resp.get("data") or []
+        data = res.get("data")
+        if isinstance(data, list):
+            commands = data
+        elif isinstance(data, dict):
+            commands = data.get("commands", [])
+        else:
+            commands = []
         count = 0
         for cmd in commands:
-            self.process_command(cmd)
-            count += 1
-
-        self.flush_outbox()
+            if self.process_command(cmd):
+                count += 1
         return count

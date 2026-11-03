@@ -8,7 +8,7 @@ import stat
 import tempfile
 import urllib.request
 import zipfile
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from zhjj_agent.constants import (
     ERR_DISK_SPACE,
@@ -35,6 +35,70 @@ class PackageManager:
     MAX_FILE_COUNT = 2000                            # 最大文件数
     MAX_COMPRESSION_RATIO = 50.0                     # 最大解压膨胀比（防解压炸弹）
     MIN_FREE_DISK_BYTES = 50 * 1024 * 1024          # 磁盘最少剩余 50MB
+
+    def __init__(self, install_dir: Optional[str] = None):
+        self.install_dir = install_dir
+
+    def download_and_verify(self, url: str, dest_path: str, expected_sha256: Optional[str] = None) -> str:
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        got_sha = self.download_package(url, dest_path)
+        if expected_sha256 and got_sha.lower() != expected_sha256.lower():
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+            raise PackageManagerError(
+                ERR_PKG_HASH_MISMATCH,
+                f"下载字节 SHA-256 ({got_sha}) 与指令声明哈希 ({expected_sha256}) 不匹配"
+            )
+        return got_sha
+
+    def unpack_to_staging(self, pkg_path: str, staging_dir: str) -> None:
+        if os.path.exists(staging_dir):
+            shutil.rmtree(staging_dir, ignore_errors=True)
+        os.makedirs(staging_dir, exist_ok=True)
+        if zipfile.is_zipfile(pkg_path):
+            self.inspect_and_unpack_zip(pkg_path, staging_dir)
+        else:
+            raw_dest = os.path.join(staging_dir, "package.skill")
+            shutil.copyfile(pkg_path, raw_dest)
+
+    def read_and_validate_manifest(self, staging_dir: str) -> Dict[str, Any]:
+        manifest_path = os.path.join(staging_dir, "manifest.json")
+        if os.path.isfile(manifest_path):
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                raise PackageManagerError(ERR_ZIP_INVALID, f"manifest.json 格式非法: {e}")
+        return {}
+
+    def commit_staging_to_final(self, staging_dir: str, skill_id: str, version: str) -> Tuple[str, List[str]]:
+        install_dir = self.install_dir or "."
+        skill_root = os.path.join(install_dir, "skills", str(skill_id))
+        final_version_dir = os.path.join(skill_root, "v" + str(version or "1.0.0"))
+        os.makedirs(skill_root, exist_ok=True)
+
+        files = []
+        for root, _, filenames in os.walk(staging_dir):
+            for fn in filenames:
+                rel = os.path.relpath(os.path.join(root, fn), staging_dir)
+                files.append(rel)
+
+        if os.path.exists(final_version_dir):
+            backup_dir = final_version_dir + ".old"
+            if os.path.exists(backup_dir):
+                shutil.rmtree(backup_dir, ignore_errors=True)
+            os.rename(final_version_dir, backup_dir)
+            try:
+                os.rename(staging_dir, final_version_dir)
+                shutil.rmtree(backup_dir, ignore_errors=True)
+            except Exception as e:
+                if os.path.exists(backup_dir):
+                    os.rename(backup_dir, final_version_dir)
+                raise PackageManagerError(ERR_STAGING_FAILED, f"原子切换安装目录失败: {e}")
+        else:
+            os.rename(staging_dir, final_version_dir)
+
+        return final_version_dir, files
 
     @staticmethod
     def check_disk_space(target_path: str, required_bytes: int):

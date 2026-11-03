@@ -1,7 +1,7 @@
 """技能执行监督器：执行、取消、物理观测与资源互斥协调"""
 
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from zhjj_agent.adapters.base import BaseInstallAdapter
 from zhjj_agent.constants import (

@@ -1,0 +1,36 @@
+<?php
+// 隔离纯计算探针；不连接数据库、不调用任何厂商接口。
+$root = 'D:/CodexDeploy/summon-mecha/my-bagisto-store';
+require $root.'/vendor/autoload.php';
+$app = require $root.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+use Webkul\Shop\Services\SkillCompile\Portable\PortableSourceValidator;
+use Webkul\Shop\Services\SkillCompile\Portable\SourceParser;
+use Webkul\Shop\Services\SkillCompile\Portable\SemanticLowerer;
+use Webkul\Shop\Services\SkillCompile\Portable\TargetProfileService;
+use Webkul\Shop\Services\SkillCompile\Portable\MotionTranscoder;
+use Webkul\Shop\Services\SkillCompile\SkillBuildService;
+use Webkul\Shop\Services\Deploy\SigningService;
+$validator=app(PortableSourceValidator::class); $parser=app(SourceParser::class); $lowerer=app(SemanticLowerer::class);
+$xml='<root BTCPP_format="4" main_tree_to_execute="Main"><BehaviorTree ID="Main"><Sequence><Action ID="SM_GestureWave" name="main" hand="right" cycles="3" timeout_ms="12000"/></Sequence></BehaviorTree><BehaviorTree ID="Unused"><Sequence><Action ID="SM_GestureWave" name="must_not_execute" hand="left" cycles="2" timeout_ms="12000"/></Sequence></BehaviorTree></root>';
+$ir=$parser->parse($xml); $lowered=$lowerer->lower($ir,'unitree_g1');
+$res=['unused_tree_executed'=>['validation_errors'=>$validator->validateXml($xml),'lowered_steps_count'=>$lowered['meta']['steps_count'],'contains_unused_action'=>str_contains($lowered['action_py'],'must_not_execute')]];
+file_put_contents(__DIR__.'/generated-action.py',$lowered['action_py']);
+$parallel='<root BTCPP_format="4" main_tree_to_execute="Main"><BehaviorTree ID="Main"><Parallel success_count="1" failure_count="1"><Action ID="SM_GestureWave" hand="right" cycles="3"/></Parallel></BehaviorTree></root>';
+$res['forbidden_parallel_accepted']=$validator->validateXml($parallel);
+$motion='<root BTCPP_format="4" main_tree_to_execute="Main"><BehaviorTree ID="Main"><Sequence><Action ID="SM_MotionSequence" name="required_motion"/></Sequence></BehaviorTree></root>';
+$motionir=$parser->parse($motion);
+$res['motion_sequence_silently_dropped']=['validation_errors'=>$validator->validateXml($motion),'ir_actions'=>count($motionir['actions']),'lowered_steps'=>$lowerer->lower($motionir,'unitree_g1')['meta']['steps_count']];
+$method=new ReflectionMethod(SkillBuildService::class,'resolveBuilder'); $method->setAccessible(true);
+$res['legacy_motion_builder_class']=get_class($method->invoke(app(SkillBuildService::class),'motion', ['kind'=>'motion']));
+$manifest=json_decode(file_get_contents($root.'/../docs/portable-skill-spec/examples/greeting/manifest.json'),true);
+unset($manifest['permissions'],$manifest['safety']);
+$res['no_safety_or_permissions_validation_errors']=$validator->validateManifest($manifest);
+$ps=app(TargetProfileService::class); $profile=$ps->getProfile('unitree_g1');
+$frames=app(MotionTranscoder::class)->generateWaveTrajectory('right',3,array_merge($profile['joints']['left_arm'],$profile['joints']['right_arm']));
+$vel=[];for($i=1;$i<count($frames);$i++)$vel[]=($frames[$i]['joints']['R_SHOULDER_ROLL']-$frames[$i-1]['joints']['R_SHOULDER_ROLL'])/($frames[$i]['time_s']-$frames[$i-1]['time_s']);
+$acc=[];for($i=1;$i<count($vel);$i++)$acc[]=($vel[$i]-$vel[$i-1])/($frames[$i+1]['time_s']-$frames[$i]['time_s']);
+$res['trajectory_envelope']=['first_velocity_rad_s'=>$vel[0],'last_velocity_rad_s'=>$vel[count($vel)-1],'max_abs_acceleration_rad_s2'=>max(array_map('abs',$acc)),'profile_max_acceleration'=>$profile['safety_envelope']['max_acceleration_rad_s2']];
+$res['php_canonical_number']=SigningService::jcsCanonicalize(['x'=>1.0e-7]);
+file_put_contents(__DIR__.'/compiler-probes.json',json_encode($res,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+echo json_encode($res,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),PHP_EOL;

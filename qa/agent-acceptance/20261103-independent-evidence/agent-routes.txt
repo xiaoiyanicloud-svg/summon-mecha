@@ -1,0 +1,12 @@
+
+In Connection.php line 825:
+                                                                                                                       
+  SQLSTATE[HY000] [2002] 以一种访问权限不允许的方式做了一个访问套接字的尝试。 (Connection: mysql, SQL: select * from   
+  `channels`)                                                                                                          
+                                                                                                                       
+
+In Connector.php line 66:
+                                                                               
+  SQLSTATE[HY000] [2002] 以一种访问权限不允许的方式做了一个访问套接字的尝试。  
+                                                                               
+

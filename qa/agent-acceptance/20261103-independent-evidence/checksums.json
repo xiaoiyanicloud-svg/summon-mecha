@@ -1,0 +1,66 @@
+[
+  {
+    "file": "preflight.php",
+    "sha256": "6f25e4c8e19ef429846921bcc60eb8185c2db7c4e653460e39c6625dbb7e144d"
+  },
+  {
+    "file": "agent-probes.py",
+    "sha256": "b468c31738b9a0e7214b23a2b7ddc40d210b6ae8307f713995a1aba988e12d57"
+  },
+  {
+    "file": "agent-probes.json",
+    "sha256": "068b8cb017e21a57d2b9e2c16ae0bcd077f0563feeeaa11365ca94666864eead"
+  },
+  {
+    "file": "agent-probes-output.txt",
+    "sha256": "59b7f67a96c2e458490beb00bfcc4767e35b36f10c5a5e19204c435b49b69c0a"
+  },
+  {
+    "file": "compiler-probes.php",
+    "sha256": "3dc7c3fa3a010f18e3dcfd6e129e495ae43b9401164025be412894ea41ba5d8c"
+  },
+  {
+    "file": "compiler-probes.json",
+    "sha256": "07568228e747d8a0b4495547a13327e32976e47e198738a6215de4af49634b1d"
+  },
+  {
+    "file": "platform-probes.php",
+    "sha256": "e7f8bc3ba27b6f4481881f0367e9fadb8fcfaf315137985ce00525fabac42d87"
+  },
+  {
+    "file": "platform-probes.json",
+    "sha256": "f296ee79f9080bfb48c4ac64b52833db0367e0a5b748145ac1aab52a40b7d76a"
+  },
+  {
+    "file": "python-baseline.txt",
+    "sha256": "ee424845d32dd219b9196868397f5b2c750aa4bcc5a1d0180284f16dc1ad88f9"
+  },
+  {
+    "file": "python-diagnostic-copy.txt",
+    "sha256": "32399372f548511fe9ce121b39dabf8c55863165f1e01cdf3968379807f00795"
+  },
+  {
+    "file": "php-tests.txt",
+    "sha256": "73918835a00922fdcef04fb92aae321039f63a5a365c7eb8e9fb0ca94efe8a7e"
+  },
+  {
+    "file": "contract-check.txt",
+    "sha256": "c9629d2851f453e9902dfcc291376b302e4986e9271bd27e8aca5449c4062259"
+  },
+  {
+    "file": "agent-routes.txt",
+    "sha256": "f5fea8e9d5af5a9f6228b8dcf98656b7454f4f52c3892b1d8e97ee1f5994d827"
+  },
+  {
+    "file": "generated-action.py",
+    "sha256": "2e654c0b9297e7328c4268f98342b78f6410a4897453f7c36a9d2d9d5066b910"
+  },
+  {
+    "file": "generated-action-run.txt",
+    "sha256": "91d28c56a75fc92841412499215e74b4de0c8ca6a5aeac0ff7acd61f4e605458"
+  },
+  {
+    "file": "python-jcs.txt",
+    "sha256": "439098dbba8c057598adcb34e67baea7212b39a7401607db54f04ec32fee031a"
+  }
+]

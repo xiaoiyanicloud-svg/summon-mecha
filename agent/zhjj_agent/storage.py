@@ -428,17 +428,17 @@ class Storage:
         resource_name: str,
         duration_seconds: int = 60
     ) -> bool:
-        """尝试获取资源租约。若已有冲突活跃租约且未过期，则返回 False。"""
+        """尝试获取资源租约。若已有冲突未释放租约，则返回 False（未知物理状态不能靠时间流逝抢占释放）。"""
         now = int(time.time())
         expires_at = now + duration_seconds
         with self._connection() as conn:
-            # 检查同资源是否有活跃租约
+            # 检查同资源是否有未释放租约（无论是否超时，在未观测确认停止前均不可借时间流逝抢占）
             active = conn.execute(
                 """
-                SELECT execution_id, expires_at FROM execution_leases
-                WHERE resource_name = ? AND status = 'ACTIVE' AND expires_at > ?
+                SELECT execution_id, expires_at, status FROM execution_leases
+                WHERE resource_name = ? AND status != 'RELEASED'
                 """,
-                (resource_name, now)
+                (resource_name,)
             ).fetchone()
             if active and active["execution_id"] != execution_id:
                 return False
@@ -455,6 +455,14 @@ class Storage:
                 (execution_id, skill_id, resource_name, now, expires_at)
             )
             return True
+
+    def get_active_leases_for_skill(self, skill_id: str) -> List[Dict[str, Any]]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM execution_leases WHERE skill_id = ? AND status != 'RELEASED'",
+                (str(skill_id),)
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def release_execution_lease(self, execution_id: str):
         now = int(time.time())

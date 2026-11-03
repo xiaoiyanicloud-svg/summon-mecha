@@ -1,0 +1,79 @@
+{
+  "snapshot_head": "44ca8ff83ba894450e757b7f5bcf8b0daf4f8804",
+  "source_documents": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "b0c48ccc2aed4f8581646dcc02219428c10253ed6f359f46a08b5f2d3cbf9ead",
+      "bytes": 6056
+    },
+    {
+      "path": "CLAUDE.md",
+      "sha256": "23734a12808b5722e9935263fb859361574d998d533245ad321c591866b5109a",
+      "bytes": 9206
+    },
+    {
+      "path": "docs/ecosystem/HANDOFF.md",
+      "sha256": "68eaef3b7e9c7799d0e45f82fdcb25683115a7901688c5131c134ac6911910c5",
+      "bytes": 16178
+    },
+    {
+      "path": "docs/ai-project-brief.md",
+      "sha256": "0f8a2e6155aac9fa2e898cbbdd8f0e85ba3c568738ec1a9d9de9f70c2e3d7243",
+      "bytes": 33552
+    },
+    {
+      "path": "docs/adr/ADR-0001-device-agent-and-standard-transcoder.md",
+      "sha256": "d0f62031bde39de4ea53e0b2fb24aac72341fe3b4e437c9b1670e78c0770ac38",
+      "bytes": 19405
+    },
+    {
+      "path": "docs/agent-runtime-standard-transcoder-blueprint.md",
+      "sha256": "2d8f4c3e9148946b396d0c447d5d34d1511f060298a0cbd035dc12b25c93eaf5",
+      "bytes": 85228
+    },
+    {
+      "path": "docs/skill-dev-step10-independent-acceptance-20261103.md",
+      "sha256": "028bc0c75ab2efb9508bab56a17b4452cd965e8e757f873b6f788aacbea3769f",
+      "bytes": 17805
+    },
+    {
+      "path": "docs/portable-skill-spec/examples/greeting/manifest.json",
+      "sha256": "528c789abab7834345b0736376cd863b41add807a92eade4eced719778271e87",
+      "bytes": 759
+    },
+    {
+      "path": "docs/portable-skill-spec/examples/greeting/behavior/main.xml",
+      "sha256": "450d55e169faab846dd85d2fd17617d86732876afbdc1c5441bf8750d909f022",
+      "bytes": 388
+    },
+    {
+      "path": "docs/portable-skill-spec/validation.json",
+      "sha256": "ba6620f35d57359094f586224114641bdca76a18bbdf59ff7cd8bd2dad351a76",
+      "bytes": 1166
+    }
+  ],
+  "outputs": [
+    {
+      "file": "01-gemini-agent-full-prompt.md",
+      "sha256": "b3fef19823683ac5d2467e4fa68441cf6c85f7320199a05ea7c84b7794d40926",
+      "bytes": 215409
+    },
+    {
+      "file": "02-gemini-transcoder-full-prompt.md",
+      "sha256": "166fe44ae667c8b20fe21edec7f88336356cf0a4f7eb6162f25c67eb06965e40",
+      "bytes": 234529
+    },
+    {
+      "file": "independent-acceptance-evidence.zip",
+      "sha256": "a0644bfd84f1d08cc0c9de7beb0b51fedfaa1ba9b11ac124301f6f3b866a826b",
+      "bytes": 32436
+    },
+    {
+      "file": "README.md",
+      "sha256": "a573482ee5ee1f29d1a08099c43e497d966240b47a1602c65952570ff5c259f8",
+      "bytes": 2400
+    }
+  ],
+  "business_code_modified": false,
+  "robot_actions_executed": false
+}

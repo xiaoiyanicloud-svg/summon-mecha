@@ -1,0 +1,97 @@
+{
+  "diagnostic_only_import_fixes": [
+    "zhjj_agent/executor.py",
+    "zhjj_agent/package_manager.py"
+  ],
+  "unsigned_operation_tamper": {
+    "signed_operation": 5,
+    "executed_operation": 4,
+    "accepted": true,
+    "enabled_after": true
+  },
+  "wrong_signed_device": {
+    "client_did": "device-A",
+    "signed_did": "device-B",
+    "accepted": true,
+    "enabled_after": false
+  },
+  "expired_authorization": {
+    "accepted": true,
+    "enabled_after": true
+  },
+  "old_version_misreported_as_new_success": {
+    "requested_version": "2.0.0",
+    "adapter_actual_version": "1.0.0",
+    "journal_status": "COMMITTED",
+    "events": [
+      {
+        "task_no": "interrupted-v2",
+        "phase": "done",
+        "error_code": null,
+        "error_msg": null
+      }
+    ]
+  },
+  "rejected_fact_dropped": {
+    "server_response": "TASK_TRANSITION_INVALID",
+    "unacked_after": 0
+  },
+  "disable_not_cancel_or_persist_revocation": {
+    "execution_state_record": {
+      "execution_id": "running",
+      "skill_id": "101",
+      "plan_digest": null,
+      "params": {},
+      "status": "RUNNING",
+      "is_stopped": false,
+      "start_time": 1793704954.2224922
+    },
+    "stored_epoch": 0,
+    "enabled_after": false
+  },
+  "expired_unknown_lease_reused": {
+    "new_lease_accepted_without_stop_observation": true
+  },
+  "g1_no_sdk_no_entrypoint_success": {
+    "health": {
+      "model_code": "unitree_g1",
+      "sku": "Unitree G1 EDU",
+      "hardware_verified": false,
+      "hardware_status": "HARDWARE_UNVERIFIED",
+      "sdk_available": false,
+      "installed_count": 1
+    },
+    "accepted": true,
+    "observation": {
+      "status": "SUCCEEDED",
+      "is_stopped": true,
+      "error_msg": null
+    }
+  },
+  "restart_adapter_state_missing": {
+    "sqlite_enabled": true,
+    "fresh_adapter_observation": {
+      "installed": false,
+      "status": "not_installed"
+    }
+  },
+  "rollback_with_previous_version": {
+    "previous_good_files_exist": true,
+    "actual_version": "2.0.0",
+    "enabled": false,
+    "event": {
+      "task_no": "rollback-upgrade",
+      "phase": "done",
+      "error_code": "NO_PREVIOUS_VERSION",
+      "error_msg": "��װ�����þɰ棬�Ѱ�����ȫͣ��"
+    }
+  },
+  "same_execution_id_different_tasks": {
+    "adapter_execute_calls": 2,
+    "completed_tasks": [
+      "COMMITTED",
+      "COMMITTED"
+    ],
+    "done_events": 2
+  }
+}

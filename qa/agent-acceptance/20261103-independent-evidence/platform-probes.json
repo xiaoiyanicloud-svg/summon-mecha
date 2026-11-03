@@ -1,0 +1,56 @@
+{
+    "reconciliation_with_mismatch_and_unknown": {
+        "success": true,
+        "message": "对账完成。",
+        "data": {
+            "did": "audit_6ae9d2d9e11b4",
+            "server_time": 1793708761,
+            "aligned": false,
+            "details": [
+                {
+                    "skill_version_id": 987651,
+                    "client_status": "uninstalled",
+                    "server_status": "installed",
+                    "match": false
+                },
+                {
+                    "skill_version_id": 987652,
+                    "client_status": "installed",
+                    "server_status": null,
+                    "match": false
+                }
+            ],
+            "task_details": []
+        }
+    },
+    "missing_source_and_audio": {
+        "version_status": "published",
+        "source_assets_before": 0,
+        "compile": [
+            {
+                "model": "unitree_g1",
+                "status": "success",
+                "error": null
+            }
+        ],
+        "generated_welcome_wav_bytes": 44
+    },
+    "wrong_model_fallback": {
+        "requested": "agibot_a2",
+        "received_asset_name": null,
+        "received_same_g1_asset": false
+    },
+    "published_recompile": {
+        "same_build_key": true,
+        "same_sha": false,
+        "changed_asset_id": true,
+        "changed_version_fingerprint": true,
+        "historical_build_rows": 1
+    },
+    "same_task_refreshed_expiry": {
+        "first_expiry": 1793712421,
+        "second_expiry": 1793712421,
+        "extended_seconds": 0,
+        "signed_changed": false
+    }
+}

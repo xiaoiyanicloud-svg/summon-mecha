@@ -1,0 +1,22 @@
+{
+    "unused_tree_executed": {
+        "validation_errors": [],
+        "lowered_steps_count": 2,
+        "contains_unused_action": true
+    },
+    "forbidden_parallel_accepted": [],
+    "motion_sequence_silently_dropped": {
+        "validation_errors": [],
+        "ir_actions": 1,
+        "lowered_steps": 0
+    },
+    "legacy_motion_builder_class": "Webkul\\Shop\\Services\\SkillCompile\\Builders\\PortableSkillBuilder",
+    "no_safety_or_permissions_validation_errors": [],
+    "trajectory_envelope": {
+        "first_velocity_rad_s": 2.109090909090909,
+        "last_velocity_rad_s": 2.109090909090886,
+        "max_abs_acceleration_rad_s2": 9.012585750553733,
+        "profile_max_acceleration": 6.28
+    },
+    "php_canonical_number": "{\"x\":1.0E-7}"
+}

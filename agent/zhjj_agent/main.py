@@ -15,10 +15,12 @@ from zhjj_agent.storage import Storage
 from zhjj_agent.task_manager import TaskManager
 
 
-def create_adapter(model_code: str):
+def create_adapter(model_code: str, install_dir: Optional[str] = None):
     if model_code == "unitree_g1":
-        return UnitreeG1Adapter()
-    return MockAdapter()
+        return UnitreeG1Adapter(app_dir=install_dir)
+    elif model_code == "mock":
+        return MockAdapter()
+    raise ValueError(f"不支持或未知的机型适配器: {model_code}。生产环境禁止静默回落到 MockAdapter。")
 
 
 def run(config_path: str, once: bool = False, adapter_override: Optional[str] = None):
@@ -44,8 +46,10 @@ def run(config_path: str, once: bool = False, adapter_override: Optional[str] = 
     if not pubkey_pem:
         raise ValueError("缺少平台签名验签公钥 (public_key 或 public_key_inline)")
 
-    model_code = adapter_override or config.get("model_code", "mock")
-    adapter = create_adapter(model_code)
+    model_code = adapter_override or config.get("model_code")
+    if not model_code:
+        raise ValueError("配置中缺少必需的 model_code 参数")
+    adapter = create_adapter(model_code, install_dir=install_dir)
     storage = Storage(install_dir)
     client = AgentClient(
         server_url=server_url,

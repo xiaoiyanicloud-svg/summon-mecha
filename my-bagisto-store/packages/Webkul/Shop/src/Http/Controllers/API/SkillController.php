@@ -585,6 +585,17 @@ class SkillController extends APIController
             return $this->fail('SKILL_BLOCKED', '该技能已被熔断禁用，禁止启动新执行。', 403);
         }
 
+        $params = $request->input('params', []);
+        if (! is_array($params)) {
+            return $this->fail(ApiErrorCode::VALIDATION_ERROR, '执行参数格式非法。', 422);
+        }
+        $forbiddenKeys = ['method', 'sdk_method', 'raw_command', 'eval', 'exec', 'system'];
+        foreach (array_keys($params) as $k) {
+            if (in_array(strtolower((string) $k), $forbiddenKeys, true)) {
+                return $this->fail(ApiErrorCode::FORBIDDEN, "禁止传入越权参数: {$k}", 403);
+            }
+        }
+
         $version = $this->versionOf($entitlement);
         $executionId = 'exec_'.\Illuminate\Support\Str::uuid()->toString();
 

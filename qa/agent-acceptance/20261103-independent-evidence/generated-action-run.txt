@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "C:\Users\Administrator\.codex\visualizations\2026\11\03\01a19fd3-10da-75d2-8a92-d58cbe14920c\acceptance-44ca8ff\generated-action.py", line 61, in <module>
+    run()
+  File "C:\Users\Administrator\.codex\visualizations\2026\11\03\01a19fd3-10da-75d2-8a92-d58cbe14920c\acceptance-44ca8ff\generated-action.py", line 32, in run
+    print(f"[{modelCode}] ��ʼִ�б�׼�������У�������: {len(ACTION_STEPS)}")
+              ^^^^^^^^^
+NameError: name 'modelCode' is not defined

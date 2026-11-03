@@ -90,6 +90,23 @@ class SkillDeliveryAssetResolver
             throw new SkillAssetAmbiguousException($versionId, $built->pluck('id')->all());
         }
 
+        $hasTargetBuilds = SkillBuild::where('skill_version_id', $versionId)->exists();
+        if ($modelCode !== null && trim($modelCode) !== '') {
+            if ($hasTargetBuilds) {
+                // 该版本存在机型构建目标。如果未找到当前机型的成功产物，绝不能回退到其他机型的产物或单一文件！
+                return null;
+            }
+        }
+
+        if ($hasTargetBuilds) {
+            $isBuildArtifact = SkillBuild::where('skill_version_id', $versionId)
+                ->whereIn('artifact_asset_id', $files->pluck('id'))
+                ->exists();
+            if ($isBuildArtifact) {
+                return null;
+            }
+        }
+
         if ($files->count() === 1) {
             return $files->first();
         }

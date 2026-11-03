@@ -387,12 +387,25 @@ class AgentController extends APIController
             return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
+        $taskPayload = is_array($task->signed_payload) ? $task->signed_payload : [];
+        $acks = $taskPayload['acks'] ?? [];
+        $ackId = 'ack_'.\Illuminate\Support\Str::random(16);
+        $acks[] = [
+            'ack_id'      => $ackId,
+            'event_id'    => $payload['event_id'],
+            'stage'       => $payload['stage'],
+            'received_at' => now()->timestamp,
+        ];
+        $taskPayload['acks'] = $acks;
+        $task->signed_payload = $taskPayload;
+        $task->saveQuietly();
+
         return $this->ok([
             'task_no'     => $payload['task_no'],
             'did'         => $payload['did'],
             'event_id'    => $payload['event_id'],
             'stage'       => $payload['stage'],
-            'ack_id'      => 'ack_'.\Illuminate\Support\Str::random(16),
+            'ack_id'      => $ackId,
             'status'      => 'acknowledged',
             'server_time' => now()->timestamp,
         ], 'ACK 成功。');
@@ -427,25 +440,98 @@ class AgentController extends APIController
             ->get()
             ->keyBy('skill_version_id');
 
-        $reconciliation = [
-            'did'         => $payload['did'],
-            'server_time' => now()->timestamp,
-            'aligned'     => true,
-            'details'     => [],
-        ];
+        $aligned = true;
+        $details = [];
+        $processedVersions = [];
 
         foreach (($payload['skills'] ?? []) as $clientSkill) {
             $verId = $clientSkill['skill_version_id'] ?? null;
-            if ($verId && isset($serverRecords[$verId])) {
-                $rec = $serverRecords[$verId];
-                $reconciliation['details'][] = [
-                    'skill_version_id' => $verId,
-                    'client_status'    => $clientSkill['status'] ?? null,
-                    'server_status'    => $rec->status,
-                    'match'            => ($clientSkill['status'] ?? null) === $rec->status,
-                ];
+            $clientStatus = $clientSkill['status'] ?? null;
+            if ($verId !== null) {
+                $processedVersions[$verId] = true;
+                if (isset($serverRecords[$verId])) {
+                    $rec = $serverRecords[$verId];
+                    $matches = ($clientStatus === $rec->status);
+                    if (! $matches) {
+                        $aligned = false;
+                    }
+                    $details[] = [
+                        'skill_version_id' => $verId,
+                        'client_status'    => $clientStatus,
+                        'server_status'    => $rec->status,
+                        'match'            => $matches,
+                    ];
+                } else {
+                    $aligned = false;
+                    $details[] = [
+                        'skill_version_id' => $verId,
+                        'client_status'    => $clientStatus,
+                        'server_status'    => null,
+                        'match'            => false,
+                    ];
+                }
             }
         }
+
+        if (isset($payload['skills']) && is_array($payload['skills'])) {
+            foreach ($serverRecords as $verId => $rec) {
+                if (! isset($processedVersions[$verId])) {
+                    $aligned = false;
+                    $details[] = [
+                        'skill_version_id' => $verId,
+                        'client_status'    => null,
+                        'server_status'    => $rec->status,
+                        'match'            => false,
+                    ];
+                }
+            }
+        }
+
+        $taskDetails = [];
+        if (! empty($payload['tasks']) && is_array($payload['tasks'])) {
+            $taskNos = collect($payload['tasks'])->pluck('task_no')->filter()->all();
+            $serverTasks = DeployTask::query()
+                ->where('did', $payload['did'])
+                ->whereIn('task_no', $taskNos)
+                ->get()
+                ->keyBy('task_no');
+
+            foreach ($payload['tasks'] as $clientTask) {
+                $taskNo = $clientTask['task_no'] ?? null;
+                $clientStatus = $clientTask['status'] ?? null;
+                if ($taskNo) {
+                    if (isset($serverTasks[$taskNo])) {
+                        $sTask = $serverTasks[$taskNo];
+                        $tMatch = ($clientStatus === $sTask->status);
+                        if (! $tMatch) {
+                            $aligned = false;
+                        }
+                        $taskDetails[] = [
+                            'task_no'       => $taskNo,
+                            'client_status' => $clientStatus,
+                            'server_status' => $sTask->status,
+                            'match'         => $tMatch,
+                        ];
+                    } else {
+                        $aligned = false;
+                        $taskDetails[] = [
+                            'task_no'       => $taskNo,
+                            'client_status' => $clientStatus,
+                            'server_status' => null,
+                            'match'         => false,
+                        ];
+                    }
+                }
+            }
+        }
+
+        $reconciliation = [
+            'did'          => $payload['did'],
+            'server_time'  => now()->timestamp,
+            'aligned'      => $aligned,
+            'details'      => $details,
+            'task_details' => $taskDetails,
+        ];
 
         return $this->ok($reconciliation, '对账完成。');
     }

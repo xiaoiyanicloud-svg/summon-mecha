@@ -109,6 +109,8 @@ class AgentClient:
     def fetch_commands(self) -> Tuple[bool, Dict[str, Any]]:
         return self.request("GET", "api/agent/commands", params={"did": self.did, "protocol_version": PROTOCOL_V2})
 
+    pull_commands = fetch_commands
+
     def send_event(self, task_no: str, phase: str, error_code: Optional[str] = None, error_msg: Optional[str] = None) -> Tuple[bool, Dict[str, Any]]:
         payload = {
             "task_no": task_no,

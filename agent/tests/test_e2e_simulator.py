@@ -272,7 +272,8 @@ class TestE2ESimulator(unittest.TestCase):
         """测试编译器产出的标准技能包在 Unitree G1 适配器上的端到端部署与执行"""
         g1_dir = os.path.join(self.temp_dir, "g1_device")
         os.makedirs(g1_dir, exist_ok=True)
-        g1_adapter = UnitreeG1Adapter()
+        from unittest.mock import Mock
+        g1_adapter = UnitreeG1Adapter(app_dir=g1_dir, sdk_stub=Mock())
         g1_storage = Storage(g1_dir)
         g1_manager = TaskManager(
             install_dir=g1_dir,

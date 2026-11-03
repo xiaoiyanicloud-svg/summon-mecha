@@ -1,0 +1,100 @@
+test_canonical_v2_prefix (test_crypto.TestCrypto.test_canonical_v2_prefix) ... ok
+test_jcs_canonicalize_order (test_crypto.TestCrypto.test_jcs_canonicalize_order) ... ok
+test_jcs_types (test_crypto.TestCrypto.test_jcs_types) ... ok
+test_rsa_signature_and_verify (test_crypto.TestCrypto.test_rsa_signature_and_verify) ... ok
+test_e2e_simulator (unittest.loader._FailedTest.test_e2e_simulator) ... ERROR
+test_executor (unittest.loader._FailedTest.test_executor) ... ERROR
+test_package_manager (unittest.loader._FailedTest.test_package_manager) ... ERROR
+test_storage_installed_skills_and_json_sync (test_storage.TestStorage.test_storage_installed_skills_and_json_sync) ... ok
+test_storage_journal_and_idempotency (test_storage.TestStorage.test_storage_journal_and_idempotency) ... ok
+test_storage_outbox_and_leases (test_storage.TestStorage.test_storage_outbox_and_leases) ... ok
+test_task_manager (unittest.loader._FailedTest.test_task_manager) ... ERROR
+
+======================================================================
+ERROR: test_e2e_simulator (unittest.loader._FailedTest.test_e2e_simulator)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_e2e_simulator
+Traceback (most recent call last):
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "D:\CodexDeploy\summon-mecha\agent\tests\test_e2e_simulator.py", line 35, in <module>
+    from zhjj_agent.task_manager import TaskManager
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\task_manager.py", line 45, in <module>
+    from zhjj_agent.executor import SkillExecutor
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\executor.py", line 21, in <module>
+    class SkillExecutor:
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\executor.py", line 34, in SkillExecutor
+    ) -> Tuple[bool, str, Optional[str]]:
+         ^^^^^
+NameError: name 'Tuple' is not defined. Did you mean: 'tuple'?
+
+
+======================================================================
+ERROR: test_executor (unittest.loader._FailedTest.test_executor)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_executor
+Traceback (most recent call last):
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "D:\CodexDeploy\summon-mecha\agent\tests\test_executor.py", line 9, in <module>
+    from zhjj_agent.executor import SkillExecutor
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\executor.py", line 21, in <module>
+    class SkillExecutor:
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\executor.py", line 34, in SkillExecutor
+    ) -> Tuple[bool, str, Optional[str]]:
+         ^^^^^
+NameError: name 'Tuple' is not defined. Did you mean: 'tuple'?
+
+
+======================================================================
+ERROR: test_package_manager (unittest.loader._FailedTest.test_package_manager)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_package_manager
+Traceback (most recent call last):
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "D:\CodexDeploy\summon-mecha\agent\tests\test_package_manager.py", line 18, in <module>
+    from zhjj_agent.package_manager import PackageManager, PackageManagerError
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\package_manager.py", line 31, in <module>
+    class PackageManager:
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\package_manager.py", line 108, in PackageManager
+    ) -> Tuple[Dict[str, Any], List[str]]:
+                         ^^^
+NameError: name 'Any' is not defined. Did you mean: 'any'?
+
+
+======================================================================
+ERROR: test_task_manager (unittest.loader._FailedTest.test_task_manager)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_task_manager
+Traceback (most recent call last):
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\unittest\loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "D:\CodexDeploy\summon-mecha\agent\tests\test_task_manager.py", line 33, in <module>
+    from zhjj_agent.task_manager import TaskManager
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\task_manager.py", line 45, in <module>
+    from zhjj_agent.executor import SkillExecutor
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\executor.py", line 21, in <module>
+    class SkillExecutor:
+  File "D:\CodexDeploy\summon-mecha\agent\zhjj_agent\executor.py", line 34, in SkillExecutor
+    ) -> Tuple[bool, str, Optional[str]]:
+         ^^^^^
+NameError: name 'Tuple' is not defined. Did you mean: 'tuple'?
+
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.401s
+
+FAILED (errors=4)

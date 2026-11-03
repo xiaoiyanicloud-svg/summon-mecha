@@ -120,13 +120,51 @@ class SigningService
 
     /**
      * RFC 8785 JSON Canonicalization Scheme (JCS) 纯函数实现。
+     * - 键按 UTF-16 码元顺序升序排序
+     * - 数值严格符合 ECMAScript Number.prototype.toString(10) 规范表示
      */
+    public static function jcsCompareKeys(string $a, string $b): int
+    {
+        $u16_a = mb_convert_encoding($a, 'UTF-16BE', 'UTF-8');
+        $u16_b = mb_convert_encoding($b, 'UTF-16BE', 'UTF-8');
+        return strcmp($u16_a, $u16_b);
+    }
+
+    public static function formatEsNumber(int|float $val): string
+    {
+        if (is_nan($val) || is_infinite($val)) {
+            throw new \InvalidArgumentException("NaN and Infinity not allowed in JCS");
+        }
+        if ($val === 0.0 || $val === -0.0 || $val === 0) {
+            return "0";
+        }
+        if (is_int($val)) {
+            return (string) $val;
+        }
+        $str = sprintf('%.16g', $val);
+        if (str_contains($str, 'e') || str_contains($str, 'E')) {
+            $parts = preg_split('/[eE]/', $str);
+            $base = $parts[0];
+            if (str_contains($base, '.')) {
+                $base = rtrim(rtrim($base, '0'), '.');
+            }
+            $exp = $parts[1];
+            $expSign = $exp[0];
+            $expVal = ltrim(substr($exp, 1), '0');
+            if ($expVal === '') {
+                $expVal = '0';
+            }
+            return strtolower($base) . 'e' . $expSign . $expVal;
+        }
+        return $str;
+    }
+
     public static function jcsCanonicalize(mixed $data): string
     {
         if (is_array($data)) {
             $isAssoc = empty($data) ? false : (array_keys($data) !== range(0, count($data) - 1));
             if ($isAssoc) {
-                uksort($data, 'strcmp');
+                uksort($data, [self::class, 'jcsCompareKeys']);
                 $entries = [];
                 foreach ($data as $k => $v) {
                     $entries[] = json_encode((string) $k, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ':' . self::jcsCanonicalize($v);
@@ -138,7 +176,7 @@ class SigningService
             }
         } elseif (is_object($data)) {
             $arr = (array) $data;
-            uksort($arr, 'strcmp');
+            uksort($arr, [self::class, 'jcsCompareKeys']);
             $entries = [];
             foreach ($arr as $k => $v) {
                 $entries[] = json_encode((string) $k, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ':' . self::jcsCanonicalize($v);
@@ -147,7 +185,7 @@ class SigningService
         } elseif (is_string($data)) {
             return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         } elseif (is_int($data) || is_float($data)) {
-            return (string) $data;
+            return self::formatEsNumber($data);
         } elseif (is_bool($data)) {
             return $data ? 'true' : 'false';
         } elseif (is_null($data)) {
