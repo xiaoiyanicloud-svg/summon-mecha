@@ -16,7 +16,7 @@
     {
       "test_case": "SEC-03: 看门狗强行截断死循环进程",
       "pass": true,
-      "details": "耗时 1.01s, 强行终止状态: True, 最终退出码 1"
+      "details": "耗时 1.02s, 强行终止状态: True, 最终退出码 1"
     }
   ]
 }
