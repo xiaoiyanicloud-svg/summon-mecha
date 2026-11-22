@@ -82,7 +82,10 @@
             <text class="model-opt-name">{{ m.model_name }}</text>
             <text class="model-check" v-if="model === m.model_code">✓</text>
           </view>
-          <text class="model-empty" v-if="!panelModels.length">{{ filtersReady ? '暂无可用机型' : '机型加载中…' }}</text>
+          <view class="model-empty" v-if="!panelModels.length">
+            <SmLoading v-if="!filtersReady" inline size="sm" text="机型加载中…" />
+            <text v-else>暂无可用机型</text>
+          </view>
         </scroll-view>
       </view>
     </view>
@@ -151,7 +154,8 @@
           </view>
 
           <view v-if="hasMore" class="load-more" @click="loadMore">
-            {{ loading ? '加载中…' : '加载更多' }}
+            <SmLoading v-if="loading" inline size="sm" text="加载中…" />
+            <text v-else>加载更多</text>
           </view>
         </state-view>
       </scroll-view>
@@ -161,6 +165,7 @@
 
 <script>
 import StateView from '@/components/StateView.vue'
+import SmLoading from '@/components/SmLoading.vue'
 import { accessoryCatalogApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
 import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
@@ -170,7 +175,7 @@ import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-
 // 不再有本地 mock / 写死品牌 / 由 mock 反推的机型。
 export default {
   name: 'Peijian',
-  components: { StateView },
+  components: { StateView, SmLoading },
   props: {
     active: { type: Boolean, default: true },
   },
@@ -727,5 +732,5 @@ export default {
   font-weight: 400;
 }
 .scroll-bottom-placeholder { width: 100%; height: 380rpx; flex-shrink: 0; pointer-events: none; visibility: hidden; }
-.load-more { text-align: center; padding: 24rpx 0 40rpx; font-size: 24rpx; color: #165DFF; }
+.load-more { display: flex; align-items: center; justify-content: center; text-align: center; padding: 24rpx 0 40rpx; font-size: 24rpx; color: #165DFF; }
 </style>

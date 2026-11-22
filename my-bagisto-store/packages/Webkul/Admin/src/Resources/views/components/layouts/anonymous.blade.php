@@ -29,7 +29,7 @@
     >
     <meta 
         name="generator" 
-        content="Bagisto"
+        content="Summon Mecha"
     >
 
     @stack('meta')
@@ -37,12 +37,7 @@
     @bagistoVite(['src/Resources/assets/css/app.css', 'src/Resources/assets/js/app.js'])
 
     <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-    />
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap"
+        href="{{ asset('themes/admin/default/sm-admin-brand.css') }}?v=20261123"
         rel="stylesheet"
     />
 
@@ -55,10 +50,10 @@
         />
     @else
         <link
-            type="image/x-icon"
-            href="{{ bagisto_asset('images/favicon.ico') }}"
+            type="image/svg+xml"
+            href="{{ asset('themes/admin/default/sm-favicon.svg') }}"
             rel="shortcut icon"
-            sizes="16x16"
+            sizes="48x48"
         />
     @endif
 
@@ -74,7 +69,7 @@
 <body>
     {!! view_render_event('bagisto.admin.layout.body.before') !!}
 
-    <!-- Built With Bagisto -->
+    <!-- Summon Mecha Ops -->
     <div id="app">
         <!-- Flash Message Blade Component -->
         <x-admin::flash-group />

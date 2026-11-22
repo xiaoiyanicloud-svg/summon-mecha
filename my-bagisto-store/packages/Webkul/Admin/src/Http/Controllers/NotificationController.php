@@ -3,6 +3,7 @@
 namespace Webkul\Admin\Http\Controllers;
 
 use Webkul\Notification\Repositories\NotificationRepository;
+use Webkul\Shop\Models\Notification as PlatformNotification;
 
 class NotificationController extends Controller
 {
@@ -40,10 +41,52 @@ class NotificationController extends Controller
 
         $statusCount = isset($searchResults['status_counts']) ? $searchResults['status_counts'] : '';
 
+        $orderUnread = $this->notificationRepository->where('read', 0)->count();
+
+        $adminAlerts = [];
+        $alertsUnread = 0;
+        $adminId = auth()->guard('admin')->id();
+
+        if ($adminId && function_exists('bouncer') && bouncer()->hasPermission('dashboard.alerts')) {
+            $alertsUnread = PlatformNotification::query()
+                ->where('recipient_type', 'admin')
+                ->where('recipient_id', $adminId)
+                ->whereNull('read_at')
+                ->count();
+
+            $adminAlerts = PlatformNotification::query()
+                ->where('recipient_type', 'admin')
+                ->where('recipient_id', $adminId)
+                ->orderByRaw('CASE WHEN read_at IS NULL THEN 0 ELSE 1 END')
+                ->orderByDesc('id')
+                ->limit(5)
+                ->get()
+                ->map(function (PlatformNotification $item) {
+                    return [
+                        'id'         => $item->id,
+                        'title'      => $item->title,
+                        'content'    => mb_strimwidth((string) ($item->content ?? ''), 0, 72, '...'),
+                        'type'       => $item->type,
+                        'is_unread'  => $item->read_at === null,
+                        'created_at' => $item->created_at?->format('m-d H:i') ?? '',
+                        'read_url'   => route('admin.alerts.read', $item->id),
+                        'index_url'  => route('admin.alerts.index'),
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
+        $combinedUnread = $orderUnread + $alertsUnread;
+
         return [
-            'search_results' => $results,
-            'status_count'   => $statusCount,
-            'total_unread'   => $this->notificationRepository->where('read', 0)->count(),
+            'search_results'  => $results,
+            'status_count'    => $statusCount,
+            'total_unread'    => $combinedUnread,
+            'order_unread'    => $orderUnread,
+            'alerts_unread'   => $alertsUnread,
+            'combined_unread' => $combinedUnread,
+            'admin_alerts'    => $adminAlerts,
         ];
     }
 

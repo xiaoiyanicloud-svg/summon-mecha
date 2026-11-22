@@ -112,7 +112,7 @@
             >
               <view class="event-cover">
                 <image v-if="coverOf(item)" class="event-cover-img" :src="coverOf(item)" mode="aspectFill"></image>
-                <text v-else class="event-cover-icon">🏁</text>
+                <SmIcon v-else name="empty-event" size="56rpx" />
                 <text class="event-status" :class="'st-' + statusOf(item).code">{{ statusOf(item).label }}</text>
               </view>
               <view class="event-info">
@@ -150,10 +150,11 @@ import SkillMarket from '@/components/SkillMarket.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import { BASE_URL } from '@/utils/config'
 import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
+import SmIcon from '@/components/SmIcon.vue'
 
 export default {
   name: 'EcoCenter',
-  components: { Dongtai, SkillMarket, StateView },
+  components: { Dongtai, SkillMarket, StateView, SmIcon },
   data() {
     return {
       currentTab: 'skill',

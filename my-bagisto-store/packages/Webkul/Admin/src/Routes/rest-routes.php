@@ -7,6 +7,7 @@ use Webkul\Admin\Http\Controllers\DataGrid\SavedFilterController;
 use Webkul\Admin\Http\Controllers\MagicAIController;
 use Webkul\Admin\Http\Controllers\Ops\AfterSaleController;
 use Webkul\Admin\Http\Controllers\Ops\AlertController;
+use Webkul\Admin\Http\Controllers\Ops\GlobalSearchController;
 use Webkul\Admin\Http\Controllers\Ops\InvoiceController;
 use Webkul\Admin\Http\Controllers\Ops\OverviewController;
 use Webkul\Admin\Http\Controllers\TinyMCEController;
@@ -70,6 +71,15 @@ Route::controller(AfterSaleController::class)->prefix('after-sales')->group(func
     Route::get('{id}', 'show')->whereNumber('id')->name('admin.after-sales.show');
     Route::post('{id}/approve', 'approve')->whereNumber('id')->name('admin.after-sales.approve');
     Route::post('{id}/reject', 'reject')->whereNumber('id')->name('admin.after-sales.reject');
+});
+
+/**
+ * 顶部 Mega Search 业务扩展检索（技能 / 开发者 / 合作申请）。
+ */
+Route::controller(GlobalSearchController::class)->prefix('search')->group(function () {
+    Route::get('skills', 'skills')->name('admin.search.skills');
+    Route::get('developers', 'developers')->name('admin.search.developers');
+    Route::get('cooperations', 'cooperations')->name('admin.search.cooperations');
 });
 
 /**

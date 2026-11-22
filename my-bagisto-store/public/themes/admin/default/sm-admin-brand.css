@@ -1,0 +1,314 @@
+/* 召唤机甲（SUMMON MECHA）管理后台品牌主题与工作台样式 */
+
+:root {
+    --sm-navy: #102F6E;
+    --sm-blue: #165DFF;
+    --sm-blue-hover: #0E4BD9;
+    --sm-cyan: #38BDF8;
+    --sm-surface: #F4F7FC;
+    --sm-border: #E2E8F0;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+body {
+    background-color: var(--sm-surface);
+}
+
+html.dark body {
+    background-color: #090D16;
+}
+
+/* 顶部栏与侧边栏品牌化微调 */
+header.sticky {
+    border-bottom-color: rgba(22, 93, 255, 0.12);
+    backdrop-filter: blur(8px);
+}
+
+.group\/item > a.bg-blue-600 {
+    background: linear-gradient(135deg, #165DFF 0%, #102F6E 100%) !important;
+    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.22);
+}
+
+.primary-button {
+    background-color: var(--sm-blue) !important;
+    border-color: var(--sm-blue) !important;
+}
+
+.primary-button:hover {
+    background-color: var(--sm-blue-hover) !important;
+}
+
+/* ===== 聚合工作台首页样式（sm-wb-*）===== */
+.sm-wb-wrap {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sm-wb-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    padding: 20px 24px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #0D2259 0%, #102F6E 52%, #165DFF 100%);
+    box-shadow: 0 10px 26px rgba(16, 47, 110, 0.16);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.sm-wb-hero::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 180px;
+    height: 180px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.28) 0%, rgba(56, 189, 248, 0) 70%);
+    pointer-events: none;
+}
+
+.sm-wb-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.18);
+    border: 1px solid rgba(125, 211, 252, 0.35);
+    color: #BAE6FD;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+}
+
+.sm-wb-hero-title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #ffffff;
+}
+
+.sm-wb-hero-sub {
+    margin-top: 4px;
+    font-size: 13px;
+    color: rgba(226, 232, 240, 0.9);
+}
+
+.sm-wb-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.sm-wb-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #102F6E;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sm-wb-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sm-wb-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s ease;
+}
+
+.sm-wb-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.24);
+}
+
+.sm-wb-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 1180px) {
+    .sm-wb-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .sm-wb-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.sm-wb-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    text-decoration: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.sm-wb-card:hover {
+    border-color: #93C5FD;
+    box-shadow: 0 6px 18px rgba(22, 93, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+html.dark .sm-wb-card {
+    background: #111827;
+    border-color: #1F2937;
+}
+
+.sm-wb-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sm-wb-card-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+html.dark .sm-wb-card-label {
+    color: #E2E8F0;
+}
+
+.sm-wb-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.sm-wb-pill.is-urgent {
+    background: #FEF2F2;
+    color: #DC2626;
+}
+
+.sm-wb-pill.is-warn {
+    background: #FFFBEB;
+    color: #D97706;
+}
+
+.sm-wb-pill.is-info {
+    background: #EFF6FF;
+    color: #165DFF;
+}
+
+.sm-wb-pill.is-ok {
+    background: #ECFDF5;
+    color: #059669;
+}
+
+.sm-wb-card-val {
+    font-size: 26px;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.15;
+}
+
+html.dark .sm-wb-card-val {
+    color: #F8FAFC;
+}
+
+.sm-wb-card-meta {
+    font-size: 12px;
+    color: #64748B;
+    line-height: 1.4;
+}
+
+.sm-wb-status-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    font-size: 12px;
+    color: #475569;
+}
+
+html.dark .sm-wb-status-bar {
+    background: #111827;
+    border-color: #1F2937;
+    color: #CBD5E1;
+}
+
+.sm-wb-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    margin-right: 6px;
+}
+
+.sm-wb-dot.on {
+    background: #10B981;
+}
+
+.sm-wb-dot.off {
+    background: #94A3B8;
+}
+
+.sm-wb-section-divider {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+}
+
+html.dark .sm-wb-section-divider {
+    background: #0F172A;
+    border-color: #1E293B;
+    color: #94A3B8;
+}

@@ -201,7 +201,7 @@
             <view class="scroll-bottom-placeholder" v-if="filteredRentList.length > 0"></view>
           </view>
           <view class="empty-state" v-if="filteredRentList.length === 0 && !catalogLoading && !catalogError">
-            <text class="empty-icon">📭</text>
+            <SmIcon name="empty-inbox" size="88rpx" />
             <text class="empty-text">没有找到匹配的机器人</text>
           </view>
           <state-view
@@ -243,7 +243,7 @@
             <view class="scroll-bottom-placeholder" v-if="filteredBuyList.length > 0"></view>
           </view>
           <view class="empty-state" v-if="filteredBuyList.length === 0 && !catalogLoading && !catalogError">
-            <text class="empty-icon">📭</text>
+            <SmIcon name="empty-inbox" size="88rpx" />
             <text class="empty-text">没有找到匹配的机器人</text>
           </view>
           <state-view
@@ -306,6 +306,8 @@
             <swiper-item v-for="(img, idx) in detailImageList" :key="idx">
               <view class="swiper-slide" :style="{ backgroundColor: selectedProduct.bg }">
                 <image v-if="typeof img === 'string'" class="swiper-img" :src="img" :data-src="img" mode="widthFix" @load="onDetailImgLoad"></image>
+                <SmIcon v-else-if="!selectedProduct.icon || selectedProduct.icon === '🤖'" name="empty-robot" size="96rpx" />
+                <SmIcon v-else-if="selectedProduct.icon === '🧩'" name="empty-accessory" size="96rpx" />
                 <text v-else class="swiper-icon">{{ selectedProduct.icon }}</text>
               </view>
             </swiper-item>
@@ -441,7 +443,9 @@
         <!-- 商品：缩略图 + 名称 + 数量 -->
         <view class="sheet-product">
           <view class="sheet-thumb" :style="{ backgroundColor: selectedProduct.bg }">
-            <text class="sheet-thumb-icon">{{ selectedProduct.icon }}</text>
+            <SmIcon v-if="!selectedProduct.icon || selectedProduct.icon === '🤖'" name="empty-robot" size="64rpx" />
+            <SmIcon v-else-if="selectedProduct.icon === '🧩'" name="empty-accessory" size="64rpx" />
+            <text v-else class="sheet-thumb-icon">{{ selectedProduct.icon }}</text>
           </view>
           <text class="sheet-product-name">{{ selectedProduct.name }}</text>
           <view class="sheet-qty">
@@ -509,7 +513,9 @@
         <view class="cart-item" v-for="m in selectedPlanItems" :key="(m.bagistoId || m.id)">
           <view class="cart-item-img" :style="{ backgroundColor: m.bg || '#F0F4FA' }">
             <image v-if="m.image" class="cart-item-img-img" :src="m.image" mode="aspectFill" />
-            <text v-else class="cart-item-img-icon">{{ m.icon || '🤖' }}</text>
+            <SmIcon v-else-if="!m.icon || m.icon === '🤖'" name="empty-robot" size="48rpx" />
+            <SmIcon v-else-if="m.icon === '🧩'" name="empty-accessory" size="48rpx" />
+            <text v-else class="cart-item-img-icon">{{ m.icon }}</text>
             <view class="cart-item-del" @tap.stop="togglePlanItem(m)">×</view>
           </view>
           <text class="cart-item-name">{{ m.name }}</text>
@@ -663,6 +669,7 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing-data.js'
 import { normalizeProductPricing, pickBaseImage, pickGalleryImages, catalogFallbackImage } from '@/utils/product-catalog'
 import { BASE_URL, TOKEN_KEY } from '@/utils/config'
+import SmIcon from '@/components/SmIcon.vue'
 
 // 场景数据统一在 components/jiqi/changjing.vue（见上方 import sceneProducts）
 
@@ -782,7 +789,7 @@ let _accessoryDetailSeq = 0
 const DETAIL_IMG_DEFAULT_HEIGHT = 777.6
 
 export default {
-  components: { Jineng, Peijian, StateView },
+  components: { Jineng, Peijian, StateView, SmIcon },
   data() {
     return {
       currentTab: 'rent',
@@ -2448,6 +2455,10 @@ page {
   visibility: hidden;
 }
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
   text-align: center;
   padding: 80rpx 0;
 }

@@ -35,9 +35,14 @@ class DashboardController extends Controller
      */
     public function index()
     {
+        $adminId = auth()->guard('admin')->id();
+        $workbench = app(\Webkul\Shop\Services\Ops\AdminWorkbenchService::class)
+            ->summary($adminId ? (int) $adminId : null);
+
         return view('admin::dashboard.index')->with([
             'startDate' => $this->dashboardHelper->getStartDate(),
             'endDate'   => $this->dashboardHelper->getEndDate(),
+            'workbench' => $workbench,
         ]);
     }
 

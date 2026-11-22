@@ -39,6 +39,16 @@ return [
         'name'  => '售后审批',
         'route' => 'admin.after-sales.index',
         'sort'  => 5,
+    ], [
+        'key'   => 'dashboard.after-sales.approve',
+        'name'  => '批准退款（资金动作）',
+        'route' => 'admin.after-sales.approve',
+        'sort'  => 1,
+    ], [
+        'key'   => 'dashboard.after-sales.reject',
+        'name'  => '驳回售后申请',
+        'route' => 'admin.after-sales.reject',
+        'sort'  => 2,
     ],
 
     /*
@@ -129,6 +139,11 @@ return [
         'name'  => 'admin::app.acl.view',
         'route' => 'admin.sales.transactions.view',
         'sort'  => 1,
+    ], [
+        'key'   => 'sales.bookings',
+        'name'  => 'admin::app.components.layouts.sidebar.booking-product',
+        'route' => 'admin.sales.bookings.index',
+        'sort'  => 6,
     ],
 
     /*
@@ -578,6 +593,11 @@ return [
         'route' => 'admin.catalog.skills.index',
         'sort'  => 5,
     ], [
+        'key'   => 'catalog.skills.manage',
+        'name'  => '版本 / 资产与上下架管理',
+        'route' => 'admin.catalog.skills.versions.publish',
+        'sort'  => 1,
+    ], [
         // 导入台:他平台/动捕技能包 → 中立清单(B-17)
         'key'   => 'catalog.skill-import',
         'name'  => '技能导入',
@@ -589,6 +609,11 @@ return [
         'name'  => '审核台',
         'route' => 'admin.catalog.skill-reviews.index',
         'sort'  => 6,
+    ], [
+        'key'   => 'catalog.skill-reviews.judge',
+        'name'  => '审核判定与 L0 扫检',
+        'route' => 'admin.catalog.skill-reviews.judge',
+        'sort'  => 1,
     ], [
         // 机型库:兼容性校验的输入
         'key'   => 'catalog.device-models',
@@ -664,6 +689,11 @@ return [
         'route' => 'admin.catalog.content-security.show',
         'sort'  => 1,
     ], [
+        'key'   => 'catalog.content-security.dispose',
+        'name'  => '处置安全告警',
+        'route' => 'admin.catalog.content-security.dispose',
+        'sort'  => 2,
+    ], [
         // 举报处置台（加固 §四 A1）
         'key'   => 'catalog.skill-reports',
         'name'  => '举报处置台',
@@ -675,6 +705,11 @@ return [
         'route' => 'admin.catalog.skill-reports.show',
         'sort'  => 1,
     ], [
+        'key'   => 'catalog.skill-reports.dispose',
+        'name'  => '处置举报',
+        'route' => 'admin.catalog.skill-reports.dispose',
+        'sort'  => 2,
+    ], [
         // 评价处置台（加固 §四 A1）
         'key'   => 'catalog.skill-review-moderation',
         'name'  => '评价处置台',
@@ -685,6 +720,11 @@ return [
         'name'  => 'admin::app.acl.view',
         'route' => 'admin.catalog.skill-review-moderation.show',
         'sort'  => 1,
+    ], [
+        'key'   => 'catalog.skill-review-moderation.moderate',
+        'name'  => '处置评价',
+        'route' => 'admin.catalog.skill-review-moderation.moderate',
+        'sort'  => 2,
     ], [
         'key'   => 'catalog.attributes',
         'name'  => 'admin::app.acl.attributes',
@@ -847,6 +887,11 @@ return [
         'route' => 'admin.customers.developers.show',
         'sort'  => 1,
     ], [
+        'key'   => 'customers.developers.review',
+        'name'  => '实名审核与启停控制',
+        'route' => 'admin.customers.developers.realname.approve',
+        'sort'  => 2,
+    ], [
         // 开发者邀请码（S-11b）:页面入口（菜单/列表）
         'key'   => 'customers.developer-invites',
         'name'  => '开发者邀请码',
@@ -870,6 +915,11 @@ return [
         'route' => 'admin.customers.tickets.show',
         'sort'  => 1,
     ], [
+        'key'   => 'customers.tickets.handle',
+        'name'  => '客服受理 / 回复 / 结单',
+        'route' => 'admin.customers.tickets.reply',
+        'sort'  => 2,
+    ], [
         // 事故受理台（安全关键路径，与工单分开授权）
         'key'   => 'customers.incidents',
         'name'  => '事故受理',
@@ -881,6 +931,11 @@ return [
         'route' => 'admin.customers.incidents.show',
         'sort'  => 1,
     ], [
+        'key'   => 'customers.incidents.handle',
+        'name'  => '事故定责与处置',
+        'route' => 'admin.customers.incidents.handle',
+        'sort'  => 2,
+    ], [
         // 生态合作申请受理台（本体厂商 / RaaS合伙人 / 网红达人 / 合伙人推荐）
         'key'   => 'customers.cooperations',
         'name'  => '合作申请',
@@ -891,6 +946,11 @@ return [
         'name'  => 'admin::app.acl.view',
         'route' => 'admin.customers.cooperations.show',
         'sort'  => 1,
+    ], [
+        'key'   => 'customers.cooperations.review',
+        'name'  => '审核与指派跟进人员',
+        'route' => 'admin.customers.cooperations.status',
+        'sort'  => 2,
     ],
 
     /*

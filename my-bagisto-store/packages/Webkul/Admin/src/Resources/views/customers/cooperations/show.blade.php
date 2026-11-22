@@ -246,7 +246,8 @@
                 </form>
             </div>
 
-            {{-- 独立一键发码卡片：无需修改审核状态也可随时单独生成/重新签发专属邀请码 --}}
+            {{-- 独立一键发码卡片：无需修改审核状态也可随时单独生成/重新签发专属邀请码（严格受发码权限控制） --}}
+            @if (bouncer()->hasPermission('customers.developer-invites.manage'))
             <div class="box-shadow rounded border border-emerald-100 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                 <div class="mb-1 flex items-center justify-between">
                     <p class="text-sm font-bold text-gray-800 dark:text-white">🔑 专属受邀码签发</p>
@@ -318,6 +319,7 @@
                     </button>
                 </form>
             </div>
+            @endif
         </div>
     </div>
 </x-admin::layouts>

@@ -16,7 +16,9 @@
         <view class="multi-item" v-for="(it, idx) in multiItems" :key="idx">
           <view class="multi-img" :style="{ backgroundColor: it.bg || '#F0F4FA' }">
             <image v-if="it.image" class="multi-img-img" :src="it.image" mode="aspectFill"></image>
-            <text v-else class="multi-icon">{{ it.icon || '🤖' }}</text>
+            <SmIcon v-else-if="!it.icon || it.icon === '🤖'" name="empty-robot" size="48rpx" />
+            <SmIcon v-else-if="it.icon === '🧩'" name="empty-accessory" size="48rpx" />
+            <text v-else class="multi-icon">{{ it.icon }}</text>
           </view>
           <view class="multi-info">
             <text class="multi-name">{{ it.name }}</text>
@@ -37,6 +39,8 @@
       <view class="product-card" v-if="!multiItems.length">
         <view class="product-image" :style="{ backgroundColor: product.bg }">
           <image v-if="product.image" class="product-img" :src="product.image" mode="aspectFill"></image>
+          <SmIcon v-else-if="!product.icon || product.icon === '🤖'" name="empty-robot" size="64rpx" />
+          <SmIcon v-else-if="product.icon === '🧩'" name="empty-accessory" size="64rpx" />
           <text v-else class="product-icon">{{ product.icon }}</text>
         </view>
         <view class="product-info">
@@ -106,7 +110,7 @@
 
         <!-- 空状态 -->
         <view class="addr-empty" v-else>
-          <text class="addr-empty-icon">📭</text>
+          <SmIcon name="empty-inbox" size="84rpx" />
           <text class="addr-empty-text">还没有收货地址，请先新增</text>
         </view>
 
@@ -213,8 +217,10 @@
 import { tobOrderApi, addressApi, paymentApi } from '@/utils/api'
 import { serverToLocal, localToServerPayload } from '@/utils/address'
 import { TOKEN_KEY } from '@/utils/config'
+import SmIcon from '@/components/SmIcon.vue'
 
 export default {
+  components: { SmIcon },
   data() {
     return {
       product: {

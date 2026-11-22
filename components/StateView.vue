@@ -17,12 +17,12 @@
 	-->
 	<view class="state-view" :class="{ compact: compact }">
 		<view v-if="loading" class="sv-box">
-			<text class="sv-icon">⏳</text>
-			<text class="sv-text">{{ loadingText }}</text>
+			<SmLoading :size="compact ? 'md' : 'lg'" :text="loadingText" />
 		</view>
 
 		<view v-else-if="error" class="sv-box">
-			<text class="sv-icon">{{ errorIcon }}</text>
+			<image v-if="isImageIcon(resolvedErrorIcon)" class="sv-icon-img" :src="resolvedErrorIcon" mode="aspectFit" />
+			<text v-else class="sv-icon">{{ resolvedErrorIcon }}</text>
 			<text class="sv-text">{{ errorText || '数据没能加载' }}</text>
 			<text v-if="errorDetail" class="sv-hint">{{ errorDetail }}</text>
 			<view v-if="retry" class="sv-btn" role="button" tabindex="0" :style="{ background: btnColor }" @click="$emit('retry')">
@@ -31,7 +31,8 @@
 		</view>
 
 		<view v-else-if="empty" class="sv-box">
-			<text v-if="emptyIcon" class="sv-icon">{{ emptyIcon }}</text>
+			<image v-if="resolvedEmptyIcon && isImageIcon(resolvedEmptyIcon)" class="sv-icon-img" :src="resolvedEmptyIcon" mode="aspectFit" />
+			<text v-else-if="resolvedEmptyIcon" class="sv-icon">{{ resolvedEmptyIcon }}</text>
 			<text class="sv-text">{{ emptyText }}</text>
 			<text v-if="emptyHint" class="sv-hint">{{ emptyHint }}</text>
 			<view v-if="emptyAction" class="sv-btn" role="button" tabindex="0" :style="{ background: btnColor }" @click="$emit('empty-action')">
@@ -44,6 +45,33 @@
 </template>
 
 <script>
+import SmLoading from '@/components/SmLoading.vue'
+
+const EMOJI_ICON_MAP = {
+	'📡': '/static/icons/mine/state-error.png',
+	'⚠️': '/static/icons/mine/state-warn.png',
+	'⚠': '/static/icons/mine/state-warn.png',
+	'😕': '/static/icons/mine/state-warn.png',
+	'⛔': '/static/icons/mine/state-warn.png',
+	'⏱️': '/static/icons/mine/state-timeout.png',
+	'⏱': '/static/icons/mine/state-timeout.png',
+	'⏳': '/static/icons/mine/state-timeout.png',
+	'🔍': '/static/icons/mine/state-search.png',
+	'🗑️': '/static/icons/mine/state-trash.png',
+	'🗑': '/static/icons/mine/state-trash.png',
+	'🔐': '/static/icons/mine/lock.png',
+	'🛠️': '/static/icons/mine/settings.png',
+	'🛠': '/static/icons/mine/settings.png',
+	'📭': '/static/icons/mine/empty-inbox.png',
+	'🤖': '/static/icons/mine/empty-robot.png',
+	'🧩': '/static/icons/mine/empty-accessory.png',
+	'🏟️': '/static/icons/mine/empty-event.png',
+	'🏟': '/static/icons/mine/empty-event.png',
+	'🏁': '/static/icons/mine/empty-event.png',
+	'📰': '/static/icons/mine/empty-news.png',
+	'✨': '/static/icons/mine/state-spark.png',
+}
+
 /**
  * 加载 / 故障 / 空 三态视图(uni-app Options API)。
  *
@@ -55,6 +83,7 @@
  */
 export default {
 	name: 'StateView',
+	components: { SmLoading },
 	props: {
 		// 正在加载
 		loading: { type: Boolean, default: false },
@@ -63,12 +92,12 @@ export default {
 		// 「故障」标题文案;不传则用默认
 		errorText: { type: String, default: '' },
 		// 故障图标;404/410/503 可用不同图标,避免只靠颜色/文案区分
-		errorIcon: { type: String, default: '📡' },
+		errorIcon: { type: String, default: '/static/icons/mine/state-error.png' },
 
 		// 「真的没有数据」—— 只在**请求成功但结果为空**时为真
 		empty: { type: Boolean, default: false },
 		emptyText: { type: String, default: '暂无数据' },
-		emptyIcon: { type: String, default: '📭' },
+		emptyIcon: { type: String, default: '/static/icons/mine/empty-inbox.png' },
 		emptyHint: { type: String, default: '' },
 		// 空态是否带一个行动按钮(如「去逛逛」「新增地址」)
 		emptyAction: { type: Boolean, default: false },
@@ -88,6 +117,22 @@ export default {
 		errorDetail() {
 			return typeof this.error === 'string' ? this.error : ''
 		},
+		resolvedErrorIcon() {
+			return this.resolveBrandIcon(this.errorIcon)
+		},
+		resolvedEmptyIcon() {
+			return this.resolveBrandIcon(this.emptyIcon)
+		},
+	},
+	methods: {
+		resolveBrandIcon(val) {
+			if (!val || typeof val !== 'string') return ''
+			const key = val.trim()
+			return EMOJI_ICON_MAP[key] || key
+		},
+		isImageIcon(val) {
+			return typeof val === 'string' && (val.startsWith('/') || val.startsWith('data:'))
+		},
 	},
 }
 </script>
@@ -104,6 +149,7 @@ export default {
 /* 列表区块内的紧凑态 */
 .state-view.compact .sv-box { padding: 48rpx 40rpx; }
 .sv-icon { font-size: 76rpx; margin-bottom: 20rpx; }
+.sv-icon-img { width: 96rpx; height: 96rpx; margin-bottom: 20rpx; display: block; }
 .sv-text { font-size: 28rpx; color: #8A9AA8; text-align: center; }
 .sv-hint {
 	margin-top: 14rpx;

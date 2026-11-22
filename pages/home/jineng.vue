@@ -10,13 +10,15 @@
 		<!-- 加载失败:如实报错(B-16)。此前用 getMockData() 兜底,拿一段编造的技能
 		     (名称/价格/配图)冒充真实商品 —— 用户会以为页面正常,点进去却买不到东西。 -->
 		<view v-if="loadError" class="load-error">
-			<text class="le-icon">😕</text>
+			<SmIcon name="state-warn" size="96rpx" />
 			<text class="le-text">技能详情加载失败</text>
 			<text class="le-sub">{{ loadError }}</text>
 			<view class="le-btn" @click="loadSkillData(skillId)">重新加载</view>
 		</view>
 
-		<view v-if="detailLoading && !loadError" class="load-error">技能详情加载中…</view>
+		<view v-if="detailLoading && !loadError" class="load-error">
+			<SmLoading size="lg" text="技能详情加载中…" />
+		</view>
 		<template v-if="!loadError && !detailLoading">
 		<!-- 2. 轮播图 -->
 		<swiper v-if="skillInfo.images.length" class="swiper" indicator-dots autoplay interval="3000" circular>
@@ -24,7 +26,7 @@
 				<image class="swiper-image" :src="img" mode="aspectFill" @error="skillInfo.images.splice(idx, 1)"></image>
 			</swiper-item>
 		</swiper>
-		<view v-else class="skill-cover-placeholder"><text>🤖</text><text>暂无展示图</text></view>
+		<view v-else class="skill-cover-placeholder"><SmIcon name="skills" size="64rpx" /><text>暂无展示图</text></view>
 		<view class="swiper-badge" v-if="skillInfo.served">🔥 已服务 {{ skillInfo.served }} 家庭</view>
 
 		<!-- 3. 基础信息 -->
@@ -62,7 +64,7 @@
 						<text class="comment-text">{{ item.content }}</text>
 					</view>
 				</view>
-				<view v-if="reviewLoading" class="empty-tip">评价加载中…</view>
+				<view v-if="reviewLoading" class="empty-tip loading-row"><SmLoading inline size="sm" text="评价加载中…" /></view>
 				<view v-else-if="reviewError" class="empty-tip" @click="loadReviews(productId)">评价加载失败，点此重试</view>
 				<view v-else-if="skillInfo.comments.length === 0" class="empty-tip">暂无评价</view>
 
@@ -105,7 +107,7 @@
 		</view>
 
 		<!-- 5.6 风险告知(B-5 · 计划 §4.14):按 risk_level 分档展示 -->
-		<view v-if="riskLoading" class="risk-box">安全告知加载中…</view>
+		<view v-if="riskLoading" class="risk-box"><SmLoading inline size="sm" text="安全告知加载中…" /></view>
 		<view v-else-if="riskError" class="risk-box" @click="loadRisk(productId)">安全告知加载失败，点此重试</view>
 		<view class="risk-box" v-else-if="risk">
 			<view class="risk-head">
@@ -151,7 +153,7 @@
 		<!-- 6. 底部操作栏 -->
 		<view class="footer-bar">
 			<view class="footer-left" @click="openCustomer">
-				<text class="icon-service">🛎️</text>
+				<SmIcon name="service" size="40rpx" />
 				<text class="service-label">客服</text>
 			</view>
 			<view class="footer-actions">
@@ -192,8 +194,10 @@
 	import { BASE_URL, TOKEN_KEY } from '@/utils/config'
 	import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
 	import NavBar from '@/components/NavBar.vue'
+	import SmLoading from '@/components/SmLoading.vue'
+	import SmIcon from '@/components/SmIcon.vue'
 	export default {
-		components: { NavBar },
+		components: { NavBar, SmLoading, SmIcon },
 		data() {
 			return {
 				currentTab: 0,
@@ -768,6 +772,7 @@
 
 	/* 加载 / 异常态(B-16) */
 	.load-error { display: flex; flex-direction: column; align-items: center; padding: 160rpx 60rpx; }
+	.loading-row { display: flex; justify-content: center; }
 	.le-icon { font-size: 80rpx; }
 	.le-text { margin-top: 20rpx; font-size: 30rpx; font-weight: 600; color: $text-1; }
 	.le-sub { margin-top: 10rpx; font-size: 24rpx; color: $text-3; text-align: center; line-height: 1.5; }

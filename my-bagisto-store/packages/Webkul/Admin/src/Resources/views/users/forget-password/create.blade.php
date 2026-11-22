@@ -15,9 +15,9 @@
                 />
             @else
                 <img
-                    class="w-max" 
+                    class="h-9 w-auto sm:h-10"
                     src="{{ bagisto_asset('images/logo.svg') }}"
-                    alt="{{ config('app.name') }}"
+                    alt="召唤机甲"
                 />
             @endif
 
@@ -70,12 +70,9 @@
                 </x-admin::form>
             </div>
 
-            <!-- Powered By -->
-            <div class="text-sm font-normal">
-                @lang('admin::app.users.forget-password.create.powered-by-description', [
-                    'bagisto' => '<a class="text-blue-600 hover:underline" href="https://bagisto.com/en/">Bagisto</a>',
-                    'webkul' => '<a class="text-blue-600 hover:underline" href="https://webkul.com/">Webkul</a>',
-                ])
+            <!-- Brand Footer -->
+            <div class="text-xs font-normal text-gray-500 dark:text-gray-400">
+                召唤机甲 · 具身智能机器人技能平台运营中心
             </div>
         </div>
     </div>

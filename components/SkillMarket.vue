@@ -5,8 +5,9 @@
       <button size="mini" @click="refreshNow">搜索</button>
     </view>
     <view v-if="showFilters">
-      <view v-if="filterLoading" class="market-note">筛选条件加载中…</view>
+      <view v-if="filterLoading" class="market-filter-loading"><SmLoading inline size="sm" text="筛选条件加载中…" /></view>
       <view v-else-if="filterError" class="market-state">
+        <SmIcon name="state-error" size="76rpx" />
         <text>{{ filterError }}</text><button size="mini" @click="loadFilters">重试筛选条件</button>
       </view>
       <view v-else class="market-filters">
@@ -17,11 +18,15 @@
       </view>
     </view>
     <view v-if="market.error" class="market-state market-error">
+      <SmIcon name="state-error" size="88rpx" />
       <text>技能加载失败</text><text class="market-note">{{ market.error }}</text>
       <button size="mini" @click="refreshNow">重新加载</button>
     </view>
-    <view v-else-if="market.loading && market.page === 0 && !market.rows.length" class="market-state"><text>正在加载技能…</text></view>
+    <view v-else-if="market.loading && market.page === 0 && !market.rows.length" class="market-state">
+      <SmLoading :size="compact ? 'md' : 'lg'" text="正在加载技能…" />
+    </view>
     <view v-else-if="!market.rows.length" class="market-state">
+      <SmIcon :name="hasFilters ? 'state-search' : 'skills'" size="88rpx" />
       <text>{{ hasFilters ? '没有符合条件的技能' : '暂无已上架技能' }}</text>
       <text class="market-note">{{ hasFilters ? '试试其它筛选条件' : '开发者完成审核上架后，技能将在这里展示。' }}</text>
       <button v-if="hasFilters" size="mini" @click="resetFilters">清空筛选</button>
@@ -40,7 +45,8 @@
         </view>
       </view>
       <view v-if="market.hasMore" class="market-footer">
-        <button size="mini" :disabled="market.loading" @click="loadMore">{{ market.loading ? '加载中…' : '加载更多' }}</button>
+        <SmLoading v-if="market.loading" inline size="sm" text="加载中…" />
+        <button v-else size="mini" :disabled="market.loading" @click="loadMore">加载更多</button>
       </view>
     </view>
     <view v-if="compact" class="market-more" @click="$emit('show-all')">打开完整技能市场 →</view>
@@ -52,6 +58,8 @@ import { skillCatalogApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
 import { createSkillMarketState, loadSkillMarket } from '@/utils/skill-market'
 import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
+import SmLoading from '@/components/SmLoading.vue'
+import SmIcon from '@/components/SmIcon.vue'
 
 // 首页/机器页共用:2 分钟内重复进入不再请求技能列表。
 // 返回首页(onShow)只做「过期才刷新」,且刷新期间保留旧卡片,避免闪成加载态。
@@ -59,6 +67,7 @@ const SKILL_MARKET_TTL = 120000
 
 export default {
   name: 'SkillMarket',
+  components: { SmLoading, SmIcon },
   props: {
     compact: Boolean,
     active: { type: Boolean, default: true },
@@ -152,6 +161,7 @@ export default {
 .market-search input { flex: 1; min-width: 0; padding: 18rpx 22rpx; background: #fff; border: 1rpx solid #dbe4f3; border-radius: 14rpx; font-size: 26rpx; }
 .skill-market button { color: #165dff; background: #eef3ff; border-radius: 12rpx; font-size: 24rpx; flex-shrink: 0; }
 .market-filters { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 16rpx; }
+.market-filter-loading { display: flex; align-items: center; padding: 10rpx 0 16rpx; }
 .market-filter { padding: 12rpx 16rpx; background: #fff; border: 1rpx solid #dbe4f3; border-radius: 10rpx; font-size: 23rpx; }
 .market-note { display: block; color: #64748b; font-size: 23rpx; line-height: 1.7; }
 .market-state { display: flex; flex-direction: column; align-items: center; gap: 16rpx; text-align: center; padding: 56rpx 22rpx; font-size: 30rpx; }

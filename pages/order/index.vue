@@ -59,7 +59,9 @@
 				<view class="card-header">
 					<view class="robot-info">
 						<view class="robot-avatar" :style="{ backgroundColor: item.bg }">
-							<text class="robot-icon">{{ item.icon }}</text>
+							<SmIcon v-if="!item.icon || item.icon === '🤖'" name="empty-robot" size="46rpx" />
+							<SmIcon v-else-if="item.icon === '🧩'" name="empty-accessory" size="46rpx" />
+							<text v-else class="robot-icon">{{ item.icon }}</text>
 						</view>
 						<view class="robot-meta">
 							<text class="robot-name">{{ item.name }}</text>
@@ -104,13 +106,15 @@
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import StateView from '@/components/StateView.vue';
+	import SmIcon from '@/components/SmIcon.vue';
 	import { orderApi } from '@/utils/api';
 	import { sceneStatusLabel } from '@/utils/scene-request';
 
 	export default {
 		components: {
 			CustomTabBar,
-			StateView
+			StateView,
+			SmIcon
 		},
 		data() {
 			return {

@@ -26,6 +26,90 @@
         </v-dashboard-filters>
     </div>
 
+    {{-- 召唤机甲运营聚合工作台（仅展示当前管理员有权处理的待办与真实开关状态） --}}
+    @if (! empty($workbench))
+        <div class="sm-wb-wrap mt-4" data-testid="summon-mecha-workbench">
+            <div class="sm-wb-hero">
+                <div>
+                    <div class="sm-wb-hero-badge">
+                        SUMMON MECHA · 具身智能机器人技能运营中心
+                    </div>
+                    <h2 class="sm-wb-hero-title">
+                        今日运营工作台 · {{ ($workbench['total_pending'] ?? 0) > 0 ? '当前共 '.$workbench['total_pending'].' 项待处理事项' : '全业务待办队列已清零' }}
+                    </h2>
+                    <p class="sm-wb-hero-sub">
+                        汇总技能审核、合作入驻、平台巡检告警、售后退款、客服工单与故障追溯实时待办（严格遵循角色权限隔离） · 更新于 {{ $workbench['generated_at'] ?? '' }}
+                    </p>
+                </div>
+
+                <div class="sm-wb-hero-actions">
+                    @foreach (($workbench['shortcuts'] ?? []) as $index => $shortcut)
+                        <a
+                            href="{{ $shortcut['route'] }}"
+                            class="{{ $index === 0 ? 'sm-wb-btn-primary' : 'sm-wb-btn-ghost' }}"
+                        >
+                            {{ $shortcut['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+
+            @if (! empty($workbench['queues']))
+                <div class="sm-wb-grid">
+                    @foreach ($workbench['queues'] as $item)
+                        @php
+                            $toneClass = match ($item['tone'] ?? 'neutral') {
+                                'danger'  => 'is-urgent',
+                                'warning' => 'is-warn',
+                                'primary' => 'is-info',
+                                default   => 'is-ok',
+                            };
+                            $toneLabel = match ($item['tone'] ?? 'neutral') {
+                                'danger'  => '高优处理',
+                                'warning' => '待跟进',
+                                'primary' => '待审核',
+                                default   => ($item['count'] > 0 ? '进行中' : '正常'),
+                            };
+                        @endphp
+                        <a href="{{ $item['route'] }}" class="sm-wb-card">
+                            <div class="sm-wb-card-top">
+                                <span class="sm-wb-card-label">{{ $item['title'] }}</span>
+                                <span class="sm-wb-pill {{ $toneClass }}">{{ $toneLabel }}</span>
+                            </div>
+                            <div class="sm-wb-card-val">{{ $item['count'] }}</div>
+                            <div class="sm-wb-card-meta flex items-center justify-between gap-2">
+                                <span>{{ $item['meta'] }}</span>
+                                <span class="font-semibold text-blue-600 dark:text-blue-400">{{ $item['cta'] }} →</span>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+
+            @if (! empty($workbench['readiness']))
+                <div class="sm-wb-status-bar">
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">平台运行闸门与通道状态：</span>
+                    @foreach ($workbench['readiness'] as $flag)
+                        <span class="inline-flex items-center">
+                            <span class="sm-wb-dot {{ $flag['enabled'] ? 'on' : 'off' }}"></span>
+                            <span class="font-medium">{{ $flag['label'] }}：</span>
+                            <span>{{ $flag['text'] }}</span>
+                        </span>
+                    @endforeach
+                </div>
+            @endif
+
+            <div class="sm-wb-section-divider">
+                <span>以下为 Bagisto 电商底层交易概览（已开票财务口径，与上方技能平台经营口径区分展示）</span>
+                @if (bouncer()->hasPermission('dashboard.overview'))
+                    <a href="{{ route('admin.dashboard.ops') }}" class="text-blue-600 hover:underline dark:text-blue-400">
+                        切换至技能平台真实经营总览 →
+                    </a>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{--
         口径说明（本项目新增，非 Bagisto 原生）
 

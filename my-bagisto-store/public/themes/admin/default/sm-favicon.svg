@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="smFavBg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#165DFF"/>
+      <stop offset="100%" stop-color="#102F6E"/>
+    </linearGradient>
+    <linearGradient id="smFavSpark" x1="10" y1="10" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#7DD3FC"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#smFavBg)"/>
+  <path d="M24 9.5Q27 21 38.5 24Q27 27 24 38.5Q21 27 9.5 24Q21 21 24 9.5Z" fill="url(#smFavSpark)"/>
+  <circle cx="36" cy="12" r="2.8" fill="#38BDF8"/>
+</svg>

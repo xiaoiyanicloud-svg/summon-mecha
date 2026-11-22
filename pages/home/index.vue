@@ -123,7 +123,7 @@
 			<view class="custom-modal" @tap.stop>
 				<view class="modal-close" @tap="closeLeadSuccess">✕</view>
 				<view class="modal-header">
-					<text class="modal-icon">✅</text>
+					<view class="modal-icon-wrap"><SmIcon name="celebrate" size="72rpx" /></view>
 					<text class="modal-title">已收到您的需求</text>
 					<text class="modal-subtitle">您的需求已提交，请留意后续联系</text>
 				</view>
@@ -140,7 +140,7 @@
 			<view class="custom-modal" @tap.stop>
 				<view class="modal-close" @tap="closeCustomModal">✕</view>
 				<view class="modal-header">
-					<text class="modal-icon">✨</text>
+					<view class="modal-icon-wrap"><SmIcon name="state-spark" size="72rpx" /></view>
 					<text class="modal-title">定制专属机器人方案</text>
 					<text class="modal-subtitle">留下您的需求，工作人员将与您确认服务安排</text>
 				</view>
@@ -148,8 +148,8 @@
 					<view class="form-item">
 						<text class="form-label">身份 <text class="required">*</text></text>
 						<view class="identity-group">
-							<text class="identity-tag" :class="{ active: customForm.identity === 'enterprise' }" @tap="selectIdentity('enterprise')">🏢 企业</text>
-							<text class="identity-tag" :class="{ active: customForm.identity === 'personal' }" @tap="selectIdentity('personal')">👤 个人</text>
+							<view class="identity-tag" :class="{ active: customForm.identity === 'enterprise' }" @tap="selectIdentity('enterprise')"><SmIcon name="building" size="28rpx" /><text>企业</text></view>
+							<view class="identity-tag" :class="{ active: customForm.identity === 'personal' }" @tap="selectIdentity('personal')"><SmIcon name="user" size="28rpx" /><text>个人</text></view>
 						</view>
 					</view>
 					<view class="form-item">
@@ -187,6 +187,7 @@
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import EcoCenter from '@/components/EcoCenter.vue';
 import StateView from '@/components/StateView.vue';
+import SmIcon from '@/components/SmIcon.vue';
 import { sceneProducts, loadBackendScenes } from '@/components/jiqi/changjing-data.js';
 import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 
@@ -194,7 +195,8 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 		components: {
 			CustomTabBar,
 			StateView,
-			EcoCenter
+			EcoCenter,
+			SmIcon
 		},
 		data() {
 			return {
@@ -787,6 +789,7 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 		padding-right: 40rpx;
 	}
 	.modal-icon { font-size: 48rpx; display: block; }
+	.modal-icon-wrap { display: flex; justify-content: center; margin-bottom: 6rpx; }
 	.modal-title {
 		font-size: 34rpx;
 		font-weight: 700;
@@ -833,6 +836,10 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 	}
 	.identity-tag {
 		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8rpx;
 		text-align: center;
 		padding: 16rpx 0;
 		border-radius: 40rpx;

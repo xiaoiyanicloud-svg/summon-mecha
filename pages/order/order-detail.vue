@@ -19,7 +19,9 @@
 			<view class="card header-card">
 				<view class="robot-row">
 					<view class="robot-avatar" :style="{ backgroundColor: order.bg }">
-						<text class="robot-icon">{{ order.icon }}</text>
+						<SmIcon v-if="!order.icon || order.icon === '🤖'" name="empty-robot" size="50rpx" />
+						<SmIcon v-else-if="order.icon === '🧩'" name="empty-accessory" size="50rpx" />
+						<text v-else class="robot-icon">{{ order.icon }}</text>
 					</view>
 					<view class="robot-info">
 						<text class="robot-name">{{ order.name }}</text>
@@ -113,7 +115,7 @@
 
 		<!-- 空状态 -->
 		<view v-else class="empty-state">
-			<text class="empty-icon">📭</text>
+			<SmIcon name="empty-inbox" size="88rpx" />
 			<text class="empty-title">订单不存在</text>
 			<view class="empty-btn" @click="goBack">返回</view>
 		</view>
@@ -148,8 +150,9 @@ import { orderApi, ticketApi, invoiceApi, reviewApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
 import NavBar from '@/components/NavBar.vue'
+import SmIcon from '@/components/SmIcon.vue'
 	export default {
-		components: { StateView, NavBar },
+		components: { StateView, NavBar, SmIcon },
 		data() {
 			return {
 				order: null,

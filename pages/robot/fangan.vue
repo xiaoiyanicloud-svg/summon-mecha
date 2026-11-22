@@ -6,7 +6,7 @@
         <text class="nav-back">‹</text>
       </view>
       <view class="nav-right" @tap="openService">
-        <text class="nav-service">💬</text>
+        <SmIcon name="service" size="36rpx" />
       </view>
     </view>
 
@@ -47,7 +47,8 @@
             <view class="product-card" :class="{ selected: isMachineSelected(item) }" v-for="(item, idx) in filteredProducts" :key="idx" @tap="goProductDetail(item)">
               <view class="product-image" :style="{ backgroundColor: item.bg || '#F0F4FA' }">
                 <image v-if="item.image" class="product-image-img" :src="item.image" mode="aspectFill"></image>
-                <text v-else class="product-icon">{{ item.icon || '🤖' }}</text>
+                <SmIcon v-else-if="!item.icon || item.icon === '🤖'" name="empty-robot" size="64rpx" />
+                <text v-else class="product-icon">{{ item.icon }}</text>
               </view>
               <view class="product-info">
                 <text class="product-name">{{ item.name }}</text>
@@ -181,10 +182,11 @@ import { sceneApi } from '@/utils/api'
 import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request'
 import { BASE_URL } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
+import SmIcon from '@/components/SmIcon.vue'
 import { sceneId, configuredSceneProducts, normalizeSceneImage } from '@/utils/scene-catalog'
 
 export default {
-  components: { StateView },
+  components: { StateView, SmIcon },
   data() {
     return {
       sceneId: '', activeMode: 'rent', loading: true, loadError: '', loadVersion: 0, sceneLoaded: false, contentEvidence: [],

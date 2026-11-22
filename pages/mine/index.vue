@@ -18,7 +18,7 @@
 					</view>
 					<view class="user-right">
 						<view class="vip-badge" @click="goVip">
-							<text class="vip-icon">👑</text>
+							<SmIcon name="vip-crown" :size="28" />
 							<text class="vip-text">会员</text>
 						</view>
 					</view>
@@ -28,20 +28,28 @@
 			<!-- ===== 第一模块：双卡片 ===== -->
 			<view class="double-card">
 				<view class="card-item" @click="goCoupon">
-					<view class="card-icon">🎫</view>
+					<view class="card-icon">
+						<SmIcon name="coupon" :size="42" />
+					</view>
 					<view class="card-info">
 						<text class="card-title">优惠券</text>
 						<text class="card-count">暂未开放</text>
 					</view>
-					<text class="card-arrow">›</text>
+					<view class="card-arrow">
+						<SmIcon name="chevron-right" :size="24" />
+					</view>
 				</view>
 				<view class="card-item" @click="goInvoice">
-					<view class="card-icon">🧾</view>
+					<view class="card-icon">
+						<SmIcon name="invoice" :size="42" />
+					</view>
 					<view class="card-info">
 						<text class="card-title">开票中心</text>
 						<text class="card-count">{{ invoiceCount }}笔</text>
 					</view>
-					<text class="card-arrow">›</text>
+					<view class="card-arrow">
+						<SmIcon name="chevron-right" :size="24" />
+					</view>
 				</view>
 			</view>
 
@@ -53,19 +61,27 @@
 				</view>
 				<view class="order-categories">
 					<view class="order-item" @click="goOrderList('pending')">
-						<text class="order-icon">⏳</text>
+						<view class="order-icon-box">
+							<SmIcon name="order-pending" :size="44" />
+						</view>
 						<text class="order-label">待付款</text>
 					</view>
 					<view class="order-item" @click="goOrderList('confirm')">
-						<text class="order-icon">📦</text>
+						<view class="order-icon-box">
+							<SmIcon name="order-shipping" :size="44" />
+						</view>
 						<text class="order-label">待发货</text>
 					</view>
 					<view class="order-item" @click="goOrderList('completed')">
-						<text class="order-icon">✅</text>
+						<view class="order-icon-box">
+							<SmIcon name="order-done" :size="44" />
+						</view>
 						<text class="order-label">已完成</text>
 					</view>
 					<view class="order-item" @click="goAllOrders">
-						<text class="order-icon">📋</text>
+						<view class="order-icon-box">
+							<SmIcon name="order-all" :size="44" />
+						</view>
 						<text class="order-label">全部</text>
 					</view>
 				</view>
@@ -78,39 +94,57 @@
 				</view>
 				<view class="function-grid function-grid-primary">
 					<view class="func-item" @click="goDevices">
-						<text class="func-icon">🔧</text>
+						<view class="func-icon">
+							<SmIcon name="devices" :size="42" />
+						</view>
 						<text class="func-label">我的设备</text>
 					</view>
 					<view class="func-item" @click="goSkills">
-						<text class="func-icon">✨</text>
+						<view class="func-icon">
+							<SmIcon name="skills" :size="42" />
+						</view>
 						<text class="func-label">我的技能</text>
 					</view>
 					<view class="func-item" @click="goSceneRequests">
-						<text class="func-icon">📑</text>
+						<view class="func-icon">
+							<SmIcon name="custom" :size="42" />
+						</view>
 						<text class="func-label">我的定制</text>
 					</view>
 					<view class="func-item" @click="goCustomerService">
-						<text class="func-icon">💬</text>
+						<view class="func-icon">
+							<SmIcon name="service" :size="42" />
+						</view>
 						<text class="func-label">客服中心</text>
 					</view>
 					<view class="func-item" @click="goMyRegistrations">
-						<text class="func-icon">🎟️</text>
+						<view class="func-icon">
+							<SmIcon name="event" :size="42" />
+						</view>
 						<text class="func-label">赛事</text>
 					</view>
 					<view class="func-item" @click="goAfterSales">
-						<text class="func-icon">🧾</text>
+						<view class="func-icon">
+							<SmIcon name="after-sales" :size="42" />
+						</view>
 						<text class="func-label">售后</text>
 					</view>
 					<view class="func-item" @click="goNotifications">
-						<text class="func-icon">🔔</text>
+						<view class="func-icon">
+							<SmIcon name="notify" :size="42" />
+						</view>
 						<text class="func-label">消息</text>
 					</view>
 					<view class="func-item" @click="goMyFavorites">
-						<text class="func-icon">⭐</text>
+						<view class="func-icon">
+							<SmIcon name="favorite" :size="42" />
+						</view>
 						<text class="func-label">收藏</text>
 					</view>
 					<view class="func-item" @click="goSettings">
-						<text class="func-icon">⚙️</text>
+						<view class="func-icon">
+							<SmIcon name="settings" :size="42" />
+						</view>
 						<text class="func-label">设置</text>
 					</view>
 				</view>
@@ -130,7 +164,7 @@
 					<view class="hub-card hub-card-portal" @click="openPortalSelector" role="button" tabindex="0" aria-label="打开后台工作台选择入口" @keydown.enter="openPortalSelector">
 						<view class="hub-card-left">
 							<view class="hub-card-icon-box portal-theme">
-								<text class="hub-card-icon">🖥️</text>
+								<SmIcon name="hub-portal" :size="40" />
 							</view>
 							<view class="hub-card-info">
 								<view class="hub-card-title-row">
@@ -149,7 +183,7 @@
 					<view class="hub-card hub-card-coop" @click="goCooperate('channels')">
 						<view class="hub-card-left">
 							<view class="hub-card-icon-box coop-theme">
-								<text class="hub-card-icon">🤝</text>
+								<SmIcon name="hub-coop" :size="40" />
 							</view>
 							<view class="hub-card-info">
 								<view class="hub-card-title-row">
@@ -169,7 +203,7 @@
 					<view class="hub-card hub-card-supplier" @click="goSupplierCode('verify')">
 						<view class="hub-card-left">
 							<view class="hub-card-icon-box supplier-theme">
-								<text class="hub-card-icon">🔑</text>
+								<SmIcon name="hub-supplier" :size="40" />
 							</view>
 							<view class="hub-card-info">
 								<view class="hub-card-title-row">
@@ -205,7 +239,9 @@
 			</view>
 			<scroll-view class="sub-content" scroll-y="true" show-scrollbar="false">
 				<view class="empty-state">
-					<text class="empty-icon">🎫</text>
+					<view class="empty-icon-box">
+						<SmIcon name="coupon" :size="88" />
+					</view>
 					<view class="empty-text">优惠券列表暂未开放</view>
 					<view class="empty-hint">如持有优惠码，可在技能订单结算时填写。</view>
 				</view>
@@ -262,7 +298,9 @@
 						</view>
 					</view>
 					<view class="empty-state" v-if="!invoiceLoading && !invoiceError && invoiceList.length === 0">
-						<text class="empty-icon">🧾</text>
+						<view class="empty-icon-box">
+							<SmIcon name="invoice" :size="88" />
+						</view>
 						<text class="empty-text">暂无开票记录</text>
 					</view>
 					<view class="empty-state" v-if="invoiceLoading">
@@ -329,7 +367,7 @@
 						:loading="addressLoading"
 						:error="addressError"
 						:empty="!addressList.length"
-						empty-icon="📍"
+						empty-icon="/static/icons/mine/location.png"
 						empty-text="暂无收货地址"
 						empty-hint="点击下方按钮添加新地址"
 						btn-color="#165DFF"
@@ -360,7 +398,7 @@
 			<view v-else class="address-form-page">
 				<scroll-view class="sub-content" scroll-y="true" show-scrollbar="false">
 					<view class="location-btn-wrap" @tap="getLocationAndFill">
-						<text class="location-icon">📍</text>
+						<SmIcon name="location" :size="32" />
 						<text class="location-text">{{ locating ? '定位中...' : '获取当前位置' }}</text>
 					</view>
 					<view class="form-group">
@@ -424,14 +462,16 @@
 					:class="{ active: coopActiveTab === 'channels' }"
 					@tap="coopActiveTab = 'channels'"
 				>
-					<text class="segment-tab-title">💼 合作通道 (4)</text>
+					<SmIcon name="briefcase" :size="26" />
+					<text class="segment-tab-title">合作通道 (4)</text>
 				</view>
 				<view
 					class="segment-tab-item"
 					:class="{ active: coopActiveTab === 'history' }"
 					@tap="coopActiveTab = 'history'"
 				>
-					<text class="segment-tab-title">📋 申请记录与签发码</text>
+					<SmIcon name="clipboard" :size="26" />
+					<text class="segment-tab-title">申请记录与签发码</text>
 					<text class="segment-badge" v-if="coopOnlyApplications.length">{{ coopOnlyApplications.length }}</text>
 				</view>
 			</view>
@@ -456,7 +496,7 @@
 						>
 							<view class="coop-card-top-row">
 								<view class="coop-card-icon-badge" :style="{ background: item.avatarBg }">
-									<text class="coop-avatar-emoji">{{ item.avatar }}</text>
+									<SmIcon :name="item.iconName || 'coop-manufacturer'" :size="40" />
 								</view>
 								<text class="coop-card-tag-pill">{{ item.tag || '生态合作' }}</text>
 							</view>
@@ -478,7 +518,9 @@
 						<text class="coop-state-text">正在同步申请进度与签发状态…</text>
 					</view>
 					<view v-else-if="coopOnlyApplications.length === 0" class="coop-state-card">
-						<text class="coop-empty-icon">📭</text>
+						<view class="coop-empty-icon-wrap">
+							<SmIcon name="empty-inbox" :size="88" />
+						</view>
 						<text class="coop-state-title">暂无生态合作申请记录</text>
 						<text class="coop-state-desc">点击上方「合作通道」，选择您所代表的企业主体或团队方向即可提交申请。</text>
 						<view class="coop-empty-action" @tap="coopActiveTab = 'channels'">去浏览合作通道 ›</view>
@@ -503,7 +545,10 @@
 							</view>
 							<view v-if="app.issued_invite_code" class="coop-issued-code-box">
 								<view class="coop-issued-code-main">
-									<text class="coop-issued-label">🔑 平台已签发专属邀请码：</text>
+									<view class="coop-issued-title-row">
+										<SmIcon name="key" :size="26" />
+										<text class="coop-issued-label">平台已签发专属邀请码：</text>
+									</view>
 									<text class="coop-issued-code font-mono">{{ app.issued_invite_code }}</text>
 									<text class="coop-issued-exp" v-if="app.issued_invite_expires_at">有效期至：{{ app.issued_invite_expires_at }}</text>
 								</view>
@@ -527,13 +572,17 @@
 				<view class="coop-modal-sheet" @tap.stop="noop">
 					<view class="coop-modal-header">
 						<view class="coop-modal-title-wrap">
-							<text class="coop-modal-emoji">{{ activeCoopItem.avatar }}</text>
+							<view class="coop-modal-icon-badge" :style="{ background: activeCoopItem.avatarBg }">
+								<SmIcon :name="activeCoopItem.iconName || 'coop-manufacturer'" :size="40" />
+							</view>
 							<view>
 								<text class="coop-modal-title">{{ activeCoopItem.name }} · 合作申请</text>
 								<text class="coop-modal-subtitle">{{ activeCoopItem.desc }}</text>
 							</view>
 						</view>
-						<text class="coop-modal-close" @tap="closeCooperateModal">✕</text>
+						<view class="coop-modal-close" @tap="closeCooperateModal">
+							<SmIcon name="close" :size="26" />
+						</view>
 					</view>
 
 					<scroll-view class="coop-modal-body" scroll-y="true" show-scrollbar="false">
@@ -707,7 +756,8 @@
 						<view class="coop-contact-header">
 							<text class="coop-contact-title">商务联系人</text>
 							<view class="btn-quick-autofill-sm" @tap="fillCurrentAccountToCoop">
-								<text>⚡ 填入当前账号</text>
+								<SmIcon name="bolt" :size="22" />
+								<text>填入当前账号</text>
 							</view>
 						</view>
 
@@ -781,7 +831,9 @@
 							<text class="form-label required">营业执照</text>
 							<view class="upload-area" @tap="chooseLicense">
 								<view class="upload-box">
-									<text class="upload-icon">📁</text>
+									<view class="upload-icon-wrap">
+										<SmIcon name="upload-doc" :size="56" />
+									</view>
 									<text class="upload-text">{{ licenseFileName || '选择文件上传' }}</text>
 									<text class="upload-tip">支持 PNG / JPG / PDF，上限 10MB</text>
 								</view>
@@ -897,21 +949,24 @@
 					:class="{ active: supplierActiveTab === 'verify' }"
 					@tap="supplierActiveTab = 'verify'"
 				>
-					<text class="segment-tab-title">🔑 邀请码核验</text>
+					<SmIcon name="key" :size="26" />
+					<text class="segment-tab-title">邀请码核验</text>
 				</view>
 				<view
 					class="segment-tab-item"
 					:class="{ active: supplierActiveTab === 'apply' }"
 					@tap="supplierActiveTab = 'apply'"
 				>
-					<text class="segment-tab-title">📝 资质入驻建档</text>
+					<SmIcon name="doc-edit" :size="26" />
+					<text class="segment-tab-title">资质入驻建档</text>
 				</view>
 				<view
 					class="segment-tab-item"
 					:class="{ active: supplierActiveTab === 'progress' }"
 					@tap="supplierActiveTab = 'progress'"
 				>
-					<text class="segment-tab-title">📬 进度与专属码</text>
+					<SmIcon name="clipboard" :size="26" />
+					<text class="segment-tab-title">进度与专属码</text>
 					<text class="segment-badge" v-if="supplierApplications.length">{{ supplierApplications.length }}</text>
 				</view>
 			</view>
@@ -931,7 +986,9 @@
 								<text class="supplier-hero-badge">SUPPLY CHAIN INVITATION</text>
 								<text class="supplier-hero-title">召唤机甲 · 核心供应链邀约通道</text>
 							</view>
-							<text class="supplier-hero-icon">🔑</text>
+							<view class="supplier-hero-icon-box">
+								<SmIcon name="hub-supplier" :size="48" />
+							</view>
 						</view>
 						<text class="supplier-hero-desc">
 							面向机器人整机货源、核心零配件/机甲皮肤、城市驻场运维及 RaaS 技能供应商开放。持官方邀请码可即时核验归属并进入优先审核或直通门户激活；暂无邀请码亦可提交资质申请定向签发。
@@ -999,7 +1056,9 @@
 				<!-- 暂无邀请码快捷引导卡片 -->
 				<view class="supplier-guide-card" @tap="switchSupplierEntryMode('apply_code')">
 					<view class="supplier-guide-left">
-						<text class="supplier-guide-icon">📝</text>
+						<view class="supplier-guide-icon-box">
+							<SmIcon name="doc-edit" :size="36" />
+						</view>
 						<view class="supplier-guide-text">
 							<text class="supplier-guide-title">暂无邀请码？提交资质申请专属邀约码</text>
 							<text class="supplier-guide-desc">机器人整机/零配件/算法服务商均可申请，审核通过在线签发</text>
@@ -1073,7 +1132,9 @@
 					<!-- 分组一：企业主体与资质档案 -->
 					<view class="form-fieldset-card">
 						<view class="form-fieldset-header">
-							<text class="form-fieldset-icon">🏢</text>
+							<view class="form-fieldset-icon-box">
+								<SmIcon name="building" :size="34" />
+							</view>
 							<view>
 								<text class="form-fieldset-title">企业主体与供应资质</text>
 								<text class="form-fieldset-sub">请根据工商登记信息与核心经营范围如实填写</text>
@@ -1130,7 +1191,7 @@
 							</view>
 							<view class="supplier-license-uploader" @tap="chooseSupplierLicense">
 								<view v-if="supplierLicenseFileName" class="supplier-license-picked">
-									<text class="license-picked-icon">📄</text>
+									<SmIcon name="file-check" :size="40" />
 									<view class="license-picked-info">
 										<text class="license-picked-name">{{ supplierLicenseFileName }}</text>
 										<text class="license-picked-tip">已就绪，提交时随申请单留存</text>
@@ -1138,7 +1199,9 @@
 									<text class="license-picked-del" @tap.stop="removeSupplierLicense">移除</text>
 								</view>
 								<view v-else class="supplier-license-empty">
-									<text class="license-upload-icon">📷</text>
+									<view class="license-upload-icon-wrap">
+										<SmIcon name="camera" :size="48" />
+									</view>
 									<text class="license-upload-text">点击拍摄或从相册选择营业执照/资质材料</text>
 									<text class="license-upload-sub">支持 JPG / PNG 格式，仅用于企业入驻审核</text>
 								</view>
@@ -1170,7 +1233,9 @@
 					<!-- 分组二：供货产品、产能与履约质保 -->
 					<view class="form-fieldset-card">
 						<view class="form-fieldset-header">
-							<text class="form-fieldset-icon">⚙️</text>
+							<view class="form-fieldset-icon-box">
+								<SmIcon name="settings" :size="34" />
+							</view>
 							<view>
 								<text class="form-fieldset-title">供货清单与履约质保</text>
 								<text class="form-fieldset-sub">明确核心优势机型、产能规模与售后支持标准</text>
@@ -1246,15 +1311,17 @@
 					<!-- 分组三：商务对接人联络 -->
 					<view class="form-fieldset-card">
 						<view class="form-fieldset-header justify-between">
-							<view class="flex items-center gap-2">
-								<text class="form-fieldset-icon">👤</text>
+							<view class="fieldset-header-left">
+								<view class="form-fieldset-icon-box">
+									<SmIcon name="user" :size="34" />
+								</view>
 								<view>
 									<text class="form-fieldset-title">商务对接负责人</text>
 									<text class="form-fieldset-sub">采购对接人与签约顾问将优先通过此信息联络</text>
 								</view>
 							</view>
 							<view class="btn-quick-autofill" @tap="fillCurrentAccountToSupplier">
-								<text class="autofill-icon">⚡</text>
+								<SmIcon name="bolt" :size="24" />
 								<text>填入当前账号</text>
 							</view>
 						</view>
@@ -1311,9 +1378,10 @@
 								请完善必填信息（还差 {{ supplierProgress.missingCount }} 项未填）
 							</template>
 						</view>
-						<text class="supplier-submit-privacy-tip">
-							🔒 平台严格保护供应商企业及商业信息安全，仅用于本次生态供应链准入与商务对接。
-						</text>
+						<view class="supplier-submit-privacy-tip privacy-tip-row">
+							<SmIcon name="shield-lock" :size="24" />
+							<text>平台严格保护供应商企业及商业信息安全，仅用于本次生态供应链准入与商务对接。</text>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -1327,7 +1395,9 @@
 					</view>
 					<view v-if="cooperateLoading" class="coop-history-empty">加载中...</view>
 					<view v-else-if="supplierApplications.length === 0" class="coop-history-empty">
-						<text class="coop-empty-icon">📭</text>
+						<view class="coop-empty-icon-wrap">
+							<SmIcon name="empty-inbox" :size="88" />
+						</view>
 						<text class="coop-state-title">暂无供应链入驻记录</text>
 						<text class="coop-state-desc">提交上方表单后，可在此实时追踪审核进度并领取平台签发的专属邀请码。</text>
 						<view class="coop-empty-action" @tap="supplierActiveTab = 'apply'">去填写供应链入驻表单 ›</view>
@@ -1356,7 +1426,10 @@
 							<!-- 后台运营签发的专属邀请码展示与一键激活 -->
 							<view v-if="app.issued_invite_code" class="coop-issued-code-box">
 								<view class="coop-issued-code-main">
-									<text class="coop-issued-label">🎉 平台已为您签发专属邀请码：</text>
+									<view class="coop-issued-title-row">
+										<SmIcon name="celebrate" :size="28" />
+										<text class="coop-issued-label">平台已为您签发专属邀请码：</text>
+									</view>
 									<text class="coop-issued-code font-mono">{{ app.issued_invite_code }}</text>
 									<text class="coop-issued-exp" v-if="app.issued_invite_expires_at">有效期：{{ app.issued_invite_expires_at }}</text>
 								</view>
@@ -1403,17 +1476,19 @@
 							</view>
 						</view>
 						<view class="settings-right">
-							<text class="settings-arrow">›</text>
+							<SmIcon name="chevron-right" :size="24" />
 						</view>
 					</view>
 					<view class="settings-divider"></view>
 					<view class="settings-item" @click="editProfile">
 						<view class="settings-left">
-							<text class="settings-icon">👤</text>
+							<view class="settings-icon-box">
+								<SmIcon name="user" :size="30" />
+							</view>
 							<text class="settings-label">个人信息</text>
 						</view>
 						<view class="settings-right">
-							<text class="settings-arrow">›</text>
+							<SmIcon name="chevron-right" :size="24" />
 						</view>
 					</view>
 				</view>
@@ -1423,31 +1498,37 @@
 				<view class="settings-card">
 					<view class="settings-item" @click="goPrivacyPolicy">
 						<view class="settings-left">
-							<text class="settings-icon">🔒</text>
+							<view class="settings-icon-box">
+								<SmIcon name="shield-lock" :size="30" />
+							</view>
 							<text class="settings-label">隐私政策</text>
 						</view>
 						<view class="settings-right">
-							<text class="settings-arrow">›</text>
+							<SmIcon name="chevron-right" :size="24" />
 						</view>
 					</view>
 					<view class="settings-divider"></view>
 					<view class="settings-item" @click="goUserAgreement">
 						<view class="settings-left">
-							<text class="settings-icon">📄</text>
+							<view class="settings-icon-box">
+								<SmIcon name="doc-text" :size="30" />
+							</view>
 							<text class="settings-label">用户协议</text>
 						</view>
 						<view class="settings-right">
-							<text class="settings-arrow">›</text>
+							<SmIcon name="chevron-right" :size="24" />
 						</view>
 					</view>
 					<view class="settings-divider"></view>
 					<view class="settings-item" @click="goAbout">
 						<view class="settings-left">
-							<text class="settings-icon">ℹ️</text>
+							<view class="settings-icon-box">
+								<SmIcon name="info" :size="30" />
+							</view>
 							<text class="settings-label">关于</text>
 						</view>
 						<view class="settings-right">
-							<text class="settings-arrow">›</text>
+							<SmIcon name="chevron-right" :size="24" />
 						</view>
 					</view>
 				</view>
@@ -1456,11 +1537,13 @@
 				<view class="settings-card">
 					<view class="settings-item logout-item" @click="handleLogout">
 						<view class="settings-left">
-							<text class="settings-icon logout-icon">🚪</text>
+							<view class="settings-icon-box logout-icon-box">
+								<SmIcon name="logout" :size="30" />
+							</view>
 							<text class="settings-label logout-label">退出登录</text>
 						</view>
 						<view class="settings-right">
-							<text class="settings-arrow">›</text>
+							<SmIcon name="chevron-right" :size="24" />
 						</view>
 					</view>
 				</view>
@@ -1491,30 +1574,42 @@
 				<!-- 登录表单 -->
 				<view class="login-form" v-if="authMode === 'login'">
 					<view class="login-input-wrap">
-						<text class="login-input-icon">📧</text>
+						<view class="login-input-icon-box">
+							<SmIcon name="mail" :size="30" />
+						</view>
 						<input class="login-input" type="text" v-model="loginForm.email" placeholder="请输入邮箱" />
 					</view>
 					<view class="login-input-wrap">
-						<text class="login-input-icon">🔒</text>
+						<view class="login-input-icon-box">
+							<SmIcon name="lock" :size="30" />
+						</view>
 						<input class="login-input" type="password" v-model="loginForm.password" placeholder="请输入密码" />
 					</view>
 				</view>
 				<!-- 注册表单 -->
 				<view class="login-form" v-if="authMode === 'register'">
 					<view class="login-input-wrap">
-						<text class="login-input-icon">👤</text>
+						<view class="login-input-icon-box">
+							<SmIcon name="user" :size="30" />
+						</view>
 						<input class="login-input" type="text" v-model="registerForm.name" placeholder="姓名 / 昵称" />
 					</view>
 					<view class="login-input-wrap">
-						<text class="login-input-icon">📧</text>
+						<view class="login-input-icon-box">
+							<SmIcon name="mail" :size="30" />
+						</view>
 						<input class="login-input" type="text" v-model="registerForm.email" placeholder="请输入邮箱" />
 					</view>
 					<view class="login-input-wrap">
-						<text class="login-input-icon">🔒</text>
+						<view class="login-input-icon-box">
+							<SmIcon name="lock" :size="30" />
+						</view>
 						<input class="login-input" type="password" v-model="registerForm.password" placeholder="设置密码（至少 6 位）" />
 					</view>
 					<view class="login-input-wrap">
-						<text class="login-input-icon">🔒</text>
+						<view class="login-input-icon-box">
+							<SmIcon name="lock" :size="30" />
+						</view>
 						<input class="login-input" type="password" v-model="registerForm.confirmPassword" placeholder="确认密码" />
 					</view>
 				</view>
@@ -1552,7 +1647,9 @@
 						aria-label="关闭后台选择弹窗"
 						@tap="closePortalSelector"
 						@keydown.enter="closePortalSelector"
-					>✕</view>
+					>
+						<SmIcon name="close" :size="26" />
+					</view>
 				</view>
 
 				<!-- 加载态 -->
@@ -1585,7 +1682,7 @@
 						@keydown.enter="handleSelectBackend(item)"
 					>
 						<view class="portal-card-icon">
-							<text>{{ resolvePortalIcon(item.icon) }}</text>
+							<SmIcon :name="resolvePortalIcon(item.icon)" :size="40" />
 						</view>
 						<view class="portal-card-main">
 							<view class="portal-card-top">
@@ -1607,10 +1704,12 @@
 								class="portal-card-action-row"
 							>
 								<view class="portal-action-pill" @tap.stop="handlePortalAction('verify')">
-									<text>🔑 核验邀请码激活</text>
+									<SmIcon name="key" :size="22" />
+									<text>核验邀请码激活</text>
 								</view>
 								<view class="portal-action-pill primary" @tap.stop="handlePortalAction('apply')">
-									<text>📝 申请商户入驻</text>
+									<SmIcon name="doc-edit" :size="22" />
+									<text>申请商户入驻</text>
 								</view>
 							</view>
 						</view>
@@ -1618,8 +1717,9 @@
 					</view>
 				</view>
 
-				<view class="portal-modal-footer-tip">
-					<text>🔒 平台基于多租户 RBAC 严格隔离，越权访问将自动阻断并审计留痕</text>
+				<view class="portal-modal-footer-tip privacy-tip-row">
+					<SmIcon name="shield-lock" :size="24" />
+					<text>平台基于多租户 RBAC 严格隔离，越权访问将自动阻断并审计留痕</text>
 				</view>
 			</view>
 		</view>
@@ -1629,6 +1729,7 @@
 <script>
 	import CustomTabBar from '@/components/CustomTabBar.vue';
 	import StateView from '@/components/StateView.vue';
+	import SmIcon from '@/components/SmIcon.vue';
 	import { authApi, addressApi, invoiceApi, orderApi, cooperationApi, portalApi } from '@/utils/api';
 	import { TOKEN_KEY, CUSTOMER_KEY, APP_VERSION, BASE_URL } from '@/utils/config';
 	import { serverToLocal, localToServerPayload } from '@/utils/address';
@@ -1636,7 +1737,8 @@
 	export default {
 		components: {
 			CustomTabBar,
-			StateView
+			StateView,
+			SmIcon
 		},
 		data() {
 			return {
@@ -1687,7 +1789,7 @@
 					{
 						key: 'manufacturer',
 						name: '机器人本体厂商',
-						avatar: '🏭',
+						iconName: 'coop-manufacturer',
 						avatarBg: '#E8F4FD',
 						btnText: '洽谈合作',
 						desc: '制造 / 渠道 / 技术协同',
@@ -1699,7 +1801,7 @@
 					{
 						key: 'raas',
 						name: 'RaaS 算法合伙人',
-						avatar: '🧠',
+						iconName: 'coop-raas',
 						avatarBg: '#EEF2FF',
 						btnText: '立即加入',
 						desc: '技能售卖 / 分成 / 算法社区',
@@ -1711,7 +1813,7 @@
 					{
 						key: 'influencer',
 						name: '机甲达人 / MCN',
-						avatar: '🎬',
+						iconName: 'coop-influencer',
 						avatarBg: '#FEF3C7',
 						btnText: '演出合作',
 						desc: '免费用机 / 商单 / 流量扶持',
@@ -1723,7 +1825,7 @@
 					{
 						key: 'partner',
 						name: '生态合伙人推荐',
-						avatar: '🌟',
+						iconName: 'coop-partner',
 						avatarBg: '#FDF2F8',
 						btnText: '在线推荐',
 						desc: '引荐企业 / 商务签约 / 激励',
@@ -2118,11 +2220,11 @@
 			},
 			resolvePortalIcon(icon) {
 				const map = {
-					store: '🏢',
-					terminal: '🧑‍💻',
-					cube: '🌐',
+					store: 'hub-store',
+					terminal: 'hub-terminal',
+					cube: 'hub-cube',
 				};
-				return map[icon] || '🖥️';
+				return map[icon] || 'hub-portal';
 			},
 			movePortalFocus(delta) {
 				if (!this.portalBackends || !this.portalBackends.length) return;
@@ -3129,22 +3231,20 @@
 		align-items: center;
 	}
 	.vip-badge {
-		background: rgba(255, 215, 0, 0.25);
-		border: 2rpx solid #FFD700;
-		border-radius: 30rpx;
-		padding: 4rpx 18rpx 4rpx 12rpx;
+		background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
+		border: 2rpx solid #F59E0B;
+		border-radius: 999rpx;
+		padding: 6rpx 18rpx 6rpx 14rpx;
 		display: flex;
 		align-items: center;
+		gap: 8rpx;
+		box-shadow: 0 4rpx 12rpx rgba(217, 119, 6, 0.16);
 		cursor: pointer;
 	}
-	.vip-icon {
-		font-size: 28rpx;
-		margin-right: 4rpx;
-	}
 	.vip-text {
-		font-size: 20rpx;
-		color: #1A2A3A;
-		font-weight: 600;
+		font-size: 22rpx;
+		color: #92400E;
+		font-weight: 700;
 	}
 
 	/* ===== 双卡片 ===== */
@@ -3169,11 +3269,11 @@
 		transform: scale(0.98);
 	}
 	.card-icon {
-		font-size: 40rpx;
-		width: 56rpx;
-		height: 56rpx;
-		border-radius: 16rpx;
-		background: #E8F4FD;
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 20rpx;
+		background: linear-gradient(145deg, #F3F8FF, #E3EEFF);
+		border: 1rpx solid rgba(22, 93, 255, 0.08);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -3196,8 +3296,10 @@
 		margin-top: 2rpx;
 	}
 	.card-arrow {
-		font-size: 32rpx;
-		color: #C0C8D4;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 
 	/* ===== 订单模块 ===== */
@@ -3205,7 +3307,7 @@
 	.function-module {
 		background: #FFFFFF;
 		border-radius: 24rpx;
-		padding: 20rpx 24rpx;
+		padding: 24rpx;
 		margin-bottom: 24rpx;
 		box-shadow: 0 4rpx 16rpx rgba(66, 145, 246, 0.06);
 	}
@@ -3213,7 +3315,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 16rpx;
+		margin-bottom: 18rpx;
 	}
 	.module-title {
 		font-size: 28rpx;
@@ -3239,13 +3341,21 @@
 	.order-item:active {
 		opacity: 0.6;
 	}
-	.order-icon {
-		font-size: 40rpx;
-		margin-bottom: 6rpx;
+	.order-icon-box {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 22rpx;
+		background: linear-gradient(145deg, #F5F9FF, #EAF2FF);
+		border: 1rpx solid rgba(22, 93, 255, 0.06);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 10rpx;
 	}
 	.order-label {
 		font-size: 22rpx;
 		color: #4A5A6A;
+		font-weight: 500;
 	}
 
 	/* ===== 常用功能 ===== */
@@ -3274,15 +3384,15 @@
 		opacity: 0.6;
 	}
 	.func-icon {
-		font-size: 40rpx;
-		width: 60rpx;
-		height: 60rpx;
-		border-radius: 16rpx;
-		background: #F0F7FD;
+		width: 76rpx;
+		height: 76rpx;
+		border-radius: 22rpx;
+		background: linear-gradient(145deg, #F5F9FF, #EAF2FF);
+		border: 1rpx solid rgba(22, 93, 255, 0.06);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		margin-bottom: 8rpx;
+		margin-bottom: 10rpx;
 	}
 	.func-label {
 		font-size: 22rpx;
@@ -4085,8 +4195,14 @@
 		align-items: center;
 		gap: 16rpx;
 	}
-	.coop-modal-emoji {
-		font-size: 44rpx;
+	.coop-modal-icon-badge {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 20rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 	.coop-modal-title {
 		display: block;
@@ -4101,9 +4217,13 @@
 		margin-top: 4rpx;
 	}
 	.coop-modal-close {
-		font-size: 36rpx;
-		color: #8C9AA8;
-		padding: 8rpx 12rpx;
+		width: 56rpx;
+		height: 56rpx;
+		border-radius: 28rpx;
+		background: #F1F5F9;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		cursor: pointer;
 	}
 	.coop-modal-body {
@@ -4575,8 +4695,10 @@
 	.form-fieldset-header.justify-between {
 		justify-content: space-between;
 	}
-	.form-fieldset-icon {
-		font-size: 32rpx;
+	.fieldset-header-left {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
 	}
 	.form-fieldset-title {
 		display: block;
@@ -4619,6 +4741,9 @@
 		cursor: pointer;
 	}
 	.btn-quick-autofill-sm {
+		display: inline-flex;
+		align-items: center;
+		gap: 6rpx;
 		font-size: 20rpx;
 		font-weight: 600;
 		color: #2563EB;
@@ -5051,23 +5176,25 @@
 		color: #94a3b8;
 		margin-top: 2rpx;
 	}
-	.settings-icon {
-		font-size: 28rpx;
-		color: #1A2A3A;
+	.settings-icon-box {
+		width: 56rpx;
+		height: 56rpx;
+		border-radius: 16rpx;
+		background: #F0F6FF;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+	.settings-icon-box.logout-icon-box {
+		background: #FEF2F2;
 	}
 	.settings-label {
 		font-size: 26rpx;
 		color: #1A2A3A;
 	}
-	.settings-arrow {
-		font-size: 32rpx;
-		color: #d1d5db;
-	}
 	.logout-item .settings-left {
 		gap: 16rpx;
-	}
-	.logout-icon {
-		font-size: 28rpx;
 	}
 	.logout-label {
 		font-size: 26rpx;
@@ -5087,9 +5214,11 @@
 		text-align: center;
 		padding: 80rpx 0;
 	}
-	.empty-icon {
-		font-size: 72rpx;
-		display: block;
+	.empty-icon-box {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-bottom: 8rpx;
 	}
 	.empty-text {
 		font-size: 28rpx;
@@ -5186,9 +5315,12 @@
 	.login-input-wrap:focus {
 		border-color: #4291F6;
 	}
-	.login-input-icon {
-		font-size: 28rpx;
-		margin-right: 12rpx;
+	.login-input-icon-box {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: 14rpx;
+		flex-shrink: 0;
 	}
 	.login-input {
 		flex: 1;
@@ -5355,7 +5487,7 @@
 		flex-shrink: 0;
 	}
 	.portal-card.is-disabled .portal-card-icon {
-		background: #CBD5E1;
+		background: #94A3B8;
 	}
 	.portal-card-main {
 		flex: 1;
@@ -5414,6 +5546,8 @@
 		margin-top: 14rpx;
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
+		gap: 12rpx;
 	}
 	.portal-card-action-link {
 		display: inline-flex;
@@ -5490,9 +5624,9 @@
 		min-width: 0;
 	}
 	.hub-card-icon-box {
-		width: 68rpx;
-		height: 68rpx;
-		border-radius: 18rpx;
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 20rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -5500,15 +5634,15 @@
 	}
 	.hub-card-icon-box.portal-theme {
 		background: linear-gradient(135deg, #0F296B, #2563EB);
+		box-shadow: 0 6rpx 16rpx rgba(37, 99, 235, 0.24);
 	}
 	.hub-card-icon-box.coop-theme {
 		background: linear-gradient(135deg, #065F46, #059669);
+		box-shadow: 0 6rpx 16rpx rgba(5, 150, 105, 0.22);
 	}
 	.hub-card-icon-box.supplier-theme {
 		background: linear-gradient(135deg, #92400E, #D97706);
-	}
-	.hub-card-icon {
-		font-size: 34rpx;
+		box-shadow: 0 6rpx 16rpx rgba(217, 119, 6, 0.22);
 	}
 	.hub-card-info {
 		flex: 1;
@@ -5673,15 +5807,12 @@
 		margin-bottom: 12rpx;
 	}
 	.coop-card-icon-badge {
-		width: 64rpx;
-		height: 64rpx;
-		border-radius: 18rpx;
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 20rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-	}
-	.coop-avatar-emoji {
-		font-size: 34rpx;
 	}
 	.coop-card-tag-pill {
 		font-size: 20rpx;
@@ -5752,10 +5883,11 @@
 		border: 1rpx solid #E2E8F0;
 		box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.04);
 	}
-	.coop-empty-icon {
-		font-size: 64rpx;
+	.coop-empty-icon-wrap {
+		display: flex;
+		justify-content: center;
+		align-items: center;
 		margin-bottom: 16rpx;
-		display: block;
 	}
 	.coop-state-title {
 		display: block;
@@ -5802,8 +5934,15 @@
 		flex: 1;
 		min-width: 0;
 	}
-	.supplier-guide-icon {
-		font-size: 36rpx;
+	.supplier-guide-icon-box {
+		width: 60rpx;
+		height: 60rpx;
+		border-radius: 16rpx;
+		background: #DBEAFE;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 	.supplier-guide-text {
 		flex: 1;
@@ -5840,16 +5979,16 @@
 	.portal-action-pill {
 		display: inline-flex;
 		align-items: center;
-		padding: 8rpx 20rpx;
+		gap: 6rpx;
+		padding: 8rpx 16rpx;
 		border-radius: 999rpx;
 		background: #F1F5F9;
 		border: 1rpx solid #CBD5E1;
-		font-size: 22rpx;
+		font-size: 20rpx;
 		font-weight: 600;
 		color: #334155;
+		white-space: nowrap;
 		cursor: pointer;
-		margin-right: 12rpx;
-		margin-top: 8rpx;
 	}
 	.portal-action-pill.primary {
 		background: #EEF2FF;
@@ -5863,6 +6002,45 @@
 		text-align: center;
 		font-size: 20rpx;
 		color: #94A3B8;
+	}
+	.privacy-tip-row {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8rpx;
+	}
+	.coop-issued-title-row {
+		display: inline-flex;
+		align-items: center;
+		gap: 8rpx;
+	}
+	.form-fieldset-icon-box {
+		width: 56rpx;
+		height: 56rpx;
+		border-radius: 14rpx;
+		background: #EFF6FF;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+	.supplier-hero-icon-box {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 22rpx;
+		background: rgba(255, 255, 255, 0.14);
+		border: 1rpx solid rgba(255, 255, 255, 0.24);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+	.upload-icon-wrap,
+	.license-upload-icon-wrap {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 6rpx;
 	}
 
 </style>

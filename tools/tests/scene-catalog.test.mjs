@@ -87,7 +87,7 @@ test('无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品
 const detailScript = (await readFile(new URL('../../pages/robot/fangan.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
 function mountDetail(getSceneDetail, submitError = null) {
   const calls = []
-  const context = vm.createContext({ sceneId, configuredSceneProducts, normalizeSceneImage, BASE_URL: 'https://api.test', StateView: {},
+  const context = vm.createContext({ sceneId, configuredSceneProducts, normalizeSceneImage, BASE_URL: 'https://api.test', StateView: {}, SmIcon: {},
     sceneApi: { getSceneDetail }, sceneDraftPayload: value => ({ ...value, scene_id: value.sceneId }),
     openSceneRequest: payload => calls.push({ url: '/pages/scene/request?sceneId=' + payload.scene_id, payload }),
     uni: { navigateTo: payload => calls.push(payload), showToast: payload => calls.push(payload) } })
@@ -146,7 +146,7 @@ test('首页从真实快照更新，接口失败不保留旧卡片或假咨询�
   const file = await readFile(new URL('../../pages/home/index.vue', import.meta.url), 'utf8')
   const script = file.match(/<script>([\s\S]*?)<\/script>/)[1]
   let fail = false
-  const context = vm.createContext({ StateView: {}, CustomTabBar: {}, EcoCenter: {}, sceneProducts: [row(1, { is_hot: false })],
+  const context = vm.createContext({ StateView: {}, CustomTabBar: {}, EcoCenter: {}, SmIcon: {}, sceneProducts: [row(1, { is_hot: false })],
     loadBackendScenes: async () => { if (fail) throw new Error('offline') } })
   vm.runInContext(script.replace(/^[ \t]*import .*$/gm, '').replace('export default', 'globalThis.component ='), context)
   const state = context.component.data()
@@ -160,7 +160,7 @@ test('结算失败或没有真实订单确认时，不写本地订单、不跳�
   const source = (await readFile(new URL('../../pages/order/checkout.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
   for (const response of [new Error('资源已失效'), { success: false }, { success: true }]) {
     const writes = [], navigation = []; let payload
-    const context = vm.createContext({ TOKEN_KEY: 'token',
+    const context = vm.createContext({ TOKEN_KEY: 'token', SmIcon: {},
       tobOrderApi: { create: async input => { payload = input; if (response instanceof Error) throw response; return response } },
       uni: { showLoading() {}, hideLoading() {}, showToast() {}, getStorageSync: () => '', setStorageSync: (...args) => writes.push(args), switchTab: input => navigation.push(input) } })
     vm.runInContext(source.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), context)
@@ -176,7 +176,7 @@ test('结算失败或没有真实订单确认时，不写本地订单、不跳�
 test('自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交到确认订单页时使用当前商品名称和价格', async () => {
   const source = (await readFile(new URL('../../pages/robot/index.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
   const navigation = [], notices = []
-  const context = vm.createContext({ Jineng: {}, Peijian: {}, StateView: {}, BASE_URL: 'https://qa.invalid',
+  const context = vm.createContext({ Jineng: {}, Peijian: {}, StateView: {}, SmIcon: {}, BASE_URL: 'https://qa.invalid',
     uni: { navigateTo: input => navigation.push(input), showToast: input => notices.push(input) } })
   vm.runInContext(source.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), context)
   const state = context.component.data()

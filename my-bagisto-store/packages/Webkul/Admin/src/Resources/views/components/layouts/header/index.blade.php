@@ -96,17 +96,18 @@
 
             <!-- Admin Dropdown -->
             <x-slot:content class="!p-0">
-                <div class="flex items-center gap-1.5 border border-b-gray-300 px-4 py-2 dark:border-gray-800 sm:px-5 sm:py-2.5">
+                <div class="flex items-center gap-2 border border-b-gray-300 px-4 py-2 dark:border-gray-800 sm:px-5 sm:py-2.5">
                     <img
-                        src="{{ url('cache/logo/bagisto.png') }}"
-                        class="sm:h-6 sm:w-6"
-                        width="20"
-                        height="20"
+                        src="{{ asset('themes/admin/default/sm-favicon.svg') }}"
+                        class="h-6 w-6 rounded"
+                        width="24"
+                        height="24"
+                        alt="召唤机甲"
                     />
 
                     <!-- Version -->
-                    <p class="text-xs text-gray-400 sm:text-sm">
-                        @lang('admin::app.components.layouts.header.app-version', ['version' => 'v' . core()->version()])
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-300 sm:text-sm">
+                        召唤机甲 · v{{ core()->version() }}
                     </p>
                 </div>
 
@@ -237,6 +238,153 @@
                 </div>
 
                 <!-- Searched Results -->
+                <template v-if="activeTab == 'skills'">
+                    <template v-if="isLoading">
+                        <div class="grid gap-2 p-4">
+                            <div class="shimmer h-12 rounded"></div>
+                            <div class="shimmer h-12 rounded"></div>
+                        </div>
+                    </template>
+
+                    <template v-else>
+                        <div class="grid max-h-[300px] overflow-y-auto sm:max-h-[400px]">
+                            <a
+                                :href="skill.url"
+                                class="flex cursor-pointer items-center justify-between gap-2 border-b border-slate-200 p-3 last:border-b-0 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-gray-950 sm:p-4"
+                                v-for="skill in (searchedResults.skills.data || [])"
+                            >
+                                <div class="grid gap-1">
+                                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                        @{{ skill.name }}
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        SKU：@{{ skill.sku }} · 最新版本：@{{ skill.latest_version || '尚未建版本' }}
+                                    </p>
+                                </div>
+                                <span
+                                    v-if="skill.version_status"
+                                    class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                                >
+                                    @{{ skill.version_status }}
+                                </span>
+                            </a>
+                        </div>
+
+                        <div class="flex border-t p-2 dark:border-gray-800 sm:p-3">
+                            <a
+                                href="{{ route('admin.catalog.skills.index') }}"
+                                class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                                v-if="searchedResults.skills.data && searchedResults.skills.data.length"
+                            >
+                                @{{ "@lang('admin::app.components.layouts.header.mega-search.explore-all-matching-skills')".replace(':query', searchTerm).replace(':count', searchedResults.skills.total) }}
+                            </a>
+                            <a
+                                href="{{ route('admin.catalog.skills.index') }}"
+                                class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                                v-else
+                            >
+                                @lang('admin::app.components.layouts.header.mega-search.explore-all-skills')
+                            </a>
+                        </div>
+                    </template>
+                </template>
+
+                <template v-if="activeTab == 'cooperations'">
+                    <template v-if="isLoading">
+                        <div class="grid gap-2 p-4">
+                            <div class="shimmer h-12 rounded"></div>
+                            <div class="shimmer h-12 rounded"></div>
+                        </div>
+                    </template>
+
+                    <template v-else>
+                        <div class="grid max-h-[300px] overflow-y-auto sm:max-h-[400px]">
+                            <a
+                                :href="coop.url"
+                                class="flex cursor-pointer items-center justify-between gap-2 border-b border-slate-200 p-3 last:border-b-0 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-gray-950 sm:p-4"
+                                v-for="coop in (searchedResults.cooperations.data || [])"
+                            >
+                                <div class="grid gap-1">
+                                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                        [@{{ coop.type_label }}] @{{ coop.org_name }}
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        @{{ coop.application_no }} · 联系人：@{{ coop.contact_name }}@{{ coop.followup_person ? ' · 跟进：' + coop.followup_person : '' }}
+                                    </p>
+                                </div>
+                                <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-gray-800 dark:text-gray-300">
+                                    @{{ coop.status_label }}
+                                </span>
+                            </a>
+                        </div>
+
+                        <div class="flex border-t p-2 dark:border-gray-800 sm:p-3">
+                            <a
+                                href="{{ route('admin.customers.cooperations.index') }}"
+                                class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                                v-if="searchedResults.cooperations.data && searchedResults.cooperations.data.length"
+                            >
+                                @{{ "@lang('admin::app.components.layouts.header.mega-search.explore-all-matching-cooperations')".replace(':query', searchTerm).replace(':count', searchedResults.cooperations.total) }}
+                            </a>
+                            <a
+                                href="{{ route('admin.customers.cooperations.index') }}"
+                                class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                                v-else
+                            >
+                                @lang('admin::app.components.layouts.header.mega-search.explore-all-cooperations')
+                            </a>
+                        </div>
+                    </template>
+                </template>
+
+                <template v-if="activeTab == 'developers'">
+                    <template v-if="isLoading">
+                        <div class="grid gap-2 p-4">
+                            <div class="shimmer h-12 rounded"></div>
+                            <div class="shimmer h-12 rounded"></div>
+                        </div>
+                    </template>
+
+                    <template v-else>
+                        <div class="grid max-h-[300px] overflow-y-auto sm:max-h-[400px]">
+                            <a
+                                :href="dev.url"
+                                class="flex cursor-pointer items-center justify-between gap-2 border-b border-slate-200 p-3 last:border-b-0 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-gray-950 sm:p-4"
+                                v-for="dev in (searchedResults.developers.data || [])"
+                            >
+                                <div class="grid gap-1">
+                                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                        @{{ dev.name }}（@{{ dev.dev_type_label }}）
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        @{{ dev.email }}
+                                    </p>
+                                </div>
+                                <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                    @{{ dev.realname_label }}
+                                </span>
+                            </a>
+                        </div>
+
+                        <div class="flex border-t p-2 dark:border-gray-800 sm:p-3">
+                            <a
+                                href="{{ route('admin.customers.developers.index') }}"
+                                class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                                v-if="searchedResults.developers.data && searchedResults.developers.data.length"
+                            >
+                                @{{ "@lang('admin::app.components.layouts.header.mega-search.explore-all-matching-developers')".replace(':query', searchTerm).replace(':count', searchedResults.developers.total) }}
+                            </a>
+                            <a
+                                href="{{ route('admin.customers.developers.index') }}"
+                                class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                                v-else
+                            >
+                                @lang('admin::app.components.layouts.header.mega-search.explore-all-developers')
+                            </a>
+                        </div>
+                    </template>
+                </template>
+
                 <template v-if="activeTab == 'products'">
                     <template v-if="isLoading">
                         <x-admin::shimmer.header.mega-search.products />
@@ -434,51 +582,91 @@
     </script>
 
     <script type="module">
+        @php
+            $megaTabs = [];
+
+            if (bouncer()->hasPermission('catalog.skills')) {
+                $megaTabs['skills'] = [
+                    'key'      => 'skills',
+                    'title'    => trans('admin::app.components.layouts.header.mega-search.skills'),
+                    'endpoint' => route('admin.search.skills'),
+                ];
+            }
+
+            if (bouncer()->hasPermission('customers.cooperations')) {
+                $megaTabs['cooperations'] = [
+                    'key'      => 'cooperations',
+                    'title'    => trans('admin::app.components.layouts.header.mega-search.cooperations'),
+                    'endpoint' => route('admin.search.cooperations'),
+                ];
+            }
+
+            if (bouncer()->hasPermission('customers.developers')) {
+                $megaTabs['developers'] = [
+                    'key'      => 'developers',
+                    'title'    => trans('admin::app.components.layouts.header.mega-search.developers'),
+                    'endpoint' => route('admin.search.developers'),
+                ];
+            }
+
+            if (bouncer()->hasPermission('catalog.products')) {
+                $megaTabs['products'] = [
+                    'key'      => 'products',
+                    'title'    => trans('admin::app.components.layouts.header.mega-search.products'),
+                    'endpoint' => route('admin.catalog.products.search'),
+                ];
+            }
+
+            if (bouncer()->hasPermission('sales.orders')) {
+                $megaTabs['orders'] = [
+                    'key'      => 'orders',
+                    'title'    => trans('admin::app.components.layouts.header.mega-search.orders'),
+                    'endpoint' => route('admin.sales.orders.search'),
+                ];
+            }
+
+            if (bouncer()->hasPermission('catalog.categories')) {
+                $megaTabs['categories'] = [
+                    'key'      => 'categories',
+                    'title'    => trans('admin::app.components.layouts.header.mega-search.categories'),
+                    'endpoint' => route('admin.catalog.categories.search'),
+                ];
+            }
+
+            if (bouncer()->hasPermission('customers.customers')) {
+                $megaTabs['customers'] = [
+                    'key'      => 'customers',
+                    'title'    => trans('admin::app.components.layouts.header.mega-search.customers'),
+                    'endpoint' => route('admin.customers.customers.search'),
+                ];
+            }
+
+            $defaultMegaTab = array_key_first($megaTabs) ?: 'products';
+        @endphp
+
         app.component('v-mega-search', {
             template: '#v-mega-search-template',
 
             data() {
                 return {
-                    activeTab: 'products',
+                    activeTab: @json($defaultMegaTab),
 
                     isDropdownOpen: false,
 
-                    tabs: {
-                        products: {
-                            key: 'products',
-                            title: "@lang('admin::app.components.layouts.header.mega-search.products')",
-                            is_active: true,
-                            endpoint: "{{ route('admin.catalog.products.search') }}"
-                        },
-                        
-                        orders: {
-                            key: 'orders',
-                            title: "@lang('admin::app.components.layouts.header.mega-search.orders')",
-                            endpoint: "{{ route('admin.sales.orders.search') }}"
-                        },
-                        
-                        categories: {
-                            key: 'categories',
-                            title: "@lang('admin::app.components.layouts.header.mega-search.categories')",
-                            endpoint: "{{ route('admin.catalog.categories.search') }}"
-                        },
-                        
-                        customers: {
-                            key: 'customers',
-                            title: "@lang('admin::app.components.layouts.header.mega-search.customers')",
-                            endpoint: "{{ route('admin.customers.customers.search') }}"
-                        }
-                    },
+                    tabs: @json($megaTabs),
 
                     isLoading: false,
 
                     searchTerm: '',
 
                     searchedResults: {
-                        products: [],
-                        orders: [],
-                        categories: [],
-                        customers: []
+                        skills: { data: [], total: 0 },
+                        cooperations: { data: [], total: 0 },
+                        developers: { data: [], total: 0 },
+                        products: { data: [], meta: { total: 0 } },
+                        orders: { data: [], total: 0 },
+                        categories: { data: [], total: 0 },
+                        customers: { data: [], total: 0 }
                     },
                 }
             },
@@ -499,8 +687,12 @@
 
             methods: {
                 search() {
+                    if (! this.tabs[this.activeTab]) {
+                        return;
+                    }
+
                     if (this.searchTerm.length <= 1) {
-                        this.searchedResults[this.activeTab] = [];
+                        this.searchedResults[this.activeTab] = { data: [], total: 0, meta: { total: 0 } };
 
                         this.isDropdownOpen = false;
 
@@ -522,6 +714,7 @@
                             self.isLoading = false;
                         })
                         .catch(function (error) {
+                            self.isLoading = false;
                         })
                 },
 
@@ -558,14 +751,69 @@
             </x-slot>
 
             <!-- Notification Content -->
-            <x-slot:content class="min-w-[250px] max-w-[250px] !p-0">
+            <x-slot:content class="min-w-[300px] max-w-[340px] !p-0">
+                @if (bouncer()->hasPermission('dashboard.alerts'))
+                    <!-- 平台巡检告警 -->
+                    <div class="flex items-center justify-between border-b bg-slate-50 px-3 py-2.5 text-sm font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                        <span>平台告警</span>
+                        <span
+                            v-if="alertsUnread"
+                            class="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700"
+                        >
+                            @{{ alertsUnread }} 未读
+                        </span>
+                    </div>
+
+                    <div class="grid max-h-[200px] overflow-y-auto" v-if="adminAlerts.length">
+                        <a
+                            href="{{ route('admin.alerts.index') }}"
+                            @click.prevent="openAlert(alert)"
+                            class="flex flex-col gap-0.5 border-b px-3 py-2.5 last:border-b-0 hover:bg-blue-50/40 dark:border-gray-800 dark:hover:bg-gray-950"
+                            v-for="alert in adminAlerts"
+                            :key="'alert-' + alert.id"
+                        >
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-xs font-semibold text-gray-800 dark:text-white">
+                                    <span v-if="alert.is_unread" class="mr-1 inline-block h-2 w-2 rounded-full bg-red-500"></span>
+                                    @{{ alert.title }}
+                                </p>
+                                <span class="shrink-0 text-[11px] text-gray-400">@{{ alert.created_at }}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400" v-if="alert.content">
+                                @{{ alert.content }}
+                            </p>
+                        </a>
+                    </div>
+
+                    <div class="border-b px-3 py-2.5 text-xs text-gray-400 dark:border-gray-800" v-else>
+                        暂无平台巡检告警
+                    </div>
+
+                    <div class="flex justify-between gap-1.5 border-b px-3 py-2 dark:border-gray-800">
+                        <a
+                            href="{{ route('admin.alerts.index') }}"
+                            class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                        >
+                            进入告警箱
+                        </a>
+
+                        <a
+                            class="cursor-pointer text-xs font-semibold text-blue-600 transition-all hover:underline"
+                            v-if="alertsUnread"
+                            @click="readAllAlerts()"
+                        >
+                            全部告警已读
+                        </a>
+                    </div>
+                @endif
+
                 <!-- Header -->
-                <div class="border-b p-3 text-base font-semibold text-gray-600 dark:border-gray-800 dark:text-gray-300">
+                <div class="border-b p-3 text-sm font-semibold text-gray-600 dark:border-gray-800 dark:text-gray-300">
                     @lang('admin::app.notifications.title', ['read' => 0])
                 </div>
 
                 <!-- Content -->
-                <div class="grid">
+                <div class="grid max-h-[200px] overflow-y-auto" v-if="notifications?.length">
                     <a
                         class="flex items-start gap-1.5 border-b p-3 last:border-b-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-950"
                         v-for="notification in notifications"
@@ -592,6 +840,10 @@
                             </p>
                         </div>
                     </a>
+                </div>
+
+                <div class="px-3 py-2.5 text-xs text-gray-400" v-else>
+                    暂无未读订单通知
                 </div>
 
                 <!-- Footer -->
@@ -627,6 +879,12 @@
                 data() {
                     return {
                         notifications: [],
+
+                        adminAlerts: [],
+
+                        alertsUnread: 0,
+
+                        orderUnread: 0,
 
                         ordertype: {
                             pending: {
@@ -698,11 +956,45 @@
                                 }
                             })
                             .then((response) => {
-                                this.notifications = response.data.search_results.data;
+                                this.notifications = response.data.search_results?.data || [];
 
-                                this.totalUnRead =   response.data.total_unread;
+                                this.adminAlerts = response.data.admin_alerts || [];
+
+                                this.alertsUnread = response.data.alerts_unread || 0;
+
+                                this.orderUnread = response.data.order_unread || 0;
+
+                                this.totalUnRead = response.data.combined_unread ?? response.data.total_unread ?? 0;
                             })
                             .catch(error => console.log(error))
+                    },
+
+                    openAlert(alert) {
+                        if (! alert) {
+                            return;
+                        }
+
+                        if (! alert.is_unread || ! alert.read_url) {
+                            window.location.href = alert.index_url || '{{ route('admin.alerts.index') }}';
+
+                            return;
+                        }
+
+                        this.$axios.post(alert.read_url)
+                            .catch(() => {})
+                            .finally(() => {
+                                window.location.href = alert.index_url || '{{ route('admin.alerts.index') }}';
+                            });
+                    },
+
+                    readAllAlerts() {
+                        this.$axios.post('{{ route('admin.alerts.read-all') }}')
+                            .then(() => {
+                                this.getNotification();
+
+                                this.$emitter.emit('add-flash', { type: 'success', message: '平台未读告警已全部标记已读。' });
+                            })
+                            .catch(() => {});
                     },
 
                     readAll() {
@@ -710,7 +1002,9 @@
                             .then((response) => {
                                 this.notifications = response.data.search_results.data;
 
-                                this.totalUnRead = response.data.total_unread;
+                                this.orderUnread = response.data.total_unread || 0;
+
+                                this.totalUnRead = (response.data.total_unread || 0) + (this.alertsUnread || 0);
 
                             this.$emitter.emit('add-flash', { type: 'success', message: response.data.success_message });
                         })

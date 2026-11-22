@@ -36,7 +36,8 @@
         </div>
     </div>
 
-    {{-- 快速创建供应链 / 生态邀请码面板 --}}
+    {{-- 快速创建供应链 / 生态邀请码面板（仅拥有发码权限的管理员可见） --}}
+    @if (bouncer()->hasPermission('customers.developer-invites.manage'))
     <div class="mb-4 box-shadow rounded border border-emerald-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -117,6 +118,7 @@
             </div>
         @endif
     </div>
+    @endif
 
     <div class="mb-4 box-shadow rounded bg-white p-4 dark:bg-gray-900">
         <form method="GET" action="{{ route('admin.customers.cooperations.index') }}" class="grid items-end gap-3 md:grid-cols-5">
@@ -242,7 +244,7 @@
                         <td class="px-4 py-3 text-xs text-gray-500">{{ $item->created_at?->format('Y-m-d H:i') }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="inline-flex items-center justify-end gap-2">
-                                @if (empty($item->meta['issued_invite_code']))
+                                @if (empty($item->meta['issued_invite_code']) && bouncer()->hasPermission('customers.developer-invites.manage'))
                                     <form method="POST" action="{{ route('admin.customers.cooperations.issue_invite', $item->id) }}" class="inline">
                                         @csrf
                                         <input type="hidden" name="invite_expires_days" value="30">

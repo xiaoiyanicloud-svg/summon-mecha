@@ -21,7 +21,7 @@
         <view class="scroll-bottom-placeholder" v-if="list.length > 0"></view>
       </view>
       <view class="empty-state" v-if="list.length === 0">
-        <text class="empty-icon">📭</text>
+        <SmIcon name="empty-inbox" size="84rpx" />
         <text class="empty-text">没有找到匹配的场景方案</text>
       </view>
     </scroll-view>
@@ -35,9 +35,11 @@
 export {
   categoryMap, sceneProducts, loadBackendScenes, DEFAULT_SCHEME, SCHEME_DB, SCENE_SCHEMES
 } from './changjing-data.js'
+import SmIcon from '@/components/SmIcon.vue'
 
 export default {
   name: 'Changjing',
+  components: { SmIcon },
   props: {
     list: {
       type: Array,
@@ -171,6 +173,9 @@ export default {
   visibility: hidden;
 }
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   padding: 80rpx 0;
 }

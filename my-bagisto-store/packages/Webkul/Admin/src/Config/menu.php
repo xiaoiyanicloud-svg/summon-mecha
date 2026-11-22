@@ -23,17 +23,17 @@ return [
         'sort'       => 2,
         'icon'       => '',
     ], [
-        // 开票登记（M9）。刻意放这里而不是 sales 下：sales 里已有一个原生的「发票」
-        // （Bagisto 的订单发货单），两个同名的"发票"挨着放必然被读混。
+        // 开票登记（M9）。刻意放这里而不是 sales 下：sales 里已有一个原生的「发货账单」，
+        // 两个同名的"发票"挨着放必然被读混。
         'key'        => 'dashboard.invoices',
-        'name'       => '发票（开票登记）',
+        'name'       => '税务开票登记（只读）',
         'route'      => 'admin.invoices.index',
         'sort'       => 3,
         'icon'       => '',
     ], [
-        // 售后/退款审批台（B-1）。放在仪表盘组：与告警/总览/发票同属"运营每天要看"的一类。
+        // 售后/退款审批台（B-1）。放在工作台组：与告警/总览/开票同属"运营每天要看"的一类。
         'key'        => 'dashboard.after-sales',
-        'name'       => '售后审批',
+        'name'       => '售后退款审批',
         'route'      => 'admin.after-sales.index',
         'sort'       => 4,
         'icon'       => '',
@@ -121,44 +121,50 @@ return [
         'icon'       => '',
     ], [
         'key'        => 'catalog.events',
-        'name'       => '赛事活动',
+        'name'       => '赛事活动（旧版）',
         'route'      => 'admin.catalog.events.index',
         'sort'       => 3,
         'icon'       => '',
     ], [
-        // G1 生态发布工作台。菜单隐藏≠授权：直接 URL / Ajax 由控制器逐动作拒绝。
+        // G1~G4 生态运营中心（独立一级模块，与旧版 catalog.events 区分）。
         'key'        => 'ecosystem',
-        'name'       => '生态发布',
+        'name'       => '生态运营',
         'route'      => 'admin.catalog.ecosystem.index',
         'sort'       => 4,
+        'icon'       => 'icon-calendar',
+    ], [
+        'key'        => 'ecosystem.events',
+        'name'       => '生态发布',
+        'route'      => 'admin.catalog.ecosystem.index',
+        'sort'       => 1,
         'icon'       => '',
     ], [
         // 媒体工作台。上传 / 审核权限分离；菜单只负责可见性。
         'key'        => 'ecosystem.media',
         'name'       => '生态媒体',
         'route'      => 'admin.catalog.ecosystem.media.index',
-        'sort'       => 5,
+        'sort'       => 2,
         'icon'       => '',
     ], [
         // G3 人工赛务。规则确认、激活、赛程导入/发布分权。
         'key'        => 'ecosystem.competition',
         'name'       => '人工赛务',
         'route'      => 'admin.catalog.ecosystem.competition.index',
-        'sort'       => 6,
+        'sort'       => 3,
         'icon'       => '',
     ], [
         // G4-07 运营工作台：待审/即将截止/通知失败/来源复核/撤稿。
         'key'        => 'ecosystem.ops',
-        'name'       => '运营工作台',
+        'name'       => '生态工作台',
         'route'      => 'admin.catalog.ecosystem.ops.index',
-        'sort'       => 7,
+        'sort'       => 4,
         'icon'       => '',
     ], [
         // G4-06 运营指标：口径与数字同页，只读。
         'key'        => 'ecosystem.metrics',
-        'name'       => '运营指标',
+        'name'       => '生态指标',
         'route'      => 'admin.catalog.ecosystem.metrics.index',
-        'sort'       => 8,
+        'sort'       => 5,
         'icon'       => '',
     ], [
         'key'        => 'catalog.skills',
@@ -235,7 +241,7 @@ return [
         'key'        => 'customers',
         'name'       => 'admin::app.components.layouts.sidebar.customers',
         'route'      => 'admin.customers.customers.index',
-        'sort'       => 4,
+        'sort'       => 5,
         'icon'       => 'icon-customer-2',
     ], [
         'key'        => 'customers.customers',
@@ -300,7 +306,7 @@ return [
         'key'        => 'cms',
         'name'       => 'admin::app.components.layouts.sidebar.cms',
         'route'      => 'admin.cms.index',
-        'sort'       => 5,
+        'sort'       => 6,
         'icon'       => 'icon-cms',
     ],
 
@@ -311,7 +317,7 @@ return [
         'key'        => 'marketing',
         'name'       => 'admin::app.components.layouts.sidebar.marketing',
         'route'      => 'admin.marketing.promotions.catalog_rules.index',
-        'sort'       => 6,
+        'sort'       => 7,
         'icon'       => 'icon-promotion',
         'icon-class' => 'promotion-icon',
     ], [
@@ -401,7 +407,7 @@ return [
         'key'        => 'reporting',
         'name'       => 'admin::app.components.layouts.sidebar.reporting',
         'route'      => 'admin.reporting.sales.index',
-        'sort'       => 7,
+        'sort'       => 8,
         'icon'       => 'icon-report',
         'icon-class' => 'report-icon',
     ], [
@@ -431,7 +437,7 @@ return [
         'key'        => 'settings',
         'name'       => 'admin::app.components.layouts.sidebar.settings',
         'route'      => 'admin.settings.locales.index',
-        'sort'       => 8,
+        'sort'       => 9,
         'icon'       => 'icon-settings',
         'icon-class' => 'settings-icon',
     ], [
@@ -527,7 +533,7 @@ return [
         'key'        => 'configuration',
         'name'       => 'admin::app.components.layouts.sidebar.configure',
         'route'      => 'admin.configuration.index',
-        'sort'       => 9,
+        'sort'       => 10,
         'icon'       => 'icon-configuration',
     ],
 ];

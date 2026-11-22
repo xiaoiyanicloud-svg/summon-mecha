@@ -107,6 +107,18 @@ class Bouncer
             return;
         }
 
+        $adminRoutePermissions = (array) config('admin_route_permissions.route_permissions', []);
+
+        if (isset($adminRoutePermissions[$routeName])) {
+            abort_unless(
+                bouncer()->hasPermission((string) $adminRoutePermissions[$routeName]),
+                403,
+                '无权执行该管理操作。',
+            );
+
+            return;
+        }
+
         $roles = acl()->getRoles();
 
         if (isset($roles[$routeName])) {
