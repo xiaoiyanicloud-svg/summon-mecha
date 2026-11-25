@@ -1179,7 +1179,7 @@ export default {
         this.selectedPlanItems = current
         this.showCustomPlanModal = false
         // 多机合单直接进「确认订单」,不再走"提交需求"表单 —— 用户点的是"提交订单",
-        // 落点就必须是下单页。checkout 已支持 items[](每台一行) + 全场合用租期 rent_days。
+        // 落点就必须是标准多机租用下单页（不携带 scene/from=custom_plan 参数，避免被当成场景报价请求拦截）。
         const items = current.map(m => ({
           product_id: m.bagistoId || m.id,
           name: m.name,
@@ -1195,8 +1195,7 @@ export default {
           `&type=rent` +
           `&rentPeriod=${encodeURIComponent(this.planDays + '天')}` +
           `&name=${encodeURIComponent('自定义方案（' + items.length + '台）')}` +
-          `&price=${encodeURIComponent(String(this.planPerDay()))}` +
-          `&scene=${encodeURIComponent('机器租用 · 自定义方案')}`
+          `&price=${encodeURIComponent(String(this.planPerDay()))}`
         if (this.planStartDate) url += `&startDate=${encodeURIComponent(this.planStartDate)}`
         uni.navigateTo({ url })
       } catch (e) {

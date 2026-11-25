@@ -44,14 +44,16 @@ try{
     window.sceneApiFixture=api
     const helpers=new Function('sceneWorkflowApi','TOKEN_KEY','CUSTOMER_KEY',helper+'\nreturn {sceneAccountScope,sceneLocalState,sceneGuestAccess,sceneGuestReceipts,saveSceneDraft,clearSceneDraft,sceneDraftPayload,submitSceneRequest,submitSceneCommand,scenePendingCommands,sceneStatusLabel,sceneAttachmentPending,recoverSceneAttachment,submitSceneAttachment,openSceneAttachment}') (api,'token','customer')
     Object.assign(helpers,new Function(fields+'\nreturn {normalizeSceneFacts,sceneFactLabel}')())
-    const state=sources['components/StateView.vue'];const StateView=new Function(state.script.replace('export default','return'))();StateView.render=new Function('Vue',state.render)(Vue)
+    const SmLoading={props:['size','text','inline'],template:'<span class="sm-loading">{{text}}</span>'}
+    const SmIcon={props:['name','size'],template:'<span class="sm-icon">{{name}}</span>'}
+    const state=sources['components/StateView.vue'];const StateView=new Function('SmLoading',state.script.replace('export default','return'))(SmLoading);StateView.render=new Function('Vue',state.render)(Vue)
     const factSource=sources['components/SceneFactsForm.vue'];const SceneFactsForm=new Function(factSource.script.replace('export default','return'))();SceneFactsForm.render=new Function('Vue',factSource.render)(Vue)
     const attachmentSource=sources['components/SceneAttachments.vue'];const SceneAttachments=new Function(...Object.keys(helpers),attachmentSource.script.replace('export default','return'))(...Object.values(helpers));SceneAttachments.render=new Function('Vue',attachmentSource.render)(Vue)
     window.compiledSceneSources=sources;window.sceneStatusForTests=helpers.sceneStatusLabel
     window.mountScene=(file,options={})=>{
       if(window.sceneApp)window.sceneApp.unmount()
-      const entry=sources[file],names=['StateView','SceneFactsForm','SceneAttachments','sceneWorkflowApi','sceneApi',...Object.keys(helpers)]
-      const component=new Function(...names,entry.script.replace('export default','return'))(StateView,SceneFactsForm,SceneAttachments,api,{getSceneDetail:async()=>({matched:true,name:'展会迎宾服务',category:'enterprise',scene_revision_id:5,requirement_schema:schema})},...Object.values(helpers))
+      const entry=sources[file],names=['StateView','SceneFactsForm','SceneAttachments','SmLoading','SmIcon','sceneWorkflowApi','sceneApi',...Object.keys(helpers)]
+      const component=new Function(...names,entry.script.replace('export default','return'))(StateView,SceneFactsForm,SceneAttachments,SmLoading,SmIcon,api,{getSceneDetail:async()=>({matched:true,name:'展会迎宾服务',category:'enterprise',scene_revision_id:5,requirement_schema:schema})},...Object.values(helpers))
       component.render=new Function('Vue',entry.render)(Vue)
       component.created=function(){component.onLoad.call(this,options);component.onShow.call(this)}
       const style=document.createElement('style');style.textContent=entry.styles.replace(/@import[^;]+;/g,'').replace(/([\d.]+)rpx/g,(_,v)=>Number(v)/2+'px');document.head.append(style)
@@ -249,14 +251,15 @@ try{
   await page.evaluate(()=>window.mountScene('pages/scene/confirm.vue',{quoteId:'invalid'}));await page.getByText('报价编号无效',{exact:true}).waitFor()
   checks.push('直接进入无效报价链接显示明确错误')
   await page.evaluate(()=>{
+    const SmIcon={props:['name','size'],template:'<span class="sm-icon">{{name}}</span>'}
     const source=window.compiledSceneSources['pages/order/index.vue']
-    const component=new Function('CustomTabBar','StateView','orderApi','sceneStatusLabel',source.script.replace('export default','return'))({}, {}, {}, window.sceneStatusForTests)
+    const component=new Function('CustomTabBar','StateView','orderApi','sceneStatusLabel','SmIcon',source.script.replace('export default','return'))({}, {}, {}, window.sceneStatusForTests, SmIcon)
     const mapped=component.methods.mapApiOrder({id:7,order_type:'plan',status:'pending',grand_total:'114.49',items:[{product_id:101,name:'设备租用费用',qty_ordered:1}],scene_workflow:{project_id:9,scene_id:1,state:'preparing',payment_state:'unpaid'}})
     if(mapped.status!=='scene'||!mapped.statusText.includes('未确认收款')||!mapped.statusText.includes('交付准备'))throw new Error('普通订单卡片把场景确认误作待付款或服务中')
     const before=window.nav.length;component.methods.viewDetail(mapped);component.methods.reorder(mapped)
     if(window.nav[before].url!=='/pages/scene/project?id=9'||!window.nav[before+1].url.startsWith('/pages/scene/request?'))throw new Error('场景旧订单入口绕回普通结算')
     const detailSource=window.compiledSceneSources['pages/order/order-detail.vue']
-    const detail=new Function('StateView','NavBar',detailSource.script.replace('export default','return'))({}, {})
+    const detail=new Function('StateView','NavBar','SmIcon',detailSource.script.replace('export default','return'))({}, {}, SmIcon)
     const vm={order:{private:true},loadError:''}
     if(!detail.methods.routeSceneOrder.call(vm,{sceneWorkflow:mapped.sceneWorkflow})||vm.order!==null)throw new Error('旧缓存场景详情仍暴露普通取消/支付动作')
   })

@@ -22,7 +22,7 @@
           </view>
           <view class="multi-info">
             <text class="multi-name">{{ it.name }}</text>
-            <text class="multi-scene">{{ it.scene || '场景租用' }}</text>
+            <text class="multi-scene">{{ it.scene || '机器租用' }}</text>
           </view>
           <view class="multi-price-box">
             <text class="multi-price">¥{{ it.price }}</text>
@@ -236,7 +236,7 @@ export default {
       submitting: false,
       // B-18:技能单优惠码(提交时由后端校验折抵;仅在技能单展示该输入)
       couponCode: '',
-      // 多机合单(场景租用):items 非空时走多商品模式,全场共用租期
+      // 多机合单(标准多机租用):items 非空时走多商品模式,全场共用租期
       multiItems: [],
       rentDays: 1,
       form: {
@@ -317,12 +317,17 @@ export default {
     }
     if (q.qty) this.qty = Number(q.qty) || 1
 
-    // 多机合单(场景租用):items=JSON 数组,全场共用租期(rent_days)
+    // 多机合单(标准租用):items=JSON 数组,全场共用租期(rent_days)
     if (q.items) {
       let rawItems = q.items
       try { rawItems = decodeURIComponent(rawItems) } catch (e) {}
-      try { this.multiItems = JSON.parse(rawItems) || [] } catch (e) { this.multiItems = [] }
-      this.rentDays = Number(q.rent_days) || 1
+      try {
+        const parsed = JSON.parse(rawItems)
+        this.multiItems = Array.isArray(parsed) ? parsed : []
+      } catch (e) { this.multiItems = [] }
+      this.rentDays = Math.max(1, parseInt(q.rent_days, 10) || 1)
+      if (!q.type || q.type === 'buy') this.product.type = 'rent'
+      if (!q.rentPeriod) this.product.rentPeriod = this.rentDays + '天'
     }
 
     // 租用信息（产品类型 + 租期 + 起止日期）
@@ -595,7 +600,7 @@ export default {
           city: v.city,
           address: v.address,
           email: v.email || '',
-          rent_days: this.product.type === 'rent' ? (parseInt(this.product.rentPeriod) || 1) : 1,
+          rent_days: this.multiItems.length ? (this.rentDays || 1) : (this.product.type === 'rent' ? (parseInt(this.product.rentPeriod) || 1) : 1),
           rentPeriod: this.product.type === 'rent' ? this.product.rentPeriod : '',
           startDate: this.product.type === 'rent' ? this.product.startDate : '',
           endDate: this.product.type === 'rent' ? this.product.endDate : '',

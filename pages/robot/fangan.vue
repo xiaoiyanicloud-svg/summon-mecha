@@ -5,6 +5,7 @@
       <view class="nav-left" @tap="goBack">
         <text class="nav-back">‹</text>
       </view>
+      <text class="nav-title">{{ sceneInfo.name || '场景方案' }}</text>
       <view class="nav-right" @tap="openService">
         <SmIcon name="service" size="36rpx" />
       </view>
@@ -33,7 +34,7 @@
       <view v-if="activeMode === 'rent'">
         <!-- 场景说明卡片 -->
         <view class="scene-intro-card">
-          <text class="intro-title">📌 场景说明</text>
+          <text class="intro-title">场景说明</text>
           <text class="intro-content">{{ sceneInfo.intro || '具体服务条件请提交需求后确认。' }}</text>
         </view>
         <view v-if="contentEvidence.length" class="scene-intro-card"><text class="intro-title">已授权观察记录</text><view v-for="(proof,index) in contentEvidence" :key="proof.id || index"><text class="intro-title">{{ proof.title }}</text><text class="intro-content">{{ proof.summary }}</text><text class="intro-content">适用边界：{{ proof.applicability }}</text><text v-if="proof.kind==='metric'" class="intro-content">观察值 {{ proof.value }} {{ proof.unit }} · 样本 {{ proof.sample_size }}</text><text class="intro-content">{{ proof.observed_from }} 至 {{ proof.observed_until }} UTC；观察记录不构成效果保证。</text></view></view>
@@ -149,30 +150,6 @@
       <view class="scene-cart-submit" @tap="submitSceneOrder">提交选型意向 · 获取正式报价</view>
     </view>
 
-    <!-- ===== 免费定制方案 · 留资弹窗 ===== -->
-    <view class="lead-mask" v-if="showLeadForm" @tap="closeLeadForm">
-      <view class="lead-modal" @tap.stop>
-        <view class="lead-title">免费定制「{{ leadSchemeTitle }}」方案</view>
-        <view class="lead-sub">留下联系方式，工作人员将与您确认服务安排</view>
-        <input class="lead-input" v-model="leadForm.name" placeholder="联系人姓名" />
-        <input class="lead-input" v-model="leadForm.phone" type="number" maxlength="11" placeholder="手机号" />
-        <textarea class="lead-textarea" v-model="leadForm.demand" placeholder="补充需求（选填）：时间 / 数量 / 城市" />
-        <view class="lead-submit" @tap="submitLead">{{ leadSubmitting ? '提交中…' : '提交' }}</view>
-      </view>
-    </view>
-
-    <!-- 提交成功后显示真实受理提示 -->
-    <view class="lead-mask" v-if="showLeadSuccess" @tap="closeLeadSuccess">
-      <view class="lead-modal" @tap.stop>
-        <view class="lead-success-icon">✅</view>
-        <view class="lead-title-sm">已收到您的需求</view>
-        <view class="lead-sub">工作人员将与您确认服务安排</view>
-
-
-        <view class="lead-close" @tap="closeLeadSuccess">知道了</view>
-      </view>
-    </view>
-
   </view>
 </template>
 
@@ -192,25 +169,16 @@ export default {
       sceneId: '', activeMode: 'rent', loading: true, loadError: '', loadVersion: 0, sceneLoaded: false, contentEvidence: [],
       sceneInfo: { name: '', banner: '', desc: '', intro: '' },
       scheme: { pains: [], benefits: [], scenes: [] }, sceneRobots: [], rentCatalog: [],
-      selectedMachines: [], rentDays: 1, rentDayOptions: [1, 3, 7, 30],
-      showLeadForm: false, showLeadSuccess: false, leadSchemeTitle: '', leadSubmitting: false,
-      leadForm: { name: '', phone: '', demand: '' },
-      aiDraftDemand: ''
+      selectedMachines: [], rentDays: 1, rentDayOptions: [1, 3, 7, 30]
     }
   },
   computed: {
     filteredProducts() { return configuredSceneProducts(this.sceneRobots, this.rentCatalog) }
   },
   onLoad(options) {
-    this.sceneId = sceneId(options.sceneId) || ''
-    if (options.source === 'ai') {
-      try {
-        const draft = uni.getStorageSync('aiSummonCustomDraft')
-        if (draft && draft.demand && (!draft.at || Date.now() - draft.at < 24 * 60 * 60 * 1000)) {
-          this.aiDraftDemand = String(draft.demand)
-        }
-      } catch (e) { /* 草稿读取失败时保持空表单 */ }
-    }
+    const q = options || {}
+    this.sceneId = sceneId(q.sceneId) || ''
+    if (q.mode === 'custom' || q.mode === 'rent') this.activeMode = q.mode
   },
   onShow() { this.reload() },
   onUnload() { this.loadVersion++ },
@@ -265,17 +233,10 @@ export default {
     },
     onConsult() {
       if (!this.sceneLoaded || this.loading) return
-      this.openRequest(this.aiDraftDemand || ('希望沟通「' + this.sceneInfo.name + '」的场景服务方案。'))
+      this.openRequest('希望沟通「' + this.sceneInfo.name + '」的场景服务方案。')
     },
     openRequest(text) {
       openSceneRequest(sceneDraftPayload({ source: 'scene', sceneId: this.sceneId, revisionId: this.sceneInfo.scene_revision_id, category: this.sceneInfo.category, text, contact: { name: '', phone: '' } }))
-    },
-    closeLeadForm() { if (!this.leadSubmitting) this.showLeadForm = false },
-    closeLeadSuccess() { this.showLeadSuccess = false },
-    async submitLead() {
-      if (!this.sceneLoaded || this.loading) return
-      openSceneRequest(sceneDraftPayload({ source: 'scene', sceneId: this.sceneId, revisionId: this.sceneInfo.scene_revision_id, category: this.sceneInfo.category, text: this.leadForm.demand, contact: this.leadForm }))
-      this.showLeadForm = false
     }
   }
 }
@@ -297,41 +258,44 @@ page {
 
 /* 自定义导航栏 */
 .custom-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex-shrink: 0;
   z-index: 100;
-  height: calc(env(safe-area-inset-top) + 88rpx);
+  height: 88rpx;
+  padding: env(safe-area-inset-top) 24rpx 0;
   background: #ffffff;
+  border-bottom: 1rpx solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
 }
 .nav-left, .nav-right {
-  position: absolute;
-  top: calc(env(safe-area-inset-top) + 100rpx);
   width: 60rpx;
   height: 60rpx;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.9);
+  background: #F8FAFC;
   border-radius: 50%;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.15);
-}
-.nav-left {
-  left: 24rpx;
-}
-.nav-right {
-  right: 24rpx;
 }
 .nav-back {
   font-size: 40rpx;
   font-weight: 300;
+  line-height: 1;
   color: #1F2937;
 }
 .nav-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
   font-size: 32rpx;
   font-weight: 600;
   color: #1F2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .nav-service {
   font-size: 36rpx;
@@ -633,20 +597,6 @@ page {
   box-shadow: 0 10rpx 24rpx rgba(30, 111, 255, 0.3);
 }
 .custom-cta:active { opacity: 0.85; }
-/* ===== 留资弹窗 / 成功页 ===== */
-.lead-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
-.lead-modal { width: 600rpx; background: #fff; border-radius: 24rpx; padding: 40rpx 36rpx; box-sizing: border-box; }
-.lead-title { font-size: 34rpx; font-weight: 700; color: #1F2937; line-height: 1.4; }
-.lead-sub { font-size: 24rpx; color: #6B7280; margin: 12rpx 0 24rpx; }
-.lead-input { height: 84rpx; border: 1px solid #E5E7EB; border-radius: 14rpx; padding: 0 22rpx; font-size: 28rpx; margin-bottom: 18rpx; background: #F8FAFC; }
-.lead-textarea { width: 100%; height: 140rpx; border: 1px solid #E5E7EB; border-radius: 14rpx; padding: 18rpx 22rpx; font-size: 26rpx; margin-bottom: 24rpx; background: #F8FAFC; box-sizing: border-box; }
-.lead-submit { height: 88rpx; line-height: 88rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 44rpx; }
-.lead-success-icon { font-size: 72rpx; text-align: center; margin-bottom: 8rpx; }
-.lead-title-sm { font-size: 34rpx; font-weight: 700; color: #1F2937; text-align: center; }
-.lead-qr-box { width: 300rpx; height: 300rpx; margin: 28rpx auto 12rpx; border: 2rpx dashed #94A3B8; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; background: #F8FAFC; }
-.lead-qr-text { font-size: 24rpx; color: #94A3B8; text-align: center; }
-.lead-qr-tip { font-size: 22rpx; color: #6B7280; text-align: center; margin-bottom: 28rpx; }
-.lead-close { height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 40rpx; border: 1px solid #CBD5E1; color: #475569; font-size: 28rpx; }
 
 /* ===== 场景租用多机合单 ===== */
 .product-card { position: relative; }

@@ -118,23 +118,6 @@
 		<!-- ===== 自定义底部导航栏 ===== -->
 		<CustomTabBar currentPage="/pages/home/index" />
 
-		<!-- 提交成功提示 -->
-		<view class="custom-modal-mask" v-if="showLeadSuccess" @tap="closeLeadSuccess">
-			<view class="custom-modal" @tap.stop>
-				<view class="modal-close" @tap="closeLeadSuccess">✕</view>
-				<view class="modal-header">
-					<view class="modal-icon-wrap"><SmIcon name="celebrate" size="72rpx" /></view>
-					<text class="modal-title">已收到您的需求</text>
-					<text class="modal-subtitle">您的需求已提交，请留意后续联系</text>
-				</view>
-
-
-				<view class="modal-footer">
-					<view class="btn-primary" @tap="closeLeadSuccess">知道了</view>
-				</view>
-			</view>
-		</view>
-
 		<!-- ===== 定制弹窗 ===== -->
 		<view class="custom-modal-mask" v-if="showCustomModal" @tap="closeCustomModal">
 			<view class="custom-modal" @tap.stop>
@@ -206,7 +189,6 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 				autoPlayTimer: null,
 				currentIndex: 0,
 				showCustomModal: false,
-				showLeadSuccess: false,
 				customForm: {
 					identity: 'enterprise',
 					name: '',
@@ -275,9 +257,6 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 			},
 			closeCustomModal() {
 				this.showCustomModal = false;
-			},
-			closeLeadSuccess() {
-				this.showLeadSuccess = false;
 			},
             async submitCustom() {
                 const { identity, name, phone, company, wechat, demand } = this.customForm;

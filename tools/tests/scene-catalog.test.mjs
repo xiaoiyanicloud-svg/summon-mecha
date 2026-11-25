@@ -85,7 +85,7 @@ test('无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品
 })
 
 const detailScript = (await readFile(new URL('../../pages/robot/fangan.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
-function mountDetail(getSceneDetail, submitError = null) {
+function mountDetail(getSceneDetail, submitError = null, options = { sceneId: '1' }) {
   const calls = []
   const context = vm.createContext({ sceneId, configuredSceneProducts, normalizeSceneImage, BASE_URL: 'https://api.test', StateView: {}, SmIcon: {},
     sceneApi: { getSceneDetail }, sceneDraftPayload: value => ({ ...value, scene_id: value.sceneId }),
@@ -95,7 +95,7 @@ function mountDetail(getSceneDetail, submitError = null) {
   const component = context.component, state = component.data()
   for (const [name, fn] of Object.entries(component.methods)) state[name] = fn.bind(state)
   Object.defineProperty(state, 'filteredProducts', { get: () => component.computed.filteredProducts.call(state) })
-  component.onLoad.call(state, { sceneId: '1' })
+  component.onLoad.call(state, options)
   return { state, calls }
 }
 const detail = products => ({ matched: true, name: '真实场景', description: '', banner: null, scheme: { robots: [99] }, products })
@@ -133,13 +133,17 @@ test('详情缺产品协议与非法价格不进入交易；未配置方案保�
   assert.equal(state.mapCatalogProduct({ ...product, prices: { regular: { price: 0 } } }).price, '0')
 })
 
-test('场景咨询只进入统一需求表单，不创建零元订单或伪造已受理', async () => {
+test('场景咨询只进入统一需求表单，不创建零元订单或伪造已受理，支持 mode 参数并清理废弃留资弹窗', async () => {
   const { state, calls } = mountDetail(async () => detail([product]))
-  await state.reload(); state.onConsult(); state.leadForm = { name: '测试', phone: '13800000000', demand: '需求' }
-  const a = state.submitLead(), b = state.submitLead(); await Promise.all([a, b])
+  await state.reload()
+  assert.equal(state.showLeadForm, undefined); assert.equal(state.showLeadSuccess, undefined)
+  state.onConsult(); state.openService()
+  assert.equal(calls.length, 2)
   assert.equal(calls.filter(c => c.type === 'custom').length, 0)
-  assert.equal(calls[0].payload.scene_id, 1); assert.equal(state.showLeadSuccess, false)
+  assert.equal(calls[0].payload.scene_id, 1); assert.equal(calls[1].payload.scene_id, 1)
   assert.match(calls[0].url, /\/pages\/scene\/request/)
+  const customMode = mountDetail(async () => detail([product]), null, { sceneId: '1', mode: 'custom' })
+  assert.equal(customMode.state.sceneId, 1); assert.equal(customMode.state.activeMode, 'custom')
 })
 
 test('首页从真实快照更新，接口失败不保留旧卡片或假咨询人数', async () => {
@@ -198,5 +202,47 @@ test('自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交到确�
   assert.equal(items[0].name, '当前商品')
   assert.equal(items[0].price, 20)
   assert.equal(params.get('rent_days'), '1')
+  assert.equal(params.get('scene'), null); assert.equal(params.get('from'), null); assert.equal(params.get('sceneId'), null)
+  assert.equal(params.get('type'), 'rent')
   assert.equal(state.selectedPlanItems[0].price, 20)
+
+  // 将 +方案 生成的 query 参数直接送入确认订单页，验证不会被重定向且提交标准多机租用订单
+  const checkoutSource = (await readFile(new URL('../../pages/order/checkout.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
+  const redirects = [], createdPayloads = []
+  const checkoutCtx = vm.createContext({ TOKEN_KEY: 'token', SmIcon: {},
+    tobOrderApi: { create: async input => { createdPayloads.push(input); return { success: true, order_id: 77 } } },
+    uni: { showLoading() {}, hideLoading() {}, showToast() {}, getStorageSync: () => '', setStorageSync() {}, switchTab() {}, redirectTo: input => redirects.push(input) } })
+  vm.runInContext(checkoutSource.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), checkoutCtx)
+  const checkoutState = checkoutCtx.component.data()
+  for (const [name, fn] of Object.entries(checkoutCtx.component.methods)) checkoutState[name] = fn.bind(checkoutState)
+  checkoutState.tryPrefillFromLocal = () => {}
+  const queryObj = Object.fromEntries(Array.from(params.entries()).map(([k, v]) => [k, encodeURIComponent(v)]))
+  checkoutCtx.component.onLoad.call(checkoutState, queryObj)
+  assert.equal(redirects.length, 0)
+  assert.equal(checkoutState.multiItems.length, 1); assert.equal(checkoutState.rentDays, 1)
+  checkoutState.form = { name: '张三', phone: '13800000000', city: '上海', address: '浦东', email: '' }
+  await checkoutState.submitOrder()
+  assert.equal(createdPayloads.length, 1)
+  assert.equal(createdPayloads[0].type, 'rent')
+  assert.equal(createdPayloads[0].scene, ''); assert.equal(createdPayloads[0].from, ''); assert.equal(createdPayloads[0].scene_id, null)
+  assert.equal(createdPayloads[0].items.length, 1); assert.equal(createdPayloads[0].items[0].product_id, 11)
+  assert.equal(createdPayloads[0].items[0].rent_days, 1)
+})
+
+test('AI 页交给方案专家直接进入统一需求页，不再无 sceneId 跳转详情报错', async () => {
+  const aiSource = (await readFile(new URL('../../pages/ai/index.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
+  const requests = [], events = []
+  const aiCtx = vm.createContext({ CustomTabBar: {}, summonApi: {}, summonStream: {}, aiConversationApi: {}, TOKEN_KEY: 't', CUSTOMER_KEY: 'c',
+    trackAiEvent: (name, payload) => events.push({ name, payload }), flushAiEvents: () => {},
+    sceneDraftPayload: value => ({ ...value, scene_id: value.sceneId || null, original_text: value.text || '' }),
+    openSceneRequest: payload => requests.push(payload),
+    createVoiceSession() {}, isVoiceSupported: () => false, isRealtime: () => false, AUTO_SEND_AFTER_ASR: false, ERR: {}, ERR_TEXT: {},
+    createTtsSession() {}, TTS_ERR: {}, TTS_ERR_TEXT: {} })
+  vm.runInContext(aiSource.replace(/^import\b[\s\S]*?from\s+['"][^'"]+['"];?/gm, '').replace('export default', 'globalThis.component ='), aiCtx)
+  const aiState = aiCtx.component.data()
+  aiCtx.component.methods.openCustomPlan.call(aiState, '需要2台展厅迎宾机器人')
+  assert.equal(requests.length, 1)
+  assert.equal(requests[0].source, 'ai')
+  assert.equal(requests[0].original_text, '需要2台展厅迎宾机器人')
+  assert.equal(events[0].name, 'ai_custom_plan_click')
 })

@@ -9,7 +9,7 @@ const require = createRequire(path.join(qaDir, 'package.json'))
 const { parse, compileTemplate } = require('@vue/compiler-sfc')
 const { parse: parseJavaScript } = require('@babel/parser')
 const { chromium } = require('playwright-core')
-const out = path.resolve('docs/scenes/sc1-sc5-evidence/catalog')
+const out = path.resolve(process.env.SCENE_EVIDENCE_DIR || 'docs/scenes/sc1-sc5-evidence/catalog')
 fs.mkdirSync(out, { recursive: true })
 const files = ['pages/home/index.vue', 'pages/robot/index.vue', 'pages/robot/fangan.vue', 'pages/home/rmfangan.vue', 'pages/order/checkout.vue', 'pages/ai/index.vue', 'components/StateView.vue']
 const sources = new Map()
@@ -45,7 +45,9 @@ try {
   await page.addScriptTag({ path: require.resolve('vue/dist/vue.global.prod.js') })
   await page.evaluate(({ detail, state, helpers }) => {
     const get = (source, args, values) => new Function(...args, source.replace('export default', 'return'))(...values)
-    const StateView = get(state.script, [], [])
+    const SmLoading = { props: ['size', 'text', 'inline'], template: '<span class="sm-loading">{{ text }}</span>' }
+    const SmIcon = { props: ['name', 'size'], template: '<span class="sm-icon">{{ name }}</span>' }
+    const StateView = get(state.script, ['SmLoading'], [SmLoading])
     StateView.render = new Function('Vue', state.render)(Vue)
     window.sceneResult = { matched: true, name: '展会品牌活动', description: '提供迎宾与互动服务，现场条件和档期需确认。', banner: null,
       scheme: { robots: [99], pains: [], benefits: [], scenes: [] }, products: [{ id: 99, name: '目录机型 A', type: 'simple', prices: { regular: { price: 1200 } } }] }
@@ -55,8 +57,8 @@ try {
     window.openSceneRequest = value => window.navigation.push({ url: '/pages/scene/request?sceneId=' + value.scene_id })
     const helperFunctions = helpers.map(source => new Function('return (' + source + ')')())
     window.sceneId = helperFunctions[0]
-    const component = get(detail.script, ['StateView','sceneApi','tobOrderApi','BASE_URL','uni','sceneId','configuredSceneProducts','normalizeSceneImage'],
-      [StateView, { getSceneDetail: async () => { if (window.sceneFail) throw new Error('服务暂不可用，请重试'); return window.sceneResult } }, { create: async () => ({ success: true }) }, 'https://qa.invalid',
+    const component = get(detail.script, ['StateView','SmIcon','sceneApi','tobOrderApi','BASE_URL','uni','sceneId','configuredSceneProducts','normalizeSceneImage'],
+      [StateView, SmIcon, { getSceneDetail: async () => { if (window.sceneFail) throw new Error('服务暂不可用，请重试'); return window.sceneResult } }, { create: async () => ({ success: true }) }, 'https://qa.invalid',
         { navigateTo: data => window.navigation.push(data), showToast: () => {}, navigateBack: () => {} },
         ...helperFunctions])
     component.render = new Function('Vue', detail.render)(Vue)

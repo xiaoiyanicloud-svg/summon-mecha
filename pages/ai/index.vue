@@ -1458,10 +1458,7 @@ export default {
     openCustomPlan(prompt) {
       const demand = String(prompt || this.lastUserPrompt || this.inputValue || '').trim()
       trackAiEvent('ai_custom_plan_click', { demand_length: demand.length, logged_in: this.loggedIn })
-      try {
-        uni.setStorageSync('aiSummonCustomDraft', { demand, source: 'ai', at: Date.now() })
-      } catch (e) { /* 存储失败不阻断跳转 */ }
-      uni.navigateTo({ url: '/pages/robot/fangan?mode=custom&source=ai&title=AI%E5%8F%AC%E5%94%A4%E5%AE%9A%E5%88%B6%E9%9C%80%E6%B1%82' })
+      openSceneRequest(sceneDraftPayload({ source: 'ai', text: demand, category: 'enterprise', contact: { name: '', phone: '' } }))
     },
 
     // 以「打字机」方式吐出一条 AI 消息(模拟流式输出)。
