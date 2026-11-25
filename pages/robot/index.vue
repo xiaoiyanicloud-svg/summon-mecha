@@ -1,11 +1,9 @@
 <template>
   <view class="rental-page">
-    <!-- ===== 顶部 Tab（五个）：每格 750/5=150rpx 宽 × 150rpx 高＝正方形。
-         选中那格整块铺白，且顶栏不画 border-bottom，让白块与下方白色内容区连成一体。 ===== -->
+    <!-- ===== 顶部主 Tab（四个）：租售 TOB | 场景 | 技能 | 配件 ===== -->
     <view class="top-tabs" v-if="!customPlanMode">
-      <text class="tab-item" :class="{ active: currentTab === 'rent' }" @tap="switchTab('rent')">租用</text>
+      <text class="tab-item" :class="{ active: currentTab === 'tob' }" @tap="switchTab('tob')">租售 TOB</text>
       <text class="tab-item" :class="{ active: currentTab === 'scene' }" @tap="switchTab('scene')">场景</text>
-      <text class="tab-item" :class="{ active: currentTab === 'buy' }" @tap="switchTab('buy')">购买</text>
       <text class="tab-item" :class="{ active: currentTab === 'skill' }" @tap="switchTab('skill')">技能</text>
       <text class="tab-item" :class="{ active: currentTab === 'accessory' }" @tap="switchTab('accessory')">配件</text>
     </view>
@@ -17,77 +15,27 @@
 
     <!-- ===== 场景分类滚动条 - 已删除 ===== -->
 
-    <!-- ===== 搜索框(租/购) =====
-    <view class="search-bar" v-show="currentTab === 'rent' || currentTab === 'buy'">
-      <input class="search-input" v-model="searchQ" placeholder="搜索机型 / 品牌 / 关键词" confirm-type="search" />
+    <!-- ===== 搜索框(租售 TOB / 场景) ===== -->
+    <view class="search-bar" v-show="currentTab === 'tob'">
+      <input class="search-input" v-model="searchQ" placeholder="搜索机型 / 品牌 / SKU / 形态" confirm-type="search" />
+    </view>
+    <view class="search-bar" v-show="currentTab === 'scene'">
+      <input class="search-input" v-model="sceneSearchQ" placeholder="搜索场景名称 / 描述 / 标签" confirm-type="search" />
     </view>
 
     <!-- ===== 主体 ===== -->
     <view class="main-body">
-      <!-- 租用/购买：品牌侧边栏 -->
-      <scroll-view class="brand-sidebar" scroll-y="true" show-scrollbar="false" v-show="currentTab === 'rent' || currentTab === 'buy'" @scroll="onPanelScroll('brand')">
+      <!-- 租售 TOB：动态品牌侧边栏（后台品牌管理驱动，未入库兼容兜底） -->
+      <scroll-view class="brand-sidebar" scroll-y="true" show-scrollbar="false" v-show="currentTab === 'tob'" @scroll="onPanelScroll('brand')">
         <view class="brand-item" :class="{ active: currentBrand === 'all' }" @tap="selectBrand('all')">
           <text class="brand-name">全部品牌</text>
         </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'yushu' }" @tap="selectBrand('yushu')">
-          <text class="brand-name">宇树</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'zhiyuan' }" @tap="selectBrand('zhiyuan')">
-          <text class="brand-name">智元</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'youbixuan' }" @tap="selectBrand('youbixuan')">
-          <text class="brand-name">优必选</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'zhongqing' }" @tap="selectBrand('zhongqing')">
-          <text class="brand-name">众擎</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'leju' }" @tap="selectBrand('leju')">
-          <text class="brand-name">乐聚</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'galaxy' }" @tap="selectBrand('galaxy')">
-          <text class="brand-name">银河通用</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'engine' }" @tap="selectBrand('engine')">
-          <text class="brand-name">加速进化</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'fourier' }" @tap="selectBrand('fourier')">
-          <text class="brand-name">傅利叶</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'xiaomi' }" @tap="selectBrand('xiaomi')">
-          <text class="brand-name">小米</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'figure' }" @tap="selectBrand('figure')">
-          <text class="brand-name">Figure AI</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'dajiang' }" @tap="selectBrand('dajiang')">
-          <text class="brand-name">大疆</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'qinglang' }" @tap="selectBrand('qinglang')">
-          <text class="brand-name">擎朗</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'pudu' }" @tap="selectBrand('pudu')">
-          <text class="brand-name">普渡</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'gaoxian' }" @tap="selectBrand('gaoxian')">
-          <text class="brand-name">高仙</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'yunjii' }" @tap="selectBrand('yunjii')">
-          <text class="brand-name">云迹</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'estun' }" @tap="selectBrand('estun')">
-          <text class="brand-name">埃斯顿</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'inovance' }" @tap="selectBrand('inovance')">
-          <text class="brand-name">汇川</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'siasun' }" @tap="selectBrand('siasun')">
-          <text class="brand-name">新松</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'efort' }" @tap="selectBrand('efort')">
-          <text class="brand-name">埃夫特</text>
-        </view>
-        <view class="brand-item" :class="{ active: currentBrand === 'jaka' }" @tap="selectBrand('jaka')">
-          <text class="brand-name">节卡</text>
+        <view class="brand-item" v-for="b in brandList" :key="b.code" :class="{ active: currentBrand === b.code }" @tap="selectBrand(b.code)">
+          <image v-if="b.logoUrl" class="brand-logo" :src="b.logoUrl" mode="aspectFit" />
+          <view class="brand-label-row">
+            <text class="brand-name">{{ b.name }}</text>
+            <text v-if="b.isHot" class="brand-hot-dot"></text>
+          </view>
         </view>
         <view style="height: 250rpx; flex-shrink: 0;"></view>
       </scroll-view>
@@ -131,8 +79,15 @@
       <view class="content-column">
 
         <!-- 租用/购买 分类滚动条（与左边栏「全部品牌」同行） -->
-        <view class="type-bar" v-if="currentTab === 'rent' || currentTab === 'buy'">
-          <!-- 租用 / 购买共用：一个综合排序下拉 -->
+        <!-- 租售 TOB 子模式切换：全部 | 租赁 | 购买 -->
+        <view class="tob-subbar" v-if="currentTab === 'tob' && !customPlanMode">
+          <text class="tob-sub-pill" :class="{ active: tobSubTab === 'all' }" @tap="setTobSubTab('all')">全部</text>
+          <text class="tob-sub-pill" :class="{ active: tobSubTab === 'rent' }" @tap="setTobSubTab('rent')">租赁</text>
+          <text class="tob-sub-pill" :class="{ active: tobSubTab === 'buy' }" @tap="setTobSubTab('buy')">购买</text>
+        </view>
+
+        <view class="type-bar" v-if="currentTab === 'tob'">
+          <!-- 租售 TOB 共用：一个综合排序下拉 -->
           <view class="sort-picker-wrap">
             <view class="sort-picker" :class="{ open: showSortPanel }" @tap.stop="toggleSortPanel">
               <text class="sort-picker-text">{{ sortLabel }}</text>
@@ -152,24 +107,24 @@
               </view>
             </view>
           </view>
-          <!-- 分类：「分类」标签与类别值合体成一段文字（默认「全部分类」），点开在下方就地展开 -->
+          <!-- 形态筛选（默认「全部形态」，点开在下方就地展开） -->
           <view class="cat-group">
             <view class="cat-picker" @tap="openTypePicker">
               <text class="cat-text">{{ currentTypeLabel }}</text>
               <text class="cat-arrow">{{ showTypePicker ? '▲' : '▼' }}</text>
             </view>
           </view>
-          <text class="type-item custom-plan-fixed" v-if="!customPlanMode && currentTab === 'rent'" @tap="enterCustomPlanMode">+方案</text>
+          <text class="type-item custom-plan-fixed" v-if="!customPlanMode && tobSubTab !== 'buy'" @tap="enterCustomPlanMode">+方案</text>
         </view>
 
-        <!-- 类别：点「分类」后在下方就地展开（非弹窗），再点一次收起 -->
-        <view class="type-inline" v-if="showTypePicker && (currentTab === 'rent' || currentTab === 'buy')">
-          <view class="type-opt" :class="{ active: currentType === 'all' }" @tap="selectType('all'); showTypePicker = false">全部分类</view>
+        <!-- 形态：点「全部形态」后在下方就地展开（非弹窗），再点一次收起 -->
+        <view class="type-inline" v-if="showTypePicker && currentTab === 'tob'">
+          <view class="type-opt" :class="{ active: currentType === 'all' }" @tap="selectType('all'); showTypePicker = false">全部形态</view>
           <view class="type-opt" :class="{ active: currentType === t.code }" v-for="t in rentTypeOptions" :key="t.code" @tap="selectType(t.code); showTypePicker = false">{{ t.label }}</view>
         </view>
 
-        <!-- 租用 -->
-        <view class="product-area-wrapper" v-show="currentTab === 'rent'">
+        <!-- 租售 TOB（统一目录：支持 全部 / 租赁 / 购买 及 +方案 多机合单） -->
+        <view class="product-area-wrapper" v-show="currentTab === 'tob'">
         <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
           <view class="product-flex-wrapper">
             <view v-if="currentBrand === 'all'" class="enterprise-banner" @tap="goEnterprise">
@@ -181,73 +136,40 @@
                 <view class="banner-btn">咨询</view>
               </view>
             </view>
-            <view class="product-card" :class="{ selected: customPlanMode && isPlanSelected(item) }" v-for="item in filteredRentList" :key="item.id" @tap="customPlanMode ? togglePlanItem(item) : goDetail(item)">
+            <view
+              class="product-card"
+              :class="{ selected: customPlanMode && item.catalogKind === 'rent' && isPlanSelected(item) }"
+              v-for="item in filteredTobList"
+              :key="item.uniqueKey || item.id"
+              @tap="(customPlanMode && item.catalogKind === 'rent') ? togglePlanItem(item) : goDetail(item)"
+            >
               <view class="product-image" :style="{ backgroundColor: item.bg }">
                 <image class="product-img" :src="item.image" mode="aspectFill" @error="imageFailed(item)"></image>
               </view>
-              <view v-if="customPlanMode" class="product-select-btn" :class="{ on: isPlanSelected(item) }" @tap.stop="togglePlanItem(item)">{{ isPlanSelected(item) ? '✓' : '＋' }}</view>
+              <view v-if="customPlanMode && item.catalogKind === 'rent'" class="product-select-btn" :class="{ on: isPlanSelected(item) }" @tap.stop="togglePlanItem(item)">{{ isPlanSelected(item) ? '✓' : '＋' }}</view>
               <view class="product-info">
                 <text class="product-name">{{ item.name }}</text>
-                <text class="scene-tag">{{ item.scene }}</text>
+                <view class="card-tags-row" v-if="tobSubTab === 'all' || item.typeLabel || item.raasBadge">
+                  <text class="mode-tag" :class="item.catalogKind === 'buy' ? 'buy' : 'rent'" v-if="tobSubTab === 'all'">{{ item.catalogKind === 'buy' ? '购买' : '租赁' }}</text>
+                  <text class="scene-tag" v-if="item.typeLabel">{{ item.typeLabel }}</text>
+                  <text class="raas-tag" v-if="item.raasBadge">{{ item.raasBadge }}</text>
+                </view>
                 <view class="product-bottom">
                   <view class="product-price-wrap">
-                    <text class="product-price"><text class="price-badge">到手价</text><text class="price-cur">¥</text>{{ item.bagistoPrice || item.price }}</text>
+                    <text class="product-price"><text class="price-badge">到手价</text><text class="price-cur">¥</text>{{ item.bagistoPrice || item.price }}<text class="price-unit" v-if="item.catalogKind === 'rent'">/天</text></text>
                     <text class="product-original" v-if="item.originalPrice">¥{{ item.originalPrice }}</text>
                   </view>
-                  <!-- [TOB_BTN_RENT] 已隐藏租用卡按钮(原: <view class="btn-action" @tap.stop="handleAction(item,'rent')">租用</view>) -->
                 </view>
               </view>
             </view>
-            <view class="scroll-bottom-placeholder" v-if="filteredRentList.length > 0"></view>
+            <view class="scroll-bottom-placeholder" v-if="filteredTobList.length > 0"></view>
           </view>
-          <view class="empty-state" v-if="filteredRentList.length === 0 && !catalogLoading && !catalogError">
+          <view class="empty-state" v-if="filteredTobList.length === 0 && !catalogLoading && !catalogError">
             <SmIcon name="empty-inbox" size="88rpx" />
             <text class="empty-text">没有找到匹配的机器人</text>
           </view>
           <state-view
-            v-else-if="filteredRentList.length === 0"
-            :loading="catalogLoading" :error="catalogError" compact btn-color="#102F6E" @retry="reloadCatalog"
-          />
-        </scroll-view>
-      </view>
-
-      <!-- 购买 -->
-      <view class="product-area-wrapper" v-show="currentTab === 'buy'">
-        <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
-          <view class="product-flex-wrapper">
-            <view v-if="currentBrand === 'all'" class="enterprise-banner" @tap="goEnterprise">
-              <view class="banner-left">
-                <text class="banner-icon"></text>
-                <text class="banner-title">企业部署</text>
-              </view>
-              <view class="banner-right">
-                <view class="banner-btn">咨询</view>
-              </view>
-            </view>
-            <view class="product-card" v-for="item in filteredBuyList" :key="item.id" @tap="goDetail(item)">
-              <view class="product-image" :style="{ backgroundColor: item.bg }">
-                <image class="product-img" :src="item.image" mode="aspectFill" @error="imageFailed(item)"></image>
-              </view>
-              <view class="product-info">
-                <text class="product-name">{{ item.name }}</text>
-                <text class="scene-tag">{{ item.scene }}</text>
-                <view class="product-bottom">
-                  <view class="product-price-wrap">
-                    <text class="product-price"><text class="price-badge">到手价</text><text class="price-cur">¥</text>{{ item.bagistoPrice || item.price }}</text>
-                    <text class="product-original" v-if="item.originalPrice">¥{{ item.originalPrice }}</text>
-                  </view>
-                  <!-- [TOB_BTN_BUY] 已隐藏购买卡按钮(原: <view class="btn-action" @tap.stop="handleAction(item,'buy')">购买</view>) -->
-                </view>
-              </view>
-            </view>
-            <view class="scroll-bottom-placeholder" v-if="filteredBuyList.length > 0"></view>
-          </view>
-          <view class="empty-state" v-if="filteredBuyList.length === 0 && !catalogLoading && !catalogError">
-            <SmIcon name="empty-inbox" size="88rpx" />
-            <text class="empty-text">没有找到匹配的机器人</text>
-          </view>
-          <state-view
-            v-else-if="filteredBuyList.length === 0"
+            v-else-if="filteredTobList.length === 0"
             :loading="catalogLoading" :error="catalogError" compact btn-color="#102F6E" @retry="reloadCatalog"
           />
         </scroll-view>
@@ -357,13 +279,6 @@
               <text class="spec-value">{{ s.value }}</text>
             </view>
           </view>
-          <!-- [DETAIL_COUPON] 已隐藏详情页优惠券区(恢复: 取消下行注释,恢复原有横向滚动优惠券列表) -->
-          <!-- <view class="coupon-area">
-            <text class="coupon-label">优惠券</text>
-            <scroll-view class="coupon-scroll" scroll-x="true" show-scrollbar="false">
-              <view class="coupon-item" v-for="(coupon, idx) in coupons" :key="idx">{{ coupon }}</view>
-            </scroll-view>
-          </view> -->
           <view class="service-area" :class="{ 'service-area-cover': actionType === 'rent' || actionType === 'buy' }">
             <image
               v-if="actionType === 'rent' || actionType === 'buy'"
@@ -435,7 +350,7 @@
           <view class="sheet-price-wrap">
             <text class="sheet-price">¥{{ selectedProduct.price }}</text>
             <text class="sheet-unit">/天起</text>
-            <text class="sheet-origin">¥{{ Math.round(Number(String(selectedProduct.price).replace(/,/g, '')) * 1.2).toLocaleString() }}</text>
+            <text class="sheet-origin" v-if="selectedProduct.originalPrice">¥{{ selectedProduct.originalPrice }}</text>
           </view>
           <text class="sheet-close" @tap="cancelRentModal">✕</text>
         </view>
@@ -459,7 +374,7 @@
         <view class="sheet-field">
           <text class="sheet-label">产品类型名称</text>
           <view class="sheet-value static">
-            <text class="sheet-value-text">{{ selectedProduct.name }}（1天起单台每日价格）【{{ rentTypeOptions[rentForm.productTypeIndex].label }}租】</text>
+            <text class="sheet-value-text">{{ selectedProduct.name }}（1天起单台每日价格）{{ selectedProduct.typeLabel ? '【' + selectedProduct.typeLabel + '·租赁】' : '【标准租赁】' }}</text>
           </view>
         </view>
 
@@ -664,7 +579,7 @@ import Jineng from '@/components/jiqi/jineng.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import Peijian from '@/components/jiqi/peijian.vue'
 import StateView from '@/components/StateView.vue'
-import { productApi, categoryApi, catalogApi, accessoryCatalogApi, wishlistApi } from '@/utils/api'
+import { productApi, categoryApi, brandApi, catalogApi, accessoryCatalogApi, wishlistApi } from '@/utils/api'
 import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request'
 import { sceneProducts, categoryMap, loadBackendScenes } from '@/components/jiqi/changjing-data.js'
 import { normalizeProductPricing, pickBaseImage, pickGalleryImages, catalogFallbackImage } from '@/utils/product-catalog'
@@ -688,19 +603,19 @@ const accessoryCategoryMap = {
 
 // ===== 详情「服务/售后」区内容（按板块区分: 租赁 / 购买・配件 / 技能） =====
 const BUY_SERVICE = {
-  title: '大平台・有保障｜官方正品',
+  title: '平台核验・履约可追溯',
   items: [
-    { label: '配送', value: '全国包邮' },
-    { label: '维保', value: '官方质保' },
-    { label: '售后', value: '7 天无理由（不影响二次销售）' },
+    { label: '交付', value: '交期与配送方案以商品页标注及商户确认为准' },
+    { label: '质保', value: '按原厂或授权商户质保条款执行' },
+    { label: '售后', value: '支持平台维保协调与合规争议处理' },
   ],
 }
 const serviceConfigs = {
   rent: {
-    title: '大平台・有保障',
+    title: '租售 TOB・平台保障',
     items: [
-      { label: '配送', value: '工程师上门 1v 服务' },
-      { label: '服务区域', value: '全国（偏远地区除外）' },
+      { label: '交付', value: '支持物流配送或工程师现场交付（以商品与合同约定为准）' },
+      { label: '服务区域', value: '覆盖区域及档期以提交订单后商户承接确认为准' },
     ],
   },
   buy: BUY_SERVICE,
@@ -746,18 +661,40 @@ function fixDescUrls(html) {
   return out
 }
 
-// ===== 品牌/类别推断(v1:按商品名关键词,后台建品用规范命名即可被侧栏筛选识别;识别不出回退 'all' 恒显示) =====
-function detectBrandKey(name) {
-  const n = String(name || '')
-  const table = [
-    ['宇树', 'yushu'], ['智元', 'zhiyuan'], ['优必选', 'youbixuan'], ['众擎', 'zhongqing'],
-    ['乐聚', 'leju'], ['银河', 'galaxy'], ['加速进化', 'engine'], ['傅利叶', 'fourier'],
-    ['小米', 'xiaomi'], ['Figure', 'figure'], ['大疆', 'dajiang'], ['擎朗', 'qinglang'],
-    ['普渡', 'pudu'], ['高仙', 'gaoxian'], ['云迹', 'yunjii'], ['埃斯顿', 'estun'],
-    ['汇川', 'inovance'], ['新松', 'siasun'], ['埃夫特', 'efort'], ['节卡', 'jaka'],
-  ]
-  for (const [kw, key] of table) { if (n.includes(kw)) return key }
-  return 'all'
+const FALLBACK_BRANDS = [
+  { code: 'yushu', name: '宇树', name_en: 'Unitree', aliases: ['宇树', 'Unitree'], is_hot: true },
+  { code: 'zhiyuan', name: '智元', name_en: 'Agibot', aliases: ['智元', 'Agibot'], is_hot: true },
+  { code: 'youbixuan', name: '优必选', name_en: 'UBTECH', aliases: ['优必选', 'UBTECH', 'Walker'], is_hot: true },
+  { code: 'zhongqing', name: '众擎', name_en: 'EngineAI', aliases: ['众擎', 'EngineAI'], is_hot: true },
+  { code: 'leju', name: '乐聚', name_en: 'Leju', aliases: ['乐聚', 'Kuavo'], is_hot: true },
+  { code: 'galaxy', name: '银河通用', name_en: 'Galbot', aliases: ['银河', '银河通用', 'Galbot'], is_hot: true },
+  { code: 'engine', name: '加速进化', name_en: 'Booster Robotics', aliases: ['加速进化', 'Booster'], is_hot: true },
+  { code: 'fourier', name: '傅利叶', name_en: 'Fourier', aliases: ['傅利叶', 'Fourier'], is_hot: true },
+  { code: 'xiaomi', name: '小米', name_en: 'Xiaomi', aliases: ['小米', 'CyberOne', 'CyberDog'], is_hot: true },
+  { code: 'figure', name: 'Figure AI', name_en: 'Figure AI', aliases: ['Figure'], is_hot: true },
+  { code: 'dajiang', name: '大疆', name_en: 'DJI', aliases: ['大疆', 'DJI'], is_hot: true },
+  { code: 'qinglang', name: '擎朗', name_en: 'KEENON', aliases: ['擎朗', 'KEENON'], is_hot: true },
+  { code: 'pudu', name: '普渡', name_en: 'Pudu', aliases: ['普渡', 'Pudu'], is_hot: true },
+  { code: 'gaoxian', name: '高仙', name_en: 'Gaussian', aliases: ['高仙', 'Gaussian'], is_hot: true },
+  { code: 'yunjii', name: '云迹', name_en: 'Yunji', aliases: ['云迹', 'Yunji'], is_hot: true },
+  { code: 'estun', name: '埃斯顿', name_en: 'ESTUN', aliases: ['埃斯顿', 'ESTUN'], is_hot: true },
+  { code: 'inovance', name: '汇川', name_en: 'Inovance', aliases: ['汇川', 'Inovance'], is_hot: true },
+  { code: 'siasun', name: '新松', name_en: 'SIASUN', aliases: ['新松', 'SIASUN'], is_hot: true },
+  { code: 'efort', name: '埃夫特', name_en: 'EFORT', aliases: ['埃夫特', 'EFORT'], is_hot: true },
+  { code: 'jaka', name: '节卡', name_en: 'JAKA', aliases: ['节卡', 'JAKA'], is_hot: true },
+]
+
+// ===== 品牌/形态回退识别：仅在后端未返回结构化属性时根据别名/关键词识别；未识别返回 '' 防止跨品牌串台 =====
+function detectBrandKey(name, brands = FALLBACK_BRANDS) {
+  const n = String(name || '').toLowerCase()
+  if (!n) return ''
+  for (const b of brands || FALLBACK_BRANDS) {
+    const kws = [b.name, b.name_en, ...(Array.isArray(b.aliases) ? b.aliases : [])]
+    for (const kw of kws) {
+      if (kw && n.includes(String(kw).toLowerCase())) return b.code
+    }
+  }
+  return ''
 }
 function detectTypeKey(name) {
   const n = String(name || '')
@@ -769,11 +706,11 @@ function detectTypeKey(name) {
   if (/巡检|巡逻|巡查|M300|M30T|无人机/i.test(n)) return 'inspection'
   if (/机械臂|机械手|ER\d|IR\d|SR\d/i.test(n)) return 'arm'
   if (/陪伴|教育|Aelos|Roban/i.test(n)) return 'companion'
-  return 'all'
+  return ''
 }
 
-// ===== 目录缓存(模块级,5 分钟 TTL):onShow 频繁触发不再全量重拉,切回本页秒开 =====
-const CATALOG_TTL = 5 * 60 * 1000
+// ===== 目录缓存(模块级,60 秒 TTL):减少频繁 onShow 重拉，同时保障后台品牌/目录调整快速生效 =====
+const CATALOG_TTL = 60 * 1000
 let _catalogRawCache = null // {rent:[],buy:[],accessory:[],skill:[]} 原始商品数组;命中后经 applyCatalog 重新映射,mapCatalogProduct 为纯函数无共享可变风险
 let _catalogCachedAt = 0
 
@@ -792,7 +729,9 @@ export default {
   components: { Jineng, Peijian, StateView, SmIcon },
   data() {
     return {
-      currentTab: 'rent',
+      currentTab: 'tob',
+      tobSubTab: 'all',
+      backendBrands: null,
       rentCatalog: [],
       buyCatalog: [],
       accessoryCatalog: [],
@@ -860,12 +799,11 @@ export default {
       _hintBrandTimer: null,
       detailImages: [1, 2, 3],
       brokenSceneImages: {},
-      coupons: ['满1000减50', '满5000减300', '首单立减100', '新用户专享'],
       faqList: [
-        { q: '如何租用？', a: '点击“立即租用”按钮，填写租用信息，工作人员将在1个工作日内联系您。' },
-        { q: '购买后多久发货？', a: '现货商品下单后48小时内发货，定制商品以合同约定为准。' },
-        { q: '是否提供技术支持？', a: '我们提供全程技术支持，包括安装调试、操作培训和售后维护。' },
-        { q: '付款方式有哪些？', a: '支持银行转账、支付宝、微信支付及企业对公账户。' }
+        { q: '如何租用或批量下单？', a: '可在商品详情选择起租日期与租期提交租赁订单，也可点击「+方案」多选机型合并下单。' },
+        { q: '下单后多久安排交付与档期？', a: '现货与服务排期以商品页标注及商户承接确认为准，大宗或定制项目以正式合同约定为准。' },
+        { q: '是否提供技术支持与适配指导？', a: '支持平台及授权商户提供对接调试、操作培训与售后维保协调，具体以商品与机型参数为准。' },
+        { q: '付款与对公结算有哪些方式？', a: '支持平台在线支付方式及企业对公结算，具体结算与开票条款可在订单确认时查看。' }
       ],
       // 分类映射 categoryMap 已迁至 components/jiqi/changjing.vue（见 import）
       currentPage: '/pages/robot/index',
@@ -877,6 +815,7 @@ export default {
         { pagePath: '/pages/mine/index', text: '我的', iconEmoji: '/static/wode.png', iconActive: '/static/wode1.png' }
       ],
       searchQ: '',
+      sceneSearchQ: '',
       fromHome: false,
       // 本次详情是否来自 AI 召唤页(关闭详情时切回 AI 页,而不是停在机器 tab)
       fromAi: false,
@@ -894,44 +833,55 @@ export default {
     }
   },
   computed: {
-    // 「分类」标签已与类别值合体：默认显示「全部分类」，选中后为「人形分类」等
+    brandList() {
+      const raw = this.backendBrands !== null ? this.backendBrands : FALLBACK_BRANDS
+      return raw
+        .filter(b => b && b.code && b.status !== false)
+        .map(b => ({
+          code: b.code,
+          name: b.name || b.code,
+          nameEn: b.name_en || '',
+          aliases: Array.isArray(b.aliases) ? b.aliases : [],
+          logoUrl: b.logo_url ? this.normalizeImageUrl(b.logo_url) : '',
+          isHot: !!b.is_hot,
+          modelsCount: Number(b.models_count || 0),
+        }))
+    },
+    // 形态筛选标题：默认「全部形态」，选中后显示「人形形态」等
     currentTypeLabel() {
-      const map = { humanoid: '人形', quadruped: '四足', delivery: '配送', cleaning: '清洁', reception: '迎宾', inspection: '巡检', arm: '机械臂', companion: '陪伴' }
-      if (this.currentType === 'all') return '全部分类'
-      return (map[this.currentType] || this.currentType) + '分类'
+      if (this.currentType === 'all') return '全部形态'
+      const hit = (this.rentTypeOptions || []).find(o => o.code === this.currentType)
+      return (hit ? hit.label : this.currentType) + '形态'
     },
     sortLabel() {
       const hit = this.sortOptions.find(option => option.value === this.currentSort)
       return hit ? hit.label : '综合排序'
     },
     filteredRentList() {
-      const list = this.rentCatalog.filter(item => {
-        const q = (this.searchQ || '').trim().toLowerCase()
-				const matchSearch = !q || String(item.name || '').toLowerCase().includes(q)
-				const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
-        const matchBrand = this.currentBrand === 'all' || item.brand === this.currentBrand || item.brand === 'all'
-        return matchType && matchBrand && matchSearch
-      })
-      return this.sortList(list)
+      return this.sortList(this.applyTobFilters(this.rentCatalog))
     },
     filteredBuyList() {
-      const list = this.buyCatalog.filter(item => {
-        const q = (this.searchQ || '').trim().toLowerCase()
-				const matchSearch = !q || String(item.name || '').toLowerCase().includes(q)
-				const matchType = this.currentType === 'all' || item.type === this.currentType || item.type === 'all'
-        const matchBrand = this.currentBrand === 'all' || item.brand === this.currentBrand || item.brand === 'all'
-        return matchType && matchBrand && matchSearch
-      })
-      return this.sortList(list)
+      return this.sortList(this.applyTobFilters(this.buyCatalog))
+    },
+    filteredTobList() {
+      let pool = []
+      if (this.tobSubTab === 'rent') pool = this.rentCatalog
+      else if (this.tobSubTab === 'buy') pool = this.buyCatalog
+      else pool = [...this.rentCatalog, ...this.buyCatalog]
+      return this.sortList(this.applyTobFilters(pool))
     },
     filteredSceneList() {
       // 依赖响应式 sceneVersion，使 loadBackendScenes 合并后端场景后强制重算（sceneProducts 是非响应数组）
       this.sceneVersion
-      if (this.currentSceneCategory === 'all') {
-        // 权重高的排前面（后端 scenes.sort 决定优先级）
-        return [...sceneProducts].sort((a, b) => ((b.sort ?? 0) - (a.sort ?? 0)) || (a.id - b.id))
-      }
-      return sceneProducts.filter(item => item.category === this.currentSceneCategory)
+      const q = (this.sceneSearchQ || '').trim().toLowerCase()
+      let list = this.currentSceneCategory === 'all'
+        ? [...sceneProducts].sort((a, b) => ((b.sort ?? 0) - (a.sort ?? 0)) || (a.id - b.id))
+        : sceneProducts.filter(item => item.category === this.currentSceneCategory)
+      if (!q) return list
+      return list.filter(s => {
+        const text = [s.name, s.desc, ...(Array.isArray(s.tags) ? s.tags : [])].join(' ').toLowerCase()
+        return text.includes(q)
+      })
     },
     currentCategoryLabel() {
       if (this.currentSceneCategory === 'all') return '全部场景'
@@ -972,14 +922,38 @@ export default {
         if (Array.isArray(specs) && specs.length) return specs
       }
       const attrs = this.selectedProduct && this.selectedProduct.bagistoAttributes
-      if (!attrs || typeof attrs !== 'object') return []
       const skip = new Set(['sku', 'name', 'url_key', 'description', 'short_description', 'price',
         'special_price', 'cost', 'weight', 'status', 'new', 'featured', 'visible_individually',
         'guest_checkout', 'manage_stock', 'tax_category_id', 'product_number'])
-      return Object.keys(attrs)
-        .filter(code => !code.startsWith('meta_') && !skip.has(code) && attrs[code] && attrs[code].value != null)
-        .map(code => ({ name: (attrs[code].name || code), value: String(attrs[code].value).trim() }))
-        .filter(s => s.value !== '')
+      const baseSpecs = attrs && typeof attrs === 'object'
+        ? Object.keys(attrs)
+          .filter(code => !code.startsWith('meta_') && !skip.has(code) && attrs[code] && attrs[code].value != null)
+          .map(code => ({ name: (attrs[code].name || code), value: String(attrs[code].value).trim() }))
+          .filter(s => s.value !== '')
+        : []
+      const seenNames = new Set(baseSpecs.map(s => s.name))
+      const raasSpecs = []
+      const p = this.selectedProduct || {}
+      if (p.brandName && !seenNames.has('品牌') && !seenNames.has('Brand')) {
+        raasSpecs.push({ name: '品牌', value: p.brandName })
+      }
+      if (p.typeLabel && !seenNames.has('机器人形态')) {
+        raasSpecs.push({ name: '机器人形态', value: p.typeLabel })
+      }
+      const rm = p.raasMeta || null
+      if (rm && rm.models_count > 0) {
+        raasSpecs.push({ name: '平台机型库兼容', value: (rm.active_models || rm.models_count) + ' 款机型' })
+      }
+      if (rm && Array.isArray(rm.comm_channels) && rm.comm_channels.length) {
+        raasSpecs.push({ name: '支持指令通道', value: rm.comm_channels.join(' / ') })
+      }
+      if (rm && rm.min_rent_days && p.catalogKind === 'rent') {
+        raasSpecs.push({ name: '最低起租天数', value: rm.min_rent_days + ' 天' })
+      }
+      if (rm && rm.deposit_yuan && p.catalogKind === 'rent') {
+        raasSpecs.push({ name: '参考押金', value: '¥' + rm.deposit_yuan })
+      }
+      return [...raasSpecs, ...baseSpecs]
     },
     // 适配机型:只展示机型名。不用 mapCatalogProduct —— 那套是为了取图片/价格的,
     // 这里只需要 name,直接映射更简单
@@ -1057,11 +1031,46 @@ export default {
       catch (e) { this.scenesError = e.message || '场景加载失败，请重试' }
       finally { this.sceneVersion++; this.scenesLoading = false }
     },
+    applyTobFilters(list) {
+      const q = (this.searchQ || '').trim().toLowerCase()
+      return (list || []).filter(item => {
+        if (!item) return false
+        const matchType = this.currentType === 'all' || item.type === this.currentType
+        const matchBrand = this.currentBrand === 'all' || item.brand === this.currentBrand
+        if (!matchType || !matchBrand) return false
+        if (!q) return true
+        const haystack = [
+          item.name,
+          item.brandName,
+          item.brandNameEn,
+          item.brand,
+          ...(Array.isArray(item.brandAliases) ? item.brandAliases : []),
+          item.sku,
+          item.typeLabel,
+          item.plainDescription,
+        ].filter(Boolean).join(' ').toLowerCase()
+        return haystack.includes(q)
+      })
+    },
+    setTobSubTab(sub) {
+      if (!['all', 'rent', 'buy'].includes(sub)) return
+      this.tobSubTab = sub
+      this.showTypePicker = false
+      this.showSortPanel = false
+    },
     switchTab(tab) {
-      this.currentTab = tab
       this.showTypePicker = false   // 切 Tab 收起类别展开面板
       this.showSortPanel = false    // 切 Tab 收起排序菜单
       if (tab === 'rent' || tab === 'buy') {
+        this.currentTab = 'tob'
+        this.tobSubTab = tab
+        this.currentType = 'all'
+        this.currentBrand = 'all'
+        this.currentSort = 'default'
+        return
+      }
+      this.currentTab = tab
+      if (tab === 'tob') {
         this.currentType = 'all'
         this.currentBrand = 'all'
         this.currentSort = 'default'
@@ -1104,7 +1113,8 @@ export default {
     // ===== 自定义方案：机器页多选 + 方案框 + 下单/保存 =====
     enterCustomPlanMode() {
       this.customPlanMode = true
-      this.currentTab = 'rent'
+      this.currentTab = 'tob'
+      this.tobSubTab = 'rent'
       this.selectedPlanItems = []
       this.planDays = 1
       this.initPlanDate()
@@ -1247,7 +1257,9 @@ export default {
 
     goDetail(item) {
       this.selectedProduct = item
-      this.actionType = this.currentTab
+      this.actionType = (item && (item.catalogKind === 'rent' || item.catalogKind === 'buy'))
+        ? item.catalogKind
+        : (this.currentTab === 'tob' ? (this.tobSubTab === 'buy' ? 'buy' : 'rent') : this.currentTab)
       this.detailTab = 'desc'
       this.showDetail = true
       this.loadRelatedProducts()
@@ -1287,15 +1299,16 @@ export default {
       try { await this.loadCatalog() } catch (e) { return }
 
       const buckets = [
-        ['rent', this.rentCatalog, 'detail'],
-        ['buy', this.buyCatalog, 'detail'],
-        ['skill', this.skillCatalog, 'skill'],
-        ['accessory', this.accessoryCatalog, 'accessory'],
+        ['tob', 'rent', this.rentCatalog, 'detail'],
+        ['tob', 'buy', this.buyCatalog, 'detail'],
+        ['skill', null, this.skillCatalog, 'skill'],
+        ['accessory', null, this.accessoryCatalog, 'accessory'],
       ]
-      for (const [tab, list, kind] of buckets) {
+      for (const [tab, subTab, list, kind] of buckets) {
         const hit = (list || []).find(x => Number(x.bagistoId || x.id) === Number(req.id))
         if (!hit) continue
         this.currentTab = tab
+        if (subTab) this.tobSubTab = subTab
         this.fromAi = true   // 关闭详情时切回 AI 召唤页
         if (kind === 'detail') this.goDetail(hit)
         else if (kind === 'skill') this.onSkill(hit, false)
@@ -1597,8 +1610,9 @@ export default {
     cancelRentModal() { this.showRentModal = false },
     confirmRent() {
       const product = this.selectedProduct
+      const opt = this.rentTypeOptions[this.rentForm.productTypeIndex] || this.rentTypeOptions[0] || { code: 'humanoid' }
       const opts = {
-        productType: this.rentTypeOptions[this.rentForm.productTypeIndex].code,
+        productType: opt.code,
         rentPeriod: this.rentPeriodOptions[this.rentForm.daysIndex],
         qty: this.rentForm.qty,
         startDate: this.rentForm.startDate,
@@ -1706,7 +1720,7 @@ export default {
     },
     goEnterprise() {
       this.enterpriseForm = {
-        mode: this.currentTab === 'rent' ? 'rent' : 'buy',
+        mode: (this.currentTab === 'tob' && this.tobSubTab === 'buy') ? 'buy' : 'rent',
         identity: 'enterprise',
         name: '',
         phone: '',
@@ -1777,31 +1791,53 @@ export default {
         const aggRes = await catalogApi.getAggregate()
         const d = aggRes && aggRes.data
         if (d && Array.isArray(d.rent) && Array.isArray(d.buy)) {
-          _catalogRawCache = { rent: d.rent, buy: d.buy, accessory: d.accessory, skill: d.skill }
+          _catalogRawCache = {
+            rent: d.rent,
+            buy: d.buy,
+            accessory: d.accessory,
+            skill: d.skill,
+            brands: Array.isArray(d.brands) ? d.brands : null,
+            robot_types: Array.isArray(d.robot_types) ? d.robot_types : null,
+          }
           _catalogCachedAt = Date.now()
           this.applyCatalog(_catalogRawCache)
           this.catalogLoading = false
           return
         }
       } catch (e) { aggFailed = true /* 聚合端点不可用 → 回退旧多请求逻辑 */ }
-      // 按分类区分:rent=租用,buy=购买,accessory=配件,skill=技能(找不到则对应为空)
+      // 按分类区分:rent=租赁,buy=购买,accessory=配件,skill=技能(找不到则对应为空)
       const catIds = { rent: null, buy: null, accessory: null, skill: null }
       let catFailed = false
       try {
         const catRes = await categoryApi.getCategories({ limit: 200 })
         const cats = (catRes && Array.isArray(catRes.data)) ? catRes.data : []
-        const pick = (slug, name) => { const c = cats.find(x => x.slug === slug || x.name === name); return c ? c.id : null }
-        catIds.rent = pick('rent', '租用')
+        const pick = (slug, names) => {
+          const list = Array.isArray(names) ? names : [names]
+          const c = cats.find(x => x.slug === slug || list.includes(x.name))
+          return c ? c.id : null
+        }
+        catIds.rent = pick('rent', ['租赁', '租用'])
         catIds.buy = pick('buy', '购买')
         catIds.accessory = pick('accessory', '配件')
         catIds.skill = pick('skill', '技能')
       } catch (e) { catFailed = true /* 分类拉取失败则全空 */ }
 
       const f = async (id) => id ? this.fetchProductsByCat(id) : Promise.resolve([])
-      const [rentItems, buyItems, accItems, sklItems] = await Promise.all([
-        f(catIds.rent), f(catIds.buy), f(catIds.accessory), f(catIds.skill),
+      const brandPromise = (typeof brandApi !== 'undefined' && brandApi.list)
+        ? brandApi.list().catch(() => null)
+        : Promise.resolve(null)
+      const [rentItems, buyItems, accItems, sklItems, brandRes] = await Promise.all([
+        f(catIds.rent), f(catIds.buy), f(catIds.accessory), f(catIds.skill), brandPromise,
       ])
-      _catalogRawCache = { rent: rentItems, buy: buyItems, accessory: accItems, skill: sklItems }
+      const brandData = brandRes && brandRes.data ? brandRes.data : null
+      _catalogRawCache = {
+        rent: rentItems,
+        buy: buyItems,
+        accessory: accItems,
+        skill: sklItems,
+        brands: brandData && Array.isArray(brandData.brands) ? brandData.brands : null,
+        robot_types: brandData && Array.isArray(brandData.robot_types) ? brandData.robot_types : null,
+      }
       _catalogCachedAt = Date.now()
       this.applyCatalog(_catalogRawCache)
       this.catalogLoading = false
@@ -1810,14 +1846,20 @@ export default {
         this.catalogError = '目录加载失败'
       }
     },
-    // 错误态「重试」:先作废 5 分钟缓存,再重拉 —— 否则 TTL 内会直接命中失败前的空缓存
+    // 错误态「重试」:先作废缓存,再重拉 —— 否则 TTL 内会直接命中失败前的空缓存
     reloadCatalog() {
       _catalogRawCache = null
       _catalogCachedAt = 0
       return this.loadCatalog()
     },
-    // 原始商品数组 → 四个目录(纯展示映射,缓存命中与首拉共用一条路径)
+    // 原始商品数组 → 四个目录 + 品牌/形态元数据
     applyCatalog(raw) {
+      if (Array.isArray(raw.brands)) {
+        this.backendBrands = raw.brands
+      }
+      if (Array.isArray(raw.robot_types) && raw.robot_types.length) {
+        this.rentTypeOptions = raw.robot_types
+      }
       this.rentCatalog = (raw.rent || []).map(p => this.mapCatalogProduct(p, 'rent'))
       this.buyCatalog = (raw.buy || []).map(p => this.mapCatalogProduct(p, 'buy'))
       this.accessoryCatalog = (raw.accessory || []).map(p => this.mapCatalogProduct(p, 'accessory'))
@@ -1836,15 +1878,35 @@ export default {
       const images = pickGalleryImages(p).map(url => this.normalizeImageUrl(url)).filter(Boolean)
       const cover = this.normalizeImageUrl(pickBaseImage(p)) || images[0] || catalogFallbackImage(catalogKind, p.id)
       const iconMap = { rent: '🤖', buy: '🤖', accessory: '🧩', skill: '💡' }
+      const resolvedBrand = p.brand && p.brand.code ? p.brand : null
+      const activeBrands = this.brandList && this.brandList.length ? this.brandList : FALLBACK_BRANDS
+      const brandCode = resolvedBrand ? resolvedBrand.code : detectBrandKey(p.name, activeBrands)
+      const resolvedType = p.robot_type && p.robot_type.code ? p.robot_type : null
+      const typeCode = resolvedType ? resolvedType.code : detectTypeKey(p.name)
+      const typeOption = (this.rentTypeOptions || []).find(o => o.code === typeCode)
+      const typeLabel = resolvedType ? resolvedType.label : (typeOption ? typeOption.label : '')
+      const raasMeta = p.raas_meta && typeof p.raas_meta === 'object' ? p.raas_meta : null
+      let raasBadge = ''
+      if (raasMeta) {
+        if (raasMeta.models_count > 0) {
+          raasBadge = (raasMeta.active_models || raasMeta.models_count) + '款机型'
+        } else if (Array.isArray(raasMeta.comm_channels) && raasMeta.comm_channels.length) {
+          raasBadge = raasMeta.comm_channels.slice(0, 2).join('/')
+        } else if (raasMeta.min_rent_days > 1 && catalogKind === 'rent') {
+          raasBadge = raasMeta.min_rent_days + '天起租'
+        }
+      }
+      const plainDescription = String(p.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
       return {
         id: p.id,
+        uniqueKey: catalogKind + '-' + p.id,
         name: p.name || '商品',
         price: pricing.price,
         // 只有真实 regular > final 才有原价;缺价时不再用现价 ×1.2 编造折扣
         originalPrice: pricing.originalPrice,
         icon: iconMap[catalogKind] || '🤖',
         bg: '#F0F4FA',
-        scene: catalogKind === 'accessory' ? '配件' : (catalogKind === 'skill' ? '技能' : ''),
+        scene: catalogKind === 'accessory' ? '配件' : (catalogKind === 'skill' ? '技能' : typeLabel),
         sku: p.sku || '',
         image: cover,
         images: images.length ? images : [cover],
@@ -1852,11 +1914,18 @@ export default {
         bagistoId: p.id,
         bagistoPrice: pricing.price,
         bagistoDescription: fixDescUrls(p.description || ''),
+        bagistoAttributes: p.custom_attributes || null,
+        plainDescription,
         // 后台 `official` 属性(boolean)透出为“是/否”；只有明确为“是”才按官方自营表述
         official: !!(p.custom_attributes && p.custom_attributes.official && String(p.custom_attributes.official.value) === '是'),
-        // v1:品牌/类别按商品名推断(见 detectBrandKey/detectTypeKey);后续迁移为后台商品属性驱动
-        brand: detectBrandKey(p.name),
-        type: detectTypeKey(p.name),
+        brand: brandCode,
+        brandName: resolvedBrand ? resolvedBrand.name : '',
+        brandNameEn: resolvedBrand ? (resolvedBrand.name_en || '') : '',
+        brandAliases: resolvedBrand && Array.isArray(resolvedBrand.aliases) ? resolvedBrand.aliases : [],
+        type: typeCode,
+        typeLabel,
+        raasMeta,
+        raasBadge,
         rating: Number((p.ratings && p.ratings.average) || 0),
         reviewCount: Number((p.reviews && p.reviews.total) || 0),
         salesCount: Number((p.sales && p.sales.total) || 0),
@@ -1868,8 +1937,16 @@ export default {
     this.refreshWishlist()
     this.$nextTick(() => { if (this.currentTab === 'skill' && this.$refs.skillMarket) this.$refs.skillMarket.refresh() })
     const tab = uni.getStorageSync('robotTab')
-    if (tab && ['rent', 'scene', 'buy', 'skill', 'accessory'].includes(tab)) {
-      this.currentTab = tab
+    if (tab && ['tob', 'rent', 'scene', 'buy', 'skill', 'accessory'].includes(tab)) {
+      if (tab === 'rent' || tab === 'buy') {
+        this.currentTab = 'tob'
+        this.tobSubTab = tab
+      } else if (tab === 'tob') {
+        this.currentTab = 'tob'
+        this.tobSubTab = 'all'
+      } else {
+        this.currentTab = tab
+      }
       uni.removeStorageSync('robotTab')
     }
 
@@ -1880,7 +1957,12 @@ export default {
         ? wishlistProduct.catalog_type
         : 'buy'
       const mapped = this.mapCatalogProduct(wishlistProduct.product, kind)
-      this.currentTab = kind
+      if (kind === 'rent' || kind === 'buy') {
+        this.currentTab = 'tob'
+        this.tobSubTab = kind
+      } else {
+        this.currentTab = kind
+      }
       if (kind === 'accessory') this.onAccessory(mapped, false)
       else if (kind === 'skill') this.onSkill(mapped)
       else this.goDetail(mapped)
@@ -1962,23 +2044,24 @@ page {
 }
 
 /* ============================================================ */
-/* ===== 顶部 Tab（五个主Tab） - 蓝色框架（下划线） ===== */
+/* ===== 顶部 Tab（四个主Tab：租售 TOB | 场景 | 技能 | 配件） ===== */
 .top-tabs {
   display: flex;
   background: #EEF4FF;
-  padding: 140rpx 20rpx 0;  /* 左右各留 20rpx：首格左边、末格右边不贴屏幕边，正方形才完整 */
+  padding: 140rpx 20rpx 0;
   flex-shrink: 0;
   /* 刻意不写 border-bottom：选中方块要与下方白色内容区连成一体，有线就割开了 */
 }
 .top-tabs .tab-item {
-  flex: 1;                 /* (750-20×2)/5 = 142rpx 宽 */
-  height: 142rpx;          /* 与格宽 142rpx 相等 → 正方形 */
-  line-height: 142rpx;     /* 垂直居中；不用 flex，<text> 上更稳 */
+  flex: 1;
+  height: 120rpx;
+  line-height: 120rpx;
   text-align: center;
-  font-size: 33rpx;
+  font-size: 31rpx;
   font-weight: 600;
   color: #1F2937;
   letter-spacing: 0.5rpx;
+  white-space: nowrap;
   transition: background 0.25s ease;
 }
 /* 激活态：整格铺白（原为蓝字 + 蓝下划线）。底边无线，视觉上与下方内容区连成一块 */
@@ -3460,6 +3543,87 @@ page {
 .plan-date-close { font-size: 30rpx; color: #94A3B8; padding: 6rpx 12rpx; }
 .plan-date-pv { height: 400rpx; }
 .plan-date-ok { margin-top: 24rpx; height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 42rpx; }
+
+/* ===== RaaS 品牌图标 / 租售 TOB 子切换栏 / 卡片标签 ===== */
+.brand-logo {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 10rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E2E8F0;
+  margin-bottom: 6rpx;
+}
+.brand-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+}
+.brand-hot-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #F59E0B;
+  flex-shrink: 0;
+}
+.tob-subbar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 10rpx 16rpx 4rpx;
+  background: #FFFFFF;
+  flex-shrink: 0;
+}
+.tob-sub-pill {
+  padding: 8rpx 22rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #475569;
+  background: #F1F5F9;
+  border-radius: 999rpx;
+  line-height: 1.3;
+}
+.tob-sub-pill.active {
+  color: #FFFFFF;
+  background: #165DFF;
+  font-weight: 600;
+}
+.card-tags-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6rpx;
+  margin-top: 4rpx;
+}
+.mode-tag {
+  font-size: 16rpx;
+  font-weight: 600;
+  padding: 2rpx 8rpx;
+  border-radius: 8rpx;
+  line-height: 1.3;
+}
+.mode-tag.rent {
+  color: #165DFF;
+  background: #EFF6FF;
+}
+.mode-tag.buy {
+  color: #059669;
+  background: #ECFDF5;
+}
+.raas-tag {
+  font-size: 16rpx;
+  color: #4338CA;
+  background: #EEF2FF;
+  padding: 2rpx 8rpx;
+  border-radius: 8rpx;
+  line-height: 1.3;
+}
+.price-unit {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #6B7280;
+  margin-left: 2rpx;
+}
 </style>
 
 <!-- ★ 全局：隐藏滚动条（已去通配符 *——新版 WXSS 不支持 `*`/`*::before`，改枚举实际滚动容器 page/scroll-view/uni-scroll-view；本页 scroll-view 均已带 show-scrollbar="false"，此块为兜底） -->

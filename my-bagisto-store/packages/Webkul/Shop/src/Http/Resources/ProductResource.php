@@ -61,6 +61,9 @@ class ProductResource extends JsonResource
                     ? null
                     : (int) $this->resource->getAttribute('sales_count'),
             ],
+            'brand'       => $this->resource->getAttribute('resolved_brand'),
+            'robot_type'  => $this->resource->getAttribute('resolved_robot_type'),
+            'raas_meta'   => $this->resource->getAttribute('resolved_raas_meta'),
         ];
     }
 

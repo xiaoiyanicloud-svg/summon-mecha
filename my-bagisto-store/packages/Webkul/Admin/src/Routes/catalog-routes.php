@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeController;
 use Webkul\Admin\Http\Controllers\Catalog\AttributeFamilyController;
 use Webkul\Admin\Http\Controllers\Catalog\AccessoryController;
+use Webkul\Admin\Http\Controllers\Catalog\CatalogBrandController;
 use Webkul\Admin\Http\Controllers\Catalog\CategoryController;
 use Webkul\Admin\Http\Controllers\Catalog\CompetitionAdminController;
 use Webkul\Admin\Http\Controllers\Catalog\CompetitionAppealAdminController;
@@ -529,6 +530,21 @@ Route::prefix('catalog')->group(function () {
         Route::get('', 'index')->name('admin.catalog.skill-review-moderation.index');
         Route::get('{id}', 'show')->whereNumber('id')->name('admin.catalog.skill-review-moderation.show');
         Route::post('{id}/moderate', 'moderate')->whereNumber('id')->name('admin.catalog.skill-review-moderation.moderate');
+    });
+
+    /**
+     * RaaS 品牌管理 CRUD（与 brand EAV 属性及 device_model.brand 联动）.
+     */
+    Route::controller(CatalogBrandController::class)->prefix('brands')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.brands.index');
+        Route::get('create', 'create')->name('admin.catalog.brands.create');
+        Route::post('create', 'store')->name('admin.catalog.brands.store');
+        Route::get('edit/{id}', 'edit')->whereNumber('id')->name('admin.catalog.brands.edit');
+        Route::put('edit/{id}', 'update')->whereNumber('id')->name('admin.catalog.brands.update');
+        Route::post('{id}/toggle-status', 'toggleStatus')->whereNumber('id')->name('admin.catalog.brands.toggle_status');
+        Route::post('{id}/toggle-hot', 'toggleHot')->whereNumber('id')->name('admin.catalog.brands.toggle_hot');
+        Route::post('sync-taxonomy', 'syncTaxonomy')->name('admin.catalog.brands.sync_taxonomy');
+        Route::delete('{id}', 'destroy')->whereNumber('id')->name('admin.catalog.brands.delete');
     });
 
     /**

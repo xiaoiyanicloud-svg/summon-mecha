@@ -37,7 +37,10 @@ export const accessoryCatalogApi = {
   detail: (id) => http.get(`/api/accessory-catalog/${id}`, { loading: false }),
 }
 
-// ==================== 分类 ====================
+// ==================== 分类与品牌 ====================
+export const brandApi = {
+  list: () => http.get('/api/brands', { loading: false }),
+}
 export const categoryApi = {
   getCategories: (params = {}) => http.get('/api/categories', { data: params, loading: false }),
   getCategoryTree: () => http.get('/api/categories/tree', { loading: false }),

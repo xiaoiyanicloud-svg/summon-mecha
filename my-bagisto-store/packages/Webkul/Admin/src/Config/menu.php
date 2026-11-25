@@ -108,6 +108,12 @@ return [
         'sort'       => 2,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.brands',
+        'name'       => '品牌管理',
+        'route'      => 'admin.catalog.brands.index',
+        'sort'       => 3,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.scenes',
         'name'       => 'admin::app.components.layouts.sidebar.scenes',
         'route'      => 'admin.catalog.scenes.index',

@@ -205,6 +205,26 @@ return [
         'route' => 'admin.catalog.categories.delete',
         'sort'  => 3,
     ], [
+        'key'   => 'catalog.brands',
+        'name'  => '品牌管理',
+        'route' => 'admin.catalog.brands.index',
+        'sort'  => 2,
+    ], [
+        'key'   => 'catalog.brands.create',
+        'name'  => 'admin::app.acl.create',
+        'route' => 'admin.catalog.brands.create',
+        'sort'  => 1,
+    ], [
+        'key'   => 'catalog.brands.edit',
+        'name'  => 'admin::app.acl.edit',
+        'route' => 'admin.catalog.brands.edit',
+        'sort'  => 2,
+    ], [
+        'key'   => 'catalog.brands.delete',
+        'name'  => 'admin::app.acl.delete',
+        'route' => 'admin.catalog.brands.delete',
+        'sort'  => 3,
+    ], [
         'key'   => 'catalog.scenes',
         'name'  => 'admin::app.acl.scenes',
         'route' => 'admin.catalog.scenes.index',

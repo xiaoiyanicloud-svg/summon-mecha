@@ -55,7 +55,7 @@ class ProductController extends APIController
                 'exclude_ids'          => app(SkillMarketService::class)->unavailableProductIds(),
             ]));
 
-        $this->attachSalesCounts($products);
+        app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->attachCatalogMeta($products);
 
         if (! empty($query)) {
             /**
@@ -148,6 +148,7 @@ class ProductController extends APIController
         }
 
         $product = $this->productRepository->with('parent')->findOrFail($id);
+        app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->attachCatalogMeta([$product]);
 
         return new ProductResource($product);
     }

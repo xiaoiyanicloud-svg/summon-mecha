@@ -24,6 +24,8 @@ class CatalogController extends APIController
 
     public function index()
     {
+        $brandService = app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class);
+        $meta = $brandService->publicMetadata();
         $result = [];
 
         foreach (['rent', 'buy', 'accessory', 'skill'] as $slug) {
@@ -32,6 +34,9 @@ class CatalogController extends APIController
 
         // 场景复用 SceneController@index,与 /api/scenes 返回结构逐字段一致
         $result['scenes'] = (new SceneController)->index()->getData(true)['data'] ?? [];
+        $result['brands'] = $meta['brands'];
+        $result['robot_types'] = $meta['robot_types'];
+        $result['categories_meta'] = $this->categoriesMeta();
 
         return response()->json(['data' => $result]);
     }
@@ -62,7 +67,57 @@ class CatalogController extends APIController
             ]));
 
         $rows = method_exists($products, 'items') ? $products->items() : $products;
+        app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->attachCatalogMeta($rows);
 
         return array_map(fn ($p) => (new ProductResource($p))->jsonSerialize(), $rows);
+    }
+
+    /**
+     * 返回核心目录树元信息（tob -> rent/buy, skill, accessory），供前台动态对齐。
+     */
+    private function categoriesMeta(): array
+    {
+        $defaults = [
+            'tob'       => ['slug' => 'tob', 'name' => '租售 TOB', 'parent_slug' => 'root'],
+            'rent'      => ['slug' => 'rent', 'name' => '租赁', 'parent_slug' => 'tob'],
+            'buy'       => ['slug' => 'buy', 'name' => '购买', 'parent_slug' => 'tob'],
+            'skill'     => ['slug' => 'skill', 'name' => '技能', 'parent_slug' => 'root'],
+            'accessory' => ['slug' => 'accessory', 'name' => '配件', 'parent_slug' => 'root'],
+        ];
+
+        if (! \Illuminate\Support\Facades\Schema::hasTable('categories')
+            || ! \Illuminate\Support\Facades\Schema::hasTable('category_translations')) {
+            return $defaults;
+        }
+
+        $locale = app()->getLocale() ?: 'zh_CN';
+        $rows = \Illuminate\Support\Facades\DB::table('categories as c')
+            ->join('category_translations as ct', 'ct.category_id', '=', 'c.id')
+            ->whereIn('ct.slug', array_keys($defaults))
+            ->where(function ($q) use ($locale) {
+                $q->where('ct.locale', $locale)->orWhere('ct.locale', 'zh_CN');
+            })
+            ->select('c.id', 'c.parent_id', 'c.status', 'c.position', 'ct.slug', 'ct.name', 'ct.locale')
+            ->get();
+
+        foreach ($rows as $row) {
+            if (! isset($defaults[$row->slug]) || ($defaults[$row->slug]['_locale'] ?? null) === $locale) {
+                continue;
+            }
+            $defaults[$row->slug] = array_merge($defaults[$row->slug], [
+                'id'        => (int) $row->id,
+                'parent_id' => $row->parent_id ? (int) $row->parent_id : null,
+                'status'    => (bool) $row->status,
+                'position'  => (int) $row->position,
+                'name'      => $row->name ?: $defaults[$row->slug]['name'],
+                '_locale'   => $row->locale,
+            ]);
+        }
+
+        foreach ($defaults as &$item) {
+            unset($item['_locale']);
+        }
+
+        return $defaults;
     }
 }

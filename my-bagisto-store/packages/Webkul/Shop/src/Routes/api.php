@@ -13,6 +13,7 @@ use Webkul\Shop\Http\Controllers\API\NotificationController;
 use Webkul\Shop\Http\Controllers\API\PaymentCallbackController;
 use Webkul\Shop\Http\Controllers\API\PaymentController;
 use Webkul\Shop\Http\Controllers\API\AsrController;
+use Webkul\Shop\Http\Controllers\API\BrandController;
 use Webkul\Shop\Http\Controllers\API\CatalogController;
 use Webkul\Shop\Http\Controllers\API\CartController;
 use Webkul\Shop\Http\Controllers\API\CategoryController;
@@ -79,6 +80,9 @@ Route::group(['prefix' => 'api'], function () {
 
         Route::get('max-price/{id?}', 'getProductMaxPrice')->name('shop.api.categories.max_price');
     });
+
+    // RaaS 品牌与机器人形态字典
+    Route::get('brands', [BrandController::class, 'index'])->name('shop.api.brands.index');
 
     /**
      * 静态内容页（隐私政策 / 使用条款 / 关于我们 …）—— uni-app 的只读出口。

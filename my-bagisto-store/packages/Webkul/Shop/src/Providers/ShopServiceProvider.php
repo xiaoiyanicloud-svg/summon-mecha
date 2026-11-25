@@ -85,6 +85,8 @@ class ShopServiceProvider extends ServiceProvider
                 // 配件皮肤 P1：分类树安装（默认 dry-run）与上架前置校验（只读）
                 \Webkul\Shop\Console\Commands\AccessoryInstallTaxonomy::class,
                 \Webkul\Shop\Console\Commands\AccessoryDataPreflight::class,
+                // RaaS 目录重构：品牌主数据与 TOB/形态分类树安装
+                \Webkul\Shop\Console\Commands\InstallRaaSCatalogTaxonomy::class,
             ]);
         }
     }
