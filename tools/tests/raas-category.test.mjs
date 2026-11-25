@@ -275,3 +275,121 @@ test('detailSpecs 注入真实品牌/形态/RaaS 元信息，sceneSearchQ 过滤
   assert.equal(state.fromAi, true)
   assert.equal(state.selectedProduct.id, 301)
 })
+
+test('首页我要租用/热门品牌入口修正，与 checkout 未分类机器显示标准文案', async () => {
+  const home = await readFile(new URL('../../pages/home/index.vue', import.meta.url), 'utf8')
+  assert.match(home, /onRent\(\)\s*\{\s*uni\.setStorageSync\('robotTab', 'rent'\)/)
+  assert.match(home, /goBrandBuy\(\)\s*\{\s*uni\.setStorageSync\('robotTab', 'tob'\)/)
+
+  const checkout = await readFile(new URL('../../pages/order/checkout.vue', import.meta.url), 'utf8')
+  assert.match(checkout, /productTypeLabel\(\)[\s\S]*?\|\| '标准'/)
+  assert.doesNotMatch(checkout, /productTypeLabel\(\)[\s\S]*?\|\| '人形'/)
+})
+
+test('租购同款切换、min_rent_days 前置拦截、+方案起租天数自动抬升、筛选胶囊与 robotBrand 深链', async () => {
+  const toasts = []
+  const { component, storage } = await loadRobotComponent({
+    uni: {
+      navigateTo() {},
+      switchTab() {},
+      showToast: v => toasts.push(v && v.title ? v.title : ''),
+      getStorageSync: k => storage.get(k),
+      setStorageSync: (k, v) => storage.set(k, v),
+      removeStorageSync: k => storage.delete(k),
+      getImageInfo() {},
+    },
+  })
+  const state = bindComponentState(component)
+  state.applyCatalog({
+    brands: [
+      { code: 'yushu', name: '宇树', is_hot: true, status: true },
+    ],
+    rent: [
+      {
+        id: 401,
+        sku: 'UNI-G1-RENT',
+        name: '宇树 G1 双足机器（租赁版）',
+        prices: { final: { price: 2800 } },
+        brand: { code: 'yushu', name: '宇树' },
+        robot_type: { code: 'humanoid', label: '人形' },
+        raas_meta: {
+          min_rent_days: 5,
+          compatible_model_names: ['Unitree G1'],
+          rental_plans: [{ name: '五日起租特惠' }],
+          param_specs: [{ name: '续航时间', value: '4小时' }],
+        },
+      },
+    ],
+    buy: [
+      {
+        id: 402,
+        sku: 'UNI-G1-BUY',
+        name: '宇树 G1 双足机器（购买版）',
+        prices: { final: { price: 99000 } },
+        brand: { code: 'yushu', name: '宇树' },
+        robot_type: { code: 'humanoid', label: '人形' },
+      },
+    ],
+    accessory: [],
+    skill: [],
+  })
+
+  // 1. robotBrand + robotType 深链直达
+  storage.set('robotTab', 'rent')
+  storage.set('robotBrand', 'yushu')
+  storage.set('robotType', 'humanoid')
+  state.refreshWishlist = () => {}
+  state.loadCatalog = async () => {}
+  state.refreshScenes = () => {}
+  state.hintShow = () => {}
+  state.$nextTick = fn => fn()
+  component.onShow.call(state)
+  assert.equal(state.currentTab, 'tob')
+  assert.equal(state.tobSubTab, 'rent')
+  assert.equal(state.currentBrand, 'yushu')
+  assert.equal(state.currentType, 'humanoid')
+  assert.equal(state.hasActiveTobFilters, true)
+  assert.equal(state.currentBrandLabel, '宇树')
+
+  // resetTobFilters 一键恢复全部
+  state.resetTobFilters()
+  assert.equal(state.hasActiveTobFilters, false)
+  assert.equal(state.currentBrand, 'all')
+
+  // 2. 同款租购快速切换 & 商户 param_specs/compatible_model_names 注入 detailSpecs
+  state.loadRelatedProducts = () => {}
+  state.goDetail(state.rentCatalog[0])
+  assert.equal(state.siblingTobProduct.id, 402)
+  const specMap = Object.fromEntries(Array.from(state.detailSpecs, s => [s.name, s.value]))
+  assert.equal(specMap['适配机型'], 'Unitree G1')
+  assert.equal(specMap['租期方案'], '五日起租特惠')
+  assert.equal(specMap['续航时间'], '4小时')
+
+  state.switchToSiblingTobProduct()
+  assert.equal(state.selectedProduct.id, 402)
+  assert.equal(state.actionType, 'buy')
+  assert.equal(state.tobSubTab, 'buy')
+  assert.equal(state.siblingTobProduct.id, 401)
+  state.switchToSiblingTobProduct()
+  assert.equal(state.actionType, 'rent')
+
+  // 3. openRentModal 自动匹配 >= min_rent_days(5) 的首个选项 7天，且阻止选 1天/3天
+  state.openRentModal()
+  assert.equal(state.selectedProductMinDays, 5)
+  assert.equal(state.rentPeriodOptions[state.rentForm.daysIndex], '7天')
+  state.selectRentPeriod(0, '1天')
+  assert.equal(state.rentPeriodOptions[state.rentForm.daysIndex], '7天')
+  assert.match(toasts[toasts.length - 1], /最低起租 5 天/)
+
+  // 4. +方案 选择最低起租 5 天的设备时自动抬升 planDays，若强行调低提交则拦下
+  state.loadCustomPlans = () => {}
+  state.enterCustomPlanMode()
+  state.togglePlanItem(state.rentCatalog[0])
+  assert.equal(state.planMinDaysRequired, 5)
+  assert.equal(state.planDays, 5)
+  state.planDays = 2
+  state.reloadCatalog = async () => {}
+  await state.submitCustomPlanOrder()
+  assert.equal(state.planDays, 5)
+  assert.match(toasts[toasts.length - 1], /最低起租 5 天/)
+})

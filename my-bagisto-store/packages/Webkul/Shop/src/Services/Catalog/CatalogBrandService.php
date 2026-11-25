@@ -385,8 +385,18 @@ class CatalogBrandService
         $ids = $items->pluck('id')->filter()->map(fn ($id) => (int) $id)->values()->all();
         $brands = $this->loadBrandCollection(includeDisabled: true);
         $deviceModelsByBrand = $this->loadDeviceModelsByBrand();
+        $deviceModelsByCode = $deviceModelsByBrand->flatten(1)->keyBy('model_code');
         $merchantExts = ($ids !== [] && Schema::hasTable('merchant_product_exts'))
             ? DB::table('merchant_product_exts')->whereIn('product_id', $ids)->get()->keyBy('product_id')
+            : collect();
+        $rentalPlansByProduct = ($ids !== [] && Schema::hasTable('merchant_rental_plans'))
+            ? DB::table('merchant_rental_plans')
+                ->whereIn('product_id', $ids)
+                ->where('enabled', 1)
+                ->orderBy('min_days')
+                ->orderBy('id')
+                ->get()
+                ->groupBy('product_id')
             : collect();
 
         $optionValues = $this->loadSelectOptionIds($ids, ['brand', 'robot_type']);
@@ -402,11 +412,204 @@ class CatalogBrandService
 
             $ext = $merchantExts->get($pid);
             $models = ($brand && $brand->device_brand) ? $deviceModelsByBrand->get($brand->device_brand, collect()) : collect();
+            $plans = $rentalPlansByProduct->get($pid, collect());
 
             $product->setAttribute('resolved_brand', $brand ? $this->serializeBrand($brand, $models) : null);
             $product->setAttribute('resolved_robot_type', $robotType);
-            $product->setAttribute('resolved_raas_meta', $this->buildRaasMeta($ext, $models));
+            $product->setAttribute('resolved_raas_meta', $this->buildRaasMeta($ext, $models, $deviceModelsByCode, $plans));
         }
+    }
+
+    /**
+     * 解析买家侧 `/api/products` 的扩展查询参数：
+     * - `category_slug` (`tob` 展开为 `tob,rent,buy`；其它 slug 映射到对应 `category_id`)
+     * - `brand`（如传编码 `yushu` 自动转换成对应的 `brand` 属性选项 ID）
+     * - `robot_type`（如传形态编码 `humanoid` 自动转换成 `robot_type` 属性选项 ID）
+     */
+    public function resolveProductQueryParams(array $query): array
+    {
+        $resolved = $query;
+
+        $slug = trim((string) ($query['category_slug'] ?? ''));
+        if ($slug !== '' && empty($query['category_id']) && Schema::hasTable('category_translations')) {
+            $slugs = $slug === 'tob' ? ['tob', 'rent', 'buy'] : [$slug];
+            $catIds = DB::table('category_translations')
+                ->whereIn('slug', $slugs)
+                ->distinct()
+                ->pluck('category_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->values()
+                ->all();
+
+            if ($catIds === []) {
+                $resolved['__force_empty'] = true;
+            } else {
+                $resolved['category_id'] = implode(',', $catIds);
+            }
+        }
+        unset($resolved['category_slug']);
+
+        if (isset($query['brand']) && (string) $query['brand'] !== '') {
+            $rawBrand = trim((string) $query['brand']);
+            if (! ctype_digit($rawBrand) && ! str_contains($rawBrand, ',')) {
+                $optionId = Schema::hasTable('catalog_brands')
+                    ? (int) DB::table('catalog_brands')->where('code', strtolower($rawBrand))->value('attribute_option_id')
+                    : 0;
+                if (! $optionId && Schema::hasTable('attributes') && Schema::hasTable('attribute_options')) {
+                    $brandAttrId = (int) DB::table('attributes')->where('code', 'brand')->value('id');
+                    $seedName = collect(self::defaultBrandSeeds())->firstWhere('code', strtolower($rawBrand))['name'] ?? null;
+                    if ($brandAttrId && $seedName) {
+                        $optionId = (int) DB::table('attribute_options')
+                            ->where('attribute_id', $brandAttrId)
+                            ->where('admin_name', $seedName)
+                            ->value('id');
+                    }
+                }
+                if ($optionId > 0) {
+                    $resolved['brand'] = (string) $optionId;
+                } else {
+                    $resolved['__force_empty'] = true;
+                }
+            }
+        }
+
+        if (isset($query['robot_type']) && (string) $query['robot_type'] !== '') {
+            $rawType = trim((string) $query['robot_type']);
+            if (! ctype_digit($rawType) && ! str_contains($rawType, ',')) {
+                $label = CatalogBrand::ROBOT_TYPES[strtolower($rawType)] ?? null;
+                $typeOptionId = 0;
+                if ($label && Schema::hasTable('attributes') && Schema::hasTable('attribute_options')) {
+                    $typeAttrId = (int) DB::table('attributes')->where('code', 'robot_type')->value('id');
+                    if ($typeAttrId) {
+                        $typeOptionId = (int) DB::table('attribute_options')
+                            ->where('attribute_id', $typeAttrId)
+                            ->where('admin_name', $label)
+                            ->value('id');
+                    }
+                }
+                if ($typeOptionId > 0) {
+                    $resolved['robot_type'] = (string) $typeOptionId;
+                } else {
+                    $resolved['__force_empty'] = true;
+                }
+            }
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * 为指定商品写入结构化的 `brand` / `robot_type` EAV 属性值（供商家建品与回扫脚本复用）。
+     */
+    public function assignProductAttributes(
+        int $productId,
+        ?string $brandCode = null,
+        ?string $robotTypeCode = null,
+        bool $onlyIfEmpty = false
+    ): array {
+        $result = ['brand_assigned' => false, 'robot_type_assigned' => false, 'brand' => null, 'robot_type' => null];
+        if (! Schema::hasTable('product_attribute_values') || ! Schema::hasTable('attributes')) {
+            return $result;
+        }
+
+        if ($brandCode !== null && trim($brandCode) !== '') {
+            $normCode = strtolower(trim($brandCode));
+            $brand = Schema::hasTable('catalog_brands')
+                ? CatalogBrand::query()->where('code', $normCode)->first()
+                : null;
+            if ($brand) {
+                $optId = $this->syncAttributeOption($brand) ?: (int) $brand->attribute_option_id;
+                $brandAttrId = (int) DB::table('attributes')->where('code', 'brand')->value('id');
+                if ($brandAttrId && $optId > 0) {
+                    $written = $this->upsertProductSelectAttribute($productId, $brandAttrId, $optId, 'brand', $onlyIfEmpty);
+                    $result['brand_assigned'] = $written;
+                    $result['brand'] = ['code' => $brand->code, 'name' => $brand->name, 'option_id' => $optId];
+                }
+            }
+        }
+
+        if ($robotTypeCode !== null && trim($robotTypeCode) !== '') {
+            $normType = strtolower(trim($robotTypeCode));
+            $label = CatalogBrand::ROBOT_TYPES[$normType] ?? null;
+            $typeAttrId = (int) DB::table('attributes')->where('code', 'robot_type')->value('id');
+            if ($label && $typeAttrId && Schema::hasTable('attribute_options')) {
+                $optId = (int) DB::table('attribute_options')
+                    ->where('attribute_id', $typeAttrId)
+                    ->where('admin_name', $label)
+                    ->value('id');
+                if ($optId > 0) {
+                    $written = $this->upsertProductSelectAttribute($productId, $typeAttrId, $optId, 'robot_type', $onlyIfEmpty);
+                    $result['robot_type_assigned'] = $written;
+                    $result['robot_type'] = ['code' => $normType, 'label' => $label, 'option_id' => $optId];
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * 幂等回扫尚未填写 `brand`/`robot_type` EAV 属性的存量商品（永不覆盖人工已指定值）。
+     */
+    public function backfillProductAttributes(bool $apply = true): array
+    {
+        $summary = ['apply' => $apply, 'scanned' => 0, 'brand_matched' => 0, 'type_matched' => 0, 'updated' => 0];
+        if (! Schema::hasTable('products')) {
+            return $summary;
+        }
+
+        $brands = $this->loadBrandCollection(includeDisabled: true);
+        if ($apply) {
+            foreach ($brands as $b) {
+                if ($b->exists) {
+                    $this->syncAttributeOption($b);
+                }
+            }
+        }
+
+        $nameExpr = Schema::hasTable('product_flat')
+            ? DB::table('products as p')
+                ->leftJoin('product_flat as pf', 'pf.product_id', '=', 'p.id')
+                ->select('p.id', DB::raw('MAX(pf.name) as name'))
+                ->groupBy('p.id')
+                ->get()
+            : DB::table('products')->select('id', 'name')->get();
+
+        $ids = $nameExpr->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $existing = $this->loadSelectOptionIds($ids, ['brand', 'robot_type']);
+
+        foreach ($nameExpr as $row) {
+            $pid = (int) $row->id;
+            $summary['scanned']++;
+            $hasBrand = ! empty($existing[$pid]['brand']['option_id']);
+            $hasType = ! empty($existing[$pid]['robot_type']['option_id']);
+            $name = (string) ($row->name ?? '');
+
+            $matchedBrand = ! $hasBrand ? $this->matchBrand($brands, null, null, $name) : null;
+            $matchedType = ! $hasType ? $this->matchRobotType(null, $name) : null;
+
+            if ($matchedBrand) {
+                $summary['brand_matched']++;
+            }
+            if ($matchedType) {
+                $summary['type_matched']++;
+            }
+
+            if ($apply && ($matchedBrand || $matchedType)) {
+                $res = $this->assignProductAttributes(
+                    $pid,
+                    $matchedBrand?->code,
+                    $matchedType['code'] ?? null,
+                    onlyIfEmpty: true
+                );
+                if ($res['brand_assigned'] || $res['robot_type_assigned']) {
+                    $summary['updated']++;
+                }
+            }
+        }
+
+        return $summary;
     }
 
     /** 公开前台接口用：返回所有启用的品牌（按 sort_order 升序）及标准形态目录。 */
@@ -571,27 +774,126 @@ class CatalogBrandService
         ];
     }
 
-    private function buildRaasMeta(?object $ext, Collection $models): ?array
-    {
-        if (! $ext && $models->isEmpty()) {
+    private function upsertProductSelectAttribute(
+        int $productId,
+        int $attributeId,
+        int $optionId,
+        string $code,
+        bool $onlyIfEmpty
+    ): bool {
+        $existing = DB::table('product_attribute_values')
+            ->where('product_id', $productId)
+            ->where('attribute_id', $attributeId)
+            ->first();
+
+        if ($onlyIfEmpty && $existing && ! empty($existing->integer_value)) {
+            return false;
+        }
+
+        if ($existing) {
+            DB::table('product_attribute_values')
+                ->where('id', $existing->id)
+                ->update(['integer_value' => $optionId]);
+        } else {
+            $payload = [
+                'product_id'    => $productId,
+                'attribute_id'  => $attributeId,
+                'integer_value' => $optionId,
+            ];
+            if (Schema::hasColumn('product_attribute_values', 'channel')) {
+                $payload['channel'] = null;
+            }
+            if (Schema::hasColumn('product_attribute_values', 'locale')) {
+                $payload['locale'] = null;
+            }
+            if (Schema::hasColumn('product_attribute_values', 'unique_id')) {
+                $payload['unique_id'] = $productId.'|'.$attributeId;
+            }
+            DB::table('product_attribute_values')->insert($payload);
+        }
+
+        if (Schema::hasTable('product_flat') && Schema::hasColumn('product_flat', $code)) {
+            DB::table('product_flat')->where('product_id', $productId)->update([$code => $optionId]);
+        }
+
+        return true;
+    }
+
+    private function buildRaasMeta(
+        ?object $ext,
+        Collection $models,
+        ?Collection $deviceModelsByCode = null,
+        ?Collection $rentalPlans = null
+    ): ?array {
+        $explicitModels = collect();
+        if ($ext && ! empty($ext->compatible_models) && $deviceModelsByCode) {
+            $codes = is_array($ext->compatible_models)
+                ? $ext->compatible_models
+                : (json_decode((string) $ext->compatible_models, true) ?: []);
+            foreach ($codes as $mc) {
+                if ($dm = $deviceModelsByCode->get((string) $mc)) {
+                    $explicitModels->push($dm);
+                }
+            }
+        }
+
+        $mergedModels = $explicitModels->isNotEmpty()
+            ? $explicitModels
+            : $models;
+        $plans = $rentalPlans ?? collect();
+
+        if (! $ext && $mergedModels->isEmpty() && $plans->isEmpty()) {
             return null;
         }
 
-        $activeModels = $models->where('status', DeviceModel::STATUS_ACTIVE);
+        $activeModels = $mergedModels->where('status', DeviceModel::STATUS_ACTIVE);
         $channels = $activeModels
             ->flatMap(fn ($m) => json_decode((string) ($m->comm_channels ?? '[]'), true) ?: [])
             ->unique()->values()->all();
 
+        $paramSpecs = [];
+        if ($ext && ! empty($ext->param_specs)) {
+            $rawSpecs = is_array($ext->param_specs)
+                ? $ext->param_specs
+                : (json_decode((string) $ext->param_specs, true) ?: []);
+            foreach ($rawSpecs as $k => $v) {
+                if (is_array($v) && ! empty($v['name']) && isset($v['value']) && trim((string) $v['value']) !== '') {
+                    $paramSpecs[] = ['name' => trim((string) $v['name']), 'value' => trim((string) $v['value'])];
+                } elseif (is_string($k) && $k !== '' && (is_scalar($v) && trim((string) $v) !== '')) {
+                    $paramSpecs[] = ['name' => $k, 'value' => trim((string) $v)];
+                }
+            }
+        }
+
+        $planSummaries = $plans->map(fn ($rp) => [
+            'name'            => (string) $rp->name,
+            'period_unit'     => (string) $rp->period_unit,
+            'min_days'        => (int) $rp->min_days,
+            'max_days'        => (int) $rp->max_days,
+            'base_price_yuan' => number_format(((int) $rp->base_price_cents) / 100, 2, '.', ''),
+        ])->values()->all();
+
+        $effectiveMinDays = $ext ? (int) ($ext->min_rent_days ?? 1) : 1;
+        if ($plans->isNotEmpty()) {
+            $planMin = (int) $plans->min('min_days');
+            if ($planMin > $effectiveMinDays) {
+                $effectiveMinDays = $planMin;
+            }
+        }
+
         return [
-            'fulfillment_type' => $ext ? (string) $ext->fulfillment_type : null,
-            'daily_rent_yuan'  => ($ext && $ext->daily_rent_cents > 0) ? number_format($ext->daily_rent_cents / 100, 2, '.', '') : null,
-            'deposit_yuan'     => ($ext && $ext->deposit_cents > 0) ? number_format($ext->deposit_cents / 100, 2, '.', '') : null,
-            'min_rent_days'    => $ext ? (int) ($ext->min_rent_days ?? 1) : null,
-            'rentable_stock'   => $ext ? (int) ($ext->rentable_stock ?? 0) : null,
-            'sellable_stock'   => $ext ? (int) ($ext->sellable_stock ?? 0) : null,
-            'models_count'     => $models->count(),
-            'active_models'    => $activeModels->count(),
-            'comm_channels'    => $channels,
+            'fulfillment_type'       => $ext ? (string) $ext->fulfillment_type : null,
+            'daily_rent_yuan'        => ($ext && $ext->daily_rent_cents > 0) ? number_format($ext->daily_rent_cents / 100, 2, '.', '') : null,
+            'deposit_yuan'           => ($ext && $ext->deposit_cents > 0) ? number_format($ext->deposit_cents / 100, 2, '.', '') : null,
+            'min_rent_days'          => $ext || $plans->isNotEmpty() ? $effectiveMinDays : null,
+            'rentable_stock'         => $ext ? (int) ($ext->rentable_stock ?? 0) : null,
+            'sellable_stock'         => $ext ? (int) ($ext->sellable_stock ?? 0) : null,
+            'models_count'           => $mergedModels->count(),
+            'active_models'          => $activeModels->count(),
+            'compatible_model_names' => $activeModels->pluck('model_name')->values()->all(),
+            'comm_channels'          => $channels,
+            'param_specs'            => $paramSpecs,
+            'rental_plans'           => $planSummaries,
         ];
     }
 }

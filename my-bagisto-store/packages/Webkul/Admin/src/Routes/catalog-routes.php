@@ -544,6 +544,7 @@ Route::prefix('catalog')->group(function () {
         Route::post('{id}/toggle-status', 'toggleStatus')->whereNumber('id')->name('admin.catalog.brands.toggle_status');
         Route::post('{id}/toggle-hot', 'toggleHot')->whereNumber('id')->name('admin.catalog.brands.toggle_hot');
         Route::post('sync-taxonomy', 'syncTaxonomy')->name('admin.catalog.brands.sync_taxonomy');
+        Route::post('backfill-products', 'backfillProducts')->name('admin.catalog.brands.backfill_products');
         Route::delete('{id}', 'destroy')->whereNumber('id')->name('admin.catalog.brands.delete');
     });
 

@@ -251,6 +251,8 @@ class MerchantApiController extends APIController
         $validated = $request->validate([
             'name'                => ['required', 'string', 'max:180'],
             'sku'                 => ['nullable', 'string', 'max:64'],
+            'brand_code'          => ['nullable', 'string', 'max:64'],
+            'robot_type'          => ['nullable', 'string', 'in:humanoid,quadruped,delivery,cleaning,reception,inspection,arm,companion'],
             'product_type'        => ['required', 'string', 'in:sale_robot,rental_robot,accessory'],
             'fulfillment_type'    => ['nullable', 'string', 'in:sale,rental'],
             'price_cents'         => ['required', 'integer', 'min:0'],
@@ -296,6 +298,8 @@ class MerchantApiController extends APIController
 
         $validated = $request->validate([
             'name'                => ['sometimes', 'string', 'max:180'],
+            'brand_code'          => ['sometimes', 'nullable', 'string', 'max:64'],
+            'robot_type'          => ['sometimes', 'nullable', 'string', 'in:humanoid,quadruped,delivery,cleaning,reception,inspection,arm,companion'],
             'product_type'        => ['sometimes', 'string', 'in:sale_robot,rental_robot,accessory'],
             'fulfillment_type'    => ['sometimes', 'string', 'in:sale,rental'],
             'price_cents'         => ['sometimes', 'integer', 'min:0'],

@@ -232,6 +232,34 @@ class TobOrderController extends APIController
 
                 $days = $type === 'rent' ? $line['rent_days'] : 1;
 
+                if ($type === 'rent') {
+                    $minRentDays = 1;
+                    if (\Illuminate\Support\Facades\Schema::hasTable('merchant_product_exts')) {
+                        $extMin = (int) \Illuminate\Support\Facades\DB::table('merchant_product_exts')
+                            ->where('product_id', $product->id)
+                            ->value('min_rent_days');
+                        if ($extMin > $minRentDays) {
+                            $minRentDays = $extMin;
+                        }
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasTable('merchant_rental_plans')) {
+                        $planMin = (int) \Illuminate\Support\Facades\DB::table('merchant_rental_plans')
+                            ->where('product_id', $product->id)
+                            ->where('enabled', 1)
+                            ->min('min_days');
+                        if ($planMin > $minRentDays) {
+                            $minRentDays = $planMin;
+                        }
+                    }
+                    if ($minRentDays > 1 && $days < $minRentDays) {
+                        return $this->fail(
+                            ApiErrorCode::ORDER_VALIDATION_FAILED,
+                            "「{$product->name}」最低起租 {$minRentDays} 天（当前选择了 {$days} 天）。",
+                            422
+                        );
+                    }
+                }
+
                 // 单价:技能与配件都是**标准商品**,一律用服务端目录价,不接受客户端改价。
                 // 技能此前已有 M1 约束;配件是固定价电商,若沿用“前端确认价优先”,
                 // 任何客户端都能把配件改成任意价。其余类型(租/买)沿用既有议价流。

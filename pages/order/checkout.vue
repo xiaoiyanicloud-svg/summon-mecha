@@ -278,7 +278,7 @@ export default {
     },
     productTypeLabel() {
       const map = { humanoid: '人形', quadruped: '四足', delivery: '配送', cleaning: '清洁', reception: '迎宾', inspection: '巡检', arm: '机械臂', companion: '陪伴' }
-      return map[this.product.productType] || this.product.productType || '人形'
+      return map[this.product.productType] || this.product.productType || '标准'
     },
     // B-18:仅技能单展示优惠码输入(券只对技能单开放,其余类型走议价流,后端也会拒)
     isSkillOrder() {

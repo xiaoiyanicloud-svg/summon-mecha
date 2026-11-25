@@ -14,7 +14,9 @@ use Webkul\Shop\Services\Catalog\CatalogBrandService;
  */
 class InstallRaaSCatalogTaxonomy extends Command
 {
-    protected $signature = 'catalog:install-raas-taxonomy {--apply : 真正写入数据库；不加参数只做 dry-run}';
+    protected $signature = 'catalog:install-raas-taxonomy
+                            {--apply : 真正写入数据库；不加参数只做 dry-run}
+                            {--backfill : 同时对尚未绑定 brand/robot_type EAV 的存量商品执行自动回扫匹配}';
 
     protected $description = '安装或对齐 租售TOB(tob)->租赁(rent)/购买(buy) 分类树、机器人形态属性及品牌库（默认 dry-run）';
 
@@ -22,6 +24,10 @@ class InstallRaaSCatalogTaxonomy extends Command
     {
         $apply = (bool) $this->option('apply');
         $result = $brands->installRaaSTaxonomy($apply);
+
+        if ($this->option('backfill')) {
+            $result['backfill'] = $brands->backfillProductAttributes($apply);
+        }
 
         if (isset($result['error'])) {
             $this->error($result['error']);

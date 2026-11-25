@@ -10,6 +10,11 @@
                     @csrf
                     <button type="submit" class="secondary-button">同步 RaaS 分类与初始品牌</button>
                 </form>
+
+                <form method="POST" action="{{ route('admin.catalog.brands.backfill_products') }}">
+                    @csrf
+                    <button type="submit" class="transparent-button border border-gray-300">回扫存量商品品牌/形态</button>
+                </form>
             @endif
 
             @if (bouncer()->hasPermission('catalog.brands.create'))

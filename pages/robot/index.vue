@@ -127,6 +127,18 @@
         <view class="product-area-wrapper" v-show="currentTab === 'tob'">
         <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
           <view class="product-flex-wrapper">
+            <view class="active-filters-bar" v-if="hasActiveTobFilters">
+              <view class="af-chip" v-if="currentBrand !== 'all'" @tap="selectBrand('all')">
+                <text>{{ currentBrandLabel }}</text><text class="af-close">×</text>
+              </view>
+              <view class="af-chip" v-if="currentType !== 'all'" @tap="selectType('all')">
+                <text>{{ currentTypeLabel }}</text><text class="af-close">×</text>
+              </view>
+              <view class="af-chip" v-if="searchQ.trim()" @tap="searchQ = ''">
+                <text>关键词：{{ searchQ.trim() }}</text><text class="af-close">×</text>
+              </view>
+              <text class="af-reset" @tap="resetTobFilters">清空筛选</text>
+            </view>
             <view v-if="currentBrand === 'all'" class="enterprise-banner" @tap="goEnterprise">
               <view class="banner-left">
                 <text class="banner-icon"></text>
@@ -241,6 +253,11 @@
               <text class="detail-original" v-if="selectedProduct.originalPrice">¥{{ selectedProduct.originalPrice }}</text>
             </view>
             <text class="detail-name">{{ selectedProduct.name }}</text>
+            <view class="sibling-switch-card" v-if="siblingTobProduct" @tap="switchToSiblingTobProduct">
+              <text class="sibling-switch-tag">{{ siblingTobProduct.catalogKind === 'buy' ? '支持购买' : '支持租赁' }}</text>
+              <text class="sibling-switch-text">该机型另有{{ siblingTobProduct.catalogKind === 'buy' ? '买断采购' : '日租方案' }}（¥{{ siblingTobProduct.bagistoPrice || siblingTobProduct.price }}{{ siblingTobProduct.catalogKind === 'rent' ? '/天' : '' }}）</text>
+              <text class="sibling-switch-arrow">切换 ›</text>
+            </view>
             <!-- [LINK_TAG] 已隐藏"已对接官方商品"状态提示(原: ●已对接官方商品 / ●未对接官方商品) -->
           </view>
           <!-- 配件定制：只给报价入口，不显示固定总价 -->
@@ -403,9 +420,13 @@
           </picker-view>
 
           <!-- 租期点选 -->
+          <view class="sheet-min-tip" v-if="selectedProductMinDays > 1">
+            <text class="sheet-min-tip-text">该设备最低起租 {{ selectedProductMinDays }} 天</text>
+          </view>
           <view class="days-chips">
             <view class="days-chip" v-for="(op, i) in rentPeriodOptions" :key="op"
-                  :class="{ active: rentForm.daysIndex === i }" @tap="rentForm.daysIndex = i">{{ op }}</view>
+                  :class="{ active: rentForm.daysIndex === i, disabled: parseInt(op) < selectedProductMinDays }"
+                  @tap="selectRentPeriod(i, op)">{{ op }}</view>
           </view>
         </view>
 
@@ -444,7 +465,7 @@
         <view class="date-pill" @tap="planShowEndPicker = !planShowEndPicker">{{ planEndDate || '结束' }}<text class="pv-arrow">⌄</text></view>
       </view>
       <view class="scene-cart-row">
-        <text class="scene-cart-total">已选 <text class="cart-num">{{ selectedPlanItems.length }}</text> 台 · 共 <text class="cart-num">{{ planDays }}</text> 天<text class="cart-sum">¥{{ planTotal() }}</text></text>
+        <text class="scene-cart-total">已选 <text class="cart-num">{{ selectedPlanItems.length }}</text> 台 · 共 <text class="cart-num">{{ planDays }}</text> 天<text class="cart-min-note" v-if="planMinDaysRequired > 1">（最低{{ planMinDaysRequired }}天起租）</text><text class="cart-sum">¥{{ planTotal() }}</text></text>
       </view>
       <view class="scene-cart-actions">
         <view class="scene-cart-save" @tap="saveCustomPlan">保存方案</view>
@@ -847,6 +868,40 @@ export default {
           modelsCount: Number(b.models_count || 0),
         }))
     },
+    hasActiveTobFilters() {
+      return this.currentBrand !== 'all' || this.currentType !== 'all' || Boolean((this.searchQ || '').trim())
+    },
+    currentBrandLabel() {
+      if (this.currentBrand === 'all') return '全部品牌'
+      const hit = (this.brandList || []).find(b => b.code === this.currentBrand)
+      return hit ? hit.name : this.currentBrand
+    },
+    selectedProductMinDays() {
+      if (this.actionType !== 'rent' || !this.selectedProduct) return 1
+      return Math.max(1, Number((this.selectedProduct.raasMeta && this.selectedProduct.raasMeta.min_rent_days) || 1))
+    },
+    planMinDaysRequired() {
+      if (!Array.isArray(this.selectedPlanItems) || !this.selectedPlanItems.length) return 1
+      return this.selectedPlanItems.reduce((mx, item) => {
+        const d = Number((item && item.raasMeta && item.raasMeta.min_rent_days) || 1)
+        return Math.max(mx, Number.isFinite(d) && d > 0 ? d : 1)
+      }, 1)
+    },
+    siblingTobProduct() {
+      const p = this.selectedProduct
+      if (!p || (this.actionType !== 'rent' && this.actionType !== 'buy')) return null
+      const pool = this.actionType === 'rent' ? this.buyCatalog : this.rentCatalog
+      if (!Array.isArray(pool) || !pool.length) return null
+      const normSku = String(p.sku || '').toUpperCase().replace(/[-_](RENT|BUY)$/i, '')
+      if (normSku) {
+        const skuMatch = pool.find(item => String(item.sku || '').toUpperCase().replace(/[-_](RENT|BUY)$/i, '') === normSku)
+        if (skuMatch) return skuMatch
+      }
+      const normName = s => String(s || '').replace(/[\s(（【]*(租赁版|租用版|购买版|售卖版|租赁|租用|购买)[】）)\s]*/g, '').trim().toLowerCase()
+      const targetName = normName(p.name)
+      if (!targetName) return null
+      return pool.find(item => normName(item.name) === targetName && (!p.brand || !item.brand || item.brand === p.brand)) || null
+    },
     // 形态筛选标题：默认「全部形态」，选中后显示「人形形态」等
     currentTypeLabel() {
       if (this.currentType === 'all') return '全部形态'
@@ -952,6 +1007,20 @@ export default {
       }
       if (rm && rm.deposit_yuan && p.catalogKind === 'rent') {
         raasSpecs.push({ name: '参考押金', value: '¥' + rm.deposit_yuan })
+      }
+      if (rm && Array.isArray(rm.compatible_model_names) && rm.compatible_model_names.length && !seenNames.has('适配机型')) {
+        raasSpecs.push({ name: '适配机型', value: rm.compatible_model_names.join('、') })
+      }
+      if (rm && Array.isArray(rm.rental_plans) && rm.rental_plans.length && p.catalogKind === 'rent') {
+        raasSpecs.push({ name: '租期方案', value: rm.rental_plans.map(rp => rp.name).join(' / ') })
+      }
+      if (rm && Array.isArray(rm.param_specs) && rm.param_specs.length) {
+        for (const ps of rm.param_specs) {
+          if (ps && ps.name && ps.value && !seenNames.has(ps.name)) {
+            seenNames.add(ps.name)
+            raasSpecs.push({ name: ps.name, value: ps.value })
+          }
+        }
       }
       return [...raasSpecs, ...baseSpecs]
     },
@@ -1108,6 +1177,20 @@ export default {
     // 点击「分类」在下方就地展开 / 收起（原为弹窗）
     openTypePicker() { this.showTypePicker = !this.showTypePicker },
     selectBrand(brand) { this.currentBrand = brand },
+    resetTobFilters() {
+      this.currentBrand = 'all'
+      this.currentType = 'all'
+      this.searchQ = ''
+      this.currentSort = 'default'
+    },
+    switchToSiblingTobProduct() {
+      const sibling = this.siblingTobProduct
+      if (!sibling) return
+      if (sibling.catalogKind === 'rent' || sibling.catalogKind === 'buy') {
+        this.tobSubTab = sibling.catalogKind
+      }
+      this.goDetail(sibling)
+    },
     selectSceneCategory(category) { this.currentSceneCategory = category },
 
     // ===== 自定义方案：机器页多选 + 方案框 + 下单/保存 =====
@@ -1169,6 +1252,9 @@ export default {
       const idx = this.selectedPlanItems.findIndex(m => (m.bagistoId || m.id) === key)
       if (idx !== -1) this.selectedPlanItems.splice(idx, 1)
       else this.selectedPlanItems.push({ ...item })
+      if (this.planMinDaysRequired > this.planDays) {
+        this.planDays = this.planMinDaysRequired
+      }
     },
     planPerDay() {
       return this.selectedPlanItems.reduce((sum, m) => sum + (parseFloat(String(m.price).replace(/,/g, '')) || 0), 0)
@@ -1187,6 +1273,12 @@ export default {
           return
         }
         this.selectedPlanItems = current
+        const minPlanDays = current.reduce((mx, m) => Math.max(mx, Number((m.raasMeta && m.raasMeta.min_rent_days) || 1)), 1)
+        if (this.planDays < minPlanDays) {
+          this.planDays = minPlanDays
+          uni.showToast({ title: '所选机型最低起租 ' + minPlanDays + ' 天，已自动调整租期', icon: 'none' })
+          return
+        }
         this.showCustomPlanModal = false
         // 多机合单直接进「确认订单」,不再走"提交需求"表单 —— 用户点的是"提交订单",
         // 落点就必须是标准多机租用下单页（不携带 scene/from=custom_plan 参数，避免被当成场景报价请求拦截）。
@@ -1557,7 +1649,9 @@ export default {
       const code = this.selectedProduct.type || 'humanoid'
       const idx = this.rentTypeOptions.findIndex(o => o.code === code)
       this.rentForm.productTypeIndex = idx >= 0 ? idx : 0
-      this.rentForm.daysIndex = 0 // 默认 1 天起租
+      const minDays = this.selectedProductMinDays
+      const matchedDayIdx = this.rentPeriodOptions.findIndex(op => parseInt(op) >= minDays)
+      this.rentForm.daysIndex = matchedDayIdx >= 0 ? matchedDayIdx : (this.rentPeriodOptions.length - 1)
       this.rentForm.qty = 1
       const now = new Date()
       const y = now.getFullYear()
@@ -1607,12 +1701,23 @@ export default {
       this.dateVal = [yi, mi, d - 1]
       this.rentForm.startDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
     },
+    selectRentPeriod(i, op) {
+      const days = parseInt(op) || 1
+      if (days < this.selectedProductMinDays) {
+        uni.showToast({ title: '该设备最低起租 ' + this.selectedProductMinDays + ' 天', icon: 'none' })
+        return
+      }
+      this.rentForm.daysIndex = i
+    },
     cancelRentModal() { this.showRentModal = false },
     confirmRent() {
+      if (this.rentDays() < this.selectedProductMinDays) {
+        uni.showToast({ title: '该设备最低起租 ' + this.selectedProductMinDays + ' 天', icon: 'none' })
+        return
+      }
       const product = this.selectedProduct
-      const opt = this.rentTypeOptions[this.rentForm.productTypeIndex] || this.rentTypeOptions[0] || { code: 'humanoid' }
       const opts = {
-        productType: opt.code,
+        productType: (product && product.type) ? product.type : '',
         rentPeriod: this.rentPeriodOptions[this.rentForm.daysIndex],
         qty: this.rentForm.qty,
         startDate: this.rentForm.startDate,
@@ -1948,6 +2053,19 @@ export default {
         this.currentTab = tab
       }
       uni.removeStorageSync('robotTab')
+    }
+
+    const pendingBrand = uni.getStorageSync('robotBrand')
+    if (pendingBrand) {
+      this.currentTab = 'tob'
+      this.currentBrand = String(pendingBrand)
+      uni.removeStorageSync('robotBrand')
+    }
+    const pendingType = uni.getStorageSync('robotType')
+    if (pendingType) {
+      this.currentTab = 'tob'
+      this.currentType = String(pendingType)
+      uni.removeStorageSync('robotType')
     }
 
     const wishlistProduct = uni.getStorageSync('wishlistProductDetail')
@@ -3623,6 +3741,79 @@ page {
   font-weight: 500;
   color: #6B7280;
   margin-left: 2rpx;
+}
+.active-filters-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-bottom: 12rpx;
+}
+.af-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 16rpx;
+  background: #EFF6FF;
+  border: 1rpx solid #BFDBFE;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  color: #1D4ED8;
+}
+.af-close { font-weight: 700; }
+.af-reset {
+  font-size: 22rpx;
+  color: #64748B;
+  margin-left: auto;
+  padding: 6rpx 10rpx;
+}
+.sibling-switch-card {
+  margin-top: 14rpx;
+  padding: 14rpx 18rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E2E8F0;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+.sibling-switch-tag {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #165DFF;
+  background: #E8F0FE;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+.sibling-switch-text {
+  flex: 1;
+  font-size: 23rpx;
+  color: #334155;
+}
+.sibling-switch-arrow {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #165DFF;
+  flex-shrink: 0;
+}
+.sheet-min-tip {
+  margin: 6rpx 0 8rpx;
+}
+.sheet-min-tip-text {
+  font-size: 22rpx;
+  color: #D97706;
+}
+.days-chip.disabled {
+  opacity: 0.42;
+  background: #F1F5F9;
+  color: #94A3B8;
+}
+.cart-min-note {
+  font-size: 20rpx;
+  color: #D97706;
+  margin-left: 6rpx;
 }
 </style>
 

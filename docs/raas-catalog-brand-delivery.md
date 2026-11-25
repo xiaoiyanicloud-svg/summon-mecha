@@ -34,19 +34,22 @@
 - **迁移与种子**：
   - `my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_25_000001_create_catalog_brands_table.php`
   - `my-bagisto-store/database/seeders/BrandAndRaaSTaxonomySeeder.php`
-  - `my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/InstallRaaSCatalogTaxonomy.php`（已在 `ShopServiceProvider` 注册：`catalog:install-raas-taxonomy`，默认 `--dry-run`，需带 `--apply` 写入）
+  - `my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/InstallRaaSCatalogTaxonomy.php`（已在 `ShopServiceProvider` 注册：`catalog:install-raas-taxonomy`，默认 `--dry-run`，支持 `--apply` 与 `--backfill`）
 - **Shop 模型、服务与接口**：
   - `my-bagisto-store/packages/Webkul/Shop/src/Models/CatalogBrand.php`
-  - `my-bagisto-store/packages/Webkul/Shop/src/Services/Catalog/CatalogBrandService.php`
+  - `my-bagisto-store/packages/Webkul/Shop/src/Services/Catalog/CatalogBrandService.php`（含 EAV 同步、RaaS 元数据与商家 `compatible_models` / `param_specs` / `rental_plans` 聚合、`/api/products` 查询参数解析及存量商品回扫 `backfillProductAttributes`）
   - `my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/BrandController.php`（新增 `GET /api/brands`）
   - `my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/CatalogController.php`（接入 `attachCatalogMeta` 修复 `/api/tob-catalog` 缺销量字段，新增返回 `brands`、`robot_types`、`categories_meta`）
-  - `my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/ProductController.php`（列表与详情统一注入 `attachCatalogMeta`）
+  - `my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/ProductController.php`（列表/详情/关联商品统一注入 `attachCatalogMeta`，列表支持 `category_slug=tob|rent|buy`、`brand=<code>`、`robot_type=<code>`、`sort=sales_desc`）
   - `my-bagisto-store/packages/Webkul/Shop/src/Http/Resources/ProductResource.php`（输出 `brand`、`robot_type`、`raas_meta`）
+  - `my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TobOrderController.php`（租赁单强制校验商家 `min_rent_days` 下限）
+  - `my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/Merchant/MerchantApiController.php` & `Services/Merchant/MerchantTenantService.php`（商家建品/更新支持 `brand_code` / `robot_type` 自动写 EAV 并在列表返回）
   - `my-bagisto-store/packages/Webkul/Shop/src/Providers/ShopServiceProvider.php`
   - `my-bagisto-store/packages/Webkul/Shop/src/Routes/api.php`
 - **Admin 管理后台（CRUD + DataGrid + 路由/菜单/权限）**：
-  - `my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/CatalogBrandController.php`
-  - `my-bagisto-store/packages/Webkul/Admin/src/DataGrids/Catalog/CatalogBrandDataGrid.php`
+  - `my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/CatalogBrandController.php`（含 `backfillProducts` 存量回扫）
+  - `my-bagisto-store/packages/Webkul/Admin/src/DataGrids/Catalog/CatalogBrandDataGrid.php`（新增 `products_count` 已绑商品数列）
+  - `my-bagisto-store/packages/Webkul/Admin/src/DataGrids/Catalog/ProductDataGrid.php`（新增品牌展示与筛选列）
   - `my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/brands/{index,create,edit,_form}.blade.php`
   - `my-bagisto-store/packages/Webkul/Admin/src/Routes/catalog-routes.php`
   - `my-bagisto-store/packages/Webkul/Admin/src/Config/menu.php`
@@ -55,9 +58,11 @@
 ### 2.2 前端与测试
 
 - `utils/api.js`（导出 `brandApi.list()`）
-- `pages/robot/index.vue`（4 主 Tab、`tobSubTab` 切换、动态品牌栏、搜索框闭合修复、场景搜索、严格品牌/形态过滤、`goDetail`/`goEnterprise`/旧 `robotTab` 兼容）
-- `tools/tests/raas-catalog-brand.php`（内存 SQLite 隔离 PHP 集成回归测试）
-- `tools/tests/raas-category.test.mjs`（分类页重构与兼容性 Node 回归测试）
+- `pages/home/index.vue`（修复「我要租用」与「热门品牌」跳转 `robotTab` 目标）
+- `pages/order/checkout.vue`（未分类机器人类型显示回退从虚假“人形”改为“标准”）
+- `pages/robot/index.vue`（4 主 Tab、`tobSubTab` 切换、动态品牌栏、搜索框闭合修复、场景搜索、严格品牌/形态过滤、筛选胶囊重置、`robotBrand`/`robotType` 深链、详情「租购同款切换」、单机与 `+方案` `min_rent_days` 强制约束与商户 `param_specs`/`compatible_models` 展示）
+- `tools/tests/raas-catalog-brand.php`（内存 SQLite 隔离 PHP 8 组集成回归测试）
+- `tools/tests/raas-category.test.mjs`（分类页重构、首页入口、起租下限与同款切换 Node 回归测试）
 
 ---
 
@@ -65,14 +70,14 @@
 
 > 本地环境当前未启动 MySQL 3307，所有数据库行为验证均在**内存 SQLite 隔离环境**完成，未接触业务库 `summon_mecha_local`。
 
-1. **PHP 语法检查（`php -l`）**：全部 17 个涉及新增/修改的 PHP 文件通过（含迁移、Model、Service、Controller、Resource、DataGrid、Routes、Menu、ACL、Command、Seeder 及测试脚本）。
+1. **PHP 语法检查（`php -l`）**：全部 21 个涉及新增/修改的 PHP 文件通过。
 2. **Blade 模板编译验证**：通过 `Illuminate\View\Compilers\BladeCompiler` 编译并 `php -l` 检查 `catalog/brands/{index,create,edit,_form}.blade.php`，全部通过；`menu.php` 与 `acl.php` 已检出 `catalog.brands`。
 3. **契约门禁（`php artisan ecosystem:contract-check`）**：通过（`admin_routes=113, public_routes=45, contracted_routes=45, error_codes=85, state_inventories=11`）。
-4. **隔离 PHP 集成回归（`php tools/tests/raas-catalog-brand.php`）**：5 组用例全过，覆盖 `catalog_brands` 迁移幂等、未入库 TOP 20 兜底、`installRaaSTaxonomy`（dry-run 与 apply、`tob -> rent/buy` 树归并与祖先 slug 保留、`robot_type` 与 20 品牌 EAV 同步）、`CatalogBrandController` 参数校验/CRUD/启停隐藏/422 删除保护及 `attachCatalogMeta` 销量和 RaaS 元信息计算。
-5. **Node 回归套件（`node --test`）**：共 51 项测试全过（新增 `raas-category.test.mjs` 5 项 + 既有 `scene-*` 与 `config-consistency.test.mjs` 46 项）。
+4. **隔离 PHP 集成回归（`php tools/tests/raas-catalog-brand.php`）**：8 组用例全过，覆盖 `catalog_brands` 迁移幂等、未入库 TOP 20 兜底、`installRaaSTaxonomy`（dry-run 与 apply、`tob -> rent/buy` 树归并与祖先 slug 保留、`robot_type` 与 20 品牌 EAV 同步）、`CatalogBrandController` 参数校验/CRUD/启停隐藏/422 删除保护/`backfillProducts`、`attachCatalogMeta` 销量与商家 `compatible_models`/`param_specs`/`rental_plans` 聚合、`resolveProductQueryParams` 参数解析以及 `TobOrderController` 低于 `min_rent_days` 拦截（422 `ORDER_VALIDATION_FAILED`）。
+5. **Node 回归套件（`node --test`）**：共 53 项测试全过（新增 `raas-category.test.mjs` 7 项 + 既有 `scene-*` 与 `config-consistency.test.mjs` 46 项）。
 6. **无头浏览器组件与布局验证（Chromium headless + Vue 3.5.13 + `@vue/compiler-sfc`）**：
    - 既有 `scene-ui-check.mjs`（7 个 SFC 编译、5 项检查、0 报错）与 `scene-workflow-ui.mjs`（17 个 SFC 编译、26 项检查、`pageErrors=[]`）通过；
-   - `pages/robot/index.vue` 独立 390x844 渲染验证：正确渲染 4 主 Tab 与 3 子开关、宇树/智元动态品牌栏、过滤无串台、`overflow: false`、`pageErrors: []`（均在隔离 Mock 数据下测试，非 uni-app 完整编译产物或实库联调）。
+   - `pages/robot/index.vue` 独立 390x844 渲染验证：正确渲染 4 主 Tab 与 3 子开关、宇树/智元动态品牌栏、过滤无串台、筛选胶囊清空重置、场景卡可见、`overflow: false`、`pageErrors: []`（均在隔离 Mock 数据下测试，非 uni-app 完整编译产物或实库联调）。
 
 ---
 
@@ -85,8 +90,8 @@ cd my-bagisto-store
 php artisan migrate
 # 先 dry-run 预览即将安装的 tob -> (rent, buy)、robot_type 属性与种子品牌
 php artisan catalog:install-raas-taxonomy
-# 确认无误后正式落地（幂等）
-php artisan catalog:install-raas-taxonomy --apply
+# 确认无误后正式落地（幂等）；附加 --backfill 可一并为未手动指定品牌/形态的历史商品自动建档绑定
+php artisan catalog:install-raas-taxonomy --apply --backfill
 ```
 
 说明：未执行上述数据库迁移与安装前，前台分类页与 `GET /api/brands` 已通过 `CatalogBrandService::publicMetadata()` 与前端 `FALLBACK_BRANDS` 保持 TOP 20 品牌与 8 种形态基础筛选可用；执行 `--apply` 后，后台「商品 -> 品牌管理」的增删改与 Logo 上传及商品 EAV 属性即刻接入同一数据源。

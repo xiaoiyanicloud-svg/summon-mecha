@@ -9,6 +9,7 @@ declare(strict_types=1);
  * 验证迁移、taxonomy 安装、Brand CRUD/校验/删除保护、EAV 对齐及商品聚合注入。
  */
 require dirname(__DIR__, 2).'/my-bagisto-store/vendor/autoload.php';
+require_once dirname(__DIR__, 2).'/my-bagisto-store/packages/Webkul/Core/src/Http/helpers.php';
 
 use Illuminate\Config\Repository;
 use Illuminate\Database\Capsule\Manager;
@@ -247,6 +248,9 @@ $schema->create('product_attribute_values', function (Blueprint $t) {
     $t->increments('id');
     $t->unsignedInteger('product_id');
     $t->unsignedInteger('attribute_id');
+    $t->string('channel')->nullable();
+    $t->string('locale')->nullable();
+    $t->string('unique_id')->nullable()->unique();
     $t->unsignedInteger('integer_value')->nullable();
     $t->string('text_value')->nullable();
 });
@@ -254,11 +258,23 @@ $schema->create('merchant_product_exts', function (Blueprint $t) {
     $t->increments('id');
     $t->unsignedInteger('product_id');
     $t->string('fulfillment_type', 32)->nullable();
+    $t->json('compatible_models')->nullable();
+    $t->json('param_specs')->nullable();
     $t->integer('daily_rent_cents')->default(0);
     $t->integer('deposit_cents')->default(0);
     $t->integer('min_rent_days')->default(1);
     $t->integer('rentable_stock')->default(0);
     $t->integer('sellable_stock')->default(0);
+});
+$schema->create('merchant_rental_plans', function (Blueprint $t) {
+    $t->increments('id');
+    $t->unsignedInteger('product_id');
+    $t->string('name', 120);
+    $t->string('period_unit', 32)->default('day');
+    $t->integer('min_days')->default(1);
+    $t->integer('max_days')->default(365);
+    $t->integer('base_price_cents')->default(0);
+    $t->boolean('enabled')->default(1);
 });
 $schema->create('orders', function (Blueprint $t) {
     $t->increments('id');
@@ -472,4 +488,116 @@ assertTrue($m3->getAttribute('resolved_brand') === null, '未知品牌应返回 
 assertTrue($m3->getAttribute('resolved_robot_type') === null, '未知形态应返回 null，不能伪造默认人形');
 assertTrue($m3->getAttribute('resolved_raas_meta') === null, '无拓展字段与机型映射时 raas_meta 应返回 null');
 
-echo "RAAS_CATALOG_BRAND_PHP_PASS (5 suites, all assertions green)\n";
+// 6. 测试 resolveProductQueryParams（GET /api/products 参数转换）
+$tobResolved = $service->resolveProductQueryParams([
+    'category_slug' => 'tob',
+    'brand'         => 'yushu',
+    'robot_type'    => 'humanoid',
+]);
+$tobResolvedIds = array_map('intval', explode(',', (string) $tobResolved['category_id']));
+assertTrue(in_array($tobId, $tobResolvedIds, true) && in_array((int) $rentCat->id, $tobResolvedIds, true) && in_array((int) $buyCat->id, $tobResolvedIds, true), 'category_slug=tob 应展开为 tob,rent,buy 全部分类 ID');
+assertTrue((int) $tobResolved['brand'] === (int) $yushu->attribute_option_id, 'brand=yushu 应转换为 EAV attribute_option_id');
+assertTrue((int) $tobResolved['robot_type'] === $humanoidOptId, 'robot_type=humanoid 应转换为 robot_type EAV option_id');
+
+$unknownResolved = $service->resolveProductQueryParams(['brand' => 'nonexistent_brand_xyz']);
+assertTrue(($unknownResolved['__force_empty'] ?? false) === true, '未知品牌查询必须触发 __force_empty 防止全量露出');
+
+// 7. 测试商家扩展字段聚合（compatible_models / param_specs / rental_plans）与回扫绑定
+DB::table('merchant_product_exts')->where('product_id', $pUnitreeId)->update([
+    'compatible_models' => json_encode(['g1']),
+    'param_specs'       => json_encode([['name' => '续航时间', 'value' => '4小时'], ['name' => '空', 'value' => '']]),
+]);
+DB::table('merchant_rental_plans')->insert([
+    'product_id'       => $pUnitreeId,
+    'name'             => '五日起租特惠',
+    'period_unit'      => 'day',
+    'min_days'         => 5,
+    'max_days'         => 90,
+    'base_price_cents' => 260000,
+    'enabled'          => 1,
+]);
+$service->attachCatalogMeta(collect([$m1]));
+$meta1 = $m1->getAttribute('resolved_raas_meta');
+assertTrue(($meta1['min_rent_days'] ?? 0) === 5, '存在启用租期方案时最低起租天数应取 ext 与方案最大值(5)');
+assertTrue(($meta1['compatible_model_names'] ?? []) === ['Unitree G1'], 'compatible_model_names 应匹配商家指定的兼容机型');
+assertTrue(count($meta1['param_specs'] ?? []) === 1 && ($meta1['param_specs'][0]['name'] ?? '') === '续航时间', 'param_specs 应过滤空值并结构化返回');
+assertTrue(count($meta1['rental_plans'] ?? []) === 1 && ($meta1['rental_plans'][0]['base_price_yuan'] ?? '') === '2600.00', 'rental_plans 应输出有效租期摘要');
+
+// 回扫存量未标注商品：先 dry-run 再实写，且不覆盖已有人工绑定
+$backfillDry = $service->backfillProductAttributes(false);
+assertTrue($backfillDry['brand_matched'] >= 1 && $backfillDry['updated'] === 0, 'backfill dry-run 不应写入数据库');
+$backfillRes = $controller->backfillProducts(Request::create('/admin/catalog/brands/backfill-products', 'POST', [], [], [], ['HTTP_ACCEPT' => 'application/json']));
+assertTrue($backfillRes->getStatusCode() === 200, '控制器回扫接口应返回 200 JSON');
+$zhiyuanBrand = CatalogBrand::where('code', 'zhiyuan')->firstOrFail();
+$fallbackBoundOpt = DB::table('product_attribute_values')->where('product_id', $pFallbackId)->where('attribute_id', $brandAttrId)->value('integer_value');
+assertTrue((int) $fallbackBoundOpt === (int) $zhiyuanBrand->attribute_option_id, '未标注存量商品回扫后应自动绑定对应品牌 EAV 属性');
+$unitreeBoundOpt = DB::table('product_attribute_values')->where('product_id', $pUnitreeId)->where('attribute_id', $brandAttrId)->value('integer_value');
+assertTrue((int) $unitreeBoundOpt === (int) $yushu->attribute_option_id, '已有品牌属性的存量商品绝不能被回扫覆盖');
+
+// 8. 测试 TobOrderController 最低起租天数强制校验（rent_days=2 < min_rent_days=5 => 422）
+$app->instance('auth', new class {
+    public function guard($name = null)
+    {
+        return new class {
+            public function user() { return null; }
+        };
+    }
+});
+$app->instance('log', new class {
+    public function error($msg, $ctx = []) { fwrite(STDERR, "LOG_ERR: {$msg} " . json_encode($ctx) . "\n"); }
+    public function info($msg, $ctx = []) {}
+    public function warning($msg, $ctx = []) {}
+});
+$coreStub = new class extends \Webkul\Core\Core {
+    public function __construct() {}
+    public function getCurrentChannel(?string $hostname = null) { return (object) ['id' => 1, 'name' => 'Default']; }
+    public function getBaseCurrencyCode() { return 'CNY'; }
+};
+$app->instance('core', $coreStub);
+$app->instance(\Webkul\Core\Core::class, $coreStub);
+$app->instance(\Webkul\Shop\Services\SkillDelivery\SkillMarketService::class, new class {
+    public function purchaseProblem(array $ids, ?int $customerId, string $type): ?array { return null; }
+});
+$app->instance(\Webkul\Shop\Services\Scenes\SceneOrderGuard::class, new class {
+    public function check(array $ctx, array $ids, int $channelId): ?array { return null; }
+});
+$mockProduct = new class($pUnitreeId) {
+    public int $id;
+    public string $name = 'G1 租用机器人';
+    public string $sku = 'UNI-G1';
+    public string $type = 'simple';
+    public float $price = 2800.0;
+    public int $status = 1;
+    public function __construct(int $id) { $this->id = $id; }
+    public function getTypeInstance() { return new class { public function getMinimalPrice() { return 2800.0; } }; }
+};
+$prodRepo = new class($mockProduct) extends \Webkul\Product\Repositories\ProductRepository {
+    private $p;
+    public function __construct($p) { $this->p = $p; }
+    public function with($relations) { return $this; }
+    public function find($id, $columns = ['*']) { return (int) $id === $this->p->id ? $this->p : null; }
+};
+$refOrderCtrl = new \ReflectionClass(\Webkul\Shop\Http\Controllers\API\TobOrderController::class);
+$tobOrderCtrl = $refOrderCtrl->newInstanceWithoutConstructor();
+$pRepoProp = $refOrderCtrl->getProperty('productRepository');
+$pRepoProp->setAccessible(true);
+$pRepoProp->setValue($tobOrderCtrl, $prodRepo);
+$storeTx = $refOrderCtrl->getMethod('storeWithinTransaction');
+$storeTx->setAccessible(true);
+
+$validator->extend('exists', fn () => true); // 简化测试隔离表的 validator exists 规则
+$underMinReq = Request::create('/api/tob-order', 'POST', [
+    'product_id' => $pUnitreeId,
+    'qty'        => 1,
+    'type'       => 'rent',
+    'rent_days'  => 2,
+    'name'       => '测试买家',
+    'phone'      => '13800000000',
+    'city'       => '上海',
+    'address'    => '浦东新区',
+]);
+$underMinResp = $storeTx->invoke($tobOrderCtrl, $underMinReq);
+assertTrue($underMinResp->getStatusCode() === 422, '租用天数低于 min_rent_days(5) 必须被后端拒绝返回 422');
+assertTrue(($underMinResp->getData(true)['code'] ?? '') === 'ORDER_VALIDATION_FAILED', '错误码必须为标准契约 ORDER_VALIDATION_FAILED');
+
+echo "RAAS_CATALOG_BRAND_PHP_PASS (8 suites, all assertions green)\n";

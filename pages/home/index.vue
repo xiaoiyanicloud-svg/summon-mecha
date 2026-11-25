@@ -242,10 +242,11 @@ import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request';
 				uni.navigateTo({ url: `/pages/robot/fangan?${queryString}` });
 			},
 			onRent() {
+				uni.setStorageSync('robotTab', 'rent');
 				uni.switchTab({ url: '/pages/robot/index' });
 			},
 			goBrandBuy() {
-				uni.setStorageSync('robotTab', 'buy');
+				uni.setStorageSync('robotTab', 'tob');
 				uni.switchTab({ url: '/pages/robot/index' });
 			},
 			onCustom() {

@@ -523,6 +523,14 @@ class MerchantTenantService
             ? ($ext->relationLoaded('rentalPlans') ? $ext->rentalPlans : $ext->rentalPlans()->get())
             : collect();
 
+        $brandService = app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class);
+        $productProbe = new class(['id' => $ext->product_id, 'name' => (string) ($flat?->name ?? $ext->product?->sku ?? '')]) extends \Illuminate\Database\Eloquent\Model {
+            protected $guarded = [];
+        };
+        $brandService->attachCatalogMeta([$productProbe]);
+        $resolvedBrand = $productProbe->getAttribute('resolved_brand');
+        $resolvedType = $productProbe->getAttribute('resolved_robot_type');
+
         return [
             'id'                => (int) $ext->id,
             'product_id'        => (int) $ext->product_id,
@@ -530,6 +538,10 @@ class MerchantTenantService
             'shop_id'           => (int) $ext->shop_id,
             'sku'               => (string) ($ext->product?->sku ?? $flat?->sku ?? ''),
             'name'              => (string) ($flat?->name ?? $ext->product?->sku ?? ''),
+            'brand_code'        => $resolvedBrand['code'] ?? null,
+            'brand_name'        => $resolvedBrand['name'] ?? null,
+            'robot_type'        => $resolvedType['code'] ?? null,
+            'robot_type_label'  => $resolvedType['label'] ?? null,
             'short_description' => (string) ($flat?->short_description ?? ''),
             'description'       => (string) ($flat?->description ?? ''),
             'product_type'      => (string) $ext->product_type,
@@ -725,6 +737,14 @@ class MerchantTenantService
 
             if ($productType === MerchantProductExt::TYPE_ACCESSORY) {
                 $this->syncAccessoryMetadata($product->id, $data, $compatCheck['normalized']);
+            }
+
+            if (! empty($data['brand_code']) || ! empty($data['robot_type'])) {
+                $this->syncProductBrandAndType(
+                    $product->id,
+                    isset($data['brand_code']) ? (string) $data['brand_code'] : null,
+                    isset($data['robot_type']) ? (string) $data['robot_type'] : null
+                );
             }
 
             $ext = MerchantProductExt::create([
@@ -928,6 +948,14 @@ class MerchantTenantService
 
             if ($ext->product_type === MerchantProductExt::TYPE_ACCESSORY && array_key_exists('compatible_models', $data)) {
                 $this->syncAccessoryMetadata($productId, $data, (array) $ext->compatible_models);
+            }
+
+            if (array_key_exists('brand_code', $data) || array_key_exists('robot_type', $data)) {
+                $this->syncProductBrandAndType(
+                    $productId,
+                    array_key_exists('brand_code', $data) ? ($data['brand_code'] !== null ? (string) $data['brand_code'] : null) : null,
+                    array_key_exists('robot_type', $data) ? ($data['robot_type'] !== null ? (string) $data['robot_type'] : null) : null
+                );
             }
 
             $this->ops->log(
@@ -2989,6 +3017,30 @@ class MerchantTenantService
                 'source'     => AccessoryFitment::SOURCE_VENDOR,
             ]);
         }
+    }
+
+    protected function syncProductBrandAndType(int $productId, ?string $brandCode, ?string $robotType): void
+    {
+        $normBrand = $brandCode !== null ? strtolower(trim($brandCode)) : null;
+        if ($normBrand !== null && $normBrand !== '') {
+            $exists = Schema::hasTable('catalog_brands')
+                && \Webkul\Shop\Models\CatalogBrand::query()->where('code', $normBrand)->where('status', true)->exists();
+            if (! $exists) {
+                throw new RuntimeException('VALIDATION_ERROR:指定的品牌编码不存在或已停用：'.$normBrand, 422);
+            }
+        }
+
+        $normType = $robotType !== null ? strtolower(trim($robotType)) : null;
+        if ($normType !== null && $normType !== '' && ! array_key_exists($normType, \Webkul\Shop\Models\CatalogBrand::ROBOT_TYPES)) {
+            throw new RuntimeException('VALIDATION_ERROR:不支持的机器人形态编码：'.$normType, 422);
+        }
+
+        app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->assignProductAttributes(
+            $productId,
+            $normBrand ?: null,
+            $normType ?: null,
+            onlyIfEmpty: false
+        );
     }
 
     protected function resolveCategoryIdForType(string $productType): ?int

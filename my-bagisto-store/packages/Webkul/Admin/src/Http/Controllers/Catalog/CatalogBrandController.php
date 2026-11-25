@@ -146,6 +146,19 @@ class CatalogBrandController extends Controller
             ->with('success', '已完成 租售TOB(tob)->租赁(rent)/购买(buy) 分类与默认品牌/形态属性同步。');
     }
 
+    public function backfillProducts(Request $request)
+    {
+        $summary = $this->brandService->backfillProductAttributes(true);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'data' => $summary]);
+        }
+
+        return redirect()
+            ->route('admin.catalog.brands.index')
+            ->with('success', "已扫描 {$summary['scanned']} 个商品，新增绑定品牌/形态 {$summary['updated']} 个（不覆盖人工已设值）。");
+    }
+
     private function rules(?int $ignoreId = null): array
     {
         $uniqueCode = 'unique:catalog_brands,code'.($ignoreId ? ','.$ignoreId : '');

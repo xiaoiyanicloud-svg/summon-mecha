@@ -69,6 +69,22 @@ class ProductDataGrid extends DataGrid
             ->where('product_flat.locale', app()->getLocale())
             ->groupBy('product_flat.product_id');
 
+        $brandAttrId = \Illuminate\Support\Facades\Schema::hasTable('attributes')
+            ? (int) DB::table('attributes')->where('code', 'brand')->value('id')
+            : 0;
+        if ($brandAttrId > 0) {
+            $queryBuilder
+                ->leftJoin('product_attribute_values as pav_brand', function ($join) use ($brandAttrId) {
+                    $join->on('product_flat.product_id', '=', 'pav_brand.product_id')
+                        ->where('pav_brand.attribute_id', $brandAttrId);
+                })
+                ->leftJoin('attribute_options as ao_brand', 'ao_brand.id', '=', 'pav_brand.integer_value')
+                ->addSelect(DB::raw('MAX('.$tablePrefix.'ao_brand.admin_name) as brand_name'));
+            $this->addFilter('brand_name', 'ao_brand.admin_name');
+        } else {
+            $queryBuilder->addSelect(DB::raw('NULL as brand_name'));
+        }
+
         $this->addFilter('product_id', 'product_flat.product_id');
         $this->addFilter('channel', 'product_flat.channel');
         $this->addFilter('locale', 'product_flat.locale');
@@ -191,6 +207,23 @@ class ProductDataGrid extends DataGrid
             'label'      => trans('admin::app.catalog.products.index.datagrid.category'),
             'type'       => 'string',
         ]);
+
+        $brandOptions = \Illuminate\Support\Facades\Schema::hasTable('catalog_brands')
+            ? DB::table('catalog_brands')->where('status', 1)->orderBy('sort_order')->pluck('name')->map(fn ($n) => ['label' => $n, 'value' => $n])->all()
+            : [];
+        $brandColumn = [
+            'index'      => 'brand_name',
+            'label'      => '品牌',
+            'type'       => 'string',
+            'searchable' => true,
+            'filterable' => true,
+            'closure'    => fn ($row) => $row->brand_name ? e($row->brand_name) : '<span class="text-xs text-gray-400">未设置</span>',
+        ];
+        if ($brandOptions !== []) {
+            $brandColumn['filterable_type'] = 'dropdown';
+            $brandColumn['filterable_options'] = $brandOptions;
+        }
+        $this->addColumn($brandColumn);
 
         $this->addColumn([
             'index'              => 'type',

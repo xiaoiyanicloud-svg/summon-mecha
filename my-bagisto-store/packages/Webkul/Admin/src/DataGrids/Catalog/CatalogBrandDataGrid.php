@@ -40,6 +40,17 @@ class CatalogBrandDataGrid extends DataGrid
             $queryBuilder->addSelect(DB::raw('0 as models_count'));
         }
 
+        $brandAttrId = Schema::hasTable('attributes')
+            ? (int) DB::table('attributes')->where('code', 'brand')->value('id')
+            : 0;
+        if ($brandAttrId > 0 && Schema::hasTable('product_attribute_values')) {
+            $queryBuilder->addSelect(DB::raw(
+                "(SELECT COUNT(*) FROM product_attribute_values pav WHERE pav.attribute_id = {$brandAttrId} AND pav.integer_value = cb.attribute_option_id) as products_count"
+            ));
+        } else {
+            $queryBuilder->addSelect(DB::raw('0 as products_count'));
+        }
+
         $queryBuilder->orderBy('cb.sort_order', 'asc')->orderBy('cb.id', 'asc');
 
         $this->addFilter('id', 'cb.id');
@@ -116,6 +127,21 @@ class CatalogBrandDataGrid extends DataGrid
                 }
 
                 return '<span class="badge badge-md badge-info">'.e($row->device_brand).'（'.(int) $row->models_count.' 机型）</span>';
+            },
+        ]);
+
+        $this->addColumn([
+            'index'      => 'products_count',
+            'label'      => '已绑商品',
+            'type'       => 'integer',
+            'sortable'   => true,
+            'closure'    => function ($row) {
+                $cnt = (int) ($row->products_count ?? 0);
+                if ($cnt === 0) {
+                    return '<span class="text-xs text-gray-400">0</span>';
+                }
+
+                return '<span class="badge badge-md badge-info">'.$cnt.'</span>';
             },
         ]);
 

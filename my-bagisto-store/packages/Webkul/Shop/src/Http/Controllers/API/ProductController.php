@@ -36,6 +36,24 @@ class ProductController extends APIController
      */
     public function index(): JsonResource
     {
+        $brandService = app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class);
+        $rawQuery = request()->query();
+        $resolvedQuery = $brandService->resolveProductQueryParams($rawQuery);
+        $wantSalesSort = (($rawQuery['sort'] ?? '') === 'sales_desc');
+        if ($wantSalesSort) {
+            unset($resolvedQuery['sort']);
+        }
+
+        if (! empty($resolvedQuery['__force_empty'])) {
+            $perPage = max(1, min(200, (int) ($rawQuery['limit'] ?? 15)));
+            $empty = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage, max(1, (int) ($rawQuery['page'] ?? 1)), [
+                'path'  => request()->url(),
+                'query' => $rawQuery,
+            ]);
+
+            return ProductResource::collection($empty);
+        }
+
         $searchEngine = 'database';
 
         $searchData = $this->resolveSearchQueryData($searchEngine);
@@ -44,7 +62,7 @@ class ProductController extends APIController
 
         $products = $this->productRepository
             ->setSearchEngine($searchEngine)
-            ->getAll(array_merge(request()->query(), [
+            ->getAll(array_merge($resolvedQuery, [
                 'query'                => $query,
                 'channel_id'           => core()->getCurrentChannel()->id,
                 'status'               => 1,
@@ -55,7 +73,12 @@ class ProductController extends APIController
                 'exclude_ids'          => app(SkillMarketService::class)->unavailableProductIds(),
             ]));
 
-        app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->attachCatalogMeta($products);
+        $brandService->attachCatalogMeta($products);
+        if ($wantSalesSort && method_exists($products, 'setCollection')) {
+            $products->setCollection(
+                $products->getCollection()->sortByDesc(fn ($p) => (int) ($p->getAttribute('sales_count') ?? 0))->values()
+            );
+        }
 
         if (! empty($query)) {
             /**
@@ -166,6 +189,8 @@ class ProductController extends APIController
             ->take(core()->getConfigData('catalog.products.product_view_page.no_of_related_products'))
             ->get();
 
+        app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->attachCatalogMeta($relatedProducts);
+
         return ProductResource::collection($relatedProducts);
     }
 
@@ -181,6 +206,8 @@ class ProductController extends APIController
         $upSellProducts = $product->up_sells()->whereNotIn('products.id', app(SkillMarketService::class)->unavailableProductIds())
             ->take(core()->getConfigData('catalog.products.product_view_page.no_of_up_sells_products'))
             ->get();
+
+        app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->attachCatalogMeta($upSellProducts);
 
         return ProductResource::collection($upSellProducts);
     }
