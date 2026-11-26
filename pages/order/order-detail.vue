@@ -43,12 +43,12 @@
 					<text class="label">使用场景</text>
 					<text class="value">{{ order.scene }}</text>
 				</view>
-				<view class="info-row" v-if="order.type === 'rent'">
+				<view class="info-row" v-if="order.type === 'rent' || (order.type === 'plan' && (order.sceneRental || order.startDate || order.duration))">
 					<text class="label">租期</text>
 					<text class="value">{{ order.startDate || order.duration || '—' }} {{ order.startDate && order.endDate ? '至 ' + order.endDate : '' }}</text>
 				</view>
 				<view class="info-row">
-					<text class="label">{{ order.type === 'rent' ? '租赁台数' : '数量' }}</text>
+					<text class="label">{{ (order.type === 'rent' || order.sceneRental) ? '租赁台数' : '数量' }}</text>
 					<text class="value">{{ order.quantity }} 台</text>
 				</view>
 			</view>
@@ -242,6 +242,16 @@ import SmIcon from '@/components/SmIcon.vue'
 			// 后台订单详情 → 展示字段(只映射接口真实存在的数据,mock 专属字段不伪造)
 			mapApiDetail(d) {
 				const item = (d.items && d.items[0]) || {}
+				const sr = (d.scene_rental && typeof d.scene_rental === 'object') ? d.scene_rental : null
+				const itemNames = (Array.isArray(d.items) ? d.items : []).map((it) => {
+					const n = (it && it.name) || ''
+					const a = n.split(' · ')
+					return (a.length > 1 ? a.slice(1).join(' · ') : n).replace(/【[^】]*】|[（(][^）)]*[）)]/g, '').trim()
+				}).filter(Boolean)
+				const cleanTitle = itemNames.join('、') || item.name || '订单'
+				const firstRaw = (item && item.name) || ''
+				const scene = (sr && sr.scene_name) || (firstRaw.split(' · ').length > 1 ? firstRaw.split(' · ')[0] : '')
+				const rentDays = (sr && Number(sr.rent_days)) || 0
 				const statusMap = {
 					pending: ['待处理', 'pending'],
 					processing: ['待确认', 'confirm'],
@@ -254,13 +264,21 @@ import SmIcon from '@/components/SmIcon.vue'
 				return {
 					id: d.id,
 					orderNo: d.increment_id,
-					name: item.name || '订单',
+					name: cleanTitle,
 					icon: '🤖',
 					bg: '#F0F4FA',
 					type: d.order_type || 'buy',
 					typeText: typeLabels[d.order_type] || '购买',
 					typeClass: d.order_type || 'buy',
-					scene: '',
+					scene: scene || '',
+					duration: rentDays > 0 ? `${rentDays}天` : '',
+					rentDays,
+					startDate: (sr && sr.start_date) || '',
+					endDate: (sr && sr.end_date) || '',
+					rentPrice: d.grand_total != null ? String(d.grand_total) : '',
+					deposit: (sr && Number(sr.deposit_yuan) > 0) ? String(sr.deposit_yuan) : '',
+					sceneRental: sr,
+					rawItems: Array.isArray(d.items) ? d.items : [],
 					quantity: d.total_qty_ordered != null ? d.total_qty_ordered : (item.qty_ordered || 1),
 					actualAmount: d.grand_total != null ? String(d.grand_total) : '0',
 					status: pair[1],
@@ -539,7 +557,47 @@ import SmIcon from '@/components/SmIcon.vue'
 				})
 			},
 			reorder() {
+				const sr = this.order.sceneRental
+				if (sr && sr.scene_id && Array.isArray(this.order.rawItems) && this.order.rawItems.length) {
+					const rentDays = Math.max(1, Number(sr.rent_days || this.order.rentDays) || 1)
+					const mappedItems = this.order.rawItems.map((it) => {
+						const itemSr = (it && it.additional && it.additional.scene_rental) || {}
+						const unitDaily = Number(itemSr.daily_price || itemSr.unit_daily_rent_yuan) || Math.round((Number(it.price) || 0) / rentDays)
+						const cleanName = String((it && it.name) || '机器人').split(' · ').pop().replace(/【[^】]*】|[（(][^）)]*[）)]/g, '').trim()
+						return {
+							id: it.product_id,
+							product_id: it.product_id,
+							name: cleanName || '机器人',
+							price: unitDaily,
+							qty: Math.max(1, Number(it.qty_ordered) || 1),
+							scene: this.order.scene || sr.scene_name || '场景租用',
+							min_rent_days: Math.max(1, Number(itemSr.min_rent_days) || 1),
+							deposit_yuan: Math.max(0, Number(itemSr.deposit_yuan) || 0),
+						}
+					}).filter(it => it.product_id)
+					if (mappedItems.length) {
+						const params = {
+							robotName: this.order.name,
+							productId: mappedItems[0].product_id,
+							scene: this.order.scene || sr.scene_name || '',
+							from: 'scene',
+							sceneId: sr.scene_id,
+							sceneRevisionId: sr.scene_revision_id || null,
+							quantity: this.order.quantity,
+							rentDays,
+							rentPeriod: `${rentDays}天`,
+							startDate: this.order.startDate || sr.start_date || '',
+							endDate: this.order.endDate || sr.end_date || '',
+							amount: mappedItems[0].price,
+							type: 'rent',
+							items: mappedItems,
+						}
+						uni.navigateTo({ url: `/pages/order/checkout?data=${encodeURIComponent(JSON.stringify(params))}` })
+						return
+					}
+				}
 				const params = {
+					productId: this.order.productId || '',
 					robotName: this.order.name,
 					scene: this.order.scene,
 					quantity: this.order.quantity,
@@ -548,7 +606,9 @@ import SmIcon from '@/components/SmIcon.vue'
 					rentPrice: this.order.rentPrice,
 					deposit: this.order.deposit,
 					amount: this.order.actualAmount,
-					type: this.order.type, rentPeriod: this.order.duration || '', productType: this.order.productType || ''
+					type: this.order.type,
+					rentPeriod: this.order.duration || '',
+					productType: this.order.productType || '',
 				}
 				uni.navigateTo({
 					url: `/pages/order/checkout?data=${encodeURIComponent(JSON.stringify(params))}`,

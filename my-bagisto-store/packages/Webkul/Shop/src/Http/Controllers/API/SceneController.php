@@ -56,11 +56,28 @@ class SceneController extends APIController
             return $this->fail(ApiErrorCode::SCENE_UNAVAILABLE, '场景不存在或已停用', 404);
         }
 
-        $data = app(SceneCatalogService::class)->detail($scene, (int) core()->getCurrentChannel()->id);
-        $data['products'] = \Webkul\Product\Models\Product::query()
-            ->whereIn('id', $data['scheme']['robots'])->get()
+        try {
+            $data = app(SceneCatalogService::class)->detail($scene, (int) core()->getCurrentChannel()->id);
+        } catch (\Webkul\Shop\Services\Scenes\SceneWorkflowException) {
+            return $this->fail(ApiErrorCode::SCENE_UNAVAILABLE, '场景不存在或已停用', 404);
+        }
+
+        $robotIds = array_values(array_map('intval', (array) ($data['scheme']['robots'] ?? [])));
+        $products = $robotIds !== []
+            ? \Webkul\Product\Models\Product::query()->whereIn('id', $robotIds)->get()
+            : collect();
+
+        if ($products->isNotEmpty()) {
+            $orderMap = array_flip($robotIds);
+            $products = $products->sortBy(fn ($product) => $orderMap[(int) $product->id] ?? PHP_INT_MAX)->values();
+            app(\Webkul\Shop\Services\Catalog\CatalogBrandService::class)->attachCatalogMeta($products);
+        }
+
+        $data['products'] = $products
             ->map(fn ($product) => (new \Webkul\Shop\Http\Resources\ProductResource($product))->jsonSerialize()
-                + ['type' => $product->type])->values()->all();
+                + ['type' => $product->type])
+            ->values()
+            ->all();
 
         return response()->json($data);
     }

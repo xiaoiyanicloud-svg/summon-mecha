@@ -174,8 +174,15 @@ check('直调交易校验拒绝未配置、停用、booking 和其他渠道商�
     expectSame('SCENE_REQUIRED', $guard->check(['type' => 'rent', 'from' => 'scene'], [11], 1)['code']);
     expectSame('SCENE_REQUIRED', $guard->check(['type' => 'buy', 'scene_id' => 1], [11], 1)['code']);
 });
-check('合法场景、多机自定义、定制咨询及普通租购语义分别处理', function () use ($guard) {
-    expectSame(1, $guard->check(['type' => 'rent', 'from' => 'scene', 'scene_id' => 1], [11], 1)['scene_id']);
+check('合法场景(rent/plan)、多机自定义、定制咨询及普通租购语义分别处理', function () use ($guard) {
+    $rentCheck = $guard->check(['type' => 'rent', 'from' => 'scene', 'scene_id' => 1], [11], 1);
+    expectSame(1, $rentCheck['scene_id']);
+    expectSame('scene', $rentCheck['source']);
+
+    $planCheck = $guard->check(['type' => 'plan', 'from' => 'scene', 'scene_id' => 1], [11], 1);
+    expectSame(1, $planCheck['scene_id']);
+    expectSame('scene', $planCheck['source']);
+
     expectSame('custom_plan', $guard->check(['type' => 'rent', 'from' => 'custom_plan'], [11], 1)['source']);
     expectSame(1, $guard->check(['type' => 'custom', 'scene_id' => 1], [], 1)['scene_id']);
     expectSame([], $guard->check(['type' => 'buy'], [11], 1));

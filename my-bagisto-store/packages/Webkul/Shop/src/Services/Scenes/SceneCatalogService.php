@@ -10,6 +10,10 @@ class SceneCatalogService
     /** 目录资格不代表现场能力、档期或真机适配已经验证。 */
     public function rentalProductIds(int $channelId, ?array $only = null, bool $current = false): array
     {
+        if ($only !== null && $only === []) {
+            return [];
+        }
+
         $query = DB::table('products as p')
             ->join('product_flat as pf', 'pf.product_id', '=', 'p.id')
             ->join('product_channels as pch', 'pch.product_id', '=', 'p.id')
@@ -23,15 +27,53 @@ class SceneCatalogService
             ->where('pf.visible_individually', 1)
             ->where('p.type', 'simple');
 
+        // 排除 SC3 内部服务 SKU 与技能商品，避免后台误挂载到租赁类目后前台可见却在结算时 409 报错
+        $schema = DB::connection()->getSchemaBuilder();
+        if ($schema->hasTable('scene_sku_mappings')) {
+            $query->whereNotIn('p.id', function ($sub) {
+                $sub->select('product_id')
+                    ->from('scene_sku_mappings')
+                    ->where('mode', 'service')
+                    ->whereNotNull('approved_by');
+            });
+        }
+        if ($schema->hasTable('skill_versions')) {
+            $query->whereNotIn('p.id', function ($sub) {
+                $sub->select('product_id')->from('skill_versions');
+            });
+        }
+        $query->whereNotIn('p.id', function ($sub) {
+            $sub->select('pc_skill.product_id')
+                ->from('product_categories as pc_skill')
+                ->join('category_translations as ct_skill', 'ct_skill.category_id', '=', 'pc_skill.category_id')
+                ->where('ct_skill.slug', 'skill');
+        });
+
         if ($only !== null) {
-            $query->whereIn('p.id', $only);
+            $orderedIds = array_values(array_unique(array_map('intval', $only)));
+            $query->whereIn('p.id', $orderedIds);
         }
 
         if ($current) {
             $query->lockForUpdate();
         }
 
-        return $query->orderBy('p.id')->distinct()->pluck('p.id')->map(fn ($id) => (int) $id)->all();
+        $matched = $query->orderBy('p.id')->distinct()->pluck('p.id')->map(fn ($id) => (int) $id)->all();
+
+        // 若调用方传入了明确配置的机型列表，保留后台配置的先后推荐顺序
+        if ($only !== null) {
+            $matchedSet = array_flip($matched);
+            $orderedResult = [];
+            foreach (array_values(array_unique(array_map('intval', $only))) as $wantedId) {
+                if (isset($matchedSet[$wantedId])) {
+                    $orderedResult[] = $wantedId;
+                }
+            }
+
+            return $orderedResult;
+        }
+
+        return $matched;
     }
 
     public function summary(Scene $scene): array

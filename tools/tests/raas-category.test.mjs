@@ -61,14 +61,17 @@ function bindComponentState(component, overrides = {}) {
   return state
 }
 
-test('分类页模板已完成 4 主 Tab（租售 TOB | 场景 | 技能 | 配件）重构与注释修复', async () => {
+test('分类页模板已完成 4 主 Tab（租售 | 场景 | 技能 | 配件）重构、去 TOB 与布局统一', async () => {
   const vue = await readFile(new URL('../../pages/robot/index.vue', import.meta.url), 'utf8')
-  assert.match(vue, /@tap="switchTab\('tob'\)">租售 TOB<\/text>/)
+  assert.match(vue, /@tap="switchTab\('tob'\)">租售<\/text>/)
+  assert.doesNotMatch(vue, /@tap="switchTab\('tob'\)">租售\s*TOB<\/text>/)
+  assert.doesNotMatch(vue, /租售\s*TOB/)
   assert.doesNotMatch(vue, /@tap="switchTab\('rent'\)">租用<\/text>/)
   assert.doesNotMatch(vue, /@tap="switchTab\('buy'\)">购买<\/text>/)
-  // 原文件 line 20 未闭合注释导致搜索框被注释掉，必须已修复闭合
-  assert.match(vue, /<!-- ===== 搜索框\(租售 TOB \/ 场景\) ===== -->\s*<view class="search-bar" v-show="currentTab === 'tob'">/)
+  assert.match(vue, /<!-- ===== 搜索框\(租售 \/ 场景\) ===== -->\s*<view class="search-bar" v-show="currentTab === 'tob'">/)
+  assert.match(vue, /<view class="tob-toolbar-head"[\s\S]*?<view class="tob-subbar">/)
   assert.match(vue, /v-model="sceneSearchQ"/)
+  assert.match(vue, /title:\s*'租售・平台保障'/)
   // 禁止虚假划线价、失效 coupons 和虚构免邮承诺
   assert.doesNotMatch(vue, /selectedProduct\.price[^\n]*\* 1\.2/)
   assert.doesNotMatch(vue, /\bcoupons\b/)

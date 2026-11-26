@@ -72,8 +72,15 @@ try {
   await page.getByText('目录机型 A', { exact: true }).waitFor()
   await page.screenshot({ path: path.join(out, 'detail-ready.png'), fullPage: true })
   await page.locator('.product-select-btn').dispatchEvent('tap')
-  await page.getByText('提交选型意向 · 获取正式报价', { exact: true }).dispatchEvent('tap')
-  if (!(await page.evaluate(() => window.navigation[0]?.url.includes('sceneId=1')))) throw new Error('场景 ID 未进入需求表单')
+  await page.getByText('立即下单', { exact: true }).dispatchEvent('tap')
+  const navOk = await page.evaluate(() => {
+    const u = (window.navigation[0] && window.navigation[0].url) || ''
+    return u.startsWith('/pages/order/checkout?') && u.includes('sceneId=1') && u.includes('from=scene')
+  })
+  if (!navOk) throw new Error('场景选型未跳转确认订单页: ' + JSON.stringify(await page.evaluate(() => window.navigation)))
+  await page.locator('.product-card').first().dispatchEvent('tap')
+  await page.getByText('加入选型', { exact: true }).waitFor()
+  await page.locator('.machine-sheet-close').dispatchEvent('tap')
   await page.getByText('方案定制', { exact: true }).dispatchEvent('tap')
   await page.getByText('具体服务范围、交付条件及报价需根据您的需求确认。', { exact: true }).waitFor()
   await page.evaluate(async () => { window.sceneFail = true; await window.sceneVm.reload() })
@@ -84,7 +91,7 @@ try {
   await page.getByText('当前未配置可租机型', { exact: true }).waitFor()
   await page.screenshot({ path: path.join(out, 'detail-empty.png'), fullPage: true })
   if (errors.length) throw new Error(errors.join('; '))
-  const report = { compiled_sfc: files, browser: 'Chromium headless / Vue 3.5.13', scope: '真实 Vue 组件 + 隔离假接口；不是 uni-app 完整构建或实际后端联调', checks: ['正常目录','场景 ID 进入需求表单','定制空内容说明','错误态无商品','无配置空态'], errors }
+  const report = { compiled_sfc: files, browser: 'Chromium headless / Vue 3.5.13', scope: '真实 Vue 组件 + 隔离假接口；不是 uni-app 完整构建或实际后端联调', checks: ['正常目录','场景选型跳转确认订单页','机型详情弹层展示','定制空内容说明','错误态无商品','无配置空态'], errors }
   fs.writeFileSync(path.join(out, 'ui-verification.json'), JSON.stringify(report, null, 2) + '\n')
   process.stdout.write(JSON.stringify(report, null, 2) + '\n')
 } finally { await browser.close() }

@@ -7,11 +7,14 @@ export function sceneId(value) {
 }
 
 export function normalizeSceneImage(url, baseUrl) {
-  if (typeof url !== 'string' || !url) return ''
-  if (url.startsWith('/') && !url.startsWith('//')) return baseUrl + url
-  // 仅修正开发环境地址；保留真实 CDN 主机，不把第三方地址改成本机。
+  if (typeof url !== 'string' || !url || url.includes('product-placeholder')) return ''
+  const rewriteCache = path => path.replace(/^\/cache\/(?:small|medium|large|original)\//, '/storage/')
+  if (url.startsWith('/') && !url.startsWith('//')) return baseUrl + rewriteCache(url)
+  // 仅修正开发环境地址与同源 cache 路径；保留真实 CDN 主机，不把第三方地址改成本机。
   const local = url.match(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)$/i)
-  return local ? baseUrl + local[1] : (/^https?:\/\//i.test(url) ? url : '')
+  if (local) return baseUrl + rewriteCache(local[1])
+  if (baseUrl && url.startsWith(baseUrl + '/cache/')) return baseUrl + rewriteCache(url.slice(baseUrl.length))
+  return /^https?:\/\//i.test(url) ? url : ''
 }
 
 export function createSceneCatalog(fetchScenes, { imageUrl = value => value || '', now = Date.now, ttl = 300000 } = {}) {
@@ -62,6 +65,13 @@ export function createSceneCatalog(fetchScenes, { imageUrl = value => value || '
 
 export function configuredSceneProducts(ids, catalog) {
   if (!Array.isArray(ids) || !Array.isArray(catalog)) return []
-  const wanted = new Set(ids.map(sceneId).filter(Boolean))
-  return catalog.filter(item => item && wanted.has(sceneId(item.bagistoId || item.id)) && item.type === 'simple')
+  const order = new Map()
+  for (const raw of ids) {
+    const id = sceneId(raw)
+    if (id && !order.has(id)) order.set(id, order.size)
+  }
+  if (!order.size) return []
+  return catalog
+    .filter(item => item && order.has(sceneId(item.bagistoId || item.id)) && item.type === 'simple')
+    .sort((a, b) => order.get(sceneId(a.bagistoId || a.id)) - order.get(sceneId(b.bagistoId || b.id)))
 }

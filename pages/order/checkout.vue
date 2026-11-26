@@ -11,6 +11,15 @@
     </view>
 
     <scroll-view class="checkout-scroll" scroll-y="true" show-scrollbar="false">
+      <!-- ===== 场景租用上下文提示 ===== -->
+      <view class="scene-banner" v-if="isSceneOrder">
+        <view class="scene-banner-head">
+          <text class="scene-banner-tag">场景租用</text>
+          <text class="scene-banner-title">{{ product.scene || '场景选型租用' }}</text>
+        </view>
+        <text class="scene-banner-desc">已按所选场景配置机型清单与租期，正式下单前服务端将再次核验目录价格与起租下限。</text>
+      </view>
+
       <!-- ===== 多机合单商品清单（场景租用一次选多台） ===== -->
       <view class="info-card" v-if="multiItems.length">
         <view class="multi-item" v-for="(it, idx) in multiItems" :key="idx">
@@ -22,16 +31,21 @@
           </view>
           <view class="multi-info">
             <text class="multi-name">{{ it.name }}</text>
-            <text class="multi-scene">{{ it.scene || '机器租用' }}</text>
+            <text class="multi-scene">{{ it.scene || '机器租用' }}{{ it.min_rent_days > 1 ? (' · ' + it.min_rent_days + '天起租') : '' }}</text>
+            <view class="multi-price-box">
+              <text class="multi-price">¥{{ it.price }}</text>
+              <text class="multi-unit">/天/台</text>
+            </view>
           </view>
-          <view class="multi-price-box">
-            <text class="multi-price">¥{{ it.price }}</text>
-            <text class="multi-unit">/天</text>
+          <view class="multi-stepper">
+            <view class="multi-step-btn" @tap="changeMultiItemQty(idx, -1)">−</view>
+            <text class="multi-step-num">{{ it.qty || 1 }}</text>
+            <view class="multi-step-btn" @tap="changeMultiItemQty(idx, 1)">＋</view>
           </view>
         </view>
         <view class="rent-info-row">
-          <text class="rent-info-label">合计</text>
-          <text class="rent-info-value">¥{{ formatMoney(productTotal) }}（{{ multiItems.length }}台 × {{ rentDays }}天）</text>
+          <text class="rent-info-label">租金合计</text>
+          <text class="rent-info-value">¥{{ formatMoney(productTotal) }}（共 {{ multiTotalQty }} 台 × {{ rentDays }} 天）</text>
         </view>
       </view>
 
@@ -66,6 +80,10 @@
         <view class="rent-info-row" v-if="product.startDate">
           <text class="rent-info-label">服务时间</text>
           <text class="rent-info-value">{{ product.startDate }} ~ {{ product.endDate || '—' }}</text>
+        </view>
+        <view class="rent-info-row" v-if="referenceDepositYuan > 0">
+          <text class="rent-info-label">参考押金</text>
+          <text class="rent-info-value deposit-note">¥{{ formatMoney(referenceDepositYuan) }}（另行协议核验，不计入本单应付）</text>
         </view>
       </view>
 
@@ -266,15 +284,33 @@ export default {
 
   computed: {
     productTotal() {
-      // 多机合单:Σ(每台日租价) × 共用租期天数
+      // 多机合单:Σ(每台日租价 × 台数) × 共用租期天数
       if (this.multiItems.length) {
-        const perDay = this.multiItems.reduce((sum, it) => sum + (parseFloat(String(it.price).replace(/,/g, '')) || 0), 0)
+        const perDay = this.multiItems.reduce(
+          (sum, it) => sum + (parseFloat(String(it.price).replace(/,/g, '')) || 0) * Math.max(1, Number(it.qty) || 1),
+          0
+        )
         return perDay * this.rentDays
       }
       const price = parseFloat(String(this.product.price).replace(/,/g, '')) || 0
       // 单商品租用也要乘租期天数(机器页 rentPeriod 传「N天」,如 3天);未传则 1 天
       const days = this.product.type === 'rent' ? (parseInt(this.product.rentPeriod) || 1) : 1
       return price * this.qty * days
+    },
+    multiTotalQty() {
+      return this.multiItems.reduce((sum, it) => sum + Math.max(1, Number(it.qty) || 1), 0)
+    },
+    isSceneOrder() {
+      return !!(this.product && this.product.from === 'scene' && (this.product.sceneId || this.product.scene))
+    },
+    referenceDepositYuan() {
+      if (this.multiItems.length) {
+        return this.multiItems.reduce(
+          (sum, it) => sum + Math.max(0, Number(it.deposit_yuan || it.depositYuan) || 0) * Math.max(1, Number(it.qty) || 1),
+          0
+        )
+      }
+      return Math.max(0, Number(this.product.depositYuan) || 0) * (this.qty || 1)
     },
     productTypeLabel() {
       const map = { humanoid: '人形', quadruped: '四足', delivery: '配送', cleaning: '清洁', reception: '迎宾', inspection: '巡检', arm: '机械臂', companion: '陪伴' }
@@ -286,6 +322,7 @@ export default {
     },
     submitLabel() {
       if (this.submitting) return '提交中...'
+      if (this.isSceneOrder) return '确认场景下单'
       // 真实下单:tob-order 落后台正式订单(租用含租期),措辞与行为一致
       return this.product.type === 'rent' ? '确认下单' : '提交订单'
     },
@@ -297,7 +334,8 @@ export default {
       uni.redirectTo({ url: '/pages/scene/confirm?quoteId=' + encodeURIComponent(q.scene_quote_id || q.quoteId) })
       return
     }
-    if (q.sceneId || q.scene_id || q.scene || q.from === 'scene' || q.from === 'custom_plan' || q.type === 'plan') {
+    const hasMachineOrderPayload = !!(q.productId || q.items || q.data)
+    if (q.from === 'custom_plan' || (!hasMachineOrderPayload && (q.sceneId || q.scene_id || q.scene || q.from === 'scene' || q.type === 'plan'))) {
       uni.redirectTo({ url: '/pages/scene/request?source=scene' + (q.sceneId || q.scene_id ? '&sceneId=' + encodeURIComponent(q.sceneId || q.scene_id) : '') })
       return
     }
@@ -312,10 +350,13 @@ export default {
       sku: q.sku ? decodeURIComponent(q.sku) : '',
       image: q.image ? decodeURIComponent(q.image) : '',
       from: q.from || '',
-      sceneId: q.sceneId || '',
+      sceneId: q.sceneId || q.scene_id || '',
+      sceneRevisionId: Number(q.sceneRevisionId || q.scene_revision_id) || null,
+      minRentDays: Math.max(1, Number(q.minRentDays || q.min_rent_days) || 1),
+      depositYuan: Math.max(0, Number(q.depositYuan || q.deposit_yuan) || 0),
       deviceId: q.deviceId ? Number(q.deviceId) || null : null,
     }
-    if (q.qty) this.qty = Number(q.qty) || 1
+    if (q.qty) this.qty = Math.max(1, Math.min(99, Number(q.qty) || 1))
 
     // 多机合单(标准租用):items=JSON 数组,全场共用租期(rent_days)
     if (q.items) {
@@ -323,19 +364,33 @@ export default {
       try { rawItems = decodeURIComponent(rawItems) } catch (e) {}
       try {
         const parsed = JSON.parse(rawItems)
-        this.multiItems = Array.isArray(parsed) ? parsed : []
+        this.multiItems = Array.isArray(parsed)
+          ? parsed.map(it => ({
+            ...it,
+            qty: Math.max(1, Math.min(999, Number(it.qty) || 1)),
+            min_rent_days: Math.max(1, Number(it.min_rent_days || it.minRentDays) || 1),
+            deposit_yuan: Math.max(0, Number(it.deposit_yuan || it.depositYuan) || 0),
+          }))
+          : []
       } catch (e) { this.multiItems = [] }
-      this.rentDays = Math.max(1, parseInt(q.rent_days, 10) || 1)
+      const minDays = this.multiItems.reduce((m, it) => Math.max(m, it.min_rent_days || 1), 1)
+      this.rentDays = Math.max(minDays, parseInt(q.rent_days, 10) || parseInt(q.rentPeriod, 10) || 1)
       if (!q.type || q.type === 'buy') this.product.type = 'rent'
       if (!q.rentPeriod) this.product.rentPeriod = this.rentDays + '天'
     }
 
     // 租用信息（产品类型 + 租期 + 起止日期）
     this.product.productType = q.productType ? decodeURIComponent(q.productType) : ''
-    this.product.rentPeriod = q.rentPeriod ? decodeURIComponent(q.rentPeriod) : ''
+    const resolvedRentPeriod = q.rentPeriod
+      ? decodeURIComponent(q.rentPeriod)
+      : (this.multiItems.length ? `${this.rentDays}天` : (q.rent_days ? `${Math.max(this.product.minRentDays, parseInt(q.rent_days, 10) || 1)}天` : ''))
+    this.product.rentPeriod = resolvedRentPeriod
     this.product.startDate = q.startDate ? decodeURIComponent(q.startDate) : ''
-    if (this.product.rentPeriod && this.product.startDate) {
-      this.product.endDate = this.addDays(this.product.startDate, parseInt(this.product.rentPeriod) || 0)
+    if (this.product.startDate) {
+      const periodDays = parseInt(this.product.rentPeriod, 10) || this.rentDays || 0
+      if (periodDays > 0) {
+        this.product.endDate = this.addDays(this.product.startDate, periodDays)
+      }
     }
 
     // ===== 再次下单：读取订单同步过来的数据（?data=<JSON> 或 reorderData 缓存） =====
@@ -347,8 +402,26 @@ export default {
       this.product.price = reorderData.amount || reorderData.rentPrice || reorderData.price || this.product.price
       this.product.scene = reorderData.scene || this.product.scene
       this.product.type = reorderData.type || this.product.type
+      this.product.from = reorderData.from || this.product.from
+      this.product.sceneId = reorderData.sceneId || this.product.sceneId
+      this.product.sceneRevisionId = reorderData.sceneRevisionId || this.product.sceneRevisionId
+      this.product.sku = reorderData.sku || this.product.sku
+      this.product.image = reorderData.image || this.product.image
       this.product.productType = reorderData.productType || this.product.productType
       this.product.rentPeriod = reorderData.rentPeriod || this.product.rentPeriod
+      this.product.startDate = reorderData.startDate || this.product.startDate
+      if (this.product.startDate && this.product.rentPeriod) {
+        this.product.endDate = reorderData.endDate || this.addDays(this.product.startDate, parseInt(this.product.rentPeriod, 10) || 0)
+      }
+      if (Array.isArray(reorderData.items) && reorderData.items.length) {
+        this.multiItems = reorderData.items.map(it => ({
+          ...it,
+          qty: Math.max(1, Math.min(999, Number(it.qty) || 1)),
+          min_rent_days: Math.max(1, Number(it.min_rent_days || it.minRentDays) || 1),
+          deposit_yuan: Math.max(0, Number(it.deposit_yuan || it.depositYuan) || 0),
+        }))
+        this.rentDays = Math.max(1, parseInt(reorderData.rentDays || reorderData.rent_days || this.product.rentPeriod, 10) || 1)
+      }
       if (reorderData.quantity) this.qty = Number(reorderData.quantity) || this.qty
     }
 
@@ -363,6 +436,13 @@ export default {
     },
     decreaseQty() {
       if (this.qty > 1) this.qty -= 1
+    },
+    changeMultiItemQty(idx, delta) {
+      const target = this.multiItems[idx]
+      if (!target) return
+      const next = (Number(target.qty) || 1) + delta
+      if (next < 1 || next > 99) return
+      this.multiItems.splice(idx, 1, { ...target, qty: next })
     },
 
     // ================ 回填 ================
@@ -595,15 +675,16 @@ export default {
           // 下单来源(场景租用 from=scene → 后端归类为「方案」) + 场景名(写入条目名,后台可辨认)
           from: this.product.from || '',
           scene_id: this.product.sceneId || null,
+          scene_revision_id: this.product.sceneRevisionId || null,
           scene: this.product.scene || '',
           phone: v.phone,
           city: v.city,
           address: v.address,
           email: v.email || '',
-          rent_days: this.multiItems.length ? (this.rentDays || 1) : (this.product.type === 'rent' ? (parseInt(this.product.rentPeriod) || 1) : 1),
-          rentPeriod: this.product.type === 'rent' ? this.product.rentPeriod : '',
-          startDate: this.product.type === 'rent' ? this.product.startDate : '',
-          endDate: this.product.type === 'rent' ? this.product.endDate : '',
+          rent_days: this.multiItems.length ? (this.rentDays || 1) : ((this.product.type === 'rent' || this.product.type === 'plan') ? (parseInt(this.product.rentPeriod) || 1) : 1),
+          rentPeriod: (this.product.type === 'rent' || this.product.type === 'plan') ? this.product.rentPeriod : '',
+          startDate: (this.product.type === 'rent' || this.product.type === 'plan') ? this.product.startDate : '',
+          endDate: (this.product.type === 'rent' || this.product.type === 'plan') ? this.product.endDate : '',
         }
         // B-18:技能单带券。空串不带该字段(后端 coupon_code 为 nullable,不带即不用券)。
         // 券的校验与折抵全在后端:前端不做任何"看起来能用"的本地判断。
@@ -617,11 +698,12 @@ export default {
         if (this.multiItems.length) {
           payload.items = this.multiItems.map(it => ({
             product_id: it.product_id || it.bagistoId || it.id,
-            qty: 1,
+            qty: Math.max(1, Number(it.qty) || 1),
             price: parseFloat(String(it.price).replace(/,/g, '')) || 0,
             rent_days: this.rentDays,
           }))
           delete payload.product_id
+          delete payload.sku
           delete payload.price
           delete payload.qty
         }
@@ -1240,6 +1322,40 @@ export default {
 .submit-btn:active { opacity: 0.85; }
 .submit-btn.disabled { opacity: 0.6; pointer-events: none; }
 
+/* ===== 场景租用横幅 ===== */
+.scene-banner {
+  background: linear-gradient(135deg, #EEF4FF 0%, #F7FAFF 100%);
+  border: 2rpx solid #C8DCFF;
+  border-radius: 20rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 20rpx;
+}
+.scene-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+.scene-banner-tag {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #165DFF;
+  background: #DCE8FF;
+  border-radius: 999rpx;
+  padding: 4rpx 14rpx;
+}
+.scene-banner-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #102F6E;
+}
+.scene-banner-desc {
+  display: block;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #4A5A6A;
+}
+
 /* ===== 多机合单商品清单 ===== */
 .multi-item { display: flex; align-items: center; gap: 16rpx; padding: 14rpx 0; border-bottom: 1px solid #F1F5F9; }
 .multi-item:last-of-type { border-bottom: none; }
@@ -1249,9 +1365,13 @@ export default {
 .multi-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .multi-name { font-size: 28rpx; font-weight: 600; color: #1F2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .multi-scene { font-size: 22rpx; color: #6B7280; }
-.multi-price-box { display: flex; align-items: baseline; flex-shrink: 0; }
-.multi-price { font-size: 30rpx; font-weight: 700; color: #FF7820; }
-.multi-unit { font-size: 22rpx; color: #6B7280; }
+.multi-price-box { display: flex; align-items: baseline; flex-shrink: 0; margin-top: 2rpx; }
+.multi-price { font-size: 28rpx; font-weight: 700; color: #FF7820; }
+.multi-unit { font-size: 20rpx; color: #6B7280; margin-left: 2rpx; }
+.multi-stepper { display: flex; align-items: center; gap: 10rpx; flex-shrink: 0; }
+.multi-step-btn { width: 48rpx; height: 48rpx; border-radius: 12rpx; background: #E8F4FD; color: #165DFF; font-size: 28rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.multi-step-num { min-width: 36rpx; text-align: center; font-size: 26rpx; font-weight: 600; color: #1A2A3A; }
+.deposit-note { font-size: 22rpx; color: #64748B; }
 .rent-day-chips { display: flex; gap: 12rpx; flex-wrap: wrap; }
 .day-chip { font-size: 24rpx; color: #475569; background: #F1F5F9; border-radius: 24rpx; padding: 8rpx 22rpx; }
 .day-chip.active { background: #165DFF; color: #fff; }

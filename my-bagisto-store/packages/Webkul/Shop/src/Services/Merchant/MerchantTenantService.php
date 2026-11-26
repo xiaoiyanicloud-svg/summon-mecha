@@ -1788,6 +1788,8 @@ class MerchantTenantService
             $order->version = (int) $order->version + 1;
             $order->save();
 
+            $this->syncBagistoOrderStatus($order->bagisto_order_id ? (int) $order->bagisto_order_id : null);
+
             $this->ops->log(
                 OperationLog::ACTOR_CUSTOMER,
                 $actorId,
@@ -2020,6 +2022,8 @@ class MerchantTenantService
             $order->version = (int) $order->version + 1;
             $order->save();
 
+            $this->syncBagistoOrderStatus($order->bagisto_order_id ? (int) $order->bagisto_order_id : null);
+
             $this->ops->log(
                 OperationLog::ACTOR_CUSTOMER,
                 $actorId,
@@ -2108,6 +2112,8 @@ class MerchantTenantService
             $order->version = (int) $order->version + 1;
             $order->save();
 
+            $this->syncBagistoOrderStatus($order->bagisto_order_id ? (int) $order->bagisto_order_id : null);
+
             $this->ops->log(
                 OperationLog::ACTOR_CUSTOMER,
                 $actorId,
@@ -2124,6 +2130,64 @@ class MerchantTenantService
 
             return $order;
         });
+    }
+
+    /**
+     * 将商家侧履约单状态同步回写至主商城关联订单（bagisto_order_id），保证买家侧订单状态一致。
+     */
+    protected function syncBagistoOrderStatus(?int $bagistoOrderId): void
+    {
+        if (! $bagistoOrderId || ! Schema::hasTable('orders') || ! Schema::hasTable('merchant_orders')) {
+            return;
+        }
+
+        if (app(\Webkul\Shop\Services\Scenes\SceneLinkedOrderService::class)->context($bagistoOrderId)) {
+            return;
+        }
+
+        $bagistoOrder = \Webkul\Sales\Models\Order::query()->whereKey($bagistoOrderId)->lockForUpdate()->first();
+        if (! $bagistoOrder) {
+            return;
+        }
+
+        $siblings = MerchantOrder::query()->where('bagisto_order_id', $bagistoOrderId)->get(['status']);
+        if ($siblings->isEmpty()) {
+            return;
+        }
+
+        $statuses = $siblings->pluck('status')->all();
+        $active = array_values(array_filter($statuses, fn ($s) => $s !== MerchantOrder::STATUS_CANCELLED));
+
+        if ($active === []) {
+            if ($bagistoOrder->status === 'pending') {
+                $bagistoOrder->status = 'canceled';
+                $bagistoOrder->save();
+                \Illuminate\Support\Facades\Event::dispatch('sales.order.cancel.after', $bagistoOrder);
+            }
+
+            return;
+        }
+
+        $allCompleted = count(array_filter($active, fn ($s) => $s === MerchantOrder::STATUS_COMPLETED)) === count($active);
+        if ($allCompleted) {
+            if ($bagistoOrder->status !== 'completed') {
+                $bagistoOrder->status = 'completed';
+                $bagistoOrder->save();
+            }
+
+            return;
+        }
+
+        $anyShippedOrInUse = count(array_filter($active, fn ($s) => in_array($s, [
+            MerchantOrder::STATUS_SHIPPED,
+            MerchantOrder::STATUS_IN_USE,
+            MerchantOrder::STATUS_RETURNED_INSPECTING,
+        ], true))) > 0;
+
+        if ($anyShippedOrInUse && $bagistoOrder->status === 'pending') {
+            $bagistoOrder->status = 'processing';
+            $bagistoOrder->save();
+        }
     }
 
     public function listOrders(MerchantShop|int $shopOrSellerId, array $filters = [], int $perPage = 15): LengthAwarePaginator

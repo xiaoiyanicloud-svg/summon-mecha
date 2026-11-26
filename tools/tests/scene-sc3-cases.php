@@ -508,6 +508,120 @@ test('SC3 真实订单取消/支付创建/支付回调入口识别场景关联�
     }
 }));
 
+test('场景租用直下订单经由真实仓储与交易守卫：服务端锁价、生成 plan 单并隔离 SC3 正式报价协议', fn () => sceneSandbox(function () {
+    if (! Illuminate\Http\Request::hasMacro('validate')) {
+        Illuminate\Http\Request::macro('validate', function (array $rules, array $messages = [], array $customAttributes = []) {
+            /** @var Illuminate\Http\Request $this */
+            return app('validator')->validate($this->all(), $rules, $messages, $customAttributes);
+        });
+    }
+    $prevCore = Webkul\Core\Facades\Core::getFacadeRoot();
+    $coreStub = new class($prevCore) {
+        public function __construct(private $inner) {}
+        public function getGuestCustomerGroup() { return (object) ['id' => 1]; }
+        public function getAllLocales() { return collect([(object) ['code' => 'en', 'name' => 'English']]); }
+        public function getCurrentLocale() { return (object) ['code' => 'en', 'name' => 'English']; }
+        public function formatPrice($price) { return '¥'.number_format((float) $price, 2); }
+        public function getConfigData($key) { return str_contains((string) $key, 'class') ? '' : null; }
+        public function __call($name, $args) { return $this->inner->$name(...$args); }
+    };
+    Webkul\Core\Facades\Core::swap($coreStub);
+    app()->instance('core', $coreStub);
+    app()->instance(Webkul\Core\Core::class, $coreStub);
+    app()->instance(Webkul\Customer\Repositories\CustomerRepository::class, new class extends Webkul\Customer\Repositories\CustomerRepository {
+        public function __construct() {}
+        public function getCurrentGroup() { return (object) ['id' => 1]; }
+    });
+    $createdPriceIdx = false;
+    $schema = DB::connection()->getSchemaBuilder();
+    if (! $schema->hasTable('product_price_indices')) {
+        $schema->create('product_price_indices', function (Illuminate\Database\Schema\Blueprint $t) {
+            $t->increments('id');
+            $t->unsignedInteger('product_id');
+            $t->unsignedInteger('customer_group_id')->nullable();
+            $t->unsignedInteger('channel_id')->nullable();
+            $t->decimal('min_price', 12, 4)->default(0);
+            $t->decimal('regular_min_price', 12, 4)->default(0);
+        });
+        $createdPriceIdx = true;
+    }
+    try {
+        DB::table('channels')->where('id', 1)->update(['name' => 'Default']);
+        DB::table('product_flat')->where('product_id', 11)->update(['name' => 'G1 租用机器人', 'locale' => 'en', 'price' => 2800.00]);
+        DB::table('product_price_indices')->insert(['product_id' => 11, 'customer_group_id' => 1, 'channel_id' => 1, 'min_price' => 2800.00, 'regular_min_price' => 2800.00]);
+        DB::table('product_inventories')->insert(['product_id' => 11, 'channel_id' => 1, 'inventory_source_id' => 1, 'qty' => 5]);
+        $GLOBALS['sc3AuthenticatedCustomer'] = 1;
+        $realOrderRepo = app(Webkul\Sales\Repositories\OrderRepository::class);
+        app()->instance(Webkul\Sales\Repositories\OrderRepository::class, new class($realOrderRepo) extends Webkul\Sales\Repositories\OrderRepository {
+            private $innerRepo;
+            public function __construct($r) { $this->innerRepo = $r; }
+            public function create(array $data) {
+                try { return $this->innerRepo->create($data); }
+                catch (Throwable $e) {
+                    $GLOBALS['__tobOrderInnerErr'] = get_class($e).': '.$e->getMessage().' @ '.$e->getFile().':'.$e->getLine();
+                    throw $e;
+                }
+            }
+        });
+        $ctrl = app(Webkul\Shop\Http\Controllers\API\TobOrderController::class);
+
+        // 1) 正常场景机器直租（带场景租期与被篡改的低价 1 元），服务端必须按目录价 2800 锁价，生成 plan 单并写入 scene_rental
+        $okReq = Illuminate\Http\Request::create('/api/tob-order', 'POST', [
+            'from' => 'scene',
+            'scene_id' => 1,
+            'type' => 'rent',
+            'rent_days' => 5,
+            'startDate' => '2026-12-01',
+            'name' => '王五',
+            'phone' => '13800001111',
+            'city' => '上海',
+            'address' => '张江科学城',
+            'items' => [
+                ['product_id' => 11, 'qty' => 2, 'price' => 1, 'rent_days' => 5],
+            ],
+        ]);
+        $tobLogs = [];
+        Illuminate\Support\Facades\Log::swap(new class($tobLogs) extends Psr\Log\AbstractLogger {
+            private $buf;
+            public function __construct(&$buf) { $this->buf = &$buf; }
+            public function log($level, $message, array $context = []): void { $this->buf[] = [$level, $message, $context]; }
+        });
+        $resp = $ctrl->store($okReq);
+        if ($resp->getStatusCode() !== 200) {
+            throw new RuntimeException('HTTP '.$resp->getStatusCode().': '.json_encode($tobLogs, JSON_UNESCAPED_UNICODE));
+        }
+        $body = json_decode($resp->getContent(), true);
+        same(true, $body['success']);
+        same('plan', $body['order_type']);
+        same(28000.0, (float) $body['grand_total']);
+        same(1, (int) ($body['scene_rental']['scene_id'] ?? 0));
+        same(5, (int) ($body['scene_rental']['rent_days'] ?? 0));
+        same('2026-12-01', $body['scene_rental']['start_date'] ?? null);
+        same('2026-12-06', $body['scene_rental']['end_date'] ?? null);
+
+        // OrderController::show 暴露 scene_rental 且不触发 SC3 scene_workflow
+        $orderRes = app(Webkul\Shop\Http\Controllers\API\OrderController::class)->show((int) $body['order_id'])->toArray($okReq);
+        $orderPayload = $orderRes['data'] ?? $orderRes;
+        same(1, (int) ($orderPayload['scene_rental']['scene_id'] ?? 0));
+        same(null, $orderPayload['scene_workflow'] ?? null);
+
+        // 2) SC3 正式报价协议（quoteId / additional.scene / service SKU）继续被 409 SCENE_QUOTE_REQUIRED 拦截
+        foreach ([
+            ['scene_quote_id' => 9, 'type' => 'rent', 'product_id' => 11, 'qty' => 1, 'price' => 2800, 'name' => 'A', 'phone' => '13800001111', 'city' => '上海', 'address' => 'X'],
+            ['additional' => ['scene' => ['quote_id' => 9]], 'type' => 'rent', 'product_id' => 11, 'qty' => 1, 'price' => 2800, 'name' => 'A', 'phone' => '13800001111', 'city' => '上海', 'address' => 'X'],
+        ] as $blockedPayload) {
+            $blocked = $ctrl->store(Illuminate\Http\Request::create('/api/tob-order', 'POST', $blockedPayload));
+            same(409, $blocked->getStatusCode());
+            same('SCENE_QUOTE_REQUIRED', json_decode($blocked->getContent(), true)['code']);
+        }
+    } finally {
+        Webkul\Core\Facades\Core::swap($prevCore);
+        if ($createdPriceIdx) {
+            $schema->dropIfExists('product_price_indices');
+        }
+    }
+}));
+
 if (SCENE_SC3_MODE === 'mysql') {
     require __DIR__.'/scene-sc3-concurrency.php';
 }

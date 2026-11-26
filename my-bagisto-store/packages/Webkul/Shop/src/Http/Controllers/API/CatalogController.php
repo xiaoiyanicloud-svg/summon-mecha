@@ -78,7 +78,7 @@ class CatalogController extends APIController
     private function categoriesMeta(): array
     {
         $defaults = [
-            'tob'       => ['slug' => 'tob', 'name' => '租售 TOB', 'parent_slug' => 'root'],
+            'tob'       => ['slug' => 'tob', 'name' => '租售', 'parent_slug' => 'root'],
             'rent'      => ['slug' => 'rent', 'name' => '租赁', 'parent_slug' => 'tob'],
             'buy'       => ['slug' => 'buy', 'name' => '购买', 'parent_slug' => 'tob'],
             'skill'     => ['slug' => 'skill', 'name' => '技能', 'parent_slug' => 'root'],

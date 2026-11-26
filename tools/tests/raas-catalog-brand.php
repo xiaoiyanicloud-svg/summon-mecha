@@ -347,6 +347,10 @@ $tobId = (int) DB::table('category_translations')->where('slug', 'tob')->value('
 $rentCat = Category::findOrFail($legacyRentId);
 $buyCat = Category::findOrFail($legacyBuyId);
 assertTrue($tobId > 0 && (int) $rentCat->parent_id === $tobId && (int) $buyCat->parent_id === $tobId, 'rent 与 buy 必须安全归并到 tob 子节点下且保留原 slug');
+assertTrue(DB::table('category_translations')->where('category_id', $tobId)->where('locale', 'zh_CN')->value('name') === '租售', 'tob 一级分类中文名称应为「租售」（去掉 TOB）');
+DB::table('category_translations')->where('category_id', $tobId)->update(['name' => '租售 TOB']);
+$service->installRaaSTaxonomy(true);
+assertTrue(DB::table('category_translations')->where('category_id', $tobId)->where('locale', 'zh_CN')->value('name') === '租售', '重跑 taxonomy 安装应把旧「租售 TOB」迁移为「租售」');
 assertTrue(DB::table('categories')->where('id', $rentCat->id)->exists(), '原 rent ID 保持不变，不破坏既有关联');
 $rentAncestorIds = $rentCat->ancestors()->pluck('id')->map(fn ($id) => (int) $id)->all();
 assertTrue(in_array($tobId, $rentAncestorIds, true), 'tob 应位于 rent 的 nestedset ancestors 路径中');

@@ -18,7 +18,7 @@ class InstallRaaSCatalogTaxonomy extends Command
                             {--apply : 真正写入数据库；不加参数只做 dry-run}
                             {--backfill : 同时对尚未绑定 brand/robot_type EAV 的存量商品执行自动回扫匹配}';
 
-    protected $description = '安装或对齐 租售TOB(tob)->租赁(rent)/购买(buy) 分类树、机器人形态属性及品牌库（默认 dry-run）';
+    protected $description = '安装或对齐 租售(tob)->租赁(rent)/购买(buy) 分类树、机器人形态属性及品牌库（默认 dry-run）';
 
     public function handle(CatalogBrandService $brands): int
     {

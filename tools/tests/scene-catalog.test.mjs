@@ -90,27 +90,123 @@ function mountDetail(getSceneDetail, submitError = null, options = { sceneId: '1
   const context = vm.createContext({ sceneId, configuredSceneProducts, normalizeSceneImage, BASE_URL: 'https://api.test', StateView: {}, SmIcon: {},
     sceneApi: { getSceneDetail }, sceneDraftPayload: value => ({ ...value, scene_id: value.sceneId }),
     openSceneRequest: payload => calls.push({ url: '/pages/scene/request?sceneId=' + payload.scene_id, payload }),
-    uni: { navigateTo: payload => calls.push(payload), showToast: payload => calls.push(payload) } })
+    uni: { navigateTo: payload => calls.push(payload), showToast: payload => calls.push(payload), showModal: payload => calls.push(payload) } })
   vm.runInContext(detailScript.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), context)
   const component = context.component, state = component.data()
   for (const [name, fn] of Object.entries(component.methods)) state[name] = fn.bind(state)
-  Object.defineProperty(state, 'filteredProducts', { get: () => component.computed.filteredProducts.call(state) })
+  for (const [name, fn] of Object.entries(component.computed || {})) {
+    Object.defineProperty(state, name, { configurable: true, enumerable: true, get: () => fn.call(state) })
+  }
   component.onLoad.call(state, options)
   return { state, calls }
 }
-const detail = products => ({ matched: true, name: '真实场景', description: '', banner: null, scheme: { robots: [99] }, products })
+const detail = products => ({ matched: true, name: '真实场景', description: '', banner: null, scene_revision_id: 7, scheme: { robots: [99] }, products })
 const product = { id: 99, name: '真实机型', type: 'simple', prices: { regular: { price: 10 } } }
 
-test('详情仅在服务端成功后开放选择，导航保留 sceneId；失败清空选择并禁止交易', async () => {
+test('详情仅在服务端成功后开放选择，选中后进入确认订单页并透传 sceneId；失败清空选择并禁止交易', async () => {
   let result = detail([product])
   const { state, calls } = mountDetail(async () => { if (result instanceof Error) throw result; return result })
-  state.goProductDetail(product); assert.equal(calls.length, 0)
+  state.goProductDetail(product); assert.equal(calls.length, 0); assert.equal(state.showMachineModal, false)
   await state.reload(); state.toggleMachine(state.filteredProducts[0]); assert.equal(state.selectedMachines.length, 1)
-  state.submitSceneOrder(); assert.match(calls[0].url, /sceneId=1/)
+  await state.submitSceneOrder()
+  const checkoutCall = calls.find(c => c.url && c.url.startsWith('/pages/order/checkout'))
+  assert.ok(checkoutCall, '场景选型提交应进入确认订单页而不是需求线索表单')
+  assert.match(checkoutCall.url, /sceneId=1/)
+  assert.match(checkoutCall.url, /from=scene/)
+  assert.match(checkoutCall.url, /type=rent/)
+  assert.match(checkoutCall.url, /sceneRevisionId=7/)
   result = new Error('场景已停用'); await state.reload()
   assert.equal(state.sceneLoaded, false); assert.equal(state.selectedMachines.length, 0)
-  const count = calls.length; state.goProductDetail(product); state.submitSceneOrder(); assert.equal(calls.length, count)
+  const count = calls.length; state.goProductDetail(product); await state.submitSceneOrder()
+  assert.equal(calls.length, count); assert.equal(state.showMachineModal, false)
   assert.match(state.loadError, /停用/)
+})
+
+test('场景选型支持按台数步进、最低起租下限约束与单机直下（重验最新价格）', async () => {
+  const datedProduct = {
+    id: 99, name: 'G1 人形', type: 'simple',
+    prices: { final: { price: 2800 }, regular: { price: 3200 } },
+    brand: { code: 'yushu', name: '宇树' },
+    robot_type: { code: 'humanoid', label: '人形' },
+    raas_meta: { min_rent_days: 5, deposit_yuan: '6000.00', comm_channels: ['DDS'] },
+  }
+  let serverPrice = 2800
+  const { state, calls } = mountDetail(async () => ({
+    matched: true, name: '商演展厅', description: '', banner: null, scene_revision_id: 9,
+    scheme: { robots: [99] },
+    products: [{ ...datedProduct, prices: { final: { price: serverPrice }, regular: { price: 3200 } } }],
+  }))
+  await state.reload()
+  assert.equal(state.filteredProducts[0].minRentDays, 5)
+  state.toggleMachine(state.filteredProducts[0])
+  assert.equal(state.rentDays, 5) // 选入时自动抬升至最低起租天数
+  state.selectRentDays(2)
+  assert.equal(state.rentDays, 5) // 禁止低于最低起租
+  state.changeMachineQty(state.filteredProducts[0], 2)
+  assert.equal(state.selectedMachines[0].qty, 3)
+
+  // 点卡片打开机型规格弹窗，服务端涨价后点击单机直下，必须重验并按最新价格送入 checkout
+  state.goProductDetail(state.filteredProducts[0])
+  assert.equal(state.showMachineModal, true)
+  serverPrice = 3100
+  await state.orderSingleMachine()
+  const checkoutCall = calls.find(c => c.url && c.url.startsWith('/pages/order/checkout'))
+  assert.ok(checkoutCall)
+  const qs = new URLSearchParams(checkoutCall.url.split('?')[1])
+  const sentItems = JSON.parse(qs.get('items'))
+  assert.equal(sentItems[0].price, '3100')
+  assert.equal(sentItems[0].qty, 3)
+  assert.equal(qs.get('rent_days'), '5')
+  assert.equal(qs.get('from'), 'scene')
+})
+
+test('确认订单页对场景机器选型放行不跳转需求页，且空参数场景跳回需求页、报价跳 confirm', async () => {
+  const checkoutSource = (await readFile(new URL('../../pages/order/checkout.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
+  const createPayloads = [], redirects = []
+  const mkCtx = () => {
+    const ctx = vm.createContext({ TOKEN_KEY: 'token', SmIcon: {},
+      tobOrderApi: { create: async p => { createPayloads.push(p); return { success: true, order_id: 88 } } },
+      uni: { showLoading() {}, hideLoading() {}, showToast() {}, getStorageSync: () => '', setStorageSync() {}, switchTab() {}, redirectTo: r => redirects.push(r) } })
+    vm.runInContext(checkoutSource.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), ctx)
+    const s = ctx.component.data()
+    for (const [n, fn] of Object.entries(ctx.component.methods)) s[n] = fn.bind(s)
+    for (const [n, fn] of Object.entries(ctx.component.computed || {})) Object.defineProperty(s, n, { configurable: true, enumerable: true, get: () => fn.call(s) })
+    s.tryPrefillFromLocal = () => {}
+    return { ctx, s }
+  }
+
+  // 1) 空参数场景仍回退需求提交
+  const emptyScene = mkCtx()
+  emptyScene.ctx.component.onLoad.call(emptyScene.s, { from: 'scene', sceneId: '1' })
+  assert.match(redirects[0].url, /^\/pages\/scene\/request/)
+
+  // 2) quoteId 仍进 SC3 confirm 页
+  redirects.length = 0
+  mkCtx().ctx.component.onLoad.call(mkCtx().s, { quoteId: '15' })
+  assert.match(redirects[0].url, /^\/pages\/scene\/confirm\?quoteId=15/)
+
+  // 3) 带选型 items 进入 checkout 不重定向，算总价支持 qty 并提交真实订单
+  redirects.length = 0
+  const { ctx, s } = mkCtx()
+  ctx.component.onLoad.call(s, {
+    items: encodeURIComponent(JSON.stringify([{ product_id: 99, name: 'G1 人形', price: '2800', qty: 2, min_rent_days: 5 }])),
+    rent_days: '5', type: 'rent', from: 'scene', sceneId: '1', sceneRevisionId: '9', scene: encodeURIComponent('商演展厅'), startDate: '2026-12-01',
+  })
+  assert.equal(redirects.length, 0)
+  assert.equal(s.product.endDate, '2026-12-06')
+  assert.equal(s.productTotal, 28000)
+  s.changeMultiItemQty(0, 1)
+  assert.equal(s.multiItems[0].qty, 3)
+  assert.equal(s.productTotal, 42000)
+  s.form = { name: '李四', phone: '13900000000', city: '北京', address: '朝阳区', email: '' }
+  await s.submitOrder()
+  assert.equal(createPayloads[0].from, 'scene')
+  assert.equal(createPayloads[0].scene_id, '1')
+  assert.equal(createPayloads[0].scene_revision_id, 9)
+  assert.equal(createPayloads[0].items[0].qty, 3)
+  assert.equal(createPayloads[0].items[0].rent_days, 5)
+  assert.equal(createPayloads[0].startDate, '2026-12-01')
+  assert.equal(createPayloads[0].endDate, '2026-12-06')
 })
 
 test('详情乱序响应只保留最新，重新进入时刷新已选机型价格', async () => {

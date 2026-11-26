@@ -61,6 +61,28 @@ class OrderController extends APIController
             ]);
         }
 
+        // 支持 ?id={orderId} 拉取本机单笔游客订单完整详情(含地址与履约进度),无需破坏契约路由表
+        if ($request->filled('id')) {
+            $targetId = (int) $request->query('id');
+            $single = $targetId > 0
+                ? Order::query()
+                    ->whereNull('customer_id')
+                    ->where('guest_key', $guestKey)
+                    ->whereKey($targetId)
+                    ->with(['items', 'payment'])
+                    ->first()
+                : null;
+            $formatted = $single ? $this->formatOrder($single, true) : null;
+
+            return new JsonResource([
+                'data' => $formatted ? [$formatted] : [],
+                'detail' => $formatted,
+                'total' => $formatted ? 1 : 0,
+                'current' => 1,
+                'last_page' => 1,
+            ]);
+        }
+
         $orders = Order::query()
             ->whereNull('customer_id')
             ->where('guest_key', $guestKey)
@@ -79,15 +101,23 @@ class OrderController extends APIController
     }
 
     /**
-     * Full order detail of the authenticated customer.
+     * Full order detail of the authenticated customer (with fallback for same-device pre-login guest order).
      */
     public function show(int $id): JsonResource
     {
         $customer = auth()->guard('customer')->user();
+        $guestKey = $this->guestKey(request());
 
         $order = Order::query()
-            ->where('customer_id', $customer->id)
             ->where('id', $id)
+            ->where(function ($q) use ($customer, $guestKey) {
+                $q->where('customer_id', $customer->id);
+                if ($guestKey) {
+                    $q->orWhere(function ($gq) use ($guestKey) {
+                        $gq->whereNull('customer_id')->where('guest_key', $guestKey);
+                    });
+                }
+            })
             ->with(['items', 'payment'])
             ->first();
 
@@ -107,9 +137,46 @@ class OrderController extends APIController
      */
     protected function formatOrder(Order $order, bool $withDetails = false): array
     {
+        $firstSceneRental = null;
+        $firstRental = null;
+        $totalDepositCents = 0;
+
+        foreach ($order->items as $orderItem) {
+            $add = is_array($orderItem->additional ?? null) ? $orderItem->additional : [];
+            if (! empty($add['scene_rental']) && is_array($add['scene_rental'])) {
+                if ($firstSceneRental === null) {
+                    $firstSceneRental = $add['scene_rental'];
+                }
+                if (! empty($add['scene_rental']['deposit_yuan'])) {
+                    $totalDepositCents += (int) round(((float) $add['scene_rental']['deposit_yuan']) * 100);
+                }
+            } elseif (! empty($add['rental']) && is_array($add['rental'])) {
+                if ($firstRental === null) {
+                    $firstRental = $add['rental'];
+                }
+                if (! empty($add['rental']['deposit_yuan'])) {
+                    $totalDepositCents += (int) round(((float) $add['rental']['deposit_yuan']) * 100);
+                }
+            }
+        }
+
+        if ($firstSceneRental !== null) {
+            $firstSceneRental['total_qty'] = (int) ($order->items_qty ?: $order->total_qty_ordered ?: 1);
+            if ($totalDepositCents > 0) {
+                $firstSceneRental['deposit_yuan'] = number_format($totalDepositCents / 100, 2, '.', '');
+            }
+        }
+        if ($firstRental !== null) {
+            $firstRental['total_qty'] = (int) ($order->items_qty ?: $order->total_qty_ordered ?: 1);
+            if ($totalDepositCents > 0) {
+                $firstRental['deposit_yuan'] = number_format($totalDepositCents / 100, 2, '.', '');
+            }
+        }
+
         $data = [
             'id' => $order->id,
             'increment_id' => $order->increment_id,
+            'is_guest' => (bool) $order->is_guest,
             'status' => $order->status,
             'status_label' => $order->status_label,
             'order_type' => $order->order_type,
@@ -124,9 +191,12 @@ class OrderController extends APIController
             'tax_total_formatted' => core()->formatPrice($order->tax_total),
             'shipping_amount' => $order->shipping_amount,
             'shipping_amount_formatted' => core()->formatPrice($order->shipping_amount),
-            'customer_name' => $order->customer_first_name.' '.$order->customer_last_name,
+            'discount_amount' => $order->discount_amount ?? 0,
+            'customer_name' => trim($order->customer_first_name.' '.$order->customer_last_name),
             'customer_email' => $order->customer_email,
             'scene_workflow' => app(\Webkul\Shop\Services\Scenes\SceneLinkedOrderService::class)->context((int) $order->id),
+            'scene_rental' => $firstSceneRental,
+            'rental_info' => $firstSceneRental ?: $firstRental,
         ];
 
         // 技能单:把授权信息接进订单详情。
@@ -179,6 +249,55 @@ class OrderController extends APIController
             $data['billing_address'] = $order->billing_address ? $order->billing_address->toArray() : null;
             $data['shipping_address'] = $order->shipping_address ? $order->shipping_address->toArray() : null;
             $data['payment'] = $order->payment ? $order->payment->toArray() : null;
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('merchant_orders')) {
+                $mOrders = DB::table('merchant_orders')
+                    ->where('bagisto_order_id', $order->id)
+                    ->orderBy('id')
+                    ->get();
+                if ($mOrders->isNotEmpty()) {
+                    $firstM = $mOrders->first();
+                    $data['fulfillment'] = [
+                        'merchant_order_no' => $firstM->order_no,
+                        'status'            => $firstM->status,
+                        'carrier'           => $firstM->carrier,
+                        'tracking_no'       => $firstM->tracking_no,
+                        'device_sn'         => $firstM->device_sn,
+                        'contract_no'       => $firstM->contract_no,
+                        'shipped_at'        => $firstM->shipped_at,
+                        'returned_at'       => $firstM->returned_at,
+                        'inspected_at'      => $firstM->inspected_at,
+                        'completed_at'      => $firstM->completed_at,
+                    ];
+                    $timeline = [
+                        ['title' => '订单已创建，锁定设备库存', 'time' => $order->created_at->format('Y-m-d H:i:s'), 'done' => true],
+                    ];
+                    if ($firstM->shipped_at) {
+                        $shipDesc = '商家已出库发货';
+                        if ($firstM->carrier || $firstM->tracking_no) {
+                            $shipDesc .= '（'.trim(($firstM->carrier ?? '').' '.($firstM->tracking_no ?? '')).'）';
+                        }
+                        if ($firstM->device_sn) {
+                            $shipDesc .= ' · SN: '.$firstM->device_sn;
+                        }
+                        $timeline[] = ['title' => $shipDesc, 'time' => (string) $firstM->shipped_at, 'done' => true];
+                    }
+                    if ($firstM->returned_at) {
+                        $timeline[] = ['title' => '设备已登记归还待验机', 'time' => (string) $firstM->returned_at, 'done' => true];
+                    }
+                    if ($firstM->inspected_at) {
+                        $timeline[] = ['title' => '归还验机定损已完成', 'time' => (string) $firstM->inspected_at, 'done' => true];
+                    }
+                    if ($firstM->completed_at) {
+                        $timeline[] = ['title' => '订单履约已完结', 'time' => (string) $firstM->completed_at, 'done' => true];
+                    } elseif (! empty($firstM->cancelled_at)) {
+                        $timeline[] = ['title' => '订单已取消，库存已释放', 'time' => (string) $firstM->cancelled_at, 'done' => true];
+                    }
+                    $lastIdx = count($timeline) - 1;
+                    $timeline[$lastIdx]['isLast'] = true;
+                    $data['timeline'] = $timeline;
+                }
+            }
         }
 
         return $data;
@@ -187,29 +306,31 @@ class OrderController extends APIController
     /**
      * 客户自助取消本人待处理订单(信任层:真实自助服务)。
      *
-     * 登录用户按 customer_id 限定;游客按本机标识(X-Guest-Key)限定。
-     *
-     * ⚠ 原来只有 `->where('customer_id', $customer?->id)`,游客时 $customer 为空,
-     *   生成的 SQL 是 `customer_id = NULL` —— 在 SQL 里永远不成立,所以**游客根本取消不了自己的单**。
-     *   必须分开写:登录用 =,游客用 IS NULL + guest_key。
+     * 登录用户按 customer_id 限定(同时兼容本机登录前创建的 X-Guest-Key 游客单);游客按 X-Guest-Key 限定。
      */
     public function cancel(Request $request, int $id): JsonResponse
     {
         $customer = auth()->guard('customer')->user();
 
-        $guestKey = $customer ? null : $this->guestKey($request);
+        $guestKey = $this->guestKey($request);
 
         if (! $customer && ! $guestKey) {
             return $this->fail(ApiErrorCode::GUEST_KEY_REQUIRED, '订单不存在。', 200);
         }
 
-        // 与支付回调共享订单行锁。必须在拿到最新订单后重检归属与状态，
-        // 否则等待付款事务完成的取消请求可能用旧 pending 状态覆盖 processing。
+        // 与支付回调及商家发货共享订单行锁。必须在拿到最新订单后重检归属、状态及关联商家出库状态。
         $outcome = DB::transaction(function () use ($id, $customer, $guestKey) {
             $query = Order::query()->whereKey($id);
 
             if ($customer) {
-                $query->where('customer_id', $customer->id);
+                $query->where(function ($q) use ($customer, $guestKey) {
+                    $q->where('customer_id', $customer->id);
+                    if ($guestKey) {
+                        $q->orWhere(function ($gq) use ($guestKey) {
+                            $gq->whereNull('customer_id')->where('guest_key', $guestKey);
+                        });
+                    }
+                });
             } else {
                 $query->whereNull('customer_id')->where('guest_key', $guestKey);
             }
@@ -225,6 +346,81 @@ class OrderController extends APIController
 
             if ($order->status !== 'pending') {
                 return ['order' => $order, 'canceled' => false];
+            }
+
+            // 同步锁检商家履约单：若商家已出库则禁止单方取消；若待发货则同步取消并原路释放锁定库存
+            if (\Illuminate\Support\Facades\Schema::hasTable('merchant_orders')) {
+                $mOrders = \Webkul\Shop\Models\MerchantOrder::query()
+                    ->where('bagisto_order_id', $order->id)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($mOrders as $mOrder) {
+                    if (! in_array($mOrder->status, [
+                        \Webkul\Shop\Models\MerchantOrder::STATUS_PENDING_SHIPMENT,
+                        \Webkul\Shop\Models\MerchantOrder::STATUS_CANCELLED,
+                    ], true)) {
+                        return ['order' => $order, 'canceled' => false, 'shipped' => true];
+                    }
+                }
+
+                $hasExtTable = \Illuminate\Support\Facades\Schema::hasTable('merchant_product_exts');
+                $hasLockLedger = \Illuminate\Support\Facades\Schema::hasTable('merchant_inventory_locks');
+
+                foreach ($mOrders as $mOrder) {
+                    if ($mOrder->status !== \Webkul\Shop\Models\MerchantOrder::STATUS_PENDING_SHIPMENT) {
+                        continue;
+                    }
+                    if ($hasExtTable) {
+                        $ext = DB::table('merchant_product_exts')
+                            ->where('seller_id', $mOrder->seller_id)
+                            ->where('product_id', $mOrder->product_id)
+                            ->lockForUpdate()
+                            ->first();
+                        if ($ext) {
+                            $qty = max(1, (int) $mOrder->qty);
+                            $nextLocked = max(0, (int) ($ext->locked_stock ?? 0) - $qty);
+                            $nextRentable = $mOrder->fulfillment_type === 'rental'
+                                ? ((int) ($ext->rentable_stock ?? 0) + $qty)
+                                : (int) ($ext->rentable_stock ?? 0);
+                            $nextSellable = $mOrder->fulfillment_type === 'rental'
+                                ? (int) ($ext->sellable_stock ?? 0)
+                                : ((int) ($ext->sellable_stock ?? 0) + $qty);
+
+                            DB::table('merchant_product_exts')->where('id', $ext->id)->update([
+                                'locked_stock'   => $nextLocked,
+                                'rentable_stock' => $nextRentable,
+                                'sellable_stock' => $nextSellable,
+                                'version'        => (int) ($ext->version ?? 1) + 1,
+                                'updated_at'     => now(),
+                            ]);
+
+                            if ($hasLockLedger) {
+                                \Webkul\Shop\Models\MerchantInventoryLock::create([
+                                    'seller_id'         => (int) $mOrder->seller_id,
+                                    'shop_id'           => (int) $mOrder->shop_id,
+                                    'product_id'        => (int) $mOrder->product_id,
+                                    'action_type'       => 'cancel_release',
+                                    'qty_change'        => $qty,
+                                    'sellable_after'    => $nextSellable,
+                                    'rentable_after'    => $nextRentable,
+                                    'locked_after'      => $nextLocked,
+                                    'maintenance_after' => (int) ($ext->maintenance_stock ?? 0),
+                                    'reference_no'      => $mOrder->order_no,
+                                    'reason'            => '买家取消商城订单，锁定库存原路释放 (商城单 '.$order->increment_id.')',
+                                    'actor_id'          => $customer?->id,
+                                ]);
+                            }
+                        }
+                    }
+
+                    $mOrder->status = \Webkul\Shop\Models\MerchantOrder::STATUS_CANCELLED;
+                    $mOrder->cancel_party = 'buyer';
+                    $mOrder->cancel_reason = '买家在商城端自助取消订单';
+                    $mOrder->cancelled_at = now();
+                    $mOrder->version = (int) $mOrder->version + 1;
+                    $mOrder->save();
+                }
             }
 
             $order->status = 'canceled';
@@ -245,6 +441,9 @@ class OrderController extends APIController
         if (! $outcome['canceled']) {
             if ($outcome['scene'] ?? false) {
                 return response()->json(['code' => 'SCENE_CHANGE_REQUIRED', 'message' => '场景订单请进入交付项目提交取消申请，资源、费用与退款需分别核实。'], 409);
+            }
+            if ($outcome['shipped'] ?? false) {
+                return $this->fail(ApiErrorCode::ORDER_NOT_CANCELABLE, '商家已出库或进入履约流程，请联系客服处理。', 200);
             }
 
             return $this->fail(ApiErrorCode::ORDER_NOT_CANCELABLE, '仅待处理订单可自助取消，请联系客服。', 200);

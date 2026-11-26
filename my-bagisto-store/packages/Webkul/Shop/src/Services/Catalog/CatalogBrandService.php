@@ -192,6 +192,13 @@ class CatalogBrandService
                     $existing->save();
                     $action = 'moved';
                 }
+                if ($apply && $slug === 'tob' && Schema::hasTable('category_translations')) {
+                    DB::table('category_translations')
+                        ->where('category_id', $existing->id)
+                        ->where('slug', 'tob')
+                        ->whereIn('name', ['租售 TOB', '租售TOB', '租售 tob'])
+                        ->update(['name' => $name]);
+                }
                 $report['categories'][] = ['slug' => $slug, 'name' => $name, 'parent_id' => $parentId, 'id' => $existing->id, 'action' => $action];
 
                 return $existing;
@@ -218,7 +225,7 @@ class CatalogBrandService
             return $created;
         };
 
-        $tob = $ensureCategory('tob', '租售 TOB', (int) $root->id, 1);
+        $tob = $ensureCategory('tob', '租售', (int) $root->id, 1);
         $tobParentId = $tob ? (int) $tob->id : 0;
         $ensureCategory('rent', '租赁', $tobParentId ?: (int) $root->id, 1);
         $ensureCategory('buy', '购买', $tobParentId ?: (int) $root->id, 2);
@@ -874,10 +881,15 @@ class CatalogBrandService
         ])->values()->all();
 
         $effectiveMinDays = $ext ? (int) ($ext->min_rent_days ?? 1) : 1;
+        $effectiveMaxDays = null;
         if ($plans->isNotEmpty()) {
             $planMin = (int) $plans->min('min_days');
             if ($planMin > $effectiveMinDays) {
                 $effectiveMinDays = $planMin;
+            }
+            $planMax = (int) $plans->max('max_days');
+            if ($planMax > 0) {
+                $effectiveMaxDays = max($effectiveMinDays, $planMax);
             }
         }
 
@@ -886,6 +898,7 @@ class CatalogBrandService
             'daily_rent_yuan'        => ($ext && $ext->daily_rent_cents > 0) ? number_format($ext->daily_rent_cents / 100, 2, '.', '') : null,
             'deposit_yuan'           => ($ext && $ext->deposit_cents > 0) ? number_format($ext->deposit_cents / 100, 2, '.', '') : null,
             'min_rent_days'          => $ext || $plans->isNotEmpty() ? $effectiveMinDays : null,
+            'max_rent_days'          => $effectiveMaxDays,
             'rentable_stock'         => $ext ? (int) ($ext->rentable_stock ?? 0) : null,
             'sellable_stock'         => $ext ? (int) ($ext->sellable_stock ?? 0) : null,
             'models_count'           => $mergedModels->count(),

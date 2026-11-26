@@ -28,7 +28,7 @@
     <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         <p class="font-semibold">分类页左侧品牌栏 + 商品品牌属性 + 机型库厂商映射统一在此维护</p>
         <p class="mt-1 text-xs leading-relaxed text-blue-800">
-            在此新建或修改品牌会自动同步至商品编辑页的「品牌」下拉选项，并立即生效于前台「租售 TOB」左侧品牌栏；
+            在此新建或修改品牌会自动同步至商品编辑页的「品牌」下拉选项，并立即生效于前台「租售」左侧品牌栏；
             关联 <code>device_model</code> 厂商编码后，前台可直接聚合展示对应机型的交付能力与兼容数。已有商品或机型引用的品牌仅允许停用，禁止硬删除。
         </p>
     </div>

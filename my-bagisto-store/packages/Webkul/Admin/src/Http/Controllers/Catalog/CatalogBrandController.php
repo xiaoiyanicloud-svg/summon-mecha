@@ -143,7 +143,7 @@ class CatalogBrandController extends Controller
 
         return redirect()
             ->route('admin.catalog.brands.index')
-            ->with('success', '已完成 租售TOB(tob)->租赁(rent)/购买(buy) 分类与默认品牌/形态属性同步。');
+            ->with('success', '已完成 租售(tob)->租赁(rent)/购买(buy) 分类与默认品牌/形态属性同步。');
     }
 
     public function backfillProducts(Request $request)

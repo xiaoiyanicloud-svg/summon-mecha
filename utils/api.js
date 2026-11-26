@@ -83,7 +83,7 @@ export const catalogApi = {
 // ==================== 订单 ====================
 export const orderApi = {
   getOrders: (params = {}) => http.get('/api/customer/orders', { data: params, loading: false }),
-  getGuestOrders: () => http.get('/api/guest-orders', { loading: false }),
+  getGuestOrders: (params = {}) => http.get('/api/guest-orders', { data: params, loading: false }),
   getOrderDetail: (id) => http.get(`/api/customer/orders/${id}`, { loading: false }),
   // 客户自助取消本人待处理订单
   cancelOrder: (id) => http.post(`/api/customer/orders/${id}/cancel`, {}, { loading: true, loadingText: '取消中...' }),

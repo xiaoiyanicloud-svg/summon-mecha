@@ -1,8 +1,8 @@
 <template>
   <view class="rental-page">
-    <!-- ===== 顶部主 Tab（四个）：租售 TOB | 场景 | 技能 | 配件 ===== -->
+    <!-- ===== 顶部主 Tab（四个）：租售 | 场景 | 技能 | 配件 ===== -->
     <view class="top-tabs" v-if="!customPlanMode">
-      <text class="tab-item" :class="{ active: currentTab === 'tob' }" @tap="switchTab('tob')">租售 TOB</text>
+      <text class="tab-item" :class="{ active: currentTab === 'tob' }" @tap="switchTab('tob')">租售</text>
       <text class="tab-item" :class="{ active: currentTab === 'scene' }" @tap="switchTab('scene')">场景</text>
       <text class="tab-item" :class="{ active: currentTab === 'skill' }" @tap="switchTab('skill')">技能</text>
       <text class="tab-item" :class="{ active: currentTab === 'accessory' }" @tap="switchTab('accessory')">配件</text>
@@ -15,17 +15,25 @@
 
     <!-- ===== 场景分类滚动条 - 已删除 ===== -->
 
-    <!-- ===== 搜索框(租售 TOB / 场景) ===== -->
+    <!-- ===== 搜索框(租售 / 场景) ===== -->
     <view class="search-bar" v-show="currentTab === 'tob'">
-      <input class="search-input" v-model="searchQ" placeholder="搜索机型 / 品牌 / SKU / 形态" confirm-type="search" />
+      <view class="search-row">
+        <view class="search-glass"><view class="search-glass-circle"></view><view class="search-glass-handle"></view></view>
+        <input class="search-input" v-model="searchQ" placeholder="搜索机型 / 品牌 / SKU / 形态" confirm-type="search" />
+        <text class="search-clear" v-if="searchQ" @tap="searchQ = ''">✕</text>
+      </view>
     </view>
     <view class="search-bar" v-show="currentTab === 'scene'">
-      <input class="search-input" v-model="sceneSearchQ" placeholder="搜索场景名称 / 描述 / 标签" confirm-type="search" />
+      <view class="search-row">
+        <view class="search-glass"><view class="search-glass-circle"></view><view class="search-glass-handle"></view></view>
+        <input class="search-input" v-model="sceneSearchQ" placeholder="搜索场景名称 / 描述 / 标签" confirm-type="search" />
+        <text class="search-clear" v-if="sceneSearchQ" @tap="sceneSearchQ = ''">✕</text>
+      </view>
     </view>
 
     <!-- ===== 主体 ===== -->
     <view class="main-body">
-      <!-- 租售 TOB：动态品牌侧边栏（后台品牌管理驱动，未入库兼容兜底） -->
+      <!-- 租售：动态品牌侧边栏（后台品牌管理驱动，未入库兼容兜底） -->
       <scroll-view class="brand-sidebar" scroll-y="true" show-scrollbar="false" v-show="currentTab === 'tob'" @scroll="onPanelScroll('brand')">
         <view class="brand-item" :class="{ active: currentBrand === 'all' }" @tap="selectBrand('all')">
           <text class="brand-name">全部品牌</text>
@@ -78,18 +86,27 @@
       <!-- ===== 右侧内容列 ===== -->
       <view class="content-column">
 
-        <!-- 租用/购买 分类滚动条（与左边栏「全部品牌」同行） -->
-        <!-- 租售 TOB 子模式切换：全部 | 租赁 | 购买 -->
-        <view class="tob-subbar" v-if="currentTab === 'tob' && !customPlanMode">
-          <text class="tob-sub-pill" :class="{ active: tobSubTab === 'all' }" @tap="setTobSubTab('all')">全部</text>
-          <text class="tob-sub-pill" :class="{ active: tobSubTab === 'rent' }" @tap="setTobSubTab('rent')">租赁</text>
-          <text class="tob-sub-pill" :class="{ active: tobSubTab === 'buy' }" @tap="setTobSubTab('buy')">购买</text>
+        <!-- 租售子模式与多机方案工具条（顶层分栏：分段切换 + 方案入口） -->
+        <view class="tob-toolbar-head" v-if="currentTab === 'tob' && !customPlanMode">
+          <view class="tob-subbar">
+            <text class="tob-sub-pill" :class="{ active: tobSubTab === 'all' }" @tap="setTobSubTab('all')">全部</text>
+            <text class="tob-sub-pill" :class="{ active: tobSubTab === 'rent' }" @tap="setTobSubTab('rent')">租赁</text>
+            <text class="tob-sub-pill" :class="{ active: tobSubTab === 'buy' }" @tap="setTobSubTab('buy')">购买</text>
+          </view>
+          <text class="type-item custom-plan-fixed" v-if="tobSubTab !== 'buy'" @tap="enterCustomPlanMode">+方案</text>
         </view>
 
         <view class="type-bar" v-if="currentTab === 'tob'">
-          <!-- 租售 TOB 共用：一个综合排序下拉 -->
+          <!-- 形态筛选（默认「全部形态」，点开在下方就地展开） -->
+          <view class="cat-group">
+            <view class="cat-picker" :class="{ active: showTypePicker || currentType !== 'all' }" @tap="openTypePicker">
+              <text class="cat-text">{{ currentTypeLabel }}</text>
+              <text class="cat-arrow">{{ showTypePicker ? '▴' : '▾' }}</text>
+            </view>
+          </view>
+          <!-- 租售共用：综合排序下拉 -->
           <view class="sort-picker-wrap">
-            <view class="sort-picker" :class="{ open: showSortPanel }" @tap.stop="toggleSortPanel">
+            <view class="sort-picker" :class="{ open: showSortPanel, filtered: currentSort !== 'default' }" @tap.stop="toggleSortPanel">
               <text class="sort-picker-text">{{ sortLabel }}</text>
               <text class="sort-picker-arrow">{{ showSortPanel ? '▴' : '▾' }}</text>
             </view>
@@ -107,14 +124,7 @@
               </view>
             </view>
           </view>
-          <!-- 形态筛选（默认「全部形态」，点开在下方就地展开） -->
-          <view class="cat-group">
-            <view class="cat-picker" @tap="openTypePicker">
-              <text class="cat-text">{{ currentTypeLabel }}</text>
-              <text class="cat-arrow">{{ showTypePicker ? '▲' : '▼' }}</text>
-            </view>
-          </view>
-          <text class="type-item custom-plan-fixed" v-if="!customPlanMode && tobSubTab !== 'buy'" @tap="enterCustomPlanMode">+方案</text>
+          <text class="bar-reset" v-if="hasActiveTobFilters" @tap="resetTobFilters">重置</text>
         </view>
 
         <!-- 形态：点「全部形态」后在下方就地展开（非弹窗），再点一次收起 -->
@@ -123,7 +133,7 @@
           <view class="type-opt" :class="{ active: currentType === t.code }" v-for="t in rentTypeOptions" :key="t.code" @tap="selectType(t.code); showTypePicker = false">{{ t.label }}</view>
         </view>
 
-        <!-- 租售 TOB（统一目录：支持 全部 / 租赁 / 购买 及 +方案 多机合单） -->
+        <!-- 租售（统一目录：支持 全部 / 租赁 / 购买 及 +方案 多机合单） -->
         <view class="product-area-wrapper" v-show="currentTab === 'tob'">
         <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
           <view class="product-flex-wrapper">
@@ -141,11 +151,11 @@
             </view>
             <view v-if="currentBrand === 'all'" class="enterprise-banner" @tap="goEnterprise">
               <view class="banner-left">
-                <text class="banner-icon"></text>
-                <text class="banner-title">企业部署</text>
+                <text class="banner-badge">企业部署</text>
+                <text class="banner-title">多机联调与驻场咨询</text>
               </view>
               <view class="banner-right">
-                <view class="banner-btn">咨询</view>
+                <view class="banner-btn">立即咨询</view>
               </view>
             </view>
             <view
@@ -633,7 +643,7 @@ const BUY_SERVICE = {
 }
 const serviceConfigs = {
   rent: {
-    title: '租售 TOB・平台保障',
+    title: '租售・平台保障',
     items: [
       { label: '交付', value: '支持物流配送或工程师现场交付（以商品与合同约定为准）' },
       { label: '服务区域', value: '覆盖区域及档期以提交订单后商户承接确认为准' },
@@ -2118,9 +2128,64 @@ export default {
 </script>
 
 <style scoped>
-/* ===== 搜索框(租/购) ===== */
-.search-bar { padding: 12rpx 20rpx 4rpx; }
-.search-input { width: 100%; height: 68rpx; background: #F1F5F9; border-radius: 34rpx; padding: 0 28rpx; font-size: 26rpx; box-sizing: border-box; }
+/* ===== 搜索框(租/购/场景) ===== */
+.search-bar {
+  padding: 12rpx 20rpx 10rpx;
+  background: #ffffff;
+  border-bottom: 1rpx solid #F1F5F9;
+  flex-shrink: 0;
+}
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  height: 68rpx;
+  background: #F4F7FB;
+  border: 1rpx solid #E5ECF6;
+  border-radius: 999rpx;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+}
+.search-glass {
+  position: relative;
+  width: 26rpx;
+  height: 26rpx;
+  flex-shrink: 0;
+}
+.search-glass-circle {
+  width: 18rpx;
+  height: 18rpx;
+  border: 3rpx solid #94A3B8;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.search-glass-handle {
+  position: absolute;
+  right: 1rpx;
+  bottom: 2rpx;
+  width: 9rpx;
+  height: 3rpx;
+  background: #94A3B8;
+  border-radius: 2rpx;
+  transform: rotate(45deg);
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 64rpx;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  font-size: 25rpx;
+  color: #1E293B;
+}
+.search-clear {
+  font-size: 22rpx;
+  color: #94A3B8;
+  padding: 6rpx 8rpx;
+  flex-shrink: 0;
+}
 
 /* ===== 基础布局 ===== */
 page {
@@ -2162,29 +2227,44 @@ page {
 }
 
 /* ============================================================ */
-/* ===== 顶部 Tab（四个主Tab：租售 TOB | 场景 | 技能 | 配件） ===== */
+/* ===== 顶部 Tab（四个主Tab：租售 | 场景 | 技能 | 配件） ===== */
 .top-tabs {
   display: flex;
   background: #EEF4FF;
-  padding: 140rpx 20rpx 0;
+  padding: 88rpx 16rpx 0;
   flex-shrink: 0;
   /* 刻意不写 border-bottom：选中方块要与下方白色内容区连成一体，有线就割开了 */
 }
 .top-tabs .tab-item {
+  position: relative;
   flex: 1;
-  height: 120rpx;
-  line-height: 120rpx;
+  height: 86rpx;
+  line-height: 86rpx;
   text-align: center;
-  font-size: 31rpx;
+  font-size: 29rpx;
   font-weight: 600;
-  color: #1F2937;
+  color: #475569;
   letter-spacing: 0.5rpx;
   white-space: nowrap;
-  transition: background 0.25s ease;
+  border-radius: 16rpx 16rpx 0 0;
+  transition: background 0.2s ease, color 0.2s ease;
 }
-/* 激活态：整格铺白（原为蓝字 + 蓝下划线）。底边无线，视觉上与下方内容区连成一块 */
+/* 激活态：整格铺白 + 底部主题蓝指示线 */
 .top-tabs .tab-item.active {
   background: #FFFFFF;
+  color: #102F6E;
+  font-weight: 700;
+}
+.top-tabs .tab-item.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6rpx;
+  transform: translateX(-50%);
+  width: 44rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: #165DFF;
 }
 
 /* ============================================================ */
@@ -2216,30 +2296,48 @@ page {
   border: 1rpx solid #E5E7EB;
   transition: all 0.2s ease;
 }
-/* 分类选择：label + 下拉框（对标技能/配件的品牌机型格式） */
+/* 分类选择：统一下拉芯片形态 */
 .cat-group {
   display: flex;
   align-items: center;
-  gap: 8rpx;
   flex-shrink: 0;
 }
 .cat-label {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #6B7280;
   white-space: nowrap;
 }
 .cat-picker {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  /* 与排序入口保持同一行的轻量文字样式 */
-  padding: 6rpx 0;
-  font-size: 26rpx;
-  color: #6B7280;   /* 与「分类」标签同色深，不再用更深的 #1F2937 */
+  gap: 8rpx;
+  height: 52rpx;
+  padding: 0 16rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E2E8F0;
+  border-radius: 12rpx;
+  font-size: 22rpx;
+  color: #334155;
+  box-sizing: border-box;
+}
+.cat-picker.active {
+  background: #EEF4FF;
+  border-color: #93C5FD;
+  color: #165DFF;
+  font-weight: 600;
+}
+.cat-text {
+  max-width: 150rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .cat-arrow {
   font-size: 18rpx;
-  color: #9CA3AF;
-  margin-left: 8rpx;
+  color: #94A3B8;
+}
+.cat-picker.active .cat-arrow {
+  color: #165DFF;
 }
 /* 激活态：淡蓝色背景 + 蓝色文字 + 蓝色边框 */
 .type-item.active {
@@ -2258,21 +2356,24 @@ page {
   z-index: 40;
 }
 .sort-picker {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8rpx;
-  padding: 8rpx 14rpx;
-  background: #FFFFFF;
-  border: 1rpx solid #DBE4F3;
+  height: 52rpx;
+  padding: 0 16rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E2E8F0;
   border-radius: 12rpx;
   font-size: 22rpx;
-  color: #102F6E;
+  color: #334155;
   box-sizing: border-box;
 }
-.sort-picker.open {
-  background: #EEF3FF;
-  border-color: #165DFF;
+.sort-picker.open,
+.sort-picker.filtered {
+  background: #EEF4FF;
+  border-color: #93C5FD;
   color: #165DFF;
+  font-weight: 600;
 }
 .sort-picker-text {
   max-width: 150rpx;
@@ -2281,7 +2382,8 @@ page {
   white-space: nowrap;
 }
 .sort-picker-arrow { font-size: 18rpx; color: #94A3B8; }
-.sort-picker.open .sort-picker-arrow { color: #165DFF; }
+.sort-picker.open .sort-picker-arrow,
+.sort-picker.filtered .sort-picker-arrow { color: #165DFF; }
 .sort-panel {
   position: absolute;
   top: calc(100% + 8rpx);
@@ -2343,11 +2445,13 @@ page {
   opacity: 0.85;
 }
 .brand-sidebar {
-  width: 150rpx;
-  background: #F8FAFC;
-  padding: 8rpx 0;
+  width: 152rpx;
+  background: #F7F9FC;
+  border-right: 1rpx solid #EEF2F7;
+  padding: 6rpx 0;
   flex-shrink: 0;
   height: 100%;
+  box-sizing: border-box;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -2361,18 +2465,22 @@ page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16rpx 4rpx;
-  border-left: 4rpx solid transparent;
+  padding: 20rpx 10rpx;
+  border-left: 6rpx solid transparent;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 .brand-item.active {
   background: #ffffff;
+  border-left-color: #165DFF;
 }
 .brand-item .brand-name {
-  font-size: 25.1rpx;
-  color: #1F2937;
+  font-size: 24rpx;
+  line-height: 1.3;
+  color: #475569;
   text-align: center;
   font-weight: 500;
+  word-break: break-word;
 }
 .brand-item.active .brand-name {
   color: #165DFF;
@@ -2399,7 +2507,7 @@ page {
 }
 .product-scroll {
   height: 100%;
-  padding: 16rpx 12rpx 0 12rpx;
+  padding: 14rpx 14rpx 0 14rpx;
   box-sizing: border-box;
   transform: translateZ(0);
   will-change: scroll-position;
@@ -2407,24 +2515,28 @@ page {
 .product-flex-wrapper {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  gap: 14rpx;
+  align-items: stretch;
 }
 
 /* ===== 租用/购买 卡片 ===== */
 .product-card {
-  width: 48.5%;
-  margin-bottom: 16rpx;
+  width: calc(50% - 7rpx);
+  margin-bottom: 0;
   background: #ffffff;
+  border: 1rpx solid #EDF1F7;
   border-radius: 16rpx;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   height: auto;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+  box-sizing: border-box;
+  box-shadow: 0 2rpx 10rpx rgba(15, 23, 42, 0.04);
 }
 .product-image {
   width: 100%;
   aspect-ratio: 1 / 1;
+  background: #F8FAFC;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2439,29 +2551,35 @@ page {
 }
 .product-info {
   flex: 1;
-  padding: 8rpx 10rpx 10rpx;
+  padding: 12rpx 12rpx 14rpx;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 8rpx;
 }
 .product-name {
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: 600;
-  color: #4B5563;
-  white-space: nowrap;
+  line-height: 1.35;
+  color: #1E293B;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 .scene-tag {
-  font-size: 16rpx;
-  color: #6B7280;
-  background: #EEF2F6;
-  padding: 2rpx 10rpx;
-  border-radius: 10rpx;
+  font-size: 18rpx;
+  color: #475569;
+  background: #F1F5F9;
+  padding: 3rpx 10rpx;
+  border-radius: 6rpx;
+  line-height: 1.3;
   display: inline-block;
-  align-self: flex-start;
 }
 .product-bottom {
+  margin-top: auto;
+  padding-top: 4rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2469,28 +2587,32 @@ page {
 .product-price-wrap {
   display: flex;
   align-items: baseline;
-  gap: 8rpx;
+  gap: 6rpx;
   flex-wrap: wrap;
 }
 .product-price {
-  font-size: 36rpx;
+  font-size: 30rpx;
   font-weight: 700;
-  color: #FF7820;
+  color: #FF6B00;
+  line-height: 1.2;
 }
 .product-price .price-badge {
-  font-size: 22rpx;
-  font-weight: 500;
-  color: #FF7820;
-  margin-right: 2rpx;
+  font-size: 18rpx;
+  font-weight: 600;
+  color: #FF6B00;
+  background: #FFF2E8;
+  padding: 2rpx 6rpx;
+  border-radius: 6rpx;
+  margin-right: 4rpx;
 }
 .product-price .price-cur {
-  font-size: 22rpx;
-  font-weight: 500;
-  color: #FF7820;
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #FF6B00;
 }
 .product-original {
-  font-size: 20rpx;
-  color: #C0C8D4;
+  font-size: 19rpx;
+  color: #94A3B8;
   text-decoration: line-through;
   font-weight: 400;
 }
@@ -2510,51 +2632,61 @@ page {
 
 /* ===== 企业部署横幅 ===== */
 .enterprise-banner {
-  width: 90%;
-  margin: 0 auto;
-  background: linear-gradient(to left, #BBD8FF, #F5F9FF);
-  border-radius: 16rpx;
-  padding: 10rpx 16rpx;
+  width: 100%;
+  background: linear-gradient(135deg, #F0F6FF 0%, #E6F0FF 100%);
+  border-radius: 14rpx;
+  padding: 14rpx 18rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 2rpx solid #165DFF;
-  box-shadow: 0 2rpx 12rpx rgba(22, 93, 255, 0.18);
-  margin-bottom: 16rpx;
+  border: 1rpx solid #C7DCFF;
+  box-sizing: border-box;
+  margin-bottom: 2rpx;
   flex-shrink: 0;
-  height: 76rpx;
+  min-height: 68rpx;
 }
 .banner-left {
   display: flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 10rpx;
+  min-width: 0;
 }
-.banner-icon {
-  font-size: 32rpx;
+.banner-badge {
+  font-size: 18rpx;
+  font-weight: 600;
+  color: #165DFF;
+  background: #DCE8FF;
+  padding: 3rpx 10rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
 }
 .banner-title {
   font-size: 22rpx;
-  font-weight: 700;
-  color: #4B5563;
+  font-weight: 600;
+  color: #102F6E;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .banner-right {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  flex-shrink: 0;
+  margin-left: 12rpx;
 }
 .banner-phone {
   font-size: 18rpx;
   color: #6B7280;
 }
 .banner-btn {
-  background: #4291F6;
+  background: #165DFF;
   color: #fff;
-  padding: 4rpx 16rpx;
-  border-radius: 30rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
   font-size: 20rpx;
   font-weight: 600;
   text-align: center;
-  line-height: 1.8;
+  line-height: 1.2;
 }
 .banner-btn:active {
   opacity: 0.8;
@@ -3579,35 +3711,71 @@ page {
 .custom-plan-header { display: flex; align-items: center; justify-content: center; background: #fff; padding: 88rpx 24rpx 0; border-bottom: 2rpx solid #E8EDF3; flex-shrink: 0; }
 .cpp-btns { display: flex; flex-direction: row; align-items: center; gap: 12rpx; }
 .cpp-btn { font-size: 24rpx; color: #165DFF; background: #EAF1FF; border-radius: 28rpx; padding: 10rpx 30rpx; text-align: center; }
-.type-bar { display: flex; align-items: center; gap: 12rpx; border-bottom: 1rpx solid #E7EAF0; position: relative; z-index: 40; }
+.type-bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 16rpx 12rpx;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #EEF2F7;
+  position: relative;
+  z-index: 40;
+  flex-shrink: 0;
+}
 .type-bar .type-scroll { flex: 1; }
-.custom-plan-fixed { flex-shrink: 0; margin-left: auto; }
+.custom-plan-fixed {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 0;
+  height: 52rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #EFF6FF;
+  border: 1rpx solid #BFDBFE;
+  color: #165DFF;
+  font-size: 22rpx;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.bar-reset {
+  margin-left: auto;
+  font-size: 22rpx;
+  color: #64748B;
+  padding: 6rpx 10rpx;
+  flex-shrink: 0;
+}
 .type-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
 .type-modal { width: 640rpx; max-height: 70vh; background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx; box-sizing: border-box; }
 .type-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
 .type-modal-title { font-size: 32rpx; font-weight: 700; color: #1F2937; }
 .type-modal-close { font-size: 30rpx; color: #94A3B8; padding: 6rpx 12rpx; }
 .type-grid { display: flex; flex-wrap: wrap; gap: 20rpx; }
-/* 类别内联展开：点「分类」后在排序栏下方就地展开，把产品列表往下推 */
+/* 类别内联展开：点「形态」后在筛选栏下方就地展开，把产品列表往下推 */
 .type-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
-  margin: 8rpx 12rpx 12rpx;
-  padding: 18rpx 18rpx 14rpx;
-  background: #FFFFFF;
-  border: 1rpx solid #E7EAF0;
-  border-radius: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.06);
+  gap: 12rpx;
+  margin: 10rpx 14rpx 6rpx;
+  padding: 14rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E2E8F0;
+  border-radius: 14rpx;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 .type-inline .type-opt {
-  width: calc(33.33% - 11rpx);
-  padding: 14rpx 0;
-  font-size: 26rpx;
+  width: calc(33.333% - 8rpx);
+  padding: 12rpx 6rpx;
+  font-size: 23rpx;
+  border-radius: 10rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E8EDF5;
 }
 .type-opt { width: calc(33.33% - 14rpx); text-align: center; padding: 18rpx 0; background: #F1F5F9; border-radius: 14rpx; color: #475569; font-size: 28rpx; box-sizing: border-box; }
-.type-opt.active { background: #EAF1FF; color: #165DFF; font-weight: 600; }
+.type-opt.active { background: #EEF4FF; color: #165DFF; border-color: #93C5FD; font-weight: 600; }
 .product-card { position: relative; }
 .product-card.selected { border-color: #165DFF; box-shadow: 0 0 0 2rpx rgba(22, 93, 255, 0.35); }
 /* 加号按钮:未选为淡灰底(不再用整片蓝抢视觉);选中才亮蓝,留状态反馈 */
@@ -3662,7 +3830,7 @@ page {
 .plan-date-pv { height: 400rpx; }
 .plan-date-ok { margin-top: 24rpx; height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 42rpx; }
 
-/* ===== RaaS 品牌图标 / 租售 TOB 子切换栏 / 卡片标签 ===== */
+/* ===== RaaS 品牌图标 / 租售子切换栏 / 卡片标签 ===== */
 .brand-logo {
   width: 48rpx;
   height: 48rpx;
@@ -3684,40 +3852,51 @@ page {
   background: #F59E0B;
   flex-shrink: 0;
 }
-.tob-subbar {
+.tob-toolbar-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12rpx;
-  padding: 10rpx 16rpx 4rpx;
+  padding: 12rpx 16rpx 6rpx;
   background: #FFFFFF;
   flex-shrink: 0;
 }
+.tob-subbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx;
+  background: #F1F5F9;
+  border-radius: 14rpx;
+  flex-shrink: 0;
+}
 .tob-sub-pill {
-  padding: 8rpx 22rpx;
-  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  font-size: 23rpx;
   font-weight: 500;
   color: #475569;
-  background: #F1F5F9;
-  border-radius: 999rpx;
-  line-height: 1.3;
+  background: transparent;
+  border-radius: 10rpx;
+  line-height: 1.25;
 }
 .tob-sub-pill.active {
-  color: #FFFFFF;
-  background: #165DFF;
-  font-weight: 600;
+  color: #165DFF;
+  background: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 2rpx 6rpx rgba(15, 23, 42, 0.08);
 }
 .card-tags-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6rpx;
-  margin-top: 4rpx;
+  margin-top: 0;
 }
 .mode-tag {
-  font-size: 16rpx;
+  font-size: 18rpx;
   font-weight: 600;
-  padding: 2rpx 8rpx;
-  border-radius: 8rpx;
+  padding: 3rpx 10rpx;
+  border-radius: 6rpx;
   line-height: 1.3;
 }
 .mode-tag.rent {
@@ -3729,15 +3908,15 @@ page {
   background: #ECFDF5;
 }
 .raas-tag {
-  font-size: 16rpx;
+  font-size: 18rpx;
   color: #4338CA;
   background: #EEF2FF;
-  padding: 2rpx 8rpx;
-  border-radius: 8rpx;
+  padding: 3rpx 10rpx;
+  border-radius: 6rpx;
   line-height: 1.3;
 }
 .price-unit {
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: 500;
   color: #6B7280;
   margin-left: 2rpx;
@@ -3747,26 +3926,26 @@ page {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10rpx;
-  margin-bottom: 12rpx;
+  gap: 8rpx;
+  margin-bottom: 2rpx;
 }
 .af-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 6rpx 16rpx;
+  gap: 6rpx;
+  padding: 5rpx 14rpx;
   background: #EFF6FF;
   border: 1rpx solid #BFDBFE;
   border-radius: 999rpx;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: #1D4ED8;
 }
 .af-close { font-weight: 700; }
 .af-reset {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: #64748B;
   margin-left: auto;
-  padding: 6rpx 10rpx;
+  padding: 4rpx 8rpx;
 }
 .sibling-switch-card {
   margin-top: 14rpx;
