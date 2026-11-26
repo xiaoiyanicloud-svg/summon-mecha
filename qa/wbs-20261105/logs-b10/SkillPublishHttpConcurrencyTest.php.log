@@ -1,0 +1,10 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillPublishHttpConcurrencyTest
+  ✓ it B3-HTTP-01 · 3 进程并发发布同一 version：无 5xx、无重复行、恰好一条 published                                                 8.87s  
+  ✓ it B3-HTTP-02 · 串行发布两次：第二次不产生新行（幂等）                                                                         10.90s  
+  ✓ it B3-HTTP-03 · 并发发布 3 个不同 version：各自成功，互不影响（不是全局锁）                                                         16.30s  
+  ✓ it B3-HTTP-04 · 数据一致性：发布后版本状态与商品可售状态不矛盾                                                                      4.60s  
+
+  Tests:    4 passed (104 assertions)
+  Duration: 41.02s
+

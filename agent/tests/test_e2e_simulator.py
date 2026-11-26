@@ -136,7 +136,7 @@ class SimulatedPlatformServer(AgentClient):
         self.ack_log.append(ack)
         return True, {"success": True, "data": ack}
 
-    def reconcile(self, skills: list, tasks: Optional[list] = None) -> Tuple[bool, Dict[str, Any]]:
+    def reconcile(self, skills: list, tasks: Optional[list] = None, **kwargs) -> Tuple[bool, Dict[str, Any]]:
         self.reconciliation_history.append({"skills": skills, "tasks": tasks})
         return True, {
             "success": True,
@@ -276,7 +276,22 @@ class TestE2ESimulator(unittest.TestCase):
         g1_dir = os.path.join(self.temp_dir, "g1_device")
         os.makedirs(g1_dir, exist_ok=True)
         from unittest.mock import Mock
-        g1_adapter = UnitreeG1Adapter(app_dir=g1_dir, sdk_stub=Mock())
+
+        class SyntheticStopObserverForE2E:
+            def observe_execution(self, execution_id):
+                from zhjj_agent.stop_observation import synthetic_observation
+                return {
+                    "is_stopped": True,
+                    "status": "SUCCEEDED",
+                    "error_msg": None,
+                    "observation": synthetic_observation(execution_id),
+                }
+
+        g1_adapter = UnitreeG1Adapter(
+            app_dir=g1_dir,
+            sdk_stub=Mock(),
+            stop_observer=SyntheticStopObserverForE2E(),
+        )
         g1_storage = Storage(g1_dir)
         g1_manager = TaskManager(
             install_dir=g1_dir,
@@ -304,7 +319,7 @@ class TestE2ESimulator(unittest.TestCase):
                 "entrypoint": "action.py"
             }
             zf.writestr("manifest.json", json.dumps(manifest_content))
-            zf.writestr("action.py", "#!/usr/bin/env python3\nprint('G1 wave running')\n")
+            zf.writestr("action.py", "#!/usr/bin/env python3\ndef run(context=None):\n    return {'status': 'SUCCEEDED', 'error_msg': None}\n")
             zf.writestr("data/wave_right_3.json", json.dumps({"frames": [{"time_s": 0.0, "joints": {}}]}))
             zf.writestr("assets/welcome.wav", b"RIFF....WAVEfmt ....data....")
 

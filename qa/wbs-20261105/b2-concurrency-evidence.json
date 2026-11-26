@@ -1,0 +1,44 @@
+﻿{
+    "wbs":  "B2",
+    "date":  "2026-11-05",
+    "db":  "summon_mecha_step10_test",
+    "probe":  "real separate PHP processes, each bootstraps Laravel and commits",
+    "results":  [
+                    {
+                        "workers":  2,
+                        "db_evidence":  {
+                                            "build_key":  "bk_b2_probe_fd6ed2fcc46c4b5f8b163acc3faeca38",
+                                            "run_rows":  2,
+                                            "distinct_runs":  2,
+                                            "min_run":  1,
+                                            "max_run":  2,
+                                            "deleted_runs":  2,
+                                            "deleted_sequences":  1
+                                        }
+                    },
+                    {
+                        "workers":  8,
+                        "db_evidence":  {
+                                            "build_key":  "bk_b2_probe_b34d6c18e8ef4eb98e668ec157ea8248",
+                                            "run_rows":  8,
+                                            "distinct_runs":  8,
+                                            "min_run":  1,
+                                            "max_run":  8,
+                                            "deleted_runs":  8,
+                                            "deleted_sequences":  1
+                                        }
+                    },
+                    {
+                        "workers":  16,
+                        "db_evidence":  {
+                                            "build_key":  "bk_b2_probe_8727c995ec974bf8887c31f5b0806110",
+                                            "run_rows":  16,
+                                            "distinct_runs":  16,
+                                            "min_run":  1,
+                                            "max_run":  16,
+                                            "deleted_runs":  16,
+                                            "deleted_sequences":  1
+                                        }
+                    }
+                ]
+}

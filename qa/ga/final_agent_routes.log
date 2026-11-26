@@ -1,0 +1,13 @@
+
+  POST       api/agent/ack ................. shop.api.agent.ack › Webkul\Shop\Http\Controllers\API\AgentController@ack
+  GET|HEAD   api/agent/commands .. shop.api.agent.commands › Webkul\Shop\Http\Controllers\API\AgentController@commands
+  POST       api/agent/enroll ........ shop.api.agent.enroll › Webkul\Shop\Http\Controllers\API\AgentController@enroll
+  POST       api/agent/evt ............. shop.api.agent.event › Webkul\Shop\Http\Controllers\API\AgentController@event
+  POST       api/agent/heartbeat shop.api.agent.heartbeat › Webkul\Shop\Http\Controllers\API\AgentController@heartbeat
+  GET|HEAD   api/agent/packages/{versionId} shop.api.agent.package.download › Webkul\Shop\Http\Controllers\API\AgentP…
+  POST       api/agent/reconcile shop.api.agent.reconcile › Webkul\Shop\Http\Controllers\API\AgentController@reconcile
+  POST       api/agent/register .. shop.api.agent.register › Webkul\Shop\Http\Controllers\API\AgentController@register
+  GET|HEAD   api/agent/self-update shop.api.agent.self-update › Webkul\Shop\Http\Controllers\API\AgentController@self…
+
+                                                                                                    Showing [9] routes
+

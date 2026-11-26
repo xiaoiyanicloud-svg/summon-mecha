@@ -1,0 +1,18 @@
+﻿# b10-t4-real-os-failures.txt · 2026-11-05 19:19:02 · DB=summon_mecha_step10_test
+python.exe : test_a5_acl_01_真实EACCES下安装受控失败且锁已释放 (tests.test_real_os_failures.TestRealAcl.test_a5_acl_01_真实EACCES下安装受控失
+败且锁已释放) ... ok
+At line:5 char:10
++   $out = & $py -m unittest $m.m -v 2>&1
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_a5_acl_01_...失败且锁已释放) ... ok:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+test_a5_acl_02_恢复权限后安装成功 (tests.test_real_os_failures.TestRealAcl.test_a5_acl_02_恢复权限后安装成功) ... ok
+setUpClass (tests.test_real_os_failures.TestRealEnospc) ... skipped 'BLOCKED_ELEVATION: 未提供 ZHJJ_ENOSPC_ROOT（本机无管理员权限，d
+iskpart/Mount-DiskImage 均报 requires elevation），无法构造真实满盘'
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.132s
+
+OK (skipped=1)
+EXIT=0

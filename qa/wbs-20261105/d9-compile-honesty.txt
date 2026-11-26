@@ -1,0 +1,14 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\SkillAudit\CompileCarrierHonestyD9Test
+  ✓ it 只声明 app_package、盘上无文件 → 发布被拒（ASSET_FILE_MISSING），版本仍 in_review、商品不可售                                      1.15s  
+  ✓ it 对照：只有 non-file 载体（cloud_config）的版本仍可发布 —— 不误伤不落盘载体                                                        0.66s  
+  ✓ it 判据本身：isFile 只认 file，isFileBacked 覆盖 4 个需落盘载体（不污染指纹口径）                                                     0.12s  
+  ✓ it 全部机型 kind 不支持 → 422 + SKILL_COMPILE_NOTHING_REGISTERED，data 带 per-model 明细                                0.17s  
+  ✓ it kind=motion（motion 段齐备）→ 200 且 message 如实说「待人工/外部产出」，artifact 仍为 null                                     0.19s  
+  ✓ it skill_build 不在交付链路上：交付/下发代码里没有任何一处引用它                                                                     0.16s  
+  ✓ it compile 只登记 skill_build，不产出任何交付物（skill_assets 恒为 0）                                                       0.17s  
+  ✓ it 开发者门户：交付物列显示载体中文标签，且明说「平台不做自动编译」                                                                          0.48s  
+
+  Tests:    8 passed (55 assertions)
+  Duration: 3.27s
+

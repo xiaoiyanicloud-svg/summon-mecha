@@ -1,0 +1,164 @@
+﻿
+  ..........猕?.猕?.....
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Customers\AccountTest > it should fails the validation error when cert鈥?  
+  Failed to find a validation error in the response for key: 'email'
+
+Response has the following JSON validation errors:
+
+{
+    "first_name": [
+        "first name 瀛楁鏄繀濉殑銆?
+    ],
+    "last_name": [
+        "last name 瀛楁鏄繀濉殑銆?
+    ],
+    "address": [
+        "address 瀛楁鏄繀濉殑銆?
+    ],
+    "country": [
+        "country 瀛楁鏄繀濉殑銆?
+    ],
+    "state": [
+        "state 瀛楁鏄繀濉殑銆?
+    ],
+    "city": [
+        "city 瀛楁鏄繀濉殑銆?
+    ],
+    "postcode": [
+        "postcode 瀛楁鏄繀濉殑銆?
+    ],
+    "phone": [
+        "phone 瀛楁鏄繀濉殑銆?
+    ]
+}
+
+Failed asserting that an array has the key 'email'.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "first name 瀛楁鏄繀濉殑銆?(and 7 more errors)",
+    "errors": {
+        "first_name": [
+            "first name 瀛楁鏄繀濉殑銆?
+        ],
+        "last_name": [
+            "last name 瀛楁鏄繀濉殑銆?
+        ],
+        "address": [
+            "address 瀛楁鏄繀濉殑銆?
+        ],
+        "country": [
+            "country 瀛楁鏄繀濉殑銆?
+        ],
+        "state": [
+            "state 瀛楁鏄繀濉殑銆?
+        ],
+        "city": [
+            "city 瀛楁鏄繀濉殑銆?
+        ],
+        "postcode": [
+            "postcode 瀛楁鏄繀濉殑銆?
+        ],
+        "phone": [
+            "phone 瀛楁鏄繀濉殑銆?
+        ]
+    }
+}
+
+  at packages\Webkul\Shop\tests\Feature\Customers\AccountTest.php:261
+    257鈻?        ->assertJsonValidationErrorFor('address')
+    258鈻?        ->assertJsonValidationErrorFor('postcode')
+    259鈻?        ->assertJsonValidationErrorFor('last_name')
+    260鈻?        ->assertJsonValidationErrorFor('first_name')
+  鉃?261鈻?        ->assertJsonValidationErrorFor('email')
+    262鈻?        ->assertUnprocessable();
+    263鈻?});
+    264鈻?
+    265鈻?it('should store the customer address', function () {
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Customers\AccountTest > it should fails the validation error when cert鈥?  
+  Failed to find a validation error in the response for key: 'email'
+
+Response has the following JSON validation errors:
+
+{
+    "first_name": [
+        "first name 瀛楁鏄繀濉殑銆?
+    ],
+    "last_name": [
+        "last name 瀛楁鏄繀濉殑銆?
+    ],
+    "address": [
+        "address 瀛楁鏄繀濉殑銆?
+    ],
+    "country": [
+        "country 瀛楁鏄繀濉殑銆?
+    ],
+    "state": [
+        "state 瀛楁鏄繀濉殑銆?
+    ],
+    "city": [
+        "city 瀛楁鏄繀濉殑銆?
+    ],
+    "postcode": [
+        "postcode 瀛楁鏄繀濉殑銆?
+    ],
+    "phone": [
+        "phone 瀛楁鏄繀濉殑銆?
+    ]
+}
+
+Failed asserting that an array has the key 'email'.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "first name 瀛楁鏄繀濉殑銆?(and 7 more errors)",
+    "errors": {
+        "first_name": [
+            "first name 瀛楁鏄繀濉殑銆?
+        ],
+        "last_name": [
+            "last name 瀛楁鏄繀濉殑銆?
+        ],
+        "address": [
+            "address 瀛楁鏄繀濉殑銆?
+        ],
+        "country": [
+            "country 瀛楁鏄繀濉殑銆?
+        ],
+        "state": [
+            "state 瀛楁鏄繀濉殑銆?
+        ],
+        "city": [
+            "city 瀛楁鏄繀濉殑銆?
+        ],
+        "postcode": [
+            "postcode 瀛楁鏄繀濉殑銆?
+        ],
+        "phone": [
+            "phone 瀛楁鏄繀濉殑銆?
+        ]
+    }
+}
+
+  at packages\Webkul\Shop\tests\Feature\Customers\AccountTest.php:342
+    338鈻?        ->assertJsonValidationErrorFor('address')
+    339鈻?        ->assertJsonValidationErrorFor('postcode')
+    340鈻?        ->assertJsonValidationErrorFor('last_name')
+    341鈻?        ->assertJsonValidationErrorFor('first_name')
+  鉃?342鈻?        ->assertJsonValidationErrorFor('email')
+    343鈻?        ->assertUnprocessable();
+    344鈻?});
+    345鈻?
+    346鈻?it('should update the customer address', function () {
+
+
+  Tests:    2 failed, 18 passed (90 assertions)
+  Duration: 10.18s
+

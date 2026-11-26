@@ -1,0 +1,10 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GrayRollbackTargetTest
+  ✓ it 首装设备推坏版本 → abort → 回滚任务真发给该设备（旧实现 affected=0）                                                             1.28s  
+  ✓ it 升级设备（旧版已装）也照样回滚                                                                                           0.25s  
+  ✓ it 只回滚本次灰度成功的设备：装失败的设备不背锅                                                                                    0.22s  
+  ✓ it 同一设备多条成功记录只回滚一次（按 did 去重）                                                                                 0.24s  
+
+  Tests:    4 passed (11 assertions)
+  Duration: 2.76s
+

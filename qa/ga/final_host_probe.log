@@ -1,0 +1,47 @@
+=== GET LOCATION ===
+D:\main
+=== OS ===
+
+Caption                : Microsoft Windows 11 专业版
+Version                : 10.0.26200
+OSArchitecture         : 64 位
+TotalVisibleMemorySize : 16591084
+FreePhysicalMemory     : 724292
+=== CPU ===
+
+Name                      : Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
+NumberOfCores             : 6
+NumberOfLogicalProcessors : 12
+MaxClockSpeed             : 2904
+=== PHP ===
+PHP 8.4.24 (cli) (built: Jul 29 2026 06:00:34) (NTS Visual C++ 2022 x64)
+Copyright (c) The PHP Group
+Built by The PHP Group
+Zend Engine v4.4.24, Copyright (c) Zend Technologies
+PHP_EXIT=0
+=== PHP83 PROBE ===
+php8.3=NOT_FOUND
+php83=NOT_FOUND
+C:\php83\php.exe=NOT_FOUND
+C:\php\php83\php.exe=NOT_FOUND
+=== SYSTEM PYTHON ===
+Python 3.13.12
+PYTHON_EXIT=0
+=== FIXED PYTHON ===
+Python 3.12.14
+FIXED_PYTHON_EXIT=0
+=== DB ENV (REDACTED) ===
+APP_ENV=local
+DB_CONNECTION="mysql"
+DB_HOST="127.0.0.1"
+DB_PORT="3306"
+DB_DATABASE="root"
+=== TOOLS ===
+composer=C:\ProgramData\ComposerSetup\bin\composer.bat
+npm=C:\Program Files\nodejs\npm.ps1
+node=C:\Program Files\nodejs\node.exe
+gitleaks=NOT_FOUND
+trivy=NOT_FOUND
+syft=NOT_FOUND
+pip-audit=NOT_FOUND
+safety=NOT_FOUND

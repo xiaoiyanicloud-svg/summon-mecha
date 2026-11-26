@@ -1,0 +1,98 @@
+{
+    "wbs": "A3-HTTP",
+    "generated_at": "2026-11-06T00:11:47+08:00",
+    "servers": {
+        "count": 6,
+        "ports": [
+            8811,
+            8812,
+            8813,
+            8814,
+            8815,
+            8816
+        ],
+        "pids": [
+            46196,
+            55916,
+            47848,
+            26552,
+            51232,
+            49008
+        ]
+    },
+    "cases": {
+        "A3-HTTP-01": {
+            "id": "A3-HTTP-01",
+            "did": "did_d8d7607ef567ad20",
+            "requests": 6,
+            "batch_ids": [
+                "b10h01_aecaac27b2edi0",
+                "b10h01_aecaac27b2f8i1",
+                "b10h01_aecaac27b2fai2",
+                "b10h01_aecaac27b2fci3",
+                "b10h01_aecaac27b2fei4",
+                "b10h01_aecaac27b2ffi5"
+            ],
+            "delta": 6,
+            "expected_delta": 6
+        },
+        "A3-HTTP-02": {
+            "id": "A3-HTTP-02",
+            "did": "did_79c2560335f5fcda",
+            "requests": 6,
+            "batch_id": "b10h02_aecaac409a18",
+            "delta": 1,
+            "expected_delta": 1,
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        "A3-HTTP-03": {
+            "id": "A3-HTTP-03",
+            "did": "did_a08f2044d3813c04",
+            "reported_values": [
+                100,
+                200,
+                300,
+                100,
+                200,
+                300
+            ],
+            "stored": 300,
+            "allowed": [
+                100,
+                200,
+                300
+            ]
+        },
+        "A3-HTTP-04": {
+            "id": "A3-HTTP-04",
+            "devices": 20,
+            "requests": 20,
+            "delta": 20,
+            "expected_delta": 20,
+            "distinct_dids_in_batches": 20
+        },
+        "A3-HTTP-05": {
+            "id": "A3-HTTP-05",
+            "did": "did_ed67337cda8c9b8a",
+            "batch_id": "b10h05_aecaad9729e7",
+            "status": 422,
+            "batch_persisted": false
+        },
+        "A3-HTTP-06": {
+            "id": "A3-HTTP-06",
+            "did": "did_13d5e00782c8467a",
+            "server_count": 1,
+            "requests": 6,
+            "delta": 6,
+            "expected_delta": 6,
+            "note": "1 server 串行对照组；与 A3-HTTP-01 的 6 server 并发结果同为 +6"
+        }
+    }
+}

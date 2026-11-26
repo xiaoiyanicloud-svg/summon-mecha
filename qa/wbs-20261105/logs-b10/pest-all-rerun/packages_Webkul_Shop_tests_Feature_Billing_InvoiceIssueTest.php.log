@@ -1,0 +1,78 @@
+﻿
+  ⨯⨯⨯.⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 · 支付成功后生成一条…            QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (4008, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+     50▕ 
+     51▕             $this->recordsHaveBeenModified();
+     52▕ 
+  ➜  53▕             $result = $statement->execute();
+     54▕ 
+     55▕             $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56▕ 
+     57▕             return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 · 同一笔回调重放 3 次…          QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (4009, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+     50▕ 
+     51▕             $this->recordsHaveBeenModified();
+     52▕ 
+  ➜  53▕             $result = $statement->execute();
+     54▕ 
+     55▕             $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56▕ 
+     57▕             return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 · 游客单不发发票（没…            QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (4010, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+     50▕ 
+     51▕             $this->recordsHaveBeenModified();
+     52▕ 
+  ➜  53▕             $result = $statement->execute();
+     54▕ 
+     55▕             $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56▕ 
+     57▕             return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 · 开票写不进去 → 整笔…          QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (4011, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+     50▕ 
+     51▕             $this->recordsHaveBeenModified();
+     52▕ 
+  ➜  53▕             $result = $statement->execute();
+     54▕ 
+     55▕             $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56▕ 
+     57▕             return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+
+  Tests:    4 failed, 1 passed (2 assertions)
+  Duration: 3.82s
+

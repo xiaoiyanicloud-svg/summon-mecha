@@ -40,6 +40,7 @@ class MockHttpClient(AgentClient):
         self.sent_acks: List[Dict[str, Any]] = []
         self.commands_queue: List[Dict[str, Any]] = []
         self.simulate_network_down = False
+        self.reconcile_calls: List[Dict[str, Any]] = []
 
     def fetch_commands(self) -> Tuple[bool, Dict[str, Any]]:
         if self.simulate_network_down:
@@ -52,8 +53,15 @@ class MockHttpClient(AgentClient):
         if self.simulate_network_down:
             return False, {"code": "NETWORK_DOWN", "message": "模拟断网"}
         ev = {"task_no": task_no, "phase": phase, "error_code": error_code, "error_msg": error_msg, "event_id": event_id}
+        extra = kwargs.get("extra")
+        if isinstance(extra, dict):
+            ev.update(extra)
         self.sent_events.append(ev)
         return True, {"success": True, "data": {"task_no": task_no, "phase": phase}}
+
+    def reconcile(self, skills: list, tasks: Optional[list] = None, **kwargs) -> Tuple[bool, Dict[str, Any]]:
+        self.reconcile_calls.append({"skills": skills, "tasks": tasks, **kwargs})
+        return True, {"success": True, "data": {"aligned": True}}
 
     def send_ack(self, task_no: str, event_id: str, stage: str) -> Tuple[bool, Dict[str, Any]]:
         if self.simulate_network_down:
@@ -189,6 +197,7 @@ class TestTaskManager(unittest.TestCase):
         self.manager.emit_event("T_OFFLINE_01", "done")
 
         unacked = self.storage.get_unacked_events()
+        original_event_ids = [ev["event_id"] for ev in unacked]
         self.assertEqual(len(unacked), 2)
         self.assertEqual(len(self.client.sent_events), 0)
 
@@ -200,6 +209,29 @@ class TestTaskManager(unittest.TestCase):
         unacked_after = self.storage.get_unacked_events()
         self.assertEqual(len(unacked_after), 0)
         self.assertEqual(len(self.client.sent_events), 2)
+        self.assertEqual([ev["event_id"] for ev in self.client.sent_events], original_event_ids)
+
+    def test_execution_fact_contains_independent_stop_evidence(self):
+        self.manager.emit_event(
+            "T_EXEC_EVIDENCE",
+            "done",
+            execution_fact={
+                "execution_id": "exec_evidence_1",
+                "observed_status": "SUCCEEDED",
+                "actual_started": True,
+                "actual_stopped": True,
+                "started_at": int(time.time()) - 1,
+                "stopped_at": int(time.time()),
+                "evidence": {"observer": "device_adapter_observe"},
+                "reported_at": int(time.time()),
+            },
+        )
+        event = self.client.sent_events[-1]
+        self.assertEqual(event["execution_id"], "exec_evidence_1")
+        self.assertTrue(event["actual_started"])
+        self.assertTrue(event["actual_stopped"])
+        self.assertEqual(event["evidence"]["observer"], "device_adapter_observe")
+        self.assertIsNotNone(event["event_id"])
 
     def test_first_install_rollback_safely_disables(self):
         # 首装回滚（无旧版）-> 安全停用，不报假恢复

@@ -2,21 +2,14 @@
   <view class="product-area-wrapper">
     <!-- 搜索 / 机型 / 排序：全部走服务端，数据来自 /api/accessory-catalog -->
     <view class="filter-section">
-      <view class="search-row">
-        <view class="search-icon" aria-hidden="true">
-          <view class="search-icon-ring"></view>
-          <view class="search-icon-handle"></view>
-        </view>
-        <input
-          class="search-input"
+      <view class="search-wrap">
+        <SearchInput
           v-model="q"
-          confirm-type="search"
           placeholder="搜索配件名称 / SKU"
-          placeholder-style="color: #94A3B8"
           @input="onSearchInput"
           @confirm="refresh"
+          @clear="clearSearch"
         />
-        <text v-if="q" class="search-clear" @click="clearSearch">✕</text>
       </view>
 
       <view class="filter-row" :class="{ 'has-sidebar': filters.categories.length }">
@@ -169,13 +162,14 @@ import SmLoading from '@/components/SmLoading.vue'
 import { accessoryCatalogApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
 import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
+import SearchInput from '@/components/SearchInput.vue'
 
 // 配件皮肤 · 机器页列表（P1）
 // 数据源统一为 /api/accessory-catalog：分类、机型、适配等级、搜索、排序、分页全部服务端完成。
 // 不再有本地 mock / 写死品牌 / 由 mock 反推的机型。
 export default {
   name: 'Peijian',
-  components: { StateView, SmLoading },
+  components: { StateView, SmLoading, SearchInput },
   props: {
     active: { type: Boolean, default: true },
   },
@@ -404,74 +398,9 @@ export default {
   border-bottom: 2rpx solid #F1F5F9;
   flex-shrink: 0;
 }
-.search-row {
-  display: flex;
-  align-items: center;
-  height: 72rpx;
+.search-wrap {
   margin-bottom: 12rpx;
-  padding: 0 14rpx 0 22rpx;
-  background: #FFFFFF;
-  border: 1rpx solid #DCE5F2;
-  border-radius: 18rpx;
-  box-shadow: 0 4rpx 14rpx rgba(16, 47, 110, 0.05);
-  box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.search-row:focus-within {
-  border-color: #94B8FF;
-  box-shadow: 0 4rpx 16rpx rgba(22, 93, 255, 0.10);
-}
-.search-icon {
-  position: relative;
-  width: 26rpx;
-  height: 26rpx;
-  flex: 0 0 26rpx;
-}
-.search-icon-ring {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 18rpx;
-  height: 18rpx;
-  border: 3rpx solid #6E8AB8;
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-.search-icon-handle {
-  position: absolute;
-  left: 16rpx;
-  top: 16rpx;
-  width: 10rpx;
-  height: 3rpx;
-  border-radius: 2rpx;
-  background: #6E8AB8;
-  transform: rotate(45deg);
-  transform-origin: left center;
-}
-.search-input {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  padding: 0 12rpx;
-  background: transparent;
-  border: 0;
-  font-size: 25rpx;
-  color: #1F2937;
-  box-sizing: border-box;
-}
-.search-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40rpx;
-  height: 40rpx;
-  flex: 0 0 40rpx;
-  border-radius: 50%;
-  background: #F1F5F9;
-  font-size: 22rpx;
-  color: #64748B;
-}
-.search-clear:active { background: #E2E8F0; }
 .filter-row {
   display: flex;
   align-items: center;

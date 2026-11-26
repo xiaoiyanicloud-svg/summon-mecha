@@ -1,0 +1,17 @@
+﻿{
+    "wbs":  "A1.9",
+    "probe":  "separate setup process -\u003e separate flush process, no private key in flush",
+    "ok":  true,
+    "setup":  {
+                  "event_id":  "evt_9cd9992bce28d9caeb8b2c1bf82b9f58",
+                  "signature":  "CCVHuCqhc2AQfpCg7+8iUxssA+XHECcGMpA3VEXJo2msma7HOveY0VISBGmVvY4X3uJ8g+K1qkBL9MVnpfIhU6xaS/69Byn1GTF0RM9UxDNzzVeVaPp+aFmTBJVpXZLJLtBClFdAMj6AWcdFfiYNo4R65QGAGMn14oNtvPra5WPzdraC0RUsvKiSJRnrWWb6Lenjkgcv9vefyNbWnOVddZKAGxpcih6fjz4L+RsDxk/y7tfERtcONq1Y/g7hqheC0brVJzq66IXthkS0xq2SxS3ZvF/bzh04A4uaG2v8WbluUThdhs83tZGg6MaAVWiFExy2LjcxvlunGBzlDIZjpg==",
+                  "key_id":  "14d8a6d92f6d39a1aaaad85fd41afa5d6536bd32b7b7b00ef7c97942d8bc23fa",
+                  "phase":  "done"
+              },
+    "flush":  {
+                  "event_id":  "evt_9cd9992bce28d9caeb8b2c1bf82b9f58",
+                  "signature":  "CCVHuCqhc2AQfpCg7+8iUxssA+XHECcGMpA3VEXJo2msma7HOveY0VISBGmVvY4X3uJ8g+K1qkBL9MVnpfIhU6xaS/69Byn1GTF0RM9UxDNzzVeVaPp+aFmTBJVpXZLJLtBClFdAMj6AWcdFfiYNo4R65QGAGMn14oNtvPra5WPzdraC0RUsvKiSJRnrWWb6Lenjkgcv9vefyNbWnOVddZKAGxpcih6fjz4L+RsDxk/y7tfERtcONq1Y/g7hqheC0brVJzq66IXthkS0xq2SxS3ZvF/bzh04A4uaG2v8WbluUThdhs83tZGg6MaAVWiFExy2LjcxvlunGBzlDIZjpg==",
+                  "key_id":  "14d8a6d92f6d39a1aaaad85fd41afa5d6536bd32b7b7b00ef7c97942d8bc23fa",
+                  "unacked":  0
+              }
+}

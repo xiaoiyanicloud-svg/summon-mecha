@@ -1,0 +1,57 @@
+﻿
+  ..⨯..⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest > it should store the newly created currencie…   
+  Expected: {"message":"\u8d27\u5e01\u521b\u5efa\u6210\u529f\u3002"}
+
+  To contain: 货币创建成功。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest.php:45
+     41▕         'decimal_separator' => '-',
+     42▕         'currency_position' => fake()->randomElement(['left', 'left_with_space', 'right', 'right_with_space']),
+     43▕     ])
+     44▕         ->assertOk()
+  ➜  45▕         ->assertSeeText(trans('admin::app.settings.currencies.index.create-success'));
+     46▕ 
+     47▕     $this->assertModelWise([
+     48▕         Currency::class => [
+     49▕             $data,
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest > it should update the specified currency        
+  Expected: {"message":"\u8d27\u5e01\u66f4\u65b0\u6210\u529f\u3002"}
+
+  To contain: 货币更新成功。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest.php:92
+     88▕         'id'   => $currency->id,
+     89▕         'name' => fake()->name(),
+     90▕     ])
+     91▕         ->assertOk()
+  ➜  92▕         ->assertSeeText(trans('admin::app.settings.currencies.index.update-success'));
+     93▕ 
+     94▕     $this->assertModelWise([
+     95▕         Currency::class => [
+     96▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest > it should delete the currencies                
+  Expected: {"message":"\u8d27\u5e01\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: 货币删除成功。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest.php:113
+    109▕     $this->loginAsAdmin();
+    110▕ 
+    111▕     deleteJson(route('admin.settings.currencies.delete', $currency->id))
+    112▕         ->assertOk()
+  ➜ 113▕         ->assertSeeText(trans('admin::app.settings.currencies.index.delete-success'));
+    114▕ 
+    115▕     $this->assertDatabaseMissing('currencies', [
+    116▕         'id' => $currency->id,
+    117▕     ]);
+
+
+  Tests:    3 failed, 4 passed (24 assertions)
+  Duration: 7.71s
+

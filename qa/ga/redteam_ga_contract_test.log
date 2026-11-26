@@ -1,0 +1,15 @@
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest
+  ✓ it P0: 注册五机型 Profile，A2 被废止且所有 GA 目标保持 BLOCKED                                                               1.06s  
+  ✓ it P0: 支持矩阵 API 返回真实五机型能力与阻塞原因                                                                               0.76s  
+  ✓ it P0: BuildCommand 幂等键按 seller 作用域隔离                                                                        0.35s  
+  ✓ it P0: AgentTaskEnvelopeV2 将机型、Profile、nonce 与 key_id 放入签名域                                                  0.33s  
+  ✓ it P0: ExecutionFact 拒绝把 CANCEL_REQUESTED 当作物理停止，并要求成功有停止证据                                                  0.28s  
+  ✓ it P0: ReconcileReport 固化设备代次、安装与执行事实                                                                        0.34s  
+  ✓ it P0: ACK Inbox 同键同载荷只落一条事实，同键异载荷 409 语义                                                                    0.72s  
+  ✓ it P0: Outbox 命令领取有租约，未 ACK 且未过期时其他 Worker 不能重领                                                              0.36s  
+  ✓ it P0: InboxEvent、OutboxLease 与 TargetReleaseEvent 契约拒绝空身份和非法状态                                              0.19s  
+
+  Tests:    9 passed (55 assertions)
+  Duration: 5.49s
+

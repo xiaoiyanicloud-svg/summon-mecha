@@ -1,0 +1,62 @@
+=== mujoco_sil ===
+SCRIPT=D:\main\qa\simulation\run_mujoco_sil.py
+[ERR] ������ȱʧ: No module named 'mujoco'
+
+EXIT_CODE=1
+DURATION_MS=270
+LOG_PATH=D:\main\qa\ga\redteam_mujoco_sil.log
+LOG_SHA256=B4682B2EFB0AA3065DF33FAFDEA51880706E2E3D3DD7662809C45527348545A9
+=== actuator_dynamics ===
+SCRIPT=D:\main\qa\simulation\run_actuator_dynamics_audit.py
+[ERROR] ȱ�� mujoco �⣬���Ȱ�װ: pip install mujoco
+
+EXIT_CODE=1
+DURATION_MS=481
+LOG_PATH=D:\main\qa\ga\redteam_actuator_dynamics.log
+LOG_SHA256=3C2AED49423EF1F8181BD7D8999775280433A69D62C08B02424B14953E674DDC
+=== kinematics_dynamics ===
+SCRIPT=D:\main\qa\physics-verification\verify_kinematics_dynamics.py
+==================================================
+ ��������ѧ��ʽ������У����: PASS
+==================================================
+ �켣ʱ��: 6.0s | ֡��: 181
+ ��ֵ�ٶ�: 0.438 rad/s (�޶� 3.14)
+ ��ֵ���ٶ�: 1.443 rad/s^2 (�޶� 6.28)
+ ��ֵ������ (Jerk): 11.746 rad/s^3 (�޶� 60.0)
+ ��ֵ��������: 1.02 N*m (�޶� 30.0)
+ ������С���μ�϶: 28.5 mm (�޶� > 15mm)
+ ��������: D:\main\qa\physics-verification\dynamics_verification_report.json
+
+EXIT_CODE=0
+DURATION_MS=124
+LOG_PATH=D:\main\qa\ga\redteam_kinematics_dynamics.log
+LOG_SHA256=539E8E71615F661F91689DE872E0F28CE4500156CAE98D50196E9A0DD6959E62
+=== dds_layout ===
+SCRIPT=D:\main\qa\dds-verification\verify_idl_layout.py
+==================================================
+ DDS Wire Protocol & IDL �������Ų�У��: PASS
+==================================================
+ ���ݰ�ȫ��: 1000 Bytes (�����޶�: 1000 Bytes)
+ ����� CDR ��С: 28 Bytes (�����޶�: 28 Bytes)
+ ��������ڶ���: 0.35 ms (�޶� < 2.0 ms)
+ ƽ�����ڶ���: 0.223 ms
+ ��������: D:\main\qa\dds-verification\dds_conformance_report.json
+
+EXIT_CODE=0
+DURATION_MS=65
+LOG_PATH=D:\main\qa\ga\redteam_dds_layout.log
+LOG_SHA256=BA71AF0FF3C7F96E74C5AD2534947D6025A6EE9D9CF09D7D5A1BD5B81CC8D651
+=== sandbox_containment ===
+SCRIPT=D:\main\qa\security-audit\verify_sandbox_containment.py
+==================================================
+ ϵͳ��ȫ�����ɳ������Ž�У��: PASS
+==================================================
+ [PASS] SEC-01: �ӽ��̻���������ȫ�ֿ���Ⱦ -> �ӽ����˳��� 0, �����̱���Ⱦ: False
+ [PASS] SEC-02: �ӽ��������쳣�����������̴�� -> �ӽ����˳��� 1, �쳣���ܿز���
+ [PASS] SEC-03: ���Ź�ǿ�нض���ѭ������ -> ��ʱ 1.02s, ǿ����ֹ״̬: True, �����˳��� 1
+ ��Ʊ�������: D:\main\qa\security-audit\sandbox_containment_report.json
+
+EXIT_CODE=0
+DURATION_MS=1230
+LOG_PATH=D:\main\qa\ga\redteam_sandbox_containment.log
+LOG_SHA256=49F8369D7ACA3985244A9489DFEC50D77033774FA2ACE75736C5D3EE43E462C9

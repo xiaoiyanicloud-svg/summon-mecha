@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillBuildRunNumberTest
+  ✓ it B2 · 同一 build_key 连续分配 1..5，无重号                                                                           0.56s  
+  ✓ it B2 · 不同 build_key 的序号互相隔离                                                                                 0.14s  
+  ✓ it B2 · target_profile_digest 必须真正落库（fillable 未静默丢弃）                                                         0.14s  
+  ✓ it B2 · 外层事务回滚时序号一起回滚，不产生空洞                                                                                  0.16s  
+  ✓ it B2 · 只把本序列表唯一键冲突识别为可重试；别表冲突/死锁不重试                                                                         0.17s  
+  ✓ it B2 · build_key 为空直接拒绝，不落库                                                                                 0.14s  
+
+  Tests:    6 passed (16 assertions)
+  Duration: 1.50s
+

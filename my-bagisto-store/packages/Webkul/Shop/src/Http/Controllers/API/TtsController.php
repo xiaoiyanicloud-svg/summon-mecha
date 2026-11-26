@@ -46,8 +46,13 @@ class TtsController extends APIController
 {
     public function synthesize(Request $request): JsonResponse
     {
-        // 可能要多段串行调用腾讯云,默认 max_execution_time=30s 不够
-        @set_time_limit(60);
+        // 可能要多段串行调用腾讯云,默认 max_execution_time=30s 不够。
+        // 单测下跳过:set_time_limit 是**进程级**生效的,CLI 默认不限时;一旦在 Pest
+        // 全量单进程里调到,整个进程会在 60s 后被砍(这正是"全量必炸 60s"的根因)。
+        // 生产(非 testing)行为不变 —— 仍按原值放宽。
+        if (! app()->runningUnitTests()) {
+            @set_time_limit(60);
+        }
 
         // ① 参数校验
         $text = trim((string) $request->input('text', ''));

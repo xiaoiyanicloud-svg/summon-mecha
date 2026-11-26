@@ -1,0 +1,116 @@
+﻿
+  ..⨯.........⨯⨯⨯⨯⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should return listing items of categories      
+  Failed asserting that 1 is identical to 405.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:47
+     43▕     getJson(route('admin.catalog.categories.index'), [
+     44▕         'X-Requested-With' => 'XMLHttpRequest',
+     45▕     ])
+     46▕         ->assertOk()
+  ➜  47▕         ->assertJsonPath('records.0.category_id', $category->id)
+     48▕         ->assertJsonPath('meta.total', 2);
+     49▕ });
+     50▕ 
+     51▕ it('should fail the validation with errors of logo path is not an array and image', function () {
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should update a category                       
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 422.
+Failed asserting that false is true.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "zh  c n.slug 字段是必填的。 (and 1 more error)",
+    "errors": {
+        "zh_CN.slug": [
+            "zh  c n.slug 字段是必填的。"
+        ],
+        "zh_CN.name": [
+            "zh  c n.name 字段是必填的。"
+        ]
+    }
+}
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:258
+    254▕         'banner_path' => [
+    255▕             UploadedFile::fake()->image('banner.png'),
+    256▕         ],
+    257▕     ])
+  ➜ 258▕         ->assertRedirect(route('admin.catalog.categories.index'))
+    259▕         ->isRedirection();
+    260▕ 
+    261▕     $this->assertModelWise([
+    262▕         CategoryTranslation::class => [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should delete a category                       
+  Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:280
+    276▕     // Act and Assert.
+    277▕     $this->loginAsAdmin();
+    278▕ 
+    279▕     deleteJson(route('admin.catalog.categories.delete', $category->id))
+  ➜ 280▕         ->assertOk()
+    281▕         ->assertSeeText(trans('admin::app.catalog.categories.delete-success'));
+    282▕ 
+    283▕     $this->assertDatabaseMissing('categories', [
+    284▕         'id' => $category->id,
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should delete mass categories                  
+  Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:298
+    294▕ 
+    295▕     postJson(route('admin.catalog.categories.mass_delete', [
+    296▕         'indices' => $categories->pluck('id')->toArray(),
+    297▕     ]))
+  ➜ 298▕         ->assertOk()
+    299▕         ->assertSeeText(trans('admin::app.catalog.categories.delete-success'));
+    300▕ 
+    301▕     foreach ($categories as $category) {
+    302▕         $this->assertDatabaseMissing('categories', [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should update mass categories                  
+  Expected: {"message":"\u5206\u7c7b\u66f4\u65b0\u6210\u529f\u3002"}
+
+  To contain: 分类更新成功。
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:320
+    316▕         'indices' => $categories->pluck('id')->toArray(),
+    317▕         'value'   => 1,
+    318▕     ]))
+    319▕         ->assertOk()
+  ➜ 320▕         ->assertSeeText(trans('admin::app.catalog.categories.update-success'));
+    321▕ 
+    322▕     foreach ($categories as $category) {
+    323▕         $this->assertModelWise([
+    324▕             Category::class => [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should search categories with mega search      
+  Failed asserting that 1 is identical to 422.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:345
+    341▕     getJson(route('admin.catalog.categories.search', [
+    342▕         'query' => $category->name,
+    343▕     ]))
+    344▕         ->assertOk()
+  ➜ 345▕         ->assertJsonPath('data.0.id', $category->id)
+    346▕         ->assertJsonPath('total', 1);
+    347▕ });
+    348▕ 
+    349▕ it('should show the tree view of categories', function () {
+
+
+  Tests:    6 failed, 12 passed (56 assertions)
+  Duration: 13.25s
+

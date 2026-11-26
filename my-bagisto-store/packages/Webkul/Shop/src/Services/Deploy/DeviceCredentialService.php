@@ -3,6 +3,7 @@
 namespace Webkul\Shop\Services\Deploy;
 
 use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Services\Deploy\Contracts\KeyMaterial;
 
 /**
  * per-device 设备凭据服务 —— §4.22 F1「一机一证」的服务端半边。
@@ -38,6 +39,17 @@ class DeviceCredentialService
     public const META_KEY = 'agent_credential';
 
     /**
+     * binding.meta 下的**密钥环**（WBS A7）。
+     *
+     * 单钥模型做不到轮换：`issue()` 一覆盖 `agent_credential`，旧公钥就再也取不到，
+     * 轮换期间的在途事实只能全拒。这里把"这把设备用过哪些公钥、各自第几代、还在不在窗口内"
+     * 单独存一份，验签按 key_id 选钥匙，而不是按"当前唯一那把"。
+     *
+     * 形状：`{"epoch": 2, "keys": {"<key_id>": {cert_pem, epoch, status, created_at, not_after, revoked_at, reason}}}`
+     */
+    public const META_KEY_RING = 'agent_key_ring';
+
+    /**
      * 文件名（叶子）。目录由 config('deploy_gateways.keys.dir') 决定。
      * `CA_PUBLIC_FILE` 里存的是 **CA 证书 PEM**（不是裸公钥）—— 这个名字沿用旧称。
      */
@@ -59,6 +71,43 @@ class DeviceCredentialService
             'private' => self::CA_PRIVATE_FILE,
             'public'  => self::CA_PUBLIC_FILE,
         ];
+    }
+
+    /**
+     * 用平台 CA 私钥签发一张 CSR（C2 · 证书签发后端的本地实现入口）。
+     *
+     * 这是**纯追加**能力：`issue()` 的现有路径一字未改；本方法只把
+     * "用 CA 私钥签一张证书"单独暴露出来，供 `CertificateAuthoritySigner`
+     * 的本地后端复用，避免未来接 KMS 时在 `issue()` 里分叉两套逻辑。
+     *
+     * @param  string  $csr  PEM 或 DER 编码的 CSR
+     * @return string 证书 PEM
+     */
+    public function signCsr(string $csr, int $serial, int $ttlDays): string
+    {
+        if ($serial <= 0) {
+            throw new \InvalidArgumentException('证书序列号必须为正整数。');
+        }
+
+        if ($ttlDays <= 0) {
+            throw new \InvalidArgumentException('证书有效期必须为正整数天。');
+        }
+
+        $csrPem = str_contains($csr, '-----BEGIN')
+            ? $csr
+            : "-----BEGIN CERTIFICATE REQUEST-----\n"
+                .chunk_split(base64_encode($csr), 64, "\n")
+                ."-----END CERTIFICATE REQUEST-----\n";
+
+        $cert = openssl_csr_sign($csrPem, $this->caCert(), $this->caKey(), $ttlDays, $this->keyOpts(), $serial);
+
+        if ($cert === false) {
+            throw new \RuntimeException('CA 签发证书失败：'.(openssl_error_string() ?: '未知'));
+        }
+
+        openssl_x509_export($cert, $certPem);
+
+        return $certPem;
     }
 
     /** CA 私钥与证书是否都在位。 */
@@ -112,20 +161,38 @@ class DeviceCredentialService
         $fingerprint = $this->fingerprint($certPem);
         $expiresAt = now()->addDays($ttlDays);
 
-        $meta = is_array($binding->meta) ? $binding->meta : [];
-        $meta[self::META_KEY] = [
-            'secret_hash'      => hash('sha256', $secret),
-            'cert_serial'      => $serial,
-            'cert_fingerprint' => $fingerprint,
-            // 证书本身是**公开**信息(私钥不出设备),服务端存一份用于**验签**。
-            // 这样设备只需带 did + ts + 签名,不必在 HTTP 头里塞多行 PEM(头不能含换行)。
-            'cert_pem'         => $certPem,
-            'issued_at'        => now()->toDateTimeString(),
-            'expires_at'       => $expiresAt->toDateTimeString(),
-            'revoked_at'       => null,
-        ];
-        $binding->meta = $meta;
-        $binding->save();
+        // 密钥环是 binding.meta 里的 JSON：`读 → 改 → 写` 必须在**行锁**内完成，
+        // 否则两个并发的轮换/吊销会互相覆盖（后写的把前一个刚登记的新密钥抹掉，
+        // 设备拿到的 key_id 平台上根本不存在 —— 表现为"刚轮换完就全量 401"）。
+        \Illuminate\Support\Facades\DB::transaction(function () use (
+            $binding, $certPem, $secret, $serial, $fingerprint, $expiresAt
+        ) {
+            $locked = DeviceBinding::query()->whereKey($binding->getKey())->lockForUpdate()->first() ?: $binding;
+
+            $meta = is_array($locked->meta) ? $locked->meta : [];
+
+            // WBS A7：先按**旧 meta** 登记密钥环（历史单钥凭据要在这里补进环），
+            // 再覆盖 `agent_credential` —— 顺序反过来会把"新证书"当成历史凭据，代次凭空多一代。
+            $meta[self::META_KEY_RING] = $this->appendToKeyRing($meta, $certPem);
+
+            $meta[self::META_KEY] = [
+                'secret_hash'      => hash('sha256', $secret),
+                'cert_serial'      => $serial,
+                'cert_fingerprint' => $fingerprint,
+                // 证书本身是**公开**信息(私钥不出设备),服务端存一份用于**验签**。
+                // 这样设备只需带 did + ts + 签名,不必在 HTTP 头里塞多行 PEM(头不能含换行)。
+                'cert_pem'         => $certPem,
+                'issued_at'        => now()->toDateTimeString(),
+                'expires_at'       => $expiresAt->toDateTimeString(),
+                'revoked_at'       => null,
+            ];
+
+            $locked->meta = $meta;
+            $locked->save();
+
+            // 让调用方手里的实例与库内一致（后续 factKeyId 等读取不能看到旧 meta）
+            $binding->setRawAttributes($locked->getAttributes(), true);
+        });
 
         return [
             'secret'          => $secret,
@@ -211,21 +278,135 @@ class DeviceCredentialService
     }
 
     /**
+     * 设备事实签名用的 key_id —— sha256(归一化公钥 PEM)。
+     *
+     * 与端侧 Python 的 `fact_key_id()` 同一口径：从私钥导出 SubjectPublicKeyInfo PEM，
+     * 统一换行/去首尾空白后做 sha256。证书是公开的，key_id 只是选择器，不是秘密。
+     */
+    public function factKeyId(DeviceBinding $binding): ?string
+    {
+        // 有密钥环时，"当前用哪把"必须由环回答（轮换后 active 会变）。
+        if ($this->keyRing($binding)['keys'] !== []) {
+            return $this->activeKeyId($binding);
+        }
+
+        $publicPem = $this->publicKeyPem($binding);
+
+        return $publicPem === null ? null : hash('sha256', self::normalizePem($publicPem));
+    }
+
+    /**
+     * 用设备登记证书的公钥校验任意规范串签名（不绑定 did|ts|method|path）。
+     *
+     * 传 `$keyId` 时按**那一把**密钥验签（轮换窗口内的旧密钥也能验证）；
+     * 不传时沿用"当前凭据"的旧行为。
+     */
+    public function verifyDetachedSignature(DeviceBinding $binding, string $canonical, string $signatureB64, ?string $keyId = null): bool
+    {
+        if ($keyId !== null) {
+            $material = $this->resolveKeyMaterial($binding, $keyId);
+
+            if ($material === null) {
+                return false;
+            }
+
+            // A7.2：指定 key_id 验签时，**吊销必须立即生效**。
+            //   只验签名不验状态，会让"已吊销的私钥"继续通过 —— 吊销形同虚设。
+            //   （AgentFactSignatureVerifier 另有独立的吊销判定，这里补上是为了
+            //   让这个方法本身 fail-closed，避免未来调用方直接用它绕开状态检查。）
+            if ($material['status'] === KeyMaterial::STATUS_REVOKED || $material['revoked_at'] !== null) {
+                return false;
+            }
+
+            return $this->verifyDetachedWithCert($material['cert_pem'], $canonical, $signatureB64);
+        }
+
+        $cred = $this->credential($binding);
+
+        if (! $cred || ! $this->isUsable($cred)) {
+            return false;
+        }
+
+        $certPem = (string) ($cred['cert_pem'] ?? '');
+
+        return $this->verifyDetachedWithCert($certPem, $canonical, $signatureB64);
+    }
+
+    /**
+     * 从设备登记证书提取公钥 PEM（不可用/未登记返回 null）。
+     */
+    public function publicKeyPem(DeviceBinding $binding): ?string
+    {
+        $cred = $this->credential($binding);
+
+        if (! $cred || ! $this->isUsable($cred)) {
+            return null;
+        }
+
+        $certPem = (string) ($cred['cert_pem'] ?? '');
+
+        if ($certPem === '') {
+            return null;
+        }
+
+        $publicKey = openssl_pkey_get_public($certPem);
+
+        if ($publicKey === false) {
+            return null;
+        }
+
+        $details = openssl_pkey_get_details($publicKey);
+
+        if (! is_array($details) || empty($details['key'])) {
+            return null;
+        }
+
+        return (string) $details['key'];
+    }
+
+    /**
+     * Python / PHP 两侧统一的 PEM 归一化：换行统一为 \n，去掉首尾空白。
+     */
+    public static function normalizePem(string $pem): string
+    {
+        return trim(str_replace(["\r\n", "\r"], "\n", $pem));
+    }
+
+    /**
      * 吊销某设备的凭据（泄露/换机时可单独吊销，不影响其它设备）。
      */
     public function revoke(DeviceBinding $binding): bool
     {
-        $meta = is_array($binding->meta) ? $binding->meta : [];
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($binding) {
+            $locked = DeviceBinding::query()->whereKey($binding->getKey())->lockForUpdate()->first() ?: $binding;
+            $meta = is_array($locked->meta) ? $locked->meta : [];
 
-        if (empty($meta[self::META_KEY])) {
-            return false;
-        }
+            if (empty($meta[self::META_KEY])) {
+                return false;
+            }
 
-        $meta[self::META_KEY]['revoked_at'] = now()->toDateTimeString();
-        $binding->meta = $meta;
-        $binding->save();
+            $revokedAt = now()->toDateTimeString();
 
-        return true;
+            $meta[self::META_KEY]['revoked_at'] = $revokedAt;
+
+            // A7 一致性：凭据吊销必须**同时吊销密钥环里的全部公钥**。
+            // 否则 bearer secret 失效了，设备仍能用旧私钥签事实 —— 等于吊销只吊销了一半。
+            $ring = $this->keyRing($locked);
+            foreach ($ring['keys'] as $keyId => $entry) {
+                $ring['keys'][$keyId]['status'] = KeyMaterial::STATUS_REVOKED;
+                $ring['keys'][$keyId]['revoked_at'] = $revokedAt;
+                $ring['keys'][$keyId]['reason'] = 'credential_revoked';
+            }
+            if ($ring['keys'] !== []) {
+                $meta[self::META_KEY_RING] = $ring;
+            }
+
+            $locked->meta = $meta;
+            $locked->save();
+            $binding->setRawAttributes($locked->getAttributes(), true);
+
+            return true;
+        });
     }
 
     /** 这台设备的凭据是否已被吊销。 */
@@ -242,6 +423,294 @@ class DeviceCredentialService
         $cred = $this->credential($binding);
 
         return $cred !== null && $this->isUsable($cred);
+    }
+
+    // ── A7 密钥环（key_id / epoch / rotation / revocation） ──────────────────
+
+    /**
+     * 读取密钥环（不落库，只读）。
+     *
+     * @return array{epoch:int,keys:array<string,array<string,mixed>>}
+     */
+    public function keyRing(DeviceBinding $binding): array
+    {
+        $meta = is_array($binding->meta) ? $binding->meta : [];
+        $ring = $meta[self::META_KEY_RING] ?? [];
+
+        return [
+            'epoch' => (int) ($ring['epoch'] ?? 0),
+            'keys'  => is_array($ring['keys'] ?? null) ? $ring['keys'] : [],
+        ];
+    }
+
+    /** 当前活动密钥的 key_id；全部被吊销/过期时返回 null（fail-closed）。 */
+    public function activeKeyId(DeviceBinding $binding): ?string
+    {
+        $ring = $this->keyRing($binding);
+        $now = now()->timestamp;
+        $bestId = null;
+        $bestEpoch = -1;
+
+        foreach ($ring['keys'] as $keyId => $entry) {
+            if (($entry['status'] ?? '') !== 'active' || ! empty($entry['revoked_at'])) {
+                continue;
+            }
+
+            $notAfter = $this->toTimestamp($entry['not_after'] ?? null);
+            if ($notAfter !== null && $notAfter < $now) {
+                continue;
+            }
+
+            $epoch = (int) ($entry['epoch'] ?? 0);
+            if ($epoch > $bestEpoch) {
+                $bestId = (string) $keyId;
+                $bestEpoch = $epoch;
+            }
+        }
+
+        return $bestId;
+    }
+
+    /** 当前代次（没有环时按 1 代处理）。 */
+    public function currentEpoch(DeviceBinding $binding): int
+    {
+        $ring = $this->keyRing($binding);
+
+        if ($ring['epoch'] > 0) {
+            return $ring['epoch'];
+        }
+
+        return 1;
+    }
+
+    /**
+     * 解析一把密钥（优先环，其次兼容"没有环的历史单钥凭据"）。
+     *
+     * @return array{key_id:string,cert_pem:string,epoch:int,status:string,not_before:?int,not_after:?int,revoked_at:?int,reason:string}|null
+     */
+    public function resolveKeyMaterial(DeviceBinding $binding, string $keyId): ?array
+    {
+        $ring = $this->keyRing($binding);
+        $entry = $ring['keys'][$keyId] ?? null;
+
+        if (is_array($entry)) {
+            return [
+                'key_id'     => $keyId,
+                'cert_pem'   => (string) ($entry['cert_pem'] ?? ''),
+                'epoch'      => (int) ($entry['epoch'] ?? 0),
+                'status'     => (string) ($entry['status'] ?? KeyMaterial::STATUS_RETIRED),
+                'not_before' => $this->toTimestamp($entry['not_before'] ?? null),
+                'not_after'  => $this->toTimestamp($entry['not_after'] ?? null),
+                'revoked_at' => $this->toTimestamp($entry['revoked_at'] ?? null),
+                'reason'     => (string) ($entry['reason'] ?? ''),
+            ];
+        }
+
+        return $this->legacyEntry($binding, $keyId);
+    }
+
+    /** 环里是否有任何密钥材料（含已吊销）：用于"必须提供 v3 签名"的判定。 */
+    public function hasAnyKeyMaterial(DeviceBinding $binding): bool
+    {
+        if ($this->keyRing($binding)['keys'] !== []) {
+            return true;
+        }
+
+        return $this->credential($binding) !== null;
+    }
+
+    /**
+     * 吊销一把密钥。**立即**失效，不等轮换窗口。
+     * 若吊销的是唯一活动密钥，`activeKeyId()` 随之为 null —— 设备必须重新签发才能上报。
+     */
+    public function revokeKey(DeviceBinding $binding, string $keyId, string $reason = ''): bool
+    {
+        // 与 issue() 同一把行锁：并发"轮换 + 吊销"如果各写各的 meta，会把对方的结果抹掉。
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($binding, $keyId, $reason) {
+            $locked = DeviceBinding::query()->whereKey($binding->getKey())->lockForUpdate()->first() ?: $binding;
+
+            $meta = is_array($locked->meta) ? $locked->meta : [];
+            $ring = $this->keyRing($locked);
+
+            if (isset($ring['keys'][$keyId])) {
+                // A7.2：吊销是**幂等**的 —— 已被吊销的密钥保留第一次的 `revoked_at`。
+                //   并发吊销（或 Agent 重试）若各写各的时间戳，会得到"吊销时间一直在变"，
+                //   审计上无法回答"它是什么时候被吊销的"。
+                if (($ring['keys'][$keyId]['status'] ?? '') === KeyMaterial::STATUS_REVOKED
+                    || ! empty($ring['keys'][$keyId]['revoked_at'])) {
+                    return true;
+                }
+
+                $ring['keys'][$keyId]['status'] = KeyMaterial::STATUS_REVOKED;
+                $ring['keys'][$keyId]['revoked_at'] = now()->toDateTimeString();
+                if ($reason !== '') {
+                    $ring['keys'][$keyId]['reason'] = $reason;
+                }
+                $meta[self::META_KEY_RING] = $ring;
+                $locked->meta = $meta;
+                $locked->save();
+                $binding->setRawAttributes($locked->getAttributes(), true);
+
+                return true;
+            }
+
+            // 兼容历史单钥凭据：它可能就是当前唯一那把
+            $legacy = $this->legacyEntry($locked, $keyId);
+            if ($legacy !== null && is_array($meta[self::META_KEY] ?? null)) {
+                $meta[self::META_KEY]['revoked_at'] = now()->toDateTimeString();
+                $locked->meta = $meta;
+                $locked->save();
+                $binding->setRawAttributes($locked->getAttributes(), true);
+
+                return true;
+            }
+
+            return false;
+        });
+    }
+
+    /** 用指定证书验签（证书必须链到平台 CA）。 */
+    public function verifyDetachedWithCert(string $certPem, string $canonical, string $signatureB64): bool
+    {
+        if ($certPem === '' || ! $this->chainsToPlatformCa($certPem)) {
+            return false;
+        }
+
+        $signature = base64_decode($signatureB64, true);
+        if ($signature === false || $signature === '') {
+            return false;
+        }
+
+        $publicKey = openssl_pkey_get_public($certPem);
+        if ($publicKey === false) {
+            return false;
+        }
+
+        return openssl_verify($canonical, $signature, $publicKey, OPENSSL_ALGO_SHA256) === 1;
+    }
+
+    /**
+     * 把新证书登记进环，并让旧活动密钥进入 retirement 窗口。
+     *
+     * @param  array<string,mixed>  $meta  即将写回 binding.meta 的完整数组
+     * @return array{epoch:int,keys:array<string,array<string,mixed>>}
+     */
+    protected function appendToKeyRing(array $meta, string $certPem): array
+    {
+        $ring = is_array($meta[self::META_KEY_RING] ?? null) ? $meta[self::META_KEY_RING] : [];
+        $ring['keys'] = is_array($ring['keys'] ?? null) ? $ring['keys'] : [];
+        $epoch = (int) ($ring['epoch'] ?? 0);
+
+        // 第一次轮换时，把历史上的单钥凭据补进环 —— 否则它会在"轮换"瞬间凭空消失，
+        // 在途事实（设备还没拿到新密钥）会被全部拒绝。
+        $legacy = $meta[self::META_KEY] ?? null;
+        if ($ring['keys'] === [] && is_array($legacy) && ! empty($legacy['cert_pem'])) {
+            $legacyId = self::keyIdForCert((string) $legacy['cert_pem']);
+            if ($legacyId !== null) {
+                $ring['keys'][$legacyId] = [
+                    'cert_pem'   => (string) $legacy['cert_pem'],
+                    'epoch'      => 1,
+                    'status'     => empty($legacy['revoked_at']) ? KeyMaterial::STATUS_ACTIVE : KeyMaterial::STATUS_REVOKED,
+                    'created_at' => (string) ($legacy['issued_at'] ?? now()->toDateTimeString()),
+                    'not_before' => null,
+                    'not_after'  => null,
+                    'revoked_at' => $legacy['revoked_at'] ?? null,
+                    'reason'     => 'legacy',
+                ];
+                $epoch = max($epoch, 1);
+            }
+        }
+
+        $window = (int) config('deploy_gateways.device_credential.rotation_window_seconds', 86400);
+        $retireAt = now()->addSeconds($window)->toDateTimeString();
+
+        foreach ($ring['keys'] as $id => $entry) {
+            if (($entry['status'] ?? '') === KeyMaterial::STATUS_ACTIVE) {
+                $ring['keys'][$id]['status'] = KeyMaterial::STATUS_RETIRED;
+                $ring['keys'][$id]['not_after'] = $retireAt;
+                $ring['keys'][$id]['reason'] = $entry['reason'] ?? 'rotated';
+            }
+        }
+
+        $newKeyId = self::keyIdForCert($certPem);
+        if ($newKeyId !== null) {
+            $epoch += 1;
+            $ring['keys'][$newKeyId] = [
+                'cert_pem'   => $certPem,
+                'epoch'      => $epoch,
+                'status'     => KeyMaterial::STATUS_ACTIVE,
+                'created_at' => now()->toDateTimeString(),
+                'not_before' => null,
+                'not_after'  => null,
+                'revoked_at' => null,
+                'reason'     => '',
+            ];
+        }
+
+        $ring['epoch'] = $epoch;
+
+        return $ring;
+    }
+
+    /**
+     * 历史单钥凭据的条目（没有密钥环时使用）。
+     *
+     * @return array{key_id:string,cert_pem:string,epoch:int,status:string,not_before:?int,not_after:?int,revoked_at:?int,reason:string}|null
+     */
+    protected function legacyEntry(DeviceBinding $binding, string $keyId): ?array
+    {
+        $cred = $this->credential($binding);
+        if ($cred === null || empty($cred['cert_pem'])) {
+            return null;
+        }
+
+        $legacyId = self::keyIdForCert((string) $cred['cert_pem']);
+        if ($legacyId === null || ! hash_equals($legacyId, $keyId)) {
+            return null;
+        }
+
+        return [
+            'key_id'     => $legacyId,
+            'cert_pem'   => (string) $cred['cert_pem'],
+            'epoch'      => 1,
+            'status'     => empty($cred['revoked_at']) ? KeyMaterial::STATUS_ACTIVE : KeyMaterial::STATUS_REVOKED,
+            'not_before' => null,
+            'not_after'  => $this->toTimestamp($cred['expires_at'] ?? null),
+            'revoked_at' => $this->toTimestamp($cred['revoked_at'] ?? null),
+            'reason'     => 'legacy',
+        ];
+    }
+
+    protected static function keyIdForCert(string $certPem): ?string
+    {
+        $publicKey = @openssl_pkey_get_public($certPem);
+        if ($publicKey === false) {
+            return null;
+        }
+
+        $details = openssl_pkey_get_details($publicKey);
+        if (! is_array($details) || empty($details['key'])) {
+            return null;
+        }
+
+        return hash('sha256', self::normalizePem((string) $details['key']));
+    }
+
+    protected function toTimestamp(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse((string) $value)->timestamp;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

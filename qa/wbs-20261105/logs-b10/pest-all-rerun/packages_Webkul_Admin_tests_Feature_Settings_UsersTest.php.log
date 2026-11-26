@@ -1,0 +1,77 @@
+﻿
+  ...⨯.⨯.⨯..⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\UsersTest > it should store the newly created admin             
+  Expected: {"message":"\u7528\u6237\u6210\u529f\u521b\u5efa\u3002"}
+
+  To contain: 用户成功创建。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\UsersTest.php:63
+     59▕             UploadedFile::fake()->image('avatar.jpg'),
+     60▕         ],
+     61▕     ])
+     62▕         ->assertOk()
+  ➜  63▕         ->assertSeeText(trans('admin::app.settings.users.create-success'));
+     64▕ 
+     65▕     $this->assertModelWise([
+     66▕         Admin::class => [
+     67▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\UsersTest > it should returns the user and its roles            
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Administrator'
++'行政人员'
+
+  at packages\Webkul\Admin\tests\Feature\Settings\UsersTest.php:104
+    100▕ 
+    101▕     get(route('admin.settings.users.edit', $admin->id))
+    102▕         ->assertOk()
+    103▕         ->assertJsonPath('roles.0.id', 1)
+  ➜ 104▕         ->assertJsonPath('roles.0.name', 'Administrator')
+    105▕         ->assertJsonPath('user.id', $admin->id)
+    106▕         ->assertJsonPath('user.email', $admin->email);
+    107▕ });
+    108▕
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\UsersTest > it should update the existing admin                 
+  Expected: {"message":"\u7528\u6237\u6210\u529f\u66f4\u65b0\u3002"}
+
+  To contain: 用户成功更新。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\UsersTest.php:146
+    142▕         'password'              => $password = fake()->password(),
+    143▕         'password_confirmation' => $password,
+    144▕     ])
+    145▕         ->assertOk()
+  ➜ 146▕         ->assertSeeText(trans('admin::app.settings.users.update-success'));
+    147▕ 
+    148▕     $this->assertModelWise([
+    149▕         Admin::class => [
+    150▕             Arr::except($data, ['image', 'password_confirmation', 'password']),
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\UsersTest > it should delete the existing admin                 
+  Expected: {"message":"\u7528\u6237\u6210\u529f\u5220\u9664\u3002"}
+
+  To contain: 用户成功删除。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\UsersTest.php:216
+    212▕     $this->loginAsAdmin();
+    213▕ 
+    214▕     deleteJson(route('admin.settings.users.delete', $admin->id))
+    215▕         ->assertOk()
+  ➜ 216▕         ->assertSeeText(trans('admin::app.settings.users.delete-success'));
+    217▕ 
+    218▕     $this->assertDatabaseMissing('admins', [
+    219▕         'id' => $admin->id,
+    220▕     ]);
+
+
+  Tests:    4 failed, 8 passed (35 assertions)
+  Duration: 5.57s
+

@@ -1,0 +1,86 @@
+﻿
+  ⨯.⨯⨯⨯....
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 隐私政策：返回 200 与 {slug, title, html_content}                 
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'隐私政策'
++'隱私政策'
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:31
+     27▕         ->json('data');
+     28▕ 
+     29▕     expect($data)->toHaveKeys(['slug', 'title', 'html_content'])
+     30▕         ->and($data['slug'])->toBe('privacy-policy')
+  ➜  31▕         ->and($data['title'])->toBe('隐私政策')
+     32▕         ->and($data['html_content'])->not->toBe('');
+     33▕ });
+     34▕ 
+     35▕ it('App 拿到的正文与网页端是**同一份** —— 这是这个接口存在的全部理由', function () {
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:31
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 连查两页都必须正确 —— 仓储实例会把上一次的查询条件留下来，这里守着别再写回去                  
+  Expected: <div class="static-container"><div class="mb-5">隱私政策頁面內容</div></div>
+
+  To contain: 尚未定稿
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:57
+     53▕     foreach (['privacy-policy', 'terms-of-use'] as $slug) {
+     54▕         $res = getJson('/api/cms/pages/'.$slug)->assertOk();
+     55▕ 
+     56▕         expect($res->json('data.slug'))->toBe($slug)
+  ➜  57▕             ->and($res->json('data.html_content'))->toContain('尚未定稿');
+     58▕     }
+     59▕ });
+     60▕ 
+     61▕ it('正文里不得出现安装器占位文案（网页端已去伪，接口这边不能漏）', function () {
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:57
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 正文里不得出现安装器占位文案（网页端已去伪，接口这边不能漏）                            
+  Expecting '<div class="static-container"…</div>' not to contain '頁面內容'.
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:65
+     61▕ it('正文里不得出现安装器占位文案（网页端已去伪，接口这边不能漏）', function () {
+     62▕     foreach (['privacy-policy', 'terms-of-use'] as $slug) {
+     63▕         $html = getJson('/api/cms/pages/'.$slug)->assertOk()->json('data.html_content');
+     64▕ 
+  ➜  65▕         expect($html)->not->toContain('頁面內容')
+     66▕             ->and($html)->toContain('尚未定稿');
+     67▕     }
+     68▕ });
+     69▕
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:65
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 一份文件只有一个名字：接口标题、网页标题、正文里嵌的文档名三者一致                         
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'用户协议'
++'使用條款'
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:75
+     71▕     // 用户协议这一页曾经有三处名字：App 入口「用户协议」/ 页头「使用条款」/ 正文「《使用条款》」。
+     72▕     // 迁移 2026_10_15_000001 在生产侧的源头对齐了它们，这条守着别再分叉。
+     73▕     $data = getJson('/api/cms/pages/terms-of-use')->assertOk()->json('data');
+     74▕ 
+  ➜  75▕     expect($data['title'])->toBe('用户协议')
+     76▕         ->and($data['html_content'])->toContain('《用户协议》')
+     77▕         ->and($data['html_content'])->not->toContain('使用条款');
+     78▕ 
+     79▕     // 网页端同源同结论
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:75
+
+
+  Tests:    4 failed, 5 passed (33 assertions)
+  Duration: 5.02s
+

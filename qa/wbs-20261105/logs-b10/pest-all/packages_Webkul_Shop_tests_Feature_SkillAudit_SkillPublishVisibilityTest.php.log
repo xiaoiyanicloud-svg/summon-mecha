@@ -1,0 +1,40 @@
+﻿
+  猕ǒ.
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest > it 鍙戝竷璁╂妧鑳界湡姝ｅ彲鍞細鍙戝竷鍓嶁€?                
+  Failed asserting that an array contains 3481.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:137
+    133鈻?
+    134鈻?    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED);
+    135鈻?
+    136鈻?    // 鍙戝竷鍚庯細甯傚満**鑳芥悳鍒?* 鈥斺€?杩欐槸鏈崱鐨勯獙鏀舵牳蹇冿紙瀛楁瀵逛簡涓嶄唬琛ㄧ敤鎴风湅寰楄锛?
+  鉃?137鈻?    expect(spvSearchIds($name))->toContain($productId);
+    138鈻?
+    139鈻?    // 浣愯瘉锛歠lat 琛岀‘瀹炶缃负鍙敭锛堢粡浜嬩欢涓夋鍒峰嚭鏉ョ殑锛屼笉鏄洿鍐欐淳鐢熻〃锛?
+    140鈻?    $flat = DB::table('product_flat')
+    141鈻?        ->where('product_id', $productId)
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:137
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest > it 鍙戝竷缃彲鍞笉浼氭妸鍟嗗搧浠庛€屾妧鈥?                
+  Failed asserting that false is true.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:158
+    154鈻?    $skillCategoryId = (int) DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+    155鈻?
+    156鈻?    // 寤哄搧鍗虫寕鍦ㄨ鍒嗙被涓?
+    157鈻?    expect(DB::table('product_categories')
+  鉃?158鈻?        ->where('product_id', $productId)->where('category_id', $skillCategoryId)->exists())->toBeTrue();
+    159鈻?
+    160鈻?    post(route('shop.api.skill-admin.versions.publish', $version->id), [], spvHeaders())->assertOk();
+    161鈻?
+    162鈻?    // 鍙戝竷鍚庝粛鍦ㄥ垎绫婚噷锛圓bstractType::update 涓嶄紶 categories 浼?sync 鎴愮┖ 鈥斺€?杩欓噷鏄洖褰掗攣锛?
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:158
+
+
+  Tests:    2 failed, 1 passed (11 assertions)
+  Duration: 2.50s
+

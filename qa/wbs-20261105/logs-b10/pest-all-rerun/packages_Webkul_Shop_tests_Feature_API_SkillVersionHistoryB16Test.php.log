@@ -1,0 +1,60 @@
+﻿
+  ⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test > it B-16 · ver…  ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test.php:24
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test > it B-16 · 发…    ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test.php:24
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test > it B-16 · 未…    ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test.php:24
+
+
+  Tests:    3 failed (0 assertions)
+  Duration: 2.54s
+

@@ -1,0 +1,16 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\AppCarrierBuilderTest
+  ✓ it C1-A-01 五个 GA 机型都能装配出对应布局，且登记为可选交付资产 with ('unitree_g1', 'app', 'app_package')                            2.21s  
+  ✓ it C1-A-01 五个 GA 机型都能装配出对应布局，且登记为可选交付资产 with ('unitree_r1', 'app', 'app_package')                            0.37s  
+  ✓ it C1-A-01 五个 GA 机型都能装配出对应布局，且登记为可选交付资产 with ('agibot_x2', 'resources', 'vendor_package')                    0.36s  
+  ✓ it C1-A-01 五个 GA 机型都能装配出对应布局，且登记为可选交付资产 with ('agibot_a3', 'resources', 'vendor_package')                    0.33s  
+  ✓ it C1-A-01 五个 GA 机型都能装配出对应布局，且登记为可选交付资产 with ('engineai_t800', 'plugin', 'app_package')                      0.39s  
+  ✓ it C1-A-02 源包含路径穿越 → 安全拒绝，不产出资产                                                                              0.20s  
+  ✓ it C1-A-03 入口不在源包内 → 拒绝（否则装上也起不来）                                                                            0.49s  
+  ✓ it C1-A-04 源包试图顶替平台生成的脚本 → 拒绝                                                                                0.38s  
+  ✓ it C1-A-05 非 GA 机型 → 拒绝                                                                                      0.39s  
+  ✓ it C1-A-06 同输入两次构建 → 产物哈希一致（确定性归档）                                                                           0.48s  
+
+  Tests:    10 passed (87 assertions)
+  Duration: 6.85s
+

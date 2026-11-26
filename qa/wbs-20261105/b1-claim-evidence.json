@@ -1,0 +1,18 @@
+﻿{
+    "wbs":  "B1",
+    "probe":  "two real PHP processes claim the same queued command",
+    "command_id":  12,
+    "worker_a":  "{\"worker\":\"worker-A\",\"claimed\":true}",
+    "worker_b":  "{\"worker\":\"worker-B\",\"claimed\":false}",
+    "errors":  {
+
+               },
+    "final":  {
+                  "id":  12,
+                  "status":  "running",
+                  "worker_id":  "worker-A",
+                  "started_at":  "2026-11-05 00:40:47",
+                  "finished_at":  null,
+                  "deleted":  1
+              }
+}

@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-11-05T20:07:36",
+  "library": "D:\\main\\.tmp-b10\\softhsm2\\pkg\\SoftHSM2\\lib\\softhsm2-x64.dll",
+  "token_label": "zhjj-t8",
+  "evidence_level": "PROVEN_LOCAL",
+  "note": "Software HSM (SoftHSM2 2.5.0 / PKCS#11). NOT hardware HSM, NOT production KMS.",
+  "claims": {
+    "A7-HSM-01": {
+      "desc": "密钥在 HSM 内生成，进程内拿不到私钥明文（导出的 PEM 只有公钥）",
+      "detail": {
+        "sensitive": true,
+        "extractable": false,
+        "private_component_export_blocked": true,
+        "private_component_export_error": "AttributeSensitive: ",
+        "exported_pem_public_only": true
+      },
+      "pass": true
+    },
+    "A7-HSM-02": {
+      "desc": "签名由 HSM 完成，验签通过",
+      "detail": {
+        "signature_b64_len": 256,
+        "verified_outside_hsm_with_public_key": true,
+        "verify_error": ""
+      },
+      "pass": true
+    },
+    "A7-HSM-03": {
+      "desc": "吊销（销毁私钥对象）后 HSM 内签名调用失败",
+      "detail": {
+        "sign_after_destroy_failed": true,
+        "sign_after_destroy_error": "ObjectHandleInvalid: "
+      },
+      "pass": true
+    }
+  },
+  "all_pass": true
+}

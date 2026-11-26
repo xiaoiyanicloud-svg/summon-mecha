@@ -1,0 +1,12 @@
+SourcePackageSecurityTest            Tests:    16 passed (41 assertions)
+BuildDeterminismTest                 Tests:    4 passed (18 assertions)
+MotionCarrierFailClosedTest          Tests:    12 passed (44 assertions)
+--- db after ---
+db=summon_mecha_step10_test
+tables=294
+skill_versions=0
+skill_assets=0
+skill_build_runs=0
+skill_build_commands=0
+products=0
+skill_target_releases=0

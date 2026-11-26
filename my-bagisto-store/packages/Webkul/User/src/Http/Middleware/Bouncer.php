@@ -121,6 +121,18 @@ class Bouncer
 
         $roles = acl()->getRoles();
 
+        // 目标发布审核（B3）：与生态发布工作台同口径，权限不足直接 403，
+        // 而不是 Bouncer::allow() 的统一 401 —— Admin 控制台需要可读的 403。
+        if (str_starts_with($routeName, 'admin.catalog.target-releases.')) {
+            abort_unless(
+                bouncer()->hasPermission((string) ($roles[$routeName] ?? '')),
+                403,
+                '无权执行该目标发布操作。',
+            );
+
+            return;
+        }
+
         if (isset($roles[$routeName])) {
             bouncer()->allow((string) $roles[$routeName]);
         }

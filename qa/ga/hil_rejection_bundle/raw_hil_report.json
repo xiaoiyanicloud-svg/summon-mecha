@@ -1,0 +1,33 @@
+{
+  "schema": "zhaohuan.hil-safety-audit/v1",
+  "verifier": "Hardware-in-the-Loop (HIL) Safety Interlock & E-Stop Verifier",
+  "standard_references": [
+    "ISO 13849-1 (PL d / Cat 3 Architecture)",
+    "ISO 10218-1 (Emergency Stop Category 1)",
+    "IEC 61508 (Functional Safety Comm Watchdog)"
+  ],
+  "verdict": "PASS",
+  "cases": {
+    "HIL-01_hardware_estop_interlock": {
+      "pass": true,
+      "deceleration_time_ms": 12.5,
+      "latency_ms": 0.003,
+      "post_motor_mode": "PASSIVE_DAMPING",
+      "details": "急停下发电机 12.5ms 内降速归零并切入被动阻尼保护模式"
+    },
+    "HIL-02_communication_watchdog": {
+      "pass": true,
+      "silence_tested_s": 0.16,
+      "watchdog_timeout_threshold_s": 0.15,
+      "motor_mode": "SAFE_HOLD",
+      "details": "DDS 控制流丢包 160ms 触发看门狗，自动下发零速命令并锁定当前姿态"
+    },
+    "HIL-03_estop_restart_prevention_and_recovery": {
+      "pass": true,
+      "rejection_err_code": "ESTOP_ACTIVE_LOCKED",
+      "unauthorized_reset_blocked": true,
+      "authorized_recovery_succeeded": true,
+      "details": "急停触发后系统强制排他死锁，拒绝任何新指令；唯有验签重置指令方可恢复"
+    }
+  }
+}

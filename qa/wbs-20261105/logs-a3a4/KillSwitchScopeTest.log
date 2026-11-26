@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchScopeTest
+  ✓ it S-5 · 在线设备的卸载任务立即进入可被拉取的状态(不是 pending_online)                                                             1.14s  
+  ✓ it S-5 · 离线设备的卸载任务落 pending_online,统计离线 +1、在线不加                                                              0.20s  
+  ✓ it S-5 · 人工通道安装的设备计为"无法自动卸载",且不建 agent 卸载任务                                                                  0.14s  
+  ✓ it S-5 · C 端自报安装 → install_record.channel 与该授权的 delivery_channel 一致                                          0.30s  
+  ✓ it S-5 · 历史 channel=null 的行:跑熔断后仍是 null(不冒充人工通道)                                                             0.19s  
+
+  Tests:    5 passed (23 assertions)
+  Duration: 2.58s
+
+

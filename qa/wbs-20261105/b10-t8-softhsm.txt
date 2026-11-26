@@ -1,0 +1,13 @@
+﻿# b10-t8 • SoftHSM2 PKCS#11 drill • 2026-11-05 20:07:36
+# SOFTHSM2_CONF=D:\main\.tmp-b10\softhsm2\conf\softhsm2.conf
+# softhsm2-util: 2.5.0
+# DB not used by this probe
+
+A7-HSM-01: pass=True  {'sensitive': True, 'extractable': False, 'private_component_export_blocked': True, 'private_component_export_error': 'AttributeSensitive: ', 'exported_pem_public_only': True}
+A7-HSM-02: pass=True  {'signature_b64_len': 256, 'verified_outside_hsm_with_public_key': True, 'verify_error': ''}
+A7-HSM-03: pass=True  {'sign_after_destroy_failed': True, 'sign_after_destroy_error': 'ObjectHandleInvalid: '}
+ALL_PASS=True
+WROTE D:\main\qa\wbs-20261105\b10-t8-softhsm.json
+EXIT=0
+
+# JSON SHA256=285FB6F45CE031FC47C3658E9F9A6CB6370C53B5266494CB7FE0E3D20D51DF0C

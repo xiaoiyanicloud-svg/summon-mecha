@@ -1,0 +1,74 @@
+﻿
+  ..⨯.⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should store the newly cre…   
+  Expected: {"message":"\u641c\u7d22\u8bcd\u6761\u5df2\u6210\u529f\u521b\u5efa"}
+
+  To contain: 搜索词条已成功创建
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:42
+     38▕         'channel_id'   => $channelId = core()->getCurrentChannel()->id,
+     39▕         'locale'       => $locale = core()->getCurrentLocale()->code,
+     40▕     ])
+     41▕         ->assertOk()
+  ➜  42▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.create.success'));
+     43▕ 
+     44▕     $this->assertModelWise([
+     45▕         SearchTerm::class => [
+     46▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should update the search t…   
+  Expected: {"message":"\u641c\u7d22\u8bcd\u6761\u5df2\u6210\u529f\u66f4\u65b0"}
+
+  To contain: 搜索词条已成功更新
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:84
+     80▕         'channel_id' => $channelId = core()->getCurrentChannel()->id,
+     81▕         'locale'     => $locale = core()->getCurrentLocale()->code,
+     82▕     ])
+     83▕         ->assertOk()
+  ➜  84▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.edit.success'));
+     85▕ 
+     86▕     $this->assertModelWise([
+     87▕         SearchTerm::class => [
+     88▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should delete the search t…   
+  Expected: {"message":"\u641c\u7d22\u8bcd\u6761\u5df2\u6210\u529f\u5220\u9664"}
+
+  To contain: 搜索词条已成功删除
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:107
+    103▕     $this->loginAsAdmin();
+    104▕ 
+    105▕     deleteJson(route('admin.marketing.search_seo.search_terms.delete', $searchTerm->id))
+    106▕         ->assertOk()
+  ➜ 107▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.edit.delete-success'));
+    108▕ 
+    109▕     $this->assertDatabaseMissing('search_terms', [
+    110▕         'id' => $searchTerm->id,
+    111▕     ]);
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should mass delete the sea…   
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664\u9009\u5b9a\u7684\u641c\u7d22\u8bcd\u6761"}
+
+  To contain: 已成功删除选定的搜索词条
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:125
+    121▕     postJson(route('admin.marketing.search_seo.search_terms.mass_delete'), [
+    122▕         'indices' => $searchTerms->pluck('id')->toArray(),
+    123▕     ])
+    124▕         ->assertOk()
+  ➜ 125▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.datagrid.mass-delete-success'));
+    126▕ 
+    127▕     foreach ($searchTerms as $searchTerm) {
+    128▕         $this->assertDatabaseMissing('search_terms', [
+    129▕             'id' => $searchTerm->id,
+
+
+  Tests:    4 failed, 3 passed (19 assertions)
+  Duration: 3.76s
+

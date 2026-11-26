@@ -33,6 +33,7 @@ use Webkul\Admin\Http\Controllers\Catalog\SkillReportController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillReviewController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillReviewModerationController;
 use Webkul\Admin\Http\Controllers\Catalog\SkillTagController;
+use Webkul\Admin\Http\Controllers\Catalog\TargetReleaseController;
 
 /**
  * Catalog routes.
@@ -454,6 +455,20 @@ Route::prefix('catalog')->group(function () {
 
         Route::post('{versionId}/judge', 'judge')->whereNumber('versionId')->name('admin.catalog.skill-reviews.judge');
         Route::post('{versionId}/layer0', 'runLayer0')->whereNumber('versionId')->name('admin.catalog.skill-reviews.layer0');
+    });
+
+    /**
+     * 目标发布审核（B3）：每个机型的构建产物独立 approve / reject / revoke。
+     *
+     * 与「审核台」不同：审核台判的是版本准入，这里判的是**某一机型的具体产物**
+     * （build_key + artifact_asset_id + target_profile_digest 必须同时匹配）。
+     */
+    Route::controller(TargetReleaseController::class)->prefix('target-releases')->group(function () {
+        Route::get('', 'index')->name('admin.catalog.target-releases.index');
+        Route::get('{id}', 'show')->whereNumber('id')->name('admin.catalog.target-releases.show');
+        Route::post('{id}/approve', 'approve')->whereNumber('id')->name('admin.catalog.target-releases.approve');
+        Route::post('{id}/reject', 'reject')->whereNumber('id')->name('admin.catalog.target-releases.reject');
+        Route::post('{id}/revoke', 'revoke')->whereNumber('id')->name('admin.catalog.target-releases.revoke');
     });
 
     /**

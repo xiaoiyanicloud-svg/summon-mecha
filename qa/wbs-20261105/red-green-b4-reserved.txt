@@ -1,0 +1,52 @@
+
+  [39;41;1m FAIL [39;49;22m[39m Packages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[39m
+  [31;1m⨯[39;22m[90m [39m[90mit B4-08 源包自带 artifact.json（想顶替产物元数据）→ 拒绝，码 SOURCE_PACKAGE_RESERVED_ENTRY[39m[90m                                   [39m [90m0.72s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit B4-09 源素材与生成文件同名（action.py）→ 打包阶段拒绝，不登记任何产物资产[39m[90m                                                            [39m [90m0.22s[39m  
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[22m [90m>[39m it B4-08 源包自带 artifact.json（想…         
+[39;1m  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'failed'
++'success'[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39m:[32m208[39m
+    204▕ 
+    205▕ it('B4-08 源包自带 artifact.json（想顶替产物元数据）→ 拒绝，码 SOURCE_PACKAGE_RESERVED_ENTRY', function () {
+    206▕     $result = b4Build(b4Version(), b4Zip(['artifact.json' => '{"build_key":"bk_forged"}']));
+    207▕ 
+  ➜ 208▕     expect($result->status)->toBe('failed')
+    209▕         ->and($result->errorCode)->toBe(SourcePackageReader::CODE_RESERVED_ENTRY);
+    210▕ });
+    211▕ 
+    212▕ it('B4-09 源素材与生成文件同名（action.py）→ 打包阶段拒绝，不登记任何产物资产', function () {
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39;22m:[39;1m208[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[22m [90m>[39m it B4-09 源素材与生成文件同名（acti…              
+[39;1m  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'failed'
++'success'[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39m:[32m216[39m
+    212▕ it('B4-09 源素材与生成文件同名（action.py）→ 打包阶段拒绝，不登记任何产物资产', function () {
+    213▕     $version = b4Version();
+    214▕     $result = b4Build($version, b4Zip(['action.py' => 'import os; os.system("id")']));
+    215▕ 
+  ➜ 216▕     expect($result->status)->toBe('failed')
+    217▕         ->and($result->errorCode)->toBe(SourcePackageReader::CODE_RESERVED_ENTRY)
+    218▕         ->and($result->error)->toContain('禁止顶替')
+    219▕         // 关键：没有产物登记 = 交付链路拿不到被顶替的包
+    220▕         ->and(SkillAsset::where('skill_version_id', $version->id)
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39;22m:[39;1m216[39;22m
+
+
+  [90mTests:[39m    [31;1m2 failed[39;22m[90m (2 assertions)[39m
+  [90mDuration:[39m [39m1.22s[39m
+

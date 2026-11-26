@@ -290,8 +290,10 @@ class SkillPackageBuilder
         } elseif (empty($compatibility['models']) || ! is_array($compatibility['models'])) {
             $compatibility['models'] = [
                 $this->normalizeCompatibilityEntry('unitree_g1'),
-                $this->normalizeCompatibilityEntry('agibot_a2'),
-                $this->normalizeCompatibilityEntry('engineai_pm01'),
+                $this->normalizeCompatibilityEntry('unitree_r1'),
+                $this->normalizeCompatibilityEntry('agibot_x2'),
+                $this->normalizeCompatibilityEntry('agibot_a3'),
+                $this->normalizeCompatibilityEntry('engineai_t800'),
             ];
         } else {
             $compatibility['models'] = array_map(

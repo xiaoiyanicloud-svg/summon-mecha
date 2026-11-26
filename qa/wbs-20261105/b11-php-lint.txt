@@ -1,0 +1,21 @@
+﻿# b11 php -l · 2026-11-05 23:50:24
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeviceHealthService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/AgentEntitlementService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DesiredStateService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/Builders/AppCarrierBuilder.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Contracts/AsymmetricSigner.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Contracts/CertificateAuthoritySigner.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Signing/LocalAsymmetricSigner.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Signing/LocalCertificateAuthoritySigner.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Signing/KeyBackendManager.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeviceCredentialService.php
+No syntax errors detected in packages/Webkul/Shop/src/Http/Controllers/API/AgentController.php
+No syntax errors detected in packages/Webkul/Shop/src/Routes/api.php
+No syntax errors detected in config/deploy_gateways.php
+No syntax errors detected in config/skill_builders.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/AgentHealthReportTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/AgentEntitlementCheckTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/AgentDesiredStateTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/AppCarrierBuilderTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/KeyBackendContractTest.php
+LINT_FAILURES=0

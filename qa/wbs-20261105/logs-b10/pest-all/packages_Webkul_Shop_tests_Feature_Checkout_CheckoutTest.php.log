@@ -1,0 +1,394 @@
+﻿
+  ...............猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ....猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should store the payment method for guest u鈥?  
+  Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+ Array &0 [
+-    0 => '842 Raphaelle Tunnel',
+-    1 => 'McLaughlinfort, CT 98471',
++    0 => '842 Raphaelle Tunnel\n
++McLaughlinfort, CT 98471',
+ ]
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:1448
+    1444鈻?        ->assertJsonPath('cart.billing_address.first_name', $cartBillingAddress->first_name)
+    1445鈻?        ->assertJsonPath('cart.billing_address.last_name', $cartBillingAddress->last_name)
+    1446鈻?        ->assertJsonPath('cart.billing_address.gender', $cartBillingAddress->gender)
+    1447鈻?        ->assertJsonPath('cart.billing_address.company_name', $cartBillingAddress->company_name)
+  鉃?1448鈻?        ->assertJsonPath('cart.billing_address.address', explode("\n", $cartBillingAddress->address))
+    1449鈻?        ->assertJsonPath('cart.billing_address.city', $cartBillingAddress->city)
+    1450鈻?        ->assertJsonPath('cart.billing_address.state', $cartBillingAddress->state)
+    1451鈻?        ->assertJsonPath('cart.billing_address.country', $cartBillingAddress->country)
+    1452鈻?        ->assertJsonPath('cart.billing_address.postcode', $cartBillingAddress->postcode)
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should store the payment method for custome鈥?  
+  Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+ Array &0 [
+-    0 => '33147 Rebekah Wall',
+-    1 => 'Raeganburgh, OK 28946-6867',
++    0 => '33147 Rebekah Wall\n
++Raeganburgh, OK 28946-6867',
+ ]
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:1588
+    1584鈻?        ->assertJsonPath('cart.billing_address.first_name', $cartBillingAddress->first_name)
+    1585鈻?        ->assertJsonPath('cart.billing_address.last_name', $cartBillingAddress->last_name)
+    1586鈻?        ->assertJsonPath('cart.billing_address.gender', $cartBillingAddress->gender)
+    1587鈻?        ->assertJsonPath('cart.billing_address.company_name', $cartBillingAddress->company_name)
+  鉃?1588鈻?        ->assertJsonPath('cart.billing_address.address', explode("\n", $cartBillingAddress->address))
+    1589鈻?        ->assertJsonPath('cart.billing_address.city', $cartBillingAddress->city)
+    1590鈻?        ->assertJsonPath('cart.billing_address.state', $cartBillingAddress->state)
+    1591鈻?        ->assertJsonPath('cart.billing_address.country', $cartBillingAddress->country)
+    1592鈻?        ->assertJsonPath('cart.billing_address.postcode', $cartBillingAddress->postcode)
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a simple product order for a g鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:1710
+    1706鈻?    // Act and Assert.
+    1707鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    1708鈻?        ->assertOk()
+    1709鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?1710鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    1711鈻?
+    1712鈻?    $cart->refresh();
+    1713鈻?
+    1714鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a simple product order for a g鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:1871
+    1867鈻?    // Act and Assert.
+    1868鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    1869鈻?        ->assertOk()
+    1870鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?1871鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    1872鈻?
+    1873鈻?    $cart->refresh();
+    1874鈻?
+    1875鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a simple product order for a c鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:2044
+    2040鈻?
+    2041鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    2042鈻?        ->assertOk()
+    2043鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?2044鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    2045鈻?
+    2046鈻?    $cart->refresh();
+    2047鈻?
+    2048鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a simple product order for a c鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:2210
+    2206鈻?
+    2207鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    2208鈻?        ->assertOk()
+    2209鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?2210鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    2211鈻?
+    2212鈻?    $cart->refresh();
+    2213鈻?
+    2214鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a configurable product order f鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:2387
+    2383鈻?    // Act and Assert.
+    2384鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    2385鈻?        ->assertOk()
+    2386鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?2387鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    2388鈻?
+    2389鈻?    $cart->refresh();
+    2390鈻?
+    2391鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a configurable product order f鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:2560
+    2556鈻?    // Act and Assert.
+    2557鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    2558鈻?        ->assertOk()
+    2559鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?2560鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    2561鈻?
+    2562鈻?    $cart->refresh();
+    2563鈻?
+    2564鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a configurable product order f鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:2745
+    2741鈻?
+    2742鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    2743鈻?        ->assertOk()
+    2744鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?2745鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    2746鈻?
+    2747鈻?    $cart->refresh();
+    2748鈻?
+    2749鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a configurable product order f鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:2926
+    2922鈻?
+    2923鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    2924鈻?        ->assertOk()
+    2925鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?2926鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    2927鈻?
+    2928鈻?    $cart->refresh();
+    2929鈻?
+    2930鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a virtual product order for a鈥?   
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:3081
+    3077鈻?    // Act and Assert.
+    3078鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    3079鈻?        ->assertOk()
+    3080鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?3081鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    3082鈻?
+    3083鈻?    $cart->refresh();
+    3084鈻?
+    3085鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a virtual product order for a鈥?   
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:3218
+    3214鈻?    // Act and Assert.
+    3215鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    3216鈻?        ->assertOk()
+    3217鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?3218鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    3219鈻?
+    3220鈻?    $cart->refresh();
+    3221鈻?
+    3222鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a virtual product order for a鈥?   
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:3367
+    3363鈻?
+    3364鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    3365鈻?        ->assertOk()
+    3366鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?3367鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    3368鈻?
+    3369鈻?    $cart->refresh();
+    3370鈻?
+    3371鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a virtual product order for a鈥?   
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:3512
+    3508鈻?
+    3509鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    3510鈻?        ->assertOk()
+    3511鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?3512鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    3513鈻?
+    3514鈻?    $cart->refresh();
+    3515鈻?
+    3516鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a downloadable product order f鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:3664
+    3660鈻?
+    3661鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    3662鈻?        ->assertOk()
+    3663鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?3664鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    3665鈻?
+    3666鈻?    $cart->refresh();
+    3667鈻?
+    3668鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place a downloadable product order f鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:3805
+    3801鈻?
+    3802鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    3803鈻?        ->assertOk()
+    3804鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?3805鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    3806鈻?
+    3807鈻?    $cart->refresh();
+    3808鈻?
+    3809鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place order with two products with s鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:4424
+    4420鈻?
+    4421鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    4422鈻?        ->assertOk()
+    4423鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?4424鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    4425鈻?
+    4426鈻?    $cart->refresh();
+    4427鈻?
+    4428鈻?    $configurableProductCartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place order with two products with s鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:4666
+    4662鈻?
+    4663鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    4664鈻?        ->assertOk()
+    4665鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?4666鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    4667鈻?
+    4668鈻?    $cart->refresh();
+    4669鈻?
+    4670鈻?    $simpleProductCartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest > it should place order with two products with s鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/checkout/onepage/success'
++'/admin'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CheckoutTest.php:4899
+    4895鈻?
+    4896鈻?    postJson(route('shop.checkout.onepage.orders.store'))
+    4897鈻?        ->assertOk()
+    4898鈻?        ->assertJsonPath('data.redirect', true)
+  鉃?4899鈻?        ->assertJsonPath('data.redirect_url', route('shop.checkout.onepage.success'));
+    4900鈻?
+    4901鈻?    $cart->refresh();
+    4902鈻?
+    4903鈻?    $simpleProductCartItem->refresh();
+
+
+  Tests:    19 failed, 19 passed (309 assertions)
+  Duration: 62.54s
+

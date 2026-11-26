@@ -21,31 +21,29 @@ class DeviceModelSeeder extends Seeder
     public function run(): void
     {
         $rows = [
-            // ===== P0:宇树(开放 EDU,唯一有官方 App Store)=====
+            // ===== GA 五机型 =====
             ['unitree', 'unitree_g1', '宇树 G1', 'unitree', 23, 'ARM(Orin,EDU)', ['agent', 'manual'], null, 'active', 10],
-            ['unitree', 'unitree_go2', '宇树 Go2', 'unitree', 12, 'ARM(Orin,EDU)', ['agent', 'manual'], null, 'active', 11],
-            ['unitree', 'unitree_h1', '宇树 H1', 'unitree', 19, 'x86(i5+i7)', ['manual'], null, 'active', 12],
-            ['unitree', 'unitree_h2', '宇树 H2', 'unitree', 31, 'x86(i5+i7)/ARM(Thor)', ['manual'], null, 'active', 13],
-            ['unitree', 'unitree_b2', '宇树 B2', 'unitree', 12, 'x86(i5+i7)', ['manual'], null, 'active', 14],
+            ['unitree', 'unitree_r1', '宇树 R1', 'unitree', null, 'vendor-confirmation-required', ['agent', 'manual'], null, 'active', 11],
+            ['agibot', 'agibot_x2', '智元 灵犀X2', 'agibot', 30, 'ARM(RK3588/Orin NX)', ['agent', 'manual'], null, 'active', 20],
+            ['agibot', 'agibot_a3', '智元 远征A3', 'agibot', 40, 'ARM(Orin)+x86', ['agent', 'manual'], null, 'active', 21],
+            ['engineai', 'engineai_t800', '众擎 T800', 'engineai', null, 'ARM(AGX Orin)+x86', ['agent', 'manual'], null, 'active', 31],
 
-            // ===== P0:智元 =====
-            ['agibot', 'agibot_a2', '智元 远征A2', 'agibot', 40, 'ARM(Orin)+x86', ['agent', 'manual'], null, 'active', 20],
-            ['agibot', 'agibot_a3_ultra', '智元 远征A3-Ultra', 'agibot', 40, 'ARM(Orin)+x86', ['agent', 'manual'], null, 'active', 21],
-            ['agibot', 'agibot_x2', '智元 灵犀X2', 'agibot', 30, 'ARM(RK3588/Orin NX)', ['manual'], null, 'active', 22],
-
-            // ===== P0:众擎 =====
-            ['engineai', 'engineai_pm01', '众擎 PM01', 'engineai', 24, 'ARM(Orin NX)+x86(N97)', ['agent', 'manual'], null, 'active', 30],
-            ['engineai', 'engineai_t800', '众擎 T800', 'engineai', null, 'ARM(AGX Orin)+x86', ['manual'], null, 'active', 31],
-
-            // ===== 仅展示(开放但非 P0;或封闭)=====
-            ['leju', 'leju_kuavo4pro', '乐聚 Kuavo4Pro', null, 28, 'ARM(AGX Orin)+x86', ['manual'], null, 'display_only', 40],
-            ['fourier', 'fourier_gr3', '傅利叶 GR-3', null, 55, 'x86(Ryzen7)', ['manual'], null, 'display_only', 41],
-            ['ubtech', 'ubtech_walker_s2', '优必选 Walker S2', null, 42, 'x86+ARM(Orin)', ['manual'], null, 'display_only', 42],
-            ['deeprobotics', 'deeprobotics_x30', '云深处 绝影X30', null, 12, null, ['manual'], null, 'display_only', 43],
-            ['bostondynamics', 'bd_spot', '波士顿动力 Spot', null, 12, null, ['manual'], null, 'display_only', 44],
-            ['1x', 'onex_neo', '1X NEO', null, null, 'ARM(Jetson Thor)', [], null, 'display_only', 45],
-            ['tesla', 'tesla_optimus', 'Tesla Optimus', null, null, null, [], null, 'display_only', 46],
-            ['figure', 'figure_02', 'Figure 02', null, null, null, [], null, 'display_only', 47],
+            // ===== 仅展示 / 非本轮 GA =====
+            ['unitree', 'unitree_go2', '宇树 Go2', 'unitree', 12, 'ARM(Orin,EDU)', ['manual'], null, 'display_only', 40],
+            ['unitree', 'unitree_h1', '宇树 H1', 'unitree', 19, 'x86(i5+i7)', ['manual'], null, 'display_only', 41],
+            ['unitree', 'unitree_h2', '宇树 H2', 'unitree', 31, 'x86(i5+i7)/ARM(Thor)', ['manual'], null, 'display_only', 42],
+            ['unitree', 'unitree_b2', '宇树 B2', 'unitree', 12, 'x86(i5+i7)', ['manual'], null, 'display_only', 43],
+            ['agibot', 'agibot_a2', '智元 远征A2（历史机型，不作为当前 GA 目标）', 'agibot', 40, 'ARM(Orin)+x86', ['manual'], null, 'display_only', 44],
+            ['agibot', 'agibot_a3_ultra', '智元 远征A3-Ultra', 'agibot', 40, 'ARM(Orin)+x86', ['manual'], null, 'display_only', 45],
+            ['engineai', 'engineai_pm01', '众擎 PM01', 'engineai', 24, 'ARM(Orin NX)+x86(N97)', ['manual'], null, 'display_only', 46],
+            ['leju', 'leju_kuavo4pro', '乐聚 Kuavo4Pro', null, 28, 'ARM(AGX Orin)+x86', ['manual'], null, 'display_only', 50],
+            ['fourier', 'fourier_gr3', '傅利叶 GR-3', null, 55, 'x86(Ryzen7)', ['manual'], null, 'display_only', 51],
+            ['ubtech', 'ubtech_walker_s2', '优必选 Walker S2', null, 42, 'x86+ARM(Orin)', ['manual'], null, 'display_only', 52],
+            ['deeprobotics', 'deeprobotics_x30', '云深处 绝影X30', null, 12, null, ['manual'], null, 'display_only', 53],
+            ['bostondynamics', 'bd_spot', '波士顿动力 Spot', null, 12, null, ['manual'], null, 'display_only', 54],
+            ['1x', 'onex_neo', '1X NEO', null, null, 'ARM(Jetson Thor)', [], null, 'display_only', 55],
+            ['tesla', 'tesla_optimus', 'Tesla Optimus', null, null, null, [], null, 'display_only', 56],
+            ['figure', 'figure_02', 'Figure 02', null, null, null, [], null, 'display_only', 57],
         ];
 
         $now = now();

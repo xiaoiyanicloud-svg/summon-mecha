@@ -191,6 +191,12 @@ return [
         'sort'       => 5,
         'icon'       => '',
     ], [
+        'key'        => 'catalog.target-releases',
+        'name'       => '目标发布审核',
+        'route'      => 'admin.catalog.target-releases.index',
+        'sort'       => 5,
+        'icon'       => '',
+    ], [
         'key'        => 'catalog.device-models',
         'name'       => '机型库',
         'route'      => 'admin.catalog.device-models.index',

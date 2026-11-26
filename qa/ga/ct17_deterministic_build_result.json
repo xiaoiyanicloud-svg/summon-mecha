@@ -1,0 +1,9 @@
+{
+    "evidence_level": "SOFTWARE_BUILD_DETERMINISM",
+    "php_version": "8.4.24",
+    "artifact_sha256_run_1": "ce9f7b29aa4145d1c5c4d221713ce0a671e29320c152856620cbf12d7f5bb73c",
+    "artifact_sha256_run_2": "ce9f7b29aa4145d1c5c4d221713ce0a671e29320c152856620cbf12d7f5bb73c",
+    "byte_identical": true,
+    "run_1_build_key": "bk_1b9d1779a5b3c2bcf485ef98afc435d026074489d11f52e98b74e049c4c5e279",
+    "run_2_build_key": "bk_1b9d1779a5b3c2bcf485ef98afc435d026074489d11f52e98b74e049c4c5e279"
+}

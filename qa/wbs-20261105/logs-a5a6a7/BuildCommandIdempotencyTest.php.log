@@ -1,0 +1,15 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\BuildCommandIdempotencyTest
+  ✓ it B1 · 同键同载荷只执行一次，第二次返回原结果                                                                                  1.15s  
+  ✓ it B1 · 同键异载荷 → 冲突异常，不执行第二次                                                                                  0.24s  
+  ✓ it B1 · 跨 seller 同键互不干扰                                                                                      0.30s  
+  ✓ it B1 · 命令先落库、builder 在 submit 事务之外执行                                                                        0.29s  
+  ✓ it B1 · 失败结果映射为 failed 并保留 error_code                                                                        0.19s  
+  ✓ it B1 · claim 原子性：同一条命令只有一个 worker 领取成功                                                                      0.26s  
+  ✓ it B1 · cancel 只对 queued/running 生效，终态不可取消                                                                   0.25s  
+  ✓ it B1 · 已取消的命令不会被迟到 worker 执行或覆盖                                                                             0.17s  
+  ✓ it B1 · async 模式只落 queued，worker 领取后执行一次                                                                     0.21s  
+
+  Tests:    9 passed (32 assertions)
+  Duration: 4.03s
+

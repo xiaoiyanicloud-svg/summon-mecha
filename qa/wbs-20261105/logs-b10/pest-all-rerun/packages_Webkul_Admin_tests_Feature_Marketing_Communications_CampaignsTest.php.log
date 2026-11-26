@@ -1,0 +1,23 @@
+﻿
+  .........⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\CampaignsTest > it should delete the campaig…   
+  Expected: {"message":"\u6d3b\u52a8\u5220\u9664\u6210\u529f"}
+
+  To contain: 活动删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\CampaignsTest.php:190
+    186▕     $this->loginAsAdmin();
+    187▕ 
+    188▕     deleteJson(route('admin.marketing.communications.campaigns.delete', $campaign->id))
+    189▕         ->assertOk()
+  ➜ 190▕         ->assertSeeText(trans('admin::app.marketing.communications.campaigns.delete-success'));
+    191▕ 
+    192▕     $this->assertDatabaseMissing('marketing_campaigns', [
+    193▕         'id' => $campaign->id,
+    194▕     ]);
+
+
+  Tests:    1 failed, 9 passed (46 assertions)
+  Duration: 7.80s
+

@@ -54,6 +54,7 @@ it('event：用 B 的 did 报 A 的任务 → 被拒（404），且 A 的状态�
     postJson(route('shop.api.agent.event'), [
         'task_no' => $taskA->task_no,
         'did'     => 'did_owner_B',
+        'event_id' => 'evt_owner_mismatch',
         'phase'   => 'done',
     ], agentHeaders())->assertStatus(404);
 
@@ -67,6 +68,7 @@ it('event：did 与任务一致时正常推进', function () {
     postJson(route('shop.api.agent.event'), [
         'task_no' => $taskA->task_no,
         'did'     => 'did_owner_A',
+        'event_id' => 'evt_owner_match_'.uniqid(),
         'phase'   => 'done',
     ], agentHeaders())
         ->assertOk()
@@ -80,6 +82,7 @@ it('event：缺 did 直接 422（契约要求必带 did）', function () {
 
     postJson(route('shop.api.agent.event'), [
         'task_no' => $taskA->task_no,
+        'event_id' => 'evt_owner_missing_did',
         'phase'   => 'done',
     ], agentHeaders())->assertStatus(422);
 });

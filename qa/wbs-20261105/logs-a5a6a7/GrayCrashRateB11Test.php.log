@@ -1,0 +1,13 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GrayCrashRateB11Test
+  ✓ it B-11 · 成功率 100% 但崩溃率 > 2% → 仍回滚(崩溃维度真的在起作用)                                                               1.06s  
+  ✓ it B-11 · 崩溃率恰为阈值(2.0)不回滚 —— 判据是严格大于                                                                         0.22s  
+  ✓ it B-11 · 不传崩溃数(旧调用方)行为不变:crash_rate=0,不误触发回滚                                                                0.20s  
+  ✓ it B-11 · installs=0 时 crash_rate 为 null,不得被当成 0 之外的判据                                                       0.19s  
+  ✓ it B-11 · evaluateFromRecords 从 error_code=CRASH 反查崩溃数(自驱路径有真实来源)                                            0.26s  
+  ✓ it B-11 · 崩溃数 > 安装数被拒 422(崩过的设备数不可能超过下发的设备数)                                                                 0.48s  
+  ✓ it B-11 · 带合法崩溃数上报 → 200,crash_rate 落库                                                                       0.32s  
+
+  Tests:    7 passed (23 assertions)
+  Duration: 3.14s
+

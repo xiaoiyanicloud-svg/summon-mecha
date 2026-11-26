@@ -1,0 +1,74 @@
+﻿
+  ..猕?猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should store the newly cre鈥?  
+  Expected: {"message":"\u641c\u7d22\u8bcd\u6761\u5df2\u6210\u529f\u521b\u5efa"}
+
+  To contain: 鎼滅储璇嶆潯宸叉垚鍔熷垱寤?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:42
+     38鈻?        'channel_id'   => $channelId = core()->getCurrentChannel()->id,
+     39鈻?        'locale'       => $locale = core()->getCurrentLocale()->code,
+     40鈻?    ])
+     41鈻?        ->assertOk()
+  鉃? 42鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.create.success'));
+     43鈻?
+     44鈻?    $this->assertModelWise([
+     45鈻?        SearchTerm::class => [
+     46鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should update the search t鈥?  
+  Expected: {"message":"\u641c\u7d22\u8bcd\u6761\u5df2\u6210\u529f\u66f4\u65b0"}
+
+  To contain: 鎼滅储璇嶆潯宸叉垚鍔熸洿鏂?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:84
+     80鈻?        'channel_id' => $channelId = core()->getCurrentChannel()->id,
+     81鈻?        'locale'     => $locale = core()->getCurrentLocale()->code,
+     82鈻?    ])
+     83鈻?        ->assertOk()
+  鉃? 84鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.edit.success'));
+     85鈻?
+     86鈻?    $this->assertModelWise([
+     87鈻?        SearchTerm::class => [
+     88鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should delete the search t鈥?  
+  Expected: {"message":"\u641c\u7d22\u8bcd\u6761\u5df2\u6210\u529f\u5220\u9664"}
+
+  To contain: 鎼滅储璇嶆潯宸叉垚鍔熷垹闄?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:107
+    103鈻?    $this->loginAsAdmin();
+    104鈻?
+    105鈻?    deleteJson(route('admin.marketing.search_seo.search_terms.delete', $searchTerm->id))
+    106鈻?        ->assertOk()
+  鉃?107鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.edit.delete-success'));
+    108鈻?
+    109鈻?    $this->assertDatabaseMissing('search_terms', [
+    110鈻?        'id' => $searchTerm->id,
+    111鈻?    ]);
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest > it should mass delete the sea鈥?  
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664\u9009\u5b9a\u7684\u641c\u7d22\u8bcd\u6761"}
+
+  To contain: 宸叉垚鍔熷垹闄ら€夊畾鐨勬悳绱㈣瘝鏉?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchTermTest.php:125
+    121鈻?    postJson(route('admin.marketing.search_seo.search_terms.mass_delete'), [
+    122鈻?        'indices' => $searchTerms->pluck('id')->toArray(),
+    123鈻?    ])
+    124鈻?        ->assertOk()
+  鉃?125鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-terms.index.datagrid.mass-delete-success'));
+    126鈻?
+    127鈻?    foreach ($searchTerms as $searchTerm) {
+    128鈻?        $this->assertDatabaseMissing('search_terms', [
+    129鈻?            'id' => $searchTerm->id,
+
+
+  Tests:    4 failed, 3 passed (19 assertions)
+  Duration: 6.03s
+

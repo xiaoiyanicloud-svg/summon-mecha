@@ -1,0 +1,74 @@
+﻿
+  ..猕?猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should store the newly鈥?  
+  Expected: {"message":"\u6210\u529f\u521b\u5efa\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 鎴愬姛鍒涘缓鎼滅储鍚屼箟璇?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:39
+     35鈻?        'terms' => $term = fake()->randomElement(['jackets', 'shoes', 'footwear',  'phone', 'computers', 'electronics']),
+     36鈻?        'name'  => $name = fake()->name(),
+     37鈻?    ])
+     38鈻?        ->assertOk()
+  鉃? 39鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.create.success'));
+     40鈻?
+     41鈻?    $this->assertModelWise([
+     42鈻?        SearchSynonym::class => [
+     43鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should update the sear鈥?  
+  Expected: {"message":"\u6210\u529f\u66f4\u65b0\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 鎴愬姛鏇存柊鎼滅储鍚屼箟璇?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:77
+     73鈻?        'terms' => $term = fake()->randomElement(['jackets', 'phone', 'computers', 'electronics']),
+     74鈻?        'name'  => $searchSynonym->name,
+     75鈻?    ])
+     76鈻?        ->assertOk()
+  鉃? 77鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.edit.success'));
+     78鈻?
+     79鈻?    $this->assertModelWise([
+     80鈻?        SearchSynonym::class => [
+     81鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should delete the sear鈥?  
+  Expected: {"message":"\u6210\u529f\u5220\u9664\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 鎴愬姛鍒犻櫎鎼滅储鍚屼箟璇?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:99
+     95鈻?    $this->loginAsAdmin();
+     96鈻?
+     97鈻?    deleteJson(route('admin.marketing.search_seo.search_synonyms.delete', $searchSynonym->id))
+     98鈻?        ->assertOk()
+  鉃? 99鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.edit.delete-success'));
+    100鈻?
+    101鈻?    $this->assertDatabaseMissing('search_synonyms', [
+    102鈻?        'id' => $searchSynonym->id,
+    103鈻?    ]);
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should mass delete the鈥?  
+  Expected: {"message":"\u6210\u529f\u5220\u9664\u6240\u9009\u7684\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 鎴愬姛鍒犻櫎鎵€閫夌殑鎼滅储鍚屼箟璇?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:117
+    113鈻?    postJson(route('admin.marketing.search_seo.search_synonyms.mass_delete'), [
+    114鈻?        'indices' => $searchSynonyms->pluck('id')->toArray(),
+    115鈻?    ])
+    116鈻?        ->assertOk()
+  鉃?117鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.datagrid.mass-delete-success'));
+    118鈻?
+    119鈻?    foreach ($searchSynonyms as $searchSynonym) {
+    120鈻?        $this->assertDatabaseMissing('search_synonyms', [
+    121鈻?            'id' => $searchSynonym->id,
+
+
+  Tests:    4 failed, 3 passed (17 assertions)
+  Duration: 3.30s
+

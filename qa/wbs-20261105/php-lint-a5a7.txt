@@ -1,0 +1,10 @@
+﻿# php -l · 2026-11-05 16:17:05
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeviceCredentialService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeviceKeyProvider.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/AgentFactSignatureVerifier.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Contracts/KeyMaterial.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Contracts/KeyProvider.php
+No syntax errors detected in packages/Webkul/Shop/src/Http/Controllers/API/AgentController.php
+No syntax errors detected in config/deploy_gateways.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/KeyLifecycleTest.php
+FILES=8 FAILURES=0

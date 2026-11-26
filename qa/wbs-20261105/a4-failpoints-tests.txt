@@ -1,0 +1,12 @@
+﻿# A4 九边界 failpoint · 2026-11-05 18:21:23 · exit=0
+python.exe : ..
+At line:1 char:789
++ ... -Last 4; $out2 = & $py -m unittest tests.test_failpoints 2>&1; $exit2 ...
++                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (..:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+----------------------------------------------------------------------
+Ran 2 tests in 20.784s
+
+OK

@@ -1,0 +1,57 @@
+﻿
+  ..猕?..猕?猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\LocaleTest > it should store the newly created locale           
+  Expected: {"message":"\u533a\u57df\u521b\u5efa\u6210\u529f\u3002"}
+
+  To contain: 鍖哄煙鍒涘缓鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Settings\LocaleTest.php:51
+     47鈻?            UploadedFile::fake()->image('logo.png'),
+     48鈻?        ],
+     49鈻?    ])
+     50鈻?        ->assertOk()
+  鉃? 51鈻?        ->assertSeeText(trans('admin::app.settings.locales.index.create-success'));
+     52鈻?
+     53鈻?    $this->assertModelWise([
+     54鈻?        Locale::class => [
+     55鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\LocaleTest > it should update the specified locale              
+  Expected: {"message":"\u533a\u57df\u66f4\u65b0\u6210\u529f\u3002"}
+
+  To contain: 鍖哄煙鏇存柊鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Settings\LocaleTest.php:132
+    128鈻?            UploadedFile::fake()->image('logo.png'),
+    129鈻?        ],
+    130鈻?    ])
+    131鈻?        ->assertOk()
+  鉃?132鈻?        ->assertSeeText(trans('admin::app.settings.locales.index.update-success'));
+    133鈻?
+    134鈻?    $this->assertModelWise([
+    135鈻?        Locale::class => [
+    136鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\LocaleTest > it should delete the locale                        
+  Expected: {"message":"\u533a\u57df\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: 鍖哄煙鍒犻櫎鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Settings\LocaleTest.php:178
+    174鈻?    $this->loginAsAdmin();
+    175鈻?
+    176鈻?    deleteJson(route('admin.settings.locales.delete', $locale->id))
+    177鈻?        ->assertOk()
+  鉃?178鈻?        ->assertSeeText(trans('admin::app.settings.locales.index.delete-success'));
+    179鈻?
+    180鈻?    $this->assertDatabaseMissing('locales', [
+    181鈻?        'id' => $locale->id,
+    182鈻?    ]);
+
+
+  Tests:    3 failed, 6 passed (32 assertions)
+  Duration: 3.15s
+

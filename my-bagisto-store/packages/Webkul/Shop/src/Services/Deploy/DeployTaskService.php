@@ -11,9 +11,13 @@ use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\InstallRecord;
 use Webkul\Shop\Models\SkillAsset;
+use Webkul\Shop\Models\SkillBuildRun;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Models\SkillExecution;
 use Webkul\Shop\Models\SkillVersion;
+use Webkul\Shop\Services\Deploy\Contracts\AgentTaskEnvelopeV2;
+use Webkul\Shop\Services\Deploy\Contracts\ExecutionFact;
+use Webkul\Shop\Services\Deploy\Contracts\OutboxLease;
 use Webkul\Shop\Services\LifecycleNotifier;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryAssetResolver;
 use Webkul\Shop\Services\SkillPackage\PackageFingerprint;
@@ -82,7 +86,7 @@ class DeployTaskService
         // 于是"下载失败(可重试)"和"安装失败(不可重试)"在库里长得一模一样。
         'downloading'     => ['installing', 'download_failed', 'success', 'failed', 'timeout', 'cancelled'],
         'download_failed' => ['downloading', 'installing', 'failed', 'timeout'],
-        'installing'      => ['success', 'failed', 'timeout'],
+        'installing'      => ['success', 'failed', 'timeout', 'cancelled'],
         'pending_online'  => ['dispatching', 'success', 'failed', 'timeout', 'cancelled'],
         'success'         => [],
         'failed'          => [],
@@ -148,10 +152,10 @@ class DeployTaskService
                 ) {
                     $this->lockDevice($did);
 
-                    // 执行/取消类任务按 execution_id 独立去重；安装/生命周期任务按 (did, version, op) 去重
+                    // 执行/取消类任务按 execution_id 独立去重；生命周期任务按 (did, skill_id, version, op) 去重
                     $existing = in_array($operation, [DeployTask::OP_EXECUTE, DeployTask::OP_CANCEL_EXECUTION], true)
                         ? ($executionId ? $this->findOpenExecutionTask($did, $operation, $executionId) : null)
-                        : $this->findOpenTask($did, $skillVersionId, $operation);
+                        : $this->findOpenTask($did, $skillId, $skillVersionId, $operation);
 
                     if ($existing) {
                         return $existing;
@@ -380,10 +384,11 @@ class DeployTaskService
      * skill_version_id 可空 —— 空值也参与判定,且必须用 whereNull,否则 `= null` 恒假、
      * 去重对"无版本下发"整批失效。
      */
-    protected function findOpenTask(string $did, ?int $skillVersionId, int $operation): ?DeployTask
+    protected function findOpenTask(string $did, int $skillId, ?int $skillVersionId, int $operation): ?DeployTask
     {
         return DeployTask::query()
             ->where('did', $did)
+            ->where('skill_id', $skillId)
             ->where('operation', $operation)
             ->whereIn('status', self::OPEN_STATUSES)
             ->when(
@@ -519,6 +524,77 @@ class DeployTaskService
     }
 
     /**
+     * 原子领取下一条 Outbox 命令。
+     *
+     * deploy_task 本身即持久 Outbox；claim 只做数据库事务，不调用 HTTP/SDK/DDS。
+     * ACK 丢失时租约过期后可重投，设备端以 task_id + durable journal 幂等。
+     */
+    public function claimNextCommand(string $did, string $protocolVersion): ?DeployTask
+    {
+        // MySQL InnoDB 在多个 worker 同时对同一任务做 SELECT ... FOR UPDATE 时
+        // 可能选择其中一个事务作为死锁牺牲者（40001）。这是预期竞态，不是任务失败。
+        // 有界重试后，失败者会看到任务已被另一事务领取并返回 null；绝不无限重试。
+        return DB::transaction(function () use ($did, $protocolVersion) {
+            $now = now();
+            $query = DeployTask::query()
+                ->where('did', $did)
+                ->whereNull('delivered_at')
+                ->where(function ($q) use ($now) {
+                    $q->where('status', 'pending_online')
+                        ->orWhere('status', 'dispatching');
+                })
+                ->where(function ($q) use ($now) {
+                    $q->whereNull('outbox_lease_expires_at')
+                        ->orWhere('outbox_lease_expires_at', '<=', $now);
+                });
+
+            if ($protocolVersion !== DeployTask::PROTOCOL_V2) {
+                $query->whereNotIn('operation', DeployTask::EXECUTION_OPERATIONS);
+            }
+
+            $task = $query->orderBy('id')->lockForUpdate()->first();
+            if (! $task) {
+                return null;
+            }
+
+            if (! $this->transition($task, 'dispatching')) {
+                return null;
+            }
+
+            $acquiredAt = now();
+            $attempt = (int) $task->delivery_attempt + 1;
+            $lease = new OutboxLease(
+                taskId: (int) $task->id,
+                token: Str::random(64),
+                attempt: $attempt,
+                acquiredAt: $acquiredAt->timestamp,
+                expiresAt: $acquiredAt->copy()->addSeconds((int) config('deploy_gateways.command_lease_seconds', 30))->timestamp,
+            );
+            $task->outbox_lease_token = $lease->token;
+            $task->outbox_lease_expires_at = $acquiredAt->copy()->addSeconds((int) config('deploy_gateways.command_lease_seconds', 30));
+            $task->delivery_attempt = $lease->attempt;
+            $task->saveQuietly();
+
+            if ($protocolVersion !== DeployTask::PROTOCOL_V2) {
+                $this->markDelivered($task);
+            }
+
+            $task = $task->fresh();
+            Log::info('deploy.outbox.claimed', [
+                'service' => 'skill-deploy',
+                'env' => app()->environment(),
+                'task_id' => $task->task_no,
+                'did' => $task->did,
+                'operation' => (int) $task->operation,
+                'status' => $task->status,
+                'attempt' => (int) $task->delivery_attempt,
+                'protocol' => $protocolVersion,
+            ]);
+
+            return $task;
+        }, 3);
+    }
+    /**
      * 构造一条下发指令(含签名) —— 推/拉两种传输都复用它,避免端上各写各的。
      */
     public function buildCommand(DeployTask $task): array
@@ -561,83 +637,116 @@ class DeployTaskService
 
         $keyId = $this->signing->keyId();
         $payload = is_array($task->signed_payload) ? $task->signed_payload : [];
+        $binding = DeviceBinding::query()->with('model')->where('did', $task->did)->first();
+        $artifact = $task->package_asset_id ? SkillAsset::query()->whereKey($task->package_asset_id)->first() : null;
+        $buildRun = $artifact
+            ? SkillBuildRun::query()->where('artifact_asset_id', $artifact->id)->orderByDesc('id')->first()
+            : null;
+        $modelCode = $payload['target_model_code'] ?? $artifact?->target_model_code ?? $binding?->model?->model_code;
+        $targetProfileDigest = (string) ($payload['target_profile_digest'] ?? $buildRun?->target_profile_digest ?? '');
+        $buildKey = $payload['build_key'] ?? $artifact?->build_key ?? $buildRun?->build_key;
+        $nonce = $payload['nonce'] ?? bin2hex(random_bytes(16));
+        $expiresAtTimestamp = $task->task_expires_at ? $task->task_expires_at->timestamp : ($ts + 3600);
 
-        if (isset($payload['signed']) && is_array($payload['signed']) && isset($payload['signature_v2'])) {
-            $signed = $payload['signed'];
-            $signatureV2 = $payload['signature_v2'];
-            $signatureV1 = $payload['signature_v1'] ?? $this->signing->sign($canonical);
-            $ts = $signed['issued_at'] ?? $ts;
-        } else {
-            $expiresAtTimestamp = $task->task_expires_at ? $task->task_expires_at->timestamp : ($ts + 3600);
-            $signed = [
-                'protocol_version'              => DeployTask::PROTOCOL_V2,
-                'signature_algorithm'           => 'RSA-SHA256',
-                'key_id'                        => $keyId,
-                'task_id'                       => (string) $task->task_no,
-                'command_seq'                   => (int) ($task->command_seq ?: 1),
-                'did'                           => (string) $task->did,
-                'operation'                     => (int) $task->operation,
-                'skill_id'                      => (string) $task->skill_id,
-                'skill_version_id'              => $task->skill_version_id ? (string) $task->skill_version_id : null,
-                'version'                       => $version?->version ? (string) $version->version : null,
-                'package_asset_id'              => $task->package_asset_id ? (string) $task->package_asset_id : null,
-                'package_hash'                  => $task->package_hash ?: null,
-                'package_sha256'                => $packageSha256 ?: null,
-                'build_key'                     => $payload['build_key'] ?? null,
-                'target_model_code'             => $payload['target_model_code'] ?? null,
-                'target_profile_digest'         => $payload['target_profile_digest'] ?? null,
-                'verification_digest'           => $payload['verification_digest'] ?? null,
-                'revoked_version_id'            => $payload['revoked_version_id'] ?? null,
-                'restore_asset_id'              => $payload['restore_asset_id'] ?? null,
-                'restore_sha256'                => $payload['restore_sha256'] ?? null,
-                'execution_id'                  => $task->execution_id ?: null,
-                'target_release_id'             => $payload['target_release_id'] ?? null,
-                'installed_asset_id'            => $payload['installed_asset_id'] ?? null,
-                'installed_sha256'              => $payload['installed_sha256'] ?? null,
-                'plan_digest'                   => $payload['plan_digest'] ?? null,
-                'runtime_digest'                => $payload['runtime_digest'] ?? null,
-                'execution_params'              => $payload['execution_params'] ?? null,
-                'execution_deadline'            => isset($payload['execution_deadline']) ? (int) $payload['execution_deadline'] : null,
-                'entitlement_id'                => $task->entitlement_id ? (string) $task->entitlement_id : null,
-                'authorization_policy_version'  => 'v1',
-                'authorization_not_before'      => isset($payload['authorization_not_before']) ? (int) $payload['authorization_not_before'] : null,
-                'authorization_expires_at'      => isset($payload['authorization_expires_at']) ? (int) $payload['authorization_expires_at'] : null,
-                'revocation_epoch'              => (int) ($payload['revocation_epoch'] ?? 0),
-                'issued_at'                     => (int) $ts,
-                'task_expires_at'               => (int) $expiresAtTimestamp,
-            ];
+        $signed = [
+            'protocol'                      => DeployTask::PROTOCOL_V2,
+            'protocol_version'              => DeployTask::PROTOCOL_V2,
+            'signature_algorithm'           => 'RSA-SHA256',
+            'key_id'                        => $keyId,
+            'task_id'                       => (string) $task->task_no,
+            'command_seq'                   => (int) ($task->command_seq ?: 1),
+            'did'                           => (string) $task->did,
+            'operation'                     => (int) $task->operation,
+            'model_code'                    => $modelCode ? (string) $modelCode : null,
+            'skill_id'                      => (string) $task->skill_id,
+            'skill_version_id'              => $task->skill_version_id ? (string) $task->skill_version_id : null,
+            'version'                       => $version?->version ? (string) $version->version : null,
+            'package_asset_id'              => $task->package_asset_id ? (string) $task->package_asset_id : null,
+            'package_hash'                  => $task->package_hash ?: null,
+            'package_sha256'                => $packageSha256 ?: null,
+            'build_key'                     => $payload['build_key'] ?? null,
+            'target_model_code'             => $modelCode ? (string) $modelCode : ($payload['target_model_code'] ?? null),
+            'target_profile_digest'         => $targetProfileDigest !== '' ? $targetProfileDigest : null,
+            'verification_digest'           => $payload['verification_digest'] ?? null,
+            'revoked_version_id'            => $payload['revoked_version_id'] ?? null,
+            'restore_asset_id'              => $payload['restore_asset_id'] ?? null,
+            'restore_sha256'                => $payload['restore_sha256'] ?? null,
+            'execution_id'                  => $task->execution_id ?: null,
+            'target_release_id'             => $payload['target_release_id'] ?? null,
+            'installed_asset_id'            => $payload['installed_asset_id'] ?? null,
+            'installed_sha256'              => $payload['installed_sha256'] ?? null,
+            'plan_digest'                   => $payload['plan_digest'] ?? null,
+            'runtime_digest'                => $payload['runtime_digest'] ?? null,
+            'execution_params'              => $payload['execution_params'] ?? null,
+            'execution_deadline'            => isset($payload['execution_deadline']) ? (int) $payload['execution_deadline'] : null,
+            'entitlement_id'                => $task->entitlement_id ? (string) $task->entitlement_id : null,
+            'authorization_policy_version'  => 'v1',
+            'authorization_not_before'      => isset($payload['authorization_not_before']) ? (int) $payload['authorization_not_before'] : null,
+            'authorization_expires_at'      => isset($payload['authorization_expires_at']) ? (int) $payload['authorization_expires_at'] : null,
+            'revocation_epoch'              => (int) ($payload['revocation_epoch'] ?? 0),
+            'nonce'                         => $nonce,
+            'issued_at'                     => (int) $ts,
+            'expires_at'                    => (int) $expiresAtTimestamp,
+            'task_expires_at'               => (int) $expiresAtTimestamp,
+        ];
 
-            $signatureV1 = $this->signing->sign($canonical);
-            $signatureV2 = $this->signing->signV2($signed);
+        $signatureV1 = $this->signing->sign($canonical);
+        $signatureV2 = $this->signing->signV2($signed);
 
-            $payload['signed'] = $signed;
-            $payload['signature_v1'] = $signatureV1;
-            $payload['signature_v2'] = $signatureV2;
-            $task->signed_payload = $payload;
-            if (! $task->task_expires_at) {
-                $task->task_expires_at = \Illuminate\Support\Carbon::createFromTimestamp($expiresAtTimestamp);
-            }
-            if ($task->exists) {
-                $task->saveQuietly();
-            }
+        if ($targetProfileDigest !== '') {
+            // 强类型契约校验：实际生成的 v2 信封必须满足与 Agent 相同的身份/摘要约束。
+            new AgentTaskEnvelopeV2(
+                taskId: (string) $task->task_no,
+                commandSeq: (int) ($task->command_seq ?: 1),
+                did: (string) $task->did,
+                operation: (int) $task->operation,
+                modelCode: (string) $modelCode,
+                packageSha256: (string) ($packageSha256 ?: ''),
+                targetProfileDigest: $targetProfileDigest,
+                nonce: $nonce,
+                issuedAt: (int) $ts,
+                expiresAt: (int) $expiresAtTimestamp,
+                payload: $signed,
+                signature: $signatureV2,
+                keyId: $keyId,
+            );
         }
 
+        $payload['signed'] = $signed;
+        $payload['signature_v1'] = $signatureV1;
+        $payload['signature_v2'] = $signatureV2;
+        $payload['nonce'] = $nonce;
+        $task->signed_payload = $payload;
+        if (! $task->task_expires_at) {
+            $task->task_expires_at = \Illuminate\Support\Carbon::createFromTimestamp($expiresAtTimestamp);
+        }
+        if ($task->exists) {
+            $task->saveQuietly();
+        }
         $cmd = [
-            'task_id'          => $task->task_no,
-            'command_seq'      => (int) ($task->command_seq ?: 1),
-            'operation'        => $task->operation,
-            'skill_id'         => $task->skill_id,
-            'version'          => $version?->version,
-            'execution_id'     => $task->execution_id,
-            'protocol_version' => $task->protocol_version ?: DeployTask::PROTOCOL_V1,
-            'package_url'      => $packageUrl,
-            'package_hash'     => $task->package_hash,
-            'package_sha256'   => $packageSha256,
-            'signature'        => $task->protocol_version === DeployTask::PROTOCOL_V2 ? $signatureV2 : $signatureV1,
-            'signature_v1'     => $signatureV1,
-            'signature_v2'     => $signatureV2,
-            'signed'           => $signed,
-            'ts'               => $ts,
+            'protocol'              => $task->protocol_version === DeployTask::PROTOCOL_V2 ? DeployTask::PROTOCOL_V2 : DeployTask::PROTOCOL_V1,
+            'protocol_version'      => $task->protocol_version ?: DeployTask::PROTOCOL_V1,
+            'task_id'               => $task->task_no,
+            'command_seq'           => (int) ($task->command_seq ?: 1),
+            'did'                   => (string) $task->did,
+            'operation'             => $task->operation,
+            'model_code'            => $signed['model_code'] ?? null,
+            'skill_id'              => $task->skill_id,
+            'version'               => $version?->version,
+            'execution_id'          => $task->execution_id,
+            'package_url'           => $packageUrl,
+            'package_hash'          => $task->package_hash,
+            'package_sha256'        => $packageSha256,
+            'target_profile_digest' => $signed['target_profile_digest'] ?? null,
+            'nonce'                 => $nonce,
+            'issued_at'             => (int) $ts,
+            'expires_at'            => (int) $expiresAtTimestamp,
+            'key_id'                => $keyId,
+            'signature'             => $task->protocol_version === DeployTask::PROTOCOL_V2 ? $signatureV2 : $signatureV1,
+            'signature_v1'          => $signatureV1,
+            'signature_v2'          => $signatureV2,
+            'signed'                => $signed,
+            'ts'                    => $ts,
         ];
 
         return $cmd;
@@ -650,28 +759,61 @@ class DeployTaskService
      *
      * @throws IllegalTaskTransitionException 回报与当前状态不构成合法流转(见 P9)
      */
-    public function onEvent(string $taskNo, string $phase, ?string $errorCode = null, ?string $errorMsg = null): ?DeployTask
+    public function onEvent(
+        string $taskNo,
+        string $phase,
+        ?string $errorCode = null,
+        ?string $errorMsg = null,
+        ?ExecutionFact $executionFact = null,
+        ?int $eventSeq = null,
+    ): ?DeployTask
     {
-        $task = DeployTask::query()->where('task_no', $taskNo)->first();
+        $task = DeployTask::query()->where('task_no', $taskNo)->lockForUpdate()->first();
         if (! $task) {
             return null;
         }
 
+        $isExecutionTask = in_array((int) $task->operation, DeployTask::EXECUTION_OPERATIONS, true);
+        if ($isExecutionTask) {
+            if (! $executionFact) {
+                throw new \InvalidArgumentException('EXECUTION_FACT_REQUIRED: 执行任务不得只凭 phase 宣告成功或停止');
+            }
+            if ($executionFact->executionId !== (string) $task->execution_id) {
+                throw new \InvalidArgumentException('EXECUTION_FACT_ID_MISMATCH: 执行事实不属于该任务');
+            }
+            $this->assertFactMatchesPhase($phase, $executionFact);
+        } elseif ($executionFact) {
+            throw new \InvalidArgumentException('EXECUTION_FACT_UNEXPECTED: 非执行任务不得携带执行事实');
+        }
+
+        // phase → DeployTask 状态。accepted/running 在运输任务上只表示已进入
+        // “安装/执行中”这个既有状态；真正的执行结论由 ExecutionFact 提供。
         $map = [
+            'accepted'        => 'installing',
+            'running'         => 'installing',
             'downloading'     => 'downloading',
             'installing'      => 'installing',
+            'cancel_requested'=> null,
             'download_failed' => 'download_failed',
             'done'            => 'success',
             'failed'          => 'failed',
+            'canceled'        => 'cancelled',
             'timeout'         => 'timeout',
+            'unknown'         => 'timeout',
         ];
-        $target = $map[$phase] ?? null;
-        if (! $target) {
-            return $task;
+
+        if (! array_key_exists($phase, $map)) {
+            throw new \InvalidArgumentException("DEVICE_FACT_PHASE_UNKNOWN: {$phase}");
         }
 
-        // P11:下载失败要有自己的码 —— 否则它和"安装失败"在库里长得一样,
-        // 而前者是可重试的、后者不是。
+        $target = $map[$phase];
+
+        // 事实为 UNKNOWN 时，任务只能安全收敛到 timeout；原始 phase 的 target
+        // 仍用于“是否迟到”的合法流转判断（见下方 TRANSITIONS 检查）。
+        $effectiveTarget = ($executionFact && $executionFact->observedStatus === 'UNKNOWN')
+            ? 'timeout'
+            : $target;
+
         if (! $errorCode && $target === 'download_failed') {
             $errorCode = DeployTask::ERR_DOWNLOAD_FAILED;
         }
@@ -683,27 +825,48 @@ class DeployTaskService
             $task->error_msg = $errorMsg;
         }
 
-        // 非法流转 → 明确拒绝(P9),不再"静默丢弃 + 返 200"。
-        //
-        // 此前这里忽略 transition() 的返回值:设备对一条已 success 的任务报 failed,
-        // 服务端**什么都没做**却回 200 'ok'。端侧据此认为回报已被接受、云侧状态没动 ——
-        // 端云永久分叉,而且服务端一行日志都不留(告警无从谈起)。
-        if (! $this->transition($task, $target)) {
-            Log::warning('下发回报被拒:非法状态流转', [
-                'task_no' => $task->task_no,
-                'did'     => $task->did,
-                'from'    => $task->status,
-                'to'      => $target,
-            ]);
+        // CANCEL_REQUESTED 只是控制面事实，不是物理停止。任务状态不变，
+        // SkillExecution 进入 CANCEL_REQUESTED；资源租约必须继续占用。
+        if ($phase === 'cancel_requested') {
+            if ($executionFact) {
+                $this->persistExecutionFact($task, $executionFact, $eventSeq);
+            }
+            $task->saveQuietly();
 
-            throw new IllegalTaskTransitionException($task->task_no, $task->status, $target);
+            return $task->fresh();
         }
 
-        // 成功 → 按 operation 落 install_record(装/升级/回滚/卸载语义不同)
+        if ($task->status !== $target) {
+            // 先按端侧“原始 phase”判断这次流转是否合法；不合法 = 迟到报告。
+            if (! in_array($target, self::TRANSITIONS[$task->status] ?? [], true)) {
+                Log::warning('下发回报被拒:非法状态流转', [
+                    'task_no' => $task->task_no,
+                    'did'     => $task->did,
+                    'from'    => $task->status,
+                    'to'      => $target,
+                    'phase'   => $phase,
+                ]);
+
+                throw new IllegalTaskTransitionException($task->task_no, $task->status, $target);
+            }
+
+            // 合法但事实为 UNKNOWN：按安全目标收敛，绝不把任务推进到 success。
+            if (! $this->transition($task, $effectiveTarget)) {
+                Log::warning('下发回报被拒:安全收敛失败', [
+                    'task_no' => $task->task_no,
+                    'did'     => $task->did,
+                    'from'    => $task->status,
+                    'to'      => $effectiveTarget,
+                    'phase'   => $phase,
+                ]);
+
+                throw new IllegalTaskTransitionException($task->task_no, $task->status, $effectiveTarget);
+            }
+        } elseif ($task->isDirty()) {
+            $task->saveQuietly();
+        }
+
         if ($target === 'success') {
-            // ⚠ 空跑不落 install_record(P11):带 PKG_MISSING 的 success 是"走通了状态机
-            //   但什么都没装"(设备没拿到包)。照落一条 `installed` 等于**凭空造**一条安装事实,
-            //   下游(灰度回滚靶子 / 事故影响面 / 设备已装列表)都会把这台设备算进去。
             if ($task->isDryRun()) {
                 Log::warning('下发任务空跑(无包),不落安装事实', [
                     'task_no' => $task->task_no,
@@ -714,58 +877,100 @@ class DeployTaskService
                 $this->recordInstall($task);
             }
 
-            // B-2 · 用户侧站内通知(副作用;LifecycleNotifier 内已吞异常,不影响状态机):
-            //   · 安装:仅"非空跑"才算真装上了(空跑什么都没装,不发"已下发");
-            //   · 回收:回收语义不依赖包,空跑也算完成(试用确实被回收)。
             if ($task->operation === DeployTask::OP_INSTALL && ! $task->isDryRun()) {
                 $this->markEntitlementActivated($task);
                 $this->notifier->deliveryCompleted($task);
             } elseif ($task->operation === DeployTask::OP_RECLAIM) {
-                // 回收成功 = 试用授权的终态。B-3：`expiring`(回收中) → `expired`(已回收)。
-                // 不放在建任务那一刻：设备离线时回收会挂很久，那一刻落 `expired` 会让
-                // "设备上还残留着过期试用"这件事在库里消失。
                 $this->markEntitlementExpired($task);
                 $this->notifier->trialExpired($task);
             }
         }
 
-        // 技能执行事实同步（与安装事实严格隔离，执行成功绝不记为安装事实）
-        if ($task->execution_id) {
-            $execStatus = match ($target) {
-                'success' => $task->operation === DeployTask::OP_CANCEL_EXECUTION ? SkillExecution::STATUS_CANCELED : SkillExecution::STATUS_SUCCEEDED,
-                'failed' => SkillExecution::STATUS_FAILED,
-                'timeout' => SkillExecution::STATUS_UNKNOWN,
-                'downloading', 'installing' => SkillExecution::STATUS_RUNNING,
-                default => SkillExecution::STATUS_RUNNING,
-            };
-
-            SkillExecution::updateOrCreate(
-                ['execution_id' => $task->execution_id],
-                [
-                    'deploy_task_id'   => $task->id,
-                    'did'              => $task->did,
-                    'skill_id'         => $task->skill_id,
-                    'skill_version_id' => $task->skill_version_id,
-                    'entitlement_id'   => $task->entitlement_id,
-                    'status'           => $execStatus,
-                    'error_code'       => $task->error_code,
-                    'error_msg'        => $task->error_msg,
-                    'completed_at'     => in_array($execStatus, SkillExecution::TERMINAL_STATUSES, true) ? now() : null,
-                    'observed_at'      => now(),
-                ]
-            );
+        if ($executionFact) {
+            $this->persistExecutionFact($task, $executionFact, $eventSeq);
         }
 
-        // 灰度自驱:本版本若有进行中的灰度,回报后重算指标并评估。
-        // ⚠ 这是**刻意的设计**,不是"还没做定时任务"的权宜之计:
-        //   灰度推进的信号是"设备回报",事件驱动比轮询更准也更快。
-        //   项目现在已经有 scheduler（见 bootstrap/app.php 的 4 条运维任务）,
-        //   仍然**不给灰度加定时任务** —— 那是拿错误的模型覆盖正确的设计。
-        $this->evaluateGrayIfAny($task);
+        // 灰度自驱仅用于安装/交付任务；执行事实不参与安装成功率。
+        if (! $isExecutionTask) {
+            $this->evaluateGrayIfAny($task);
+        }
 
         return $task->fresh();
     }
 
+    protected function assertFactMatchesPhase(string $phase, ExecutionFact $fact): void
+    {
+        // 终态 phase 允许携带 UNKNOWN：端侧声称 done/failed/canceled 但拿不出
+        // 可验证的 StopObservation 时，平台必须降级为 UNKNOWN，不能凭 phase 进终态。
+        $expected = match ($phase) {
+            'accepted' => ['ACCEPTED'],
+            'running', 'downloading', 'installing' => ['RUNNING'],
+            'cancel_requested' => ['CANCEL_REQUESTED'],
+            'done' => ['SUCCEEDED', 'UNKNOWN'],
+            'failed' => ['FAILED', 'UNKNOWN'],
+            'canceled' => ['CANCELED', 'UNKNOWN'],
+            'timeout', 'unknown' => ['UNKNOWN'],
+            default => null,
+        };
+
+        if ($expected === null || ! in_array($fact->observedStatus, $expected, true)) {
+            throw new \InvalidArgumentException(
+                "EXECUTION_FACT_PHASE_MISMATCH: phase={$phase}, observed_status={$fact->observedStatus}"
+            );
+        }
+    }
+
+    protected function persistExecutionFact(DeployTask $task, ExecutionFact $fact, ?int $eventSeq): void
+    {
+        $execution = SkillExecution::query()
+            ->where('execution_id', $task->execution_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $execution) {
+            throw new \DomainException('EXECUTION_NOT_FOUND: 执行事实没有对应的执行记录');
+        }
+
+        $previousSeq = $execution->last_event_seq !== null ? (int) $execution->last_event_seq : 0;
+        if ($eventSeq !== null && $eventSeq <= $previousSeq) {
+            throw new \DomainException(
+                "EVENT_SEQ_STALE: incoming={$eventSeq}, last={$previousSeq}"
+            );
+        }
+
+        if ($execution->status !== $fact->observedStatus) {
+            if ($execution->isTerminal() || ! $execution->canTransitionTo($fact->observedStatus)) {
+                throw new \DomainException(
+                    "EXECUTION_TRANSITION_INVALID: {$execution->status} -> {$fact->observedStatus}"
+                );
+            }
+        }
+
+        $execution->fill([
+            'deploy_task_id' => $task->id,
+            'did' => $task->did,
+            'skill_id' => $task->skill_id,
+            'skill_version_id' => $task->skill_version_id,
+            'entitlement_id' => $task->entitlement_id,
+            'status' => $fact->observedStatus,
+            'actual_started' => $fact->actualStarted,
+            'actual_stopped' => $fact->actualStopped,
+            'execution_evidence' => $fact->stopObservation
+                ? array_merge($fact->evidence, ['stop_observation' => $fact->stopObservation->toArray()])
+                : $fact->evidence,
+            'error_code' => $fact->errorCode ?? $task->error_code,
+            'error_msg' => $task->error_msg,
+            'started_at' => $fact->startedAt
+                ? \Illuminate\Support\Carbon::createFromTimestamp($fact->startedAt)
+                : $execution->started_at,
+            'completed_at' => $fact->isTerminal()
+                ? \Illuminate\Support\Carbon::createFromTimestamp($fact->stoppedAt ?? $fact->reportedAt)
+                : null,
+            'observed_at' => now(),
+            'last_event_seq' => $eventSeq ?? $execution->last_event_seq,
+        ]);
+        $execution->save();
+    }
     /**
      * 取消(仅未终结的状态可取消)。
      */

@@ -1,0 +1,23 @@
+﻿
+  ........⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CartRuleTest > it should delete the cart rules      
+  Expected: {"message":"\u8d2d\u7269\u8f66\u89c4\u5219\u5220\u9664\u6210\u529f"}
+
+  To contain: 购物车规则删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CartRuleTest.php:189
+    185▕     $this->loginAsAdmin();
+    186▕ 
+    187▕     deleteJson(route('admin.marketing.promotions.cart_rules.delete', $cartRule->id))
+    188▕         ->assertOk()
+  ➜ 189▕         ->assertSeeText(trans('admin::app.marketing.promotions.cart-rules.delete-success'));
+    190▕ 
+    191▕     $this->assertDatabaseMissing('cart_rules', [
+    192▕         'id' => $cartRule->id,
+    193▕     ]);
+
+
+  Tests:    1 failed, 8 passed (33 assertions)
+  Duration: 17.87s
+

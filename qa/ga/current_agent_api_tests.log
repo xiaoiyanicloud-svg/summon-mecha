@@ -1,0 +1,48 @@
+[2026-11-05 00:21:30] testing.INFO: deploy.outbox.claimed {"service":"skill-deploy","env":"testing","task_id":"T_V2_OLD_6aeb5b8a87f58","did":"did_legacy_6aeb5b8a84663","operation":7,"status":"dispatching","attempt":1,"protocol":"agent-task/v2"} 
+[2026-11-05 00:21:31] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_FACT_6aeb5b8b44109","did":"did_fact_6aeb5b8b43bfb","event_id":"evt_accept_6aeb5b8b45e11","event_type":"execution_fact","stage":"ACCEPTED","result_status":"installing","late_report":false,"ack_id":"fact_8333d0c4-0594-41e7-a6b5-7c145784140f"} 
+[2026-11-05 00:21:31] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_FACT_6aeb5b8b44109","did":"did_fact_6aeb5b8b43bfb","event_id":"evt_running_6aeb5b8b61bb8","event_type":"execution_fact","stage":"RUNNING","result_status":"installing","late_report":false,"ack_id":"fact_8468e4c2-9627-4e53-9c12-226712dc6a22"} 
+[2026-11-05 00:21:31] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_FACT_6aeb5b8b44109","did":"did_fact_6aeb5b8b43bfb","event_id":"evt_done_6aeb5b8b68151","event_type":"execution_fact","stage":"SUCCEEDED","result_status":"success","late_report":false,"ack_id":"fact_bdb6b1f6-c8d4-4449-83bb-7e3d9754f502"} 
+[2026-11-05 00:21:32] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_UNKNOWN_6aeb5b8c113fb","did":"did_unknown_6aeb5b8c10cb5","event_id":"evt_cancel_req_6aeb5b8c12ce1","event_type":"execution_fact","stage":"CANCEL_REQUESTED","result_status":"dispatching","late_report":false,"ack_id":"fact_bb4bfc82-3465-434e-8218-44defcd71833"} 
+[2026-11-05 00:21:32] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_UNKNOWN_6aeb5b8c113fb","did":"did_unknown_6aeb5b8c10cb5","event_id":"evt_unknown_6aeb5b8c22ae8","event_type":"execution_fact","stage":"UNKNOWN","result_status":"timeout","late_report":false,"ack_id":"fact_d4552bb2-9b96-464b-a2b3-24c1286f8db6"} 
+[2026-11-05 00:21:32] testing.WARNING: 下发回报被拒:非法状态流转 {"task_no":"T_UNKNOWN_6aeb5b8c113fb","did":"did_unknown_6aeb5b8c10cb5","from":"timeout","to":"success","phase":"done"} 
+[2026-11-05 00:21:32] testing.INFO: deploy.inbox.late_fact_recorded {"service":"skill-deploy","env":"testing","task_id":"T_UNKNOWN_6aeb5b8c113fb","did":"did_unknown_6aeb5b8c10cb5","event_id":"evt_late_done_6aeb5b8c29c32","event_type":"execution_fact","stage":"SUCCEEDED","result_status":"timeout","late_report":true,"ack_id":"fact_2409c0ac-3eab-4783-b86a-bf75bff6cada"} 
+[2026-11-05 00:21:32] testing.INFO: deploy.inbox.ack_processed {"service":"skill-deploy","env":"testing","task_id":"T_ACK_6aeb5b8c5a906","did":"did_ack_6aeb5b8c58cae","event_id":"evt_local_001","stage":"staged","ack_id":"ack_7d7ecafe-8fe4-4849-935c-3274e3371c2d","duplicate":false} 
+[2026-11-05 00:21:32] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_SEQ_6aeb5b8cc68e8","did":"did_seq_6aeb5b8cc5ca4","event_id":"evt_seq_2_6aeb5b8cc84f8","event_type":"execution_fact","stage":"RUNNING","result_status":"installing","late_report":false,"ack_id":"fact_93fc1254-0183-4752-af6d-7519e7882eea"} 
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 Agent 轮询时过滤掉 OP_EXECUTE(7) 与 OP_CANCEL_EXECUTION(8)                                                     1.19s  
+  ✓ it OP_EXECUTE 执行成功仅更新 SkillExecution 状态，绝不污染 InstallRecord                                                   0.19s  
+  ✓ it POST api/agent/evt 对执行事实幂等入账，并拒绝同键异载荷                                                                     0.34s  
+  ✓ it POST api/agent/evt 拒绝没有停止证据的执行成功                                                                          0.29s  
+  ✓ it 取消请求不是物理停止，UNKNOWN 终态不被迟到成功静默改写                                                                           0.42s  
+  ✓ it POST api/agent/ack 支持端云双向事件确认                                                                             0.21s  
+  ✓ it POST api/agent/reconcile 端侧安装事实与云端记录准确对账                                                                  0.25s  
+  ✓ it 旧 event_seq 不得覆盖新 event_seq                                                                               0.23s  
+  ✓ it 客户侧能够发起技能执行与取消，流转为 OP 7/8 任务                                                                              0.34s  
+[2026-11-05 00:21:33] testing.WARNING: 下发回报被拒:非法状态流转 {"task_no":"P926110500213300012813","did":"did_p9_illegal","from":"success","to":"failed","phase":"failed"} 
+[2026-11-05 00:21:33] testing.INFO: deploy.inbox.late_fact_recorded {"service":"skill-deploy","env":"testing","task_id":"P926110500213300012813","did":"did_p9_illegal","event_id":"evt_p9_failed","event_type":"task_fact","stage":"failed","result_status":"success","late_report":true,"ack_id":"fact_fd7dbbed-fcfa-402a-a0b9-e030f7be7f59"} 
+[2026-11-05 00:21:33] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"P926110500213300021799","did":"did_p9_idem","event_id":"evt_p9_done_6aeb5b8da583e","event_type":"task_fact","stage":"done","result_status":"success","late_report":false,"ack_id":"fact_5904f69a-0dfd-416b-9a8e-73202347c921"} 
+[2026-11-05 00:21:34] testing.WARNING: 下发回报被拒:非法状态流转 {"task_no":"P926110500213300035929","did":"did_p9_outoforder","from":"installing","to":"downloading","phase":"downloading"} 
+[2026-11-05 00:21:34] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"P926110500213400041028","did":"did_p9_ok","event_id":"evt_p9_done_6aeb5b8e2a8a5","event_type":"task_fact","stage":"done","result_status":"success","late_report":false,"ack_id":"fact_2e1efb01-1338-468c-8237-9efe37605342"} 
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentErrorContractP9Test
+  ✓ it P9 · 对已 success 的任务报 failed → 409 + TASK_TRANSITION_INVALID,状态不动                                          0.28s  
+  ✓ it P9 · 重复报 done(已是 success)是幂等短路,不报错                                                                        0.22s  
+  ✓ it P9 · 乱序回报(downloading 晚于 installing 到达)也被拒,不静默吞掉                                                          0.28s  
+  ✓ it P9 · event 成功体是信封(success:true + data.status)                                                             0.23s  
+  ✓ it P9 · commands 是信封(data 为数组,含 success 键)                                                                   0.25s  
+  ✓ it P9 · heartbeat 是信封                                                                                        0.20s  
+  ✓ it P9 · register 是信封且维持 201                                                                                  0.26s  
+  ✓ it P9 · 失败体一律带 code(未注册设备 → 404 + DEVICE_NOT_REGISTERED)                                                     0.17s  
+  ✓ it P9 · 任务不存在 → 404 + TASK_NOT_FOUND(不再返回裸 message)                                                          0.16s  
+[2026-11-05 00:21:35] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"DT26110500213500073975","did":"did_owner_A","event_id":"evt_owner_match_6aeb5b8f961bb","event_type":"task_fact","stage":"done","result_status":"success","late_report":false,"ack_id":"fact_0fcd4545-0d96-4a89-82ad-e54b155fd0a3"} 
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentEventOwnershipTest
+  ✓ it event：用 B 的 did 报 A 的任务 → 被拒（404），且 A 的状态未被推进                                                             0.18s  
+  ✓ it event：did 与任务一致时正常推进                                                                                      0.21s  
+  ✓ it event：缺 did 直接 422（契约要求必带 did）                                                                            0.27s  
+  ✓ it commands：未注册的 did 无法拉指令（当前可兑现的归属边界）                                                                       0.23s  
+
+  Tests:    22 passed (112 assertions)
+  Duration: 7.17s
+

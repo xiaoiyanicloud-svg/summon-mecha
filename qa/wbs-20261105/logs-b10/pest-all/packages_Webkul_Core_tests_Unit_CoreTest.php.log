@@ -1,0 +1,28 @@
+﻿
+  ............猕?........................
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Core\tests\Unit\CoreTest > it should format the price with default symbol based on the cu鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'$422.88'
++'楼422.88'
+
+  at packages\Webkul\Core\tests\Unit\CoreTest.php:190
+    186鈻?    // Act
+    187鈻?    $formattedPrice = core()->formatPrice($price);
+    188鈻?
+    189鈻?    // Assert
+  鉃?190鈻?    expect($formattedPrice)->toBe($expectedSymbol.$price);
+    191鈻?});
+    192鈻?
+    193鈻?it('should format the price with custom symbol based on the current currency and use default formatter if currency position is not defined', function () {
+    194鈻?    // Arrange
+
+  1   packages\Webkul\Core\tests\Unit\CoreTest.php:190
+
+
+  Tests:    1 failed, 37 passed (46 assertions)
+  Duration: 8.57s
+

@@ -191,7 +191,7 @@ it('S-10 · 非「本表撞号」的 QueryException 照常抛,且不重试(不�
             );
         }
 
-        protected function findOpenTask(string $did, ?int $skillVersionId, int $operation): ?DeployTask
+        protected function findOpenTask(string $did, int $skillId, ?int $skillVersionId, int $operation): ?DeployTask
         {
             $this->findCalls++;
 

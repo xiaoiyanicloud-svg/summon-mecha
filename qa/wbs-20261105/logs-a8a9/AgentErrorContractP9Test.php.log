@@ -1,0 +1,15 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentErrorContractP9Test
+  ✓ it P9 · 对已 success 的任务报 failed → 409 + TASK_TRANSITION_INVALID,状态不动                                          1.02s  
+  ✓ it P9 · 重复报 done(已是 success)是幂等短路,不报错                                                                        0.21s  
+  ✓ it P9 · 乱序回报(downloading 晚于 installing 到达)也被拒,不静默吞掉                                                          0.28s  
+  ✓ it P9 · event 成功体是信封(success:true + data.status)                                                             0.27s  
+  ✓ it P9 · commands 是信封(data 为数组,含 success 键)                                                                   0.25s  
+  ✓ it P9 · heartbeat 是信封                                                                                        0.19s  
+  ✓ it P9 · register 是信封且维持 201                                                                                  0.21s  
+  ✓ it P9 · 失败体一律带 code(未注册设备 → 404 + DEVICE_NOT_REGISTERED)                                                     0.15s  
+  ✓ it P9 · 任务不存在 → 404 + TASK_NOT_FOUND(不再返回裸 message)                                                          0.18s  
+
+  Tests:    9 passed (34 assertions)
+  Duration: 3.12s
+

@@ -1,0 +1,55 @@
+﻿
+  ..⨯..⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest > it should store the newly creat…   
+  Expected: {"message":"\u4e8b\u4ef6\u521b\u5efa\u6210\u529f"}
+
+  To contain: 事件创建成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest.php:41
+     37▕         'description' => substr(fake()->paragraph(), 0, 50),
+     38▕         'date'        => fake()->date(),
+     39▕     ]))
+     40▕         ->assertOk()
+  ➜  41▕         ->assertSeeText(trans('admin::app.marketing.communications.events.index.create.success'));
+     42▕ 
+     43▕     $this->assertModelWise([
+     44▕         Event::class => [
+     45▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest > it should update the existing t…   
+  Expected: {"message":"\u4e8b\u4ef6\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 事件更新成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest.php:94
+     90▕         'description' => $description = substr(fake()->paragraph(), 0, 50),
+     91▕         'date'        => $date = fake()->date(),
+     92▕     ])
+     93▕         ->assertOk()
+  ➜  94▕         ->assertSeeText(trans('admin::app.marketing.communications.events.index.edit.success'));
+     95▕ 
+     96▕     $this->assertModelWise([
+     97▕         Event::class => [
+     98▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest > it should delete the specified…    
+  Expected: {"message":"\u4e8b\u4ef6\u5220\u9664\u6210\u529f"}
+
+  To contain: 事件删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest.php:117
+    113▕     $this->loginAsAdmin();
+    114▕ 
+    115▕     deleteJson(route('admin.marketing.communications.events.delete', $event->id))
+    116▕         ->assertOk()
+  ➜ 117▕         ->assertSeeText(trans('admin::app.marketing.communications.events.delete-success'));
+    118▕ });
+    119▕
+
+
+  Tests:    3 failed, 4 passed (24 assertions)
+  Duration: 11.09s
+

@@ -1,0 +1,19 @@
+{
+  "evidence_level": "ARTIFACT_CROSSCHECK_ONLY",
+  "csv_rows": 600,
+  "time_start_s": 0.0,
+  "time_end_s": 5.99,
+  "sample_interval_s": 0.01,
+  "sample_tracking_rmse_rad": 0.01762219,
+  "sample_max_tracking_error_rad": 0.0303,
+  "sample_max_tilt_rad": 0.02620076,
+  "final_base_z_m": 0.6896,
+  "sample_peak_actuator_force_nm": 14.47,
+  "csv_sha256": "e8fa05c19ad9fe3c803d947d32a024fa3c1c758e10e78eb10be36d46592f0509",
+  "report_sha256": "ac23e74488de6b16d94c675430a30686dbaea32a64794842ded46e0c74e58631",
+  "limitations": [
+    "CSV samples at 100 Hz; report RMSE is based on 1000 Hz in-memory steps and cannot be fully reconstructed from sampled CSV",
+    "No MuJoCo package is available in fixed Python 3.12 runtime, so engine replay was NOT_RUN",
+    "Artifact consistency does not prove the engine/model actually ran"
+  ]
+}

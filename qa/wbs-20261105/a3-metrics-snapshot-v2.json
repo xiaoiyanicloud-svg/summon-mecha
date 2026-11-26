@@ -1,0 +1,123 @@
+{
+    "probe": "a3_snapshot_probe",
+    "executed_at": "2026-11-05T10:26:53+00:00",
+    "db": "summon_mecha_step10_test",
+    "snapshot": {
+        "generated_at": "2026-11-05T18:26:53+08:00",
+        "agent_command_received_total": 28,
+        "execution_status_total": [],
+        "execution_unknown_total": 0,
+        "outbox_pending_age_seconds": null,
+        "platform_outbox_pending_age_seconds": 0,
+        "label_contract": {
+            "allowed": [
+                "did",
+                "model_code",
+                "operation",
+                "status",
+                "error_code"
+            ],
+            "definitions": {
+                "did": "device_binding.did；基数 = 设备数，只做已知集合查找，不进入时间序列",
+                "model_code": "device_model.model_code；闭集（已登记机型）",
+                "operation": "deploy_task.operation；闭集（操作码枚举）",
+                "status": "deploy_task.status；闭集（状态机枚举）",
+                "error_code": "deploy_task.error_code；闭集（错误码白名单，不是自由文本）"
+            },
+            "cardinality": {
+                "did": 28,
+                "model_code": 0,
+                "operation": 1,
+                "status": 2,
+                "error_code": 0
+            },
+            "rejected_unbounded": [
+                "event_id",
+                "task_id",
+                "skill_id",
+                "path",
+                "stack"
+            ]
+        },
+        "label_totals": {
+            "by_model_code": {
+                "unknown": 28
+            },
+            "by_operation": {
+                "4": 28
+            },
+            "by_status": {
+                "dispatching": 2,
+                "success": 26
+            },
+            "by_error_code": []
+        },
+        "queue_lag_seconds": 0,
+        "active_device_leases": 0,
+        "inbox_ack_total": 28,
+        "inbox_fact_total": 44,
+        "late_fact_total": 0,
+        "execution_stop_evidence_missing_total": 0,
+        "reconcile_reports_with_drift": 22,
+        "command_received_total": 0,
+        "command_duplicate_total": 0,
+        "agent_restart_total": 0,
+        "staging_orphan_total": 0,
+        "command_signature_failed_total": 0,
+        "package_hash_mismatch_total": 0,
+        "task_lease_conflict_total": 0,
+        "outbox_flush_failed_total": 0,
+        "idempotency_hit_total": 0,
+        "reconcile_drift_total": 24,
+        "fact_auth_rejected_total": 2,
+        "event_conflict_total": 0,
+        "package_signature_failed_total": null,
+        "metric_key_total": 12,
+        "metric_keys": [
+            "command_received_total",
+            "command_duplicate_total",
+            "agent_restart_total",
+            "staging_orphan_total",
+            "command_signature_failed_total",
+            "package_hash_mismatch_total",
+            "task_lease_conflict_total",
+            "outbox_flush_failed_total",
+            "idempotency_hit_total",
+            "reconcile_drift_total",
+            "fact_auth_rejected_total",
+            "event_conflict_total"
+        ],
+        "gauge_key_total": 1,
+        "gauge_keys": [
+            "outbox_pending_age_seconds"
+        ],
+        "agent_reporting_device_total": 0,
+        "metric_status": {
+            "command_received_total": "instrumented; 设备端每收到一条指令 +1（含最终被拒的指令）",
+            "command_duplicate_total": "instrumented; 设备端同 task_id 重复投递命中幂等时 +1",
+            "agent_restart_total": "instrumented; 设备端每次进程启动 +1，随心跳上报（累计值 > 上报设备数 才说明重启过）",
+            "staging_orphan_total": "instrumented; 设备端随心跳增量上报",
+            "command_signature_failed_total": "instrumented",
+            "package_hash_mismatch_total": "instrumented",
+            "task_lease_conflict_total": "instrumented",
+            "outbox_flush_failed_total": "instrumented",
+            "idempotency_hit_total": "instrumented",
+            "reconcile_drift_total": "instrumented; 仅在新对账报告落库时按偏差条数累加",
+            "fact_auth_rejected_total": "instrumented",
+            "event_conflict_total": "instrumented; 平台 Inbox 同 event_id 异载荷（409）时 +1",
+            "outbox_pending_age_seconds": "instrumented; 设备端 outbox 最老未确认事件年龄（gauge，覆盖不累加）",
+            "package_signature_failed_total": "not_instrumented; Agent 侧不校验包签名（仅 SHA-256 + 指令信封签名），无生产者"
+        },
+        "alerts": {
+            "execution_unknown_active": false,
+            "outbox_pending_age_over_300s": false,
+            "queue_lag_over_300s": false,
+            "late_fact_observed": false,
+            "reconcile_drift_observed": true,
+            "terminal_execution_without_stop_evidence": false,
+            "fact_auth_rejected_observed": true,
+            "agent_restart_observed": false,
+            "event_conflict_observed": false
+        }
+    }
+}

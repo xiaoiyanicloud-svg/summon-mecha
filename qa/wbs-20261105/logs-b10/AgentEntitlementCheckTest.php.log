@@ -1,0 +1,14 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\AgentEntitlementCheckTest
+  ✓ it A5-E-01 有效且已支付的授权 → allowed=true，返回授权信息                                                                   2.01s  
+  ✓ it A5-E-02 已吊销 → allowed=false / REVOKED                                                                     0.29s  
+  ✓ it A5-E-03 已过期 → allowed=false / EXPIRED                                                                     0.25s  
+  ✓ it A5-E-04 订单未支付 → allowed=false / NOT_PAID                                                                  0.33s  
+  ✓ it A5-E-05 指定版本与授权版本不符 → VERSION_MISMATCH；授权版本为空（跟随最新）则放行                                                    0.39s  
+  ✓ it A5-E-06 设备未绑定到 devices 行 → DEVICE_NOT_BOUND（不能证明归属）                                                       0.34s  
+  ✓ it A5-E-07 没有该技能的授权 → NO_ENTITLEMENT                                                                         0.28s  
+  ✓ it A5-E-08 设备不存在 → 404，而不是"未授权"                                                                              0.23s  
+
+  Tests:    8 passed (30 assertions)
+  Duration: 5.03s
+

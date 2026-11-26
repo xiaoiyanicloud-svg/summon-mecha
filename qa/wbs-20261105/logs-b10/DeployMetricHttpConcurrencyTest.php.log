@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricHttpConcurrencyTest
+  ✓ it A3-HTTP-01 · 同一设备 6 并发不同 batch 各 +1 → 恰好 +6                                                               8.44s  
+  ✓ it A3-HTTP-02 · 同一设备 6 并发同一个 batch → 恰好 +1，6 个响应全 2xx                                                        1.64s  
+  ✓ it A3-HTTP-03 · 并发上报 gauge 100/200/300 → 最终值 ∈ {100,200,300}，绝不是 600                                         2.26s  
+  ✓ it A3-HTTP-04 · 20 台不同设备并发各报一次 → 每台恰好 +1、无串号                                                                25.35s  
+  ✓ it A3-HTTP-05 · 未知指标键 → 422 且不落库                                                                             2.01s  
+  ✓ it A3-HTTP-06 · 对照组：同样的 6 个请求换 1 个 server 串行发，结果与并发一致                                                        6.97s  
+
+  Tests:    6 passed (146 assertions)
+  Duration: 46.99s
+

@@ -1,0 +1,8 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\ToolchainFingerprintTest
+  ✓ it B5-5 · 工具链指纹包含版本与构建器清单，镜像摘要明确 NOT_RUN                                                                     0.79s  
+  ✓ it B5-5 · 构建 Run 落库时带上工具链指纹（可直接从历史 Run 追溯到工具链）                                                               0.16s  
+
+  Tests:    2 passed (11 assertions)
+  Duration: 1.27s
+

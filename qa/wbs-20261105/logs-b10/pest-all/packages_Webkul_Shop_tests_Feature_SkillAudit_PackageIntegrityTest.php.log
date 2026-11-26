@@ -1,0 +1,23 @@
+﻿
+  .猕?....
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\PackageIntegrityTest > it 鎹㈠寘鍚庨噸鏂版彁瀹?鈫?鏂版寚绾硅惤杩?L0/L2 鈫?鍙戝竷鎴愬姛         
+  Failed asserting that an array contains 3458.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\PackageIntegrityTest.php:333
+    329鈻?    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+    330鈻?        ->and($res->json('data.status'))->toBe(SkillVersion::STATUS_PUBLISHED);
+    331鈻?
+    332鈻?    // 鍙戝竷 = 鐪熶笂鏋讹細甯傚満鎼滃緱鍒?
+  鉃?333鈻?    expect(pkgSearchIds($name))->toContain($productId);
+    334鈻?});
+    335鈻?
+    336鈻?// ==================== 3 路 宸插彂甯冪増鏈笉璁告崲鍖?====================
+    337鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\PackageIntegrityTest.php:333
+
+
+  Tests:    1 failed, 6 passed (66 assertions)
+  Duration: 6.23s
+

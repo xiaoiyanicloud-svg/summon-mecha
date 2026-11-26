@@ -1,0 +1,38 @@
+﻿
+  .猕?猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest > it 鎶€鑳借鎯呮帴鍙ｈ繑鍥?permissions鈥?           
+  Expected response status code [200] but received 409.
+Failed asserting that 409 is identical to 200.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest.php:200
+    196鈻?it('鎶€鑳借鎯呮帴鍙ｈ繑鍥?permissions 鍘熷鍊?+ 浜鸿瘽鏍囩锛堝彧鍔犻敭锛?, function () {
+    197鈻?    $productId = permSeedProduct();
+    198鈻?    permSeedVersion($productId, ['permissions' => json_encode(['motion_control', 'camera'])]);
+    199鈻?
+  鉃?200鈻?    $row = collect(getJson(route('shop.api.skill-catalog.versions', $productId))->assertOk()->json('data'))->first();
+    201鈻?
+    202鈻?    expect($row['permissions'])->toBe(['motion_control', 'camera'])
+    203鈻?        ->and($row['permission_labels'])->toBe(['杩愬姩鎺у埗', '鎽勫儚澶?])
+    204鈻?        // 鏃㈡湁閿湭琚繖娆℃敼鍔ㄧ鍧忥紙鏈绾緥锛氬彂甯冮€氶亾 stable/beta锛?
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest > it 鏈０鏄庢潈闄愮殑鐗堟湰 鈫?璇︽儏鎺ュ彛涓庨闄╁憡鐭ラ兘涓嶅嚭鐜版潈闄愭      
+  Expected response status code [200] but received 409.
+Failed asserting that 409 is identical to 200.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest.php:239
+    235鈻?it('鏈０鏄庢潈闄愮殑鐗堟湰 鈫?璇︽儏鎺ュ彛涓庨闄╁憡鐭ラ兘涓嶅嚭鐜版潈闄愭', function () {
+    236鈻?    $productId = permSeedProduct();
+    237鈻?    permSeedVersion($productId, ['risk_level' => 'low']);
+    238鈻?
+  鉃?239鈻?    $row = collect(getJson(route('shop.api.skill-catalog.versions', $productId))->assertOk()->json('data'))->first();
+    240鈻?
+    241鈻?    expect($row['permissions'])->toBe([])
+    242鈻?        ->and($row['permission_labels'])->toBe([]);
+    243鈻?
+
+
+  Tests:    2 failed, 3 passed (33 assertions)
+  Duration: 2.52s
+

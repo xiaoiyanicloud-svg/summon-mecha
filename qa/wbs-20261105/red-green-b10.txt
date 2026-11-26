@@ -1,0 +1,121 @@
+# 批次 10 red → green（变异验证）· 2026-11-05
+
+> 做法沿用第八批：把实现临时改成错误版本 → 对应用例变红 → 从 `.claude/backup/b10-0N/`
+> 逐字节还原 → 哈希与备份一致 → 再跑确认变绿。
+> 每个变异执行前都 `Copy-Item` 备份到 `.claude/backup/b10-<序号>/`；还原后 `Get-FileHash`
+> 与备份比对一致，并且 `Select-String "b10 mutation"` 计数为 0（无残留）。
+
+---
+
+## ① 原子累加 → 读-改-写 → A3-HTTP-01 红（丢更新）
+
+文件：`my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployMetricCounter.php`
+备份：`.claude/backup/b10-01/DeployMetricCounter.php`（SHA256 `72A67ED7…`）
+变异：把 `INSERT ... ON DUPLICATE KEY UPDATE metric_value = metric_value + ?` 换成
+"先 SELECT 再 UPDATE"，并在读与写之间 `usleep(2000)` **放大竞争窗口**（语义仍是丢更新；sleep 只让
+本机 6 个 `php -S` 进程的时间重叠可被观测，不是让测试变成串行）。
+
+```
+pest DeployMetricHttpConcurrencyTest --filter="A3-HTTP-01"
+并发上报丢了计数：6 个不同批次各 +1，必须恰好 +6
+Failed asserting that 4 is identical to 6.
+Tests: 1 failed (15 assertions)
+```
+
+还原后哈希 `72A67ED7…`，用例恢复绿（见 `b10-php-regression.txt`）。
+
+---
+
+## ② gauge 覆盖 → 累加 → A3-HTTP-03 红（出现 600）
+
+文件同上；备份 `.claude/backup/b10-02/DeployMetricCounter.php`
+变异：`applyAgentGauges` 从 upsert 覆盖改成 "读旧值 + 新值" 再写，并 `usleep(2000)` 放大窗口。
+
+```
+pest DeployMetricHttpConcurrencyTest --filter="A3-HTTP-03"
+gauge 是覆盖语义，最终值只能是某一次上报的值
+Failed asserting that an array contains 600.
+Tests: 1 failed (16 assertions)
+```
+
+还原后哈希 `72A67ED7…`。
+
+---
+
+## ③ 去掉 `(did,batch_id)` 幂等 → A3-HTTP-02 红（变成 +6）
+
+文件同上；备份 `.claude/backup/b10-03/DeployMetricCounter.php`
+变异：删掉 `if ($inserted === 0) { return false; }`（重复批次仍继续累加）。
+
+```
+pest DeployMetricHttpConcurrencyTest --filter="A3-HTTP-02"
+(did,batch_id) 幂等失效：同一批次被累加了多次
+Failed asserting that 6 is identical to 1.
+Tests: 1 failed (27 assertions)
+```
+
+还原后哈希 `72A67ED7…`。
+
+---
+
+## ④ `issue()` 去掉 `lockForUpdate()` → A7-CONC-01 红（key 数 < 6）
+
+文件：`packages/Webkul/Shop/src/Services/Deploy/DeviceCredentialService.php`
+备份：`.claude/backup/b10-04/DeviceCredentialService.php`（SHA256 `898A79DB…`）
+变异：`DeviceBinding::query()->whereKey(...)->lockForUpdate()->first()` 去掉行锁。
+
+```
+pest DeviceCredentialConcurrencyTest --filter="A7-CONC-01"
+并发 issue 丢更新：密钥环里必须恰好 6 把钥匙
+Failed asserting that 1 is identical to 6.
+Tests: 1 failed (43 assertions)
+```
+
+还原后哈希 `898A79DB…`。
+
+---
+
+## ⑤ T6 fail-closed 检查改成 `False` → A6-WIRE-01 红（adapter 被调用）
+
+文件：`agent/zhjj_agent/executor.py`
+备份：`.claude/backup/b10-05/executor.py`（SHA256 `92459B29…`）
+变异：`if sandbox_required() and self.sandbox_runner is None:` → `if False and ...`
+
+```
+python -m unittest tests.test_sandbox_wiring.TestSandboxWiring.test_a6_wire_01_...
+FAIL: ... AssertionError: True is not false
+Ran 1 test ... FAILED (failures=1)
+```
+
+还原后哈希 `92459B29…`；用例恢复绿（见 b10-python-regression.txt）。
+
+---
+
+## ⑥ 去掉「已发布版本再发布」守卫 → B3-HTTP-02 红（500 而不是 422）
+
+文件：`packages/Webkul/Shop/src/Services/SkillAudit/SkillPublisher.php`
+备份：`.claude/backup/b10-06/SkillPublisher.php`（SHA256 `39357122…`）
+变异：删掉 `STATUS_PUBLISHED` 的提前返回，让第二次发布落到
+`published → published` 非法迁移 → 事务里抛 RuntimeException → 500。
+
+```
+pest SkillPublishHttpConcurrencyTest --filter="B3-HTTP-02"
+重复发布必须是可读的 4xx: 500 {"code":"SERVER_ERROR",...}
+Failed asserting that 500 is identical to 422.
+Tests: 1 failed (17 assertions)
+```
+
+还原后哈希 `39357122…`。
+
+---
+
+## 未做变异的部分（诚实）
+
+- **B3-HTTP-01 的"无重复行"**：当前发布入口的可观测面是 `skill_versions` 与商品可售状态。
+  把事务护栏拿掉后，并发发布仍只会写同一行版本状态，**构造不出"重复行"** ——
+  因此不为它伪造一条 red。该用例真实覆盖的是"无 5xx + 状态唯一 + 商品可售"。
+- **A7-CONC-02 的"只写一次 revoked_at"**：`revoked_at` 是秒级时间戳，同一秒内的并发写入
+  无法从返回值上区分。本批已把 `revokeKey()` 改成幂等（保留第一次时间戳），
+  但**没有**可观测的单次 red；不编造。
+- **A5-ACL-01/02**：首次运行即绿；权限拒绝是真实 OS 行为，没有"去掉某行代码就变红"的对应关系。
+- **ENOSPC**：本机无提权，无法构造真实满盘（见交付文档 BLOCKED 表）。

@@ -1,0 +1,38 @@
+{
+    "generated_at": "2026-11-04T22:20:44+08:00",
+    "agent_command_received_total": 9,
+    "execution_status_total": [],
+    "execution_unknown_total": 0,
+    "outbox_pending_age_seconds": 0,
+    "queue_lag_seconds": 0,
+    "active_device_leases": 0,
+    "inbox_ack_total": 9,
+    "inbox_fact_total": 10,
+    "late_fact_total": 0,
+    "execution_stop_evidence_missing_total": 0,
+    "reconcile_reports_with_drift": 3,
+    "idempotency_hit_total": null,
+    "task_lease_conflict_total": null,
+    "package_signature_failed_total": null,
+    "package_hash_mismatch_total": null,
+    "reconcile_drift_total": null,
+    "agent_restart_total": null,
+    "staging_orphan_total": null,
+    "metric_status": {
+        "idempotency_hit_total": "not_instrumented",
+        "task_lease_conflict_total": "not_instrumented",
+        "package_signature_failed_total": "not_instrumented",
+        "package_hash_mismatch_total": "not_instrumented",
+        "reconcile_drift_total": "report_count_only; retry-attempt counter not instrumented",
+        "agent_restart_total": "agent_side_not_exported",
+        "staging_orphan_total": "agent_side_not_exported"
+    },
+    "alerts": {
+        "execution_unknown_active": false,
+        "outbox_pending_age_over_300s": false,
+        "queue_lag_over_300s": false,
+        "late_fact_observed": false,
+        "reconcile_drift_observed": true,
+        "terminal_execution_without_stop_evidence": false
+    }
+}

@@ -1,0 +1,8 @@
+{
+  "components": 235,
+  "composer_required": 153,
+  "composer_optional_dev": 48,
+  "python_packages": 34,
+  "sbom_sha256": "5cdbaa4680e2f5bee8eca4432b51c9e79041312f36018b4e5da516a986d1f22a",
+  "composer_lock_sha256": "6cf6caddb4f82834f42774aeabfa386d94ab96132cca151b3cc86f067764e4b3"
+}

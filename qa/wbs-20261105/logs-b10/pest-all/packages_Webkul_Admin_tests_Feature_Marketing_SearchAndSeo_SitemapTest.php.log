@@ -1,0 +1,57 @@
+﻿
+  ..猕?猕ǒ
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest > it should store the newly create鈥?  
+  Expected: {"message":"\u7ad9\u70b9\u5730\u56fe\u521b\u5efa\u6210\u529f"}
+
+  To contain: 绔欑偣鍦板浘鍒涘缓鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest.php:39
+     35鈻?        'file_name' => $fileName = strtolower(fake()->word()).'.xml',
+     36鈻?        'path'      => $filePath = '/',
+     37鈻?    ])
+     38鈻?        ->assertOk()
+  鉃? 39鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.sitemaps.index.create.success'));
+     40鈻?
+     41鈻?    $this->assertModelWise([
+     42鈻?        Sitemap::class => [
+     43鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest > it should update the sitemap        
+  Expected: {"message":"\u7ad9\u70b9\u5730\u56fe\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 绔欑偣鍦板浘鏇存柊鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest.php:77
+     73鈻?        'file_name' => $fileName = strtolower(fake()->word()).'.xml',
+     74鈻?        'path'      => $sitemap->path,
+     75鈻?    ])
+     76鈻?        ->assertOk()
+  鉃? 77鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.sitemaps.index.edit.success'));
+     78鈻?
+     79鈻?    $this->assertModelWise([
+     80鈻?        Sitemap::class => [
+     81鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest > it should delete the sitemap        
+  Expected: {"message":"\u7ad9\u70b9\u5730\u56fe\u5220\u9664\u6210\u529f"}
+
+  To contain: 绔欑偣鍦板浘鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest.php:99
+     95鈻?    $this->loginAsAdmin();
+     96鈻?
+     97鈻?    deleteJson(route('admin.marketing.search_seo.sitemaps.delete', $sitemap->id))
+     98鈻?        ->assertOk()
+  鉃? 99鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.sitemaps.index.edit.delete-success'));
+    100鈻?
+    101鈻?    $this->assertDatabaseMissing('sitemaps', [
+    102鈻?        'id' => $sitemap->id,
+    103鈻?    ]);
+
+
+  Tests:    3 failed, 3 passed (15 assertions)
+  Duration: 3.41s
+

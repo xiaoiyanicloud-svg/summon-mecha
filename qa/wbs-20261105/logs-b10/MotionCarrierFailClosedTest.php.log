@@ -1,0 +1,18 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\MotionCarrierFailClosedTest
+  ✓ it B6-01 合法 motion 登记 → pending，产物为 NULL，携带 motion_digest 与 profile 摘要                                       0.94s  
+  ✓ it B6-02 同样输入两次登记 → motion_digest 完全相同（登记身份可复现）                                                              0.23s  
+  ✓ it B6-03 格式不在白名单（exe）→ failed BUILD_MOTION_FORMAT_UNSUPPORTED                                                0.18s  
+  ✓ it B6-04 缺少 motion 段 → failed BUILD_MOTION_MANIFEST_INVALID                                                  0.22s  
+  ✓ it B6-05 fps=0 / 负数 / 字符串 / 超上限 → 一律 failed BUILD_MOTION_FPS_INVALID                                         0.17s  
+  ✓ it B6-06 motion.file 路径穿越 / 绝对路径 / 外部 URL → failed BUILD_MOTION_FILE_INVALID                                 0.17s  
+  ✓ it B6-07 声明 bvh 实际给 .py 文件 → failed（禁止声明一套、实际另一套）                                                            0.14s  
+  ✓ it B6-08 duration_s 超过清单 safety.max_duration_s → failed BUILD_MOTION_DURATION_INVALID                        0.16s  
+  ✓ it B6-09 目标机型 agibot_a2（已废止，非 GA）→ failed BUILD_TARGET_NOT_GA                                                0.16s  
+  ✓ it B6-10 目标机型拼写错误（unitree_g9）→ failed BUILD_TARGET_NOT_GA                                                    0.18s  
+  ✓ it B6-11 存在源资产时，登记必须带 source_asset_id / source_digest（可追到字节）                                                 0.16s  
+  ✓ it B6-12 SkillBuildService：坏 motion 记为 failed，好 motion 记为 pending，均不产出资产                                     0.22s  
+
+  Tests:    12 passed (44 assertions)
+  Duration: 3.29s
+

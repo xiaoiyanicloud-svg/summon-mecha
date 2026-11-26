@@ -1,0 +1,75 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 Agent 轮询时过滤掉 OP_EXECUTE(7) 与 OP_CANCEL_EXECUTION(8)                                                     4.00s  
+  ✓ it OP_EXECUTE 执行成功仅更新 SkillExecution 状态，绝不污染 InstallRecord                                                   0.35s  
+  ✓ it POST api/agent/evt 对执行事实幂等入账，并拒绝同键异载荷                                                                     1.51s  
+  ✓ it POST api/agent/evt 拒绝没有停止证据的执行成功                                                                          0.40s  
+  ✓ it 取消请求不是物理停止，UNKNOWN 终态不被迟到成功静默改写                                                                           0.36s  
+  ✓ it POST api/agent/ack 支持端云双向事件确认                                                                             0.40s  
+  ✓ it POST api/agent/reconcile 端侧安装事实与云端记录准确对账                                                                  0.28s  
+  ✓ it 旧 event_seq 不得覆盖新 event_seq                                                                               0.52s  
+  ✓ it 客户侧能够发起技能执行与取消，流转为 OP 7/8 任务                                                                              0.50s  
+
+  Tests:    9 passed (71 assertions)
+  Duration: 15.24s
+
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentErrorContractP9Test
+  ✓ it P9 · 对已 success 的任务报 failed → 409 + TASK_TRANSITION_INVALID,状态不动                                          2.84s  
+  ✓ it P9 · 重复报 done(已是 success)是幂等短路,不报错                                                                        0.15s  
+  ✓ it P9 · 乱序回报(downloading 晚于 installing 到达)也被拒,不静默吞掉                                                          0.13s  
+  ✓ it P9 · event 成功体是信封(success:true + data.status)                                                             0.12s  
+  ✓ it P9 · commands 是信封(data 为数组,含 success 键)                                                                   0.15s  
+  ✓ it P9 · heartbeat 是信封                                                                                        0.17s  
+  ✓ it P9 · register 是信封且维持 201                                                                                  0.16s  
+  ✓ it P9 · 失败体一律带 code(未注册设备 → 404 + DEVICE_NOT_REGISTERED)                                                     0.15s  
+  ✓ it P9 · 任务不存在 → 404 + TASK_NOT_FOUND(不再返回裸 message)                                                          0.13s  
+
+  Tests:    9 passed (34 assertions)
+  Duration: 6.05s
+
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentEventOwnershipTest
+  ✓ it event：用 B 的 did 报 A 的任务 → 被拒（404），且 A 的状态未被推进                                                             0.86s  
+  ✓ it event：did 与任务一致时正常推进                                                                                      1.08s  
+  ✓ it event：缺 did 直接 422（契约要求必带 did）                                                                            0.21s  
+  ✓ it commands：未注册的 did 无法拉指令（当前可兑现的归属边界）                                                                       0.29s  
+
+  Tests:    4 passed (7 assertions)
+  Duration: 2.80s
+
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentDeviceCredentialB12Test
+  ✓ it B-12 · enroll 为设备签发证书 + 独立 secret,服务端只存哈希/证书(不存明文)                                                        3.18s  
+  ✓ it B-12 · per-device secret 能鉴权,错误 secret → 401                                                              1.00s  
+  ✓ it B-12 · 证书请求签名可鉴权,篡改签名 / 过期 ts 被拒                                                                          0.55s  
+  ✓ it B-12 · per-device 身份下用 A 的凭据拉 B 的指令 → 403(冒充被拒)                                                           1.58s  
+  ✓ it B-12 · auth_mode=device 时共享密钥被拒(401)                                                                      0.82s  
+  ✓ it B-12 · auth_mode=auto 时共享密钥仍放行(过渡期)                                                                       0.34s  
+  ✓ it B-12 · 吊销后 secret 立即失效(且不回退共享密钥)                                                                          0.53s  
+  ✓ it B-12 · 用户可单独吊销本人设备凭据(HTTP 入口)                                                                             0.70s  
+  ✓ it B-12 · 无凭据设备吊销 → 404                                                                                      0.21s  
+
+  Tests:    9 passed (32 assertions)
+  Duration: 9.34s
+
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentDeployTest
+  ✓ it enroll 用无效 token 返回 401                                                                                   1.39s  
+  ✓ it enroll 用已过期 token 返回 401                                                                                  0.23s  
+  ✓ it enroll 用合法 token 换取身份并清掉 token                                                                            4.70s  
+  ✓ it 灰度接口未配 internal key 时返回 503                                                                               0.31s  
+  ✓ it 灰度接口用错 internal key 时返回 401                                                                               0.16s  
+  ✓ it install_record:首次安装落 installed,同 skill 换版本落 updated                                                       0.42s  
+
+  Tests:    6 passed (16 assertions)
+  Duration: 7.63s
+
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillFullChainEndToEndTest
+  ✓ it PackageInspector：app/composite 技能允许合规 .py/.sh 脚本，但拦截高危破坏指令与 motion 脚本夹带                                   1.27s  
+  ✓ it 全链路闭环：开发者上传标准 .skill → L0/L2 审核上架 → 买家下单/未付拦截/模拟支付/下载 → Agent 验签下载落盘解压与启停卸载                               8.63s  
+
+  Tests:    2 passed (75 assertions)
+  Duration: 10.27s
+

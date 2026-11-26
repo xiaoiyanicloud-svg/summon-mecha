@@ -1,0 +1,11 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTransitionSerializationTest
+  ✓ it 并发竞态：用过期状态去流转命中 0 行 → 返回 false 且不改库                                                                       1.32s  
+  ✓ it 正常流转仍然生效，且内存态与库同步                                                                                         0.18s  
+  ✓ it 非法流转返回 false（pending 不能直接到 success）                                                                       0.16s  
+  ✓ it 条件更新不丢调用方先设的字段（error_code/error_msg 随流转一起落库）                                                              0.25s  
+  ✓ it 每设备每轮只发一条指令（设备并行双任务 → 串行化）                                                                                0.50s  
+
+  Tests:    5 passed (13 assertions)
+  Duration: 2.84s
+

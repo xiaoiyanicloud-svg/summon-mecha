@@ -1,0 +1,23 @@
+﻿
+  ........猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CartRuleTest > it should delete the cart rules      
+  Expected: {"message":"\u8d2d\u7269\u8f66\u89c4\u5219\u5220\u9664\u6210\u529f"}
+
+  To contain: 璐墿杞﹁鍒欏垹闄ゆ垚鍔?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CartRuleTest.php:189
+    185鈻?    $this->loginAsAdmin();
+    186鈻?
+    187鈻?    deleteJson(route('admin.marketing.promotions.cart_rules.delete', $cartRule->id))
+    188鈻?        ->assertOk()
+  鉃?189鈻?        ->assertSeeText(trans('admin::app.marketing.promotions.cart-rules.delete-success'));
+    190鈻?
+    191鈻?    $this->assertDatabaseMissing('cart_rules', [
+    192鈻?        'id' => $cartRule->id,
+    193鈻?    ]);
+
+
+  Tests:    1 failed, 8 passed (33 assertions)
+  Duration: 9.56s
+

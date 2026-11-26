@@ -1,0 +1,16 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentFactSignatureV3Test
+  ✓ it A1 · 跨语言 JCS 黄金向量：PHP 与 Python 对同一正文产生同一规范字节与 key_id                                                      1.19s  
+  ✓ it A1 · 持证设备缺正文信封 → 422，且不落 Inbox/不改状态                                                                       0.96s  
+  ✓ it A1 · 有效 agent-fact/v3 → 200，Inbox 记录 v3 认证级别                                                              0.90s  
+  ✓ it A1 · 正文被替换（外层 phase 改掉、签名不变）→ 422 BODY_MISMATCH                                                           0.42s  
+  ✓ it A1 · key_id 与登记证书不匹配 → 401 KEY_UNKNOWN                                                                    0.39s  
+  ✓ it A1 · 用错私钥签名（key_id 正确）→ 401 SIGNATURE_INVALID                                                             1.27s  
+  ✓ it A1 · 同 event_id 同载荷重投 → 幂等 duplicate                                                                      0.52s  
+  ✓ it A1 · 同 event_id 异载荷（重新签名）→ 409 冲突，不静默覆盖                                                                   0.67s  
+  ✓ it A1 · 无凭据历史设备 + 共享密钥 → 保留 v2_request_only 兼容窗口                                                             0.34s  
+  ✓ it A1 · v2 兼容窗口关闭后，无凭据设备也不接受未签名正文                                                                            0.22s  
+
+  Tests:    10 passed (37 assertions)
+  Duration: 7.74s
+

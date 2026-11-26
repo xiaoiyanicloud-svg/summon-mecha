@@ -1,0 +1,11 @@
+{
+  "bytes_downloaded": 524288000,
+  "expected_bytes": 524288000,
+  "sha256": "96108c8b494944d24de19f9a364e1fb32c90fde329e9e01e59ab421a9abeb231",
+  "elapsed_seconds": 7.166,
+  "baseline_working_set_mb": 25.57,
+  "peak_working_set_mb": 29.191,
+  "memory_delta_mb": 3.621,
+  "threshold_mb": 64,
+  "passed": true
+}

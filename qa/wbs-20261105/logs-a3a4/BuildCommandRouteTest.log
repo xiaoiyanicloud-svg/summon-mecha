@@ -1,0 +1,9 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\BuildCommandRouteTest
+  ✓ it B1 · compile 路由落命令表，同键同载荷复用原结果                                                                            1.07s  
+  ✓ it B1 · compile 路由同键异载荷 → 409 BUILD_COMMAND_CONFLICT                                                         0.22s  
+
+  Tests:    2 passed (11 assertions)
+  Duration: 1.60s
+
+

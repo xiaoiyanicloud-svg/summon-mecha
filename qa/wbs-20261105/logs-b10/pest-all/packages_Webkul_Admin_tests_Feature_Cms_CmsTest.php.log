@@ -1,0 +1,60 @@
+﻿
+  .猕?......猕ǒ
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Cms\CmsTest > it should returns the listing cms                          
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Privacy Policy'
++'闅辩鏀跨瓥'
+
+  at packages\Webkul\Admin\tests\Feature\Cms\CmsTest.php:32
+     28鈻?        'X-Requested-With' => 'XMLHttpRequest',
+     29鈻?    ])
+     30鈻?        ->assertOk()
+     31鈻?        ->assertJsonPath('records.0.id', 10)
+  鉃? 32鈻?        ->assertJsonPath('records.0.page_title', 'Privacy Policy')
+     33鈻?        ->assertJsonPath('records.0.url_key', 'privacy-policy')
+     34鈻?        ->assertJsonPath('meta.total', 10);
+     35鈻?});
+     36鈻?
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Cms\CmsTest > it should delete the cms page                              
+  Expected: {"message":"CMS\u9875\u9762\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: CMS椤甸潰鍒犻櫎鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Cms\CmsTest.php:170
+    166鈻?    $this->loginAsAdmin();
+    167鈻?
+    168鈻?    deleteJson(route('admin.cms.delete', $cms->id))
+    169鈻?        ->assertOk()
+  鉃?170鈻?        ->assertSeeText(trans('admin::app.cms.delete-success'));
+    171鈻?
+    172鈻?    $this->assertDatabaseMissing('cms_pages', [
+    173鈻?        'id' => $cms->id,
+    174鈻?    ]);
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Cms\CmsTest > it should mass delete cms pages                            
+  Expected: {"message":"\u6240\u9009\u6570\u636e\u5df2\u6210\u529f\u5220\u9664"}
+
+  To contain: 鎵€閫夋暟鎹凡鎴愬姛鍒犻櫎
+
+  at packages\Webkul\Admin\tests\Feature\Cms\CmsTest.php:192
+    188鈻?    postJson(route('admin.cms.mass_delete'), [
+    189鈻?        'indices' => $cmsPages->pluck('id')->toArray(),
+    190鈻?    ])
+    191鈻?        ->assertOk()
+  鉃?192鈻?        ->assertSeeText(trans('admin::app.cms.index.datagrid.mass-delete-success'));
+    193鈻?
+    194鈻?    foreach ($cmsPages as $page) {
+    195鈻?        $this->assertDatabaseMissing('cms_pages', [
+    196鈻?            'id' => $page->id,
+
+
+  Tests:    3 failed, 8 passed (34 assertions)
+  Duration: 5.57s
+

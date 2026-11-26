@@ -1,0 +1,17 @@
+﻿# A3 设备/平台指标 · 2026-11-05 18:20:58 · exit=0
+..{"timestamp":"2026-11-05T10:20:55Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_r
+eceived","correlation_id":"T_A3_RECEIVED","task_id":"T_A3_RECEIVED","execution_id":null,"build_key":null,"did":"did_a3_
+bot","vendor":null,"model_code":"mock","operation":null,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_co
+de":null}
+............{"timestamp":"2026-11-05T10:20:57Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agen
+t.execution_fact","correlation_id":"task_flush","task_id":"task_flush","execution_id":null,"build_key":null,"did":"did_
+a3_bot","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_c
+ode":"E_TEST"}
+.{"timestamp":"2026-11-05T10:20:57Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution
+_fact","correlation_id":"task_x","task_id":"task_x","execution_id":null,"build_key":null,"did":"did_a3_bot","vendor":nu
+ll,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVALID"}
+..
+----------------------------------------------------------------------
+Ran 17 tests in 4.883s
+
+OK

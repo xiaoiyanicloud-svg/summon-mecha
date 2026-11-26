@@ -1,0 +1,57 @@
+﻿
+  ..猕?.猕ǒ
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest > it should store the newly created currencie鈥?  
+  Expected: {"message":"\u8d27\u5e01\u521b\u5efa\u6210\u529f\u3002"}
+
+  To contain: 璐у竵鍒涘缓鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest.php:45
+     41鈻?        'decimal_separator' => '-',
+     42鈻?        'currency_position' => fake()->randomElement(['left', 'left_with_space', 'right', 'right_with_space']),
+     43鈻?    ])
+     44鈻?        ->assertOk()
+  鉃? 45鈻?        ->assertSeeText(trans('admin::app.settings.currencies.index.create-success'));
+     46鈻?
+     47鈻?    $this->assertModelWise([
+     48鈻?        Currency::class => [
+     49鈻?            $data,
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest > it should update the specified currency        
+  Expected: {"message":"\u8d27\u5e01\u66f4\u65b0\u6210\u529f\u3002"}
+
+  To contain: 璐у竵鏇存柊鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest.php:92
+     88鈻?        'id'   => $currency->id,
+     89鈻?        'name' => fake()->name(),
+     90鈻?    ])
+     91鈻?        ->assertOk()
+  鉃? 92鈻?        ->assertSeeText(trans('admin::app.settings.currencies.index.update-success'));
+     93鈻?
+     94鈻?    $this->assertModelWise([
+     95鈻?        Currency::class => [
+     96鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest > it should delete the currencies                
+  Expected: {"message":"\u8d27\u5e01\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: 璐у竵鍒犻櫎鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Settings\CurrenciesTest.php:113
+    109鈻?    $this->loginAsAdmin();
+    110鈻?
+    111鈻?    deleteJson(route('admin.settings.currencies.delete', $currency->id))
+    112鈻?        ->assertOk()
+  鉃?113鈻?        ->assertSeeText(trans('admin::app.settings.currencies.index.delete-success'));
+    114鈻?
+    115鈻?    $this->assertDatabaseMissing('currencies', [
+    116鈻?        'id' => $currency->id,
+    117鈻?    ]);
+
+
+  Tests:    3 failed, 4 passed (24 assertions)
+  Duration: 3.13s
+

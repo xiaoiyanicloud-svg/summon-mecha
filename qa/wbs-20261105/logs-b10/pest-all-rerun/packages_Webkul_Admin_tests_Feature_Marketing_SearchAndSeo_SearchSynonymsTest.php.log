@@ -1,0 +1,74 @@
+﻿
+  ..⨯.⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should store the newly…   
+  Expected: {"message":"\u6210\u529f\u521b\u5efa\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 成功创建搜索同义词
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:39
+     35▕         'terms' => $term = fake()->randomElement(['jackets', 'shoes', 'footwear',  'phone', 'computers', 'electronics']),
+     36▕         'name'  => $name = fake()->name(),
+     37▕     ])
+     38▕         ->assertOk()
+  ➜  39▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.create.success'));
+     40▕ 
+     41▕     $this->assertModelWise([
+     42▕         SearchSynonym::class => [
+     43▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should update the sear…   
+  Expected: {"message":"\u6210\u529f\u66f4\u65b0\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 成功更新搜索同义词
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:77
+     73▕         'terms' => $term = fake()->randomElement(['jackets', 'phone', 'computers', 'electronics']),
+     74▕         'name'  => $searchSynonym->name,
+     75▕     ])
+     76▕         ->assertOk()
+  ➜  77▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.edit.success'));
+     78▕ 
+     79▕     $this->assertModelWise([
+     80▕         SearchSynonym::class => [
+     81▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should delete the sear…   
+  Expected: {"message":"\u6210\u529f\u5220\u9664\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 成功删除搜索同义词
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:99
+     95▕     $this->loginAsAdmin();
+     96▕ 
+     97▕     deleteJson(route('admin.marketing.search_seo.search_synonyms.delete', $searchSynonym->id))
+     98▕         ->assertOk()
+  ➜  99▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.edit.delete-success'));
+    100▕ 
+    101▕     $this->assertDatabaseMissing('search_synonyms', [
+    102▕         'id' => $searchSynonym->id,
+    103▕     ]);
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest > it should mass delete the…   
+  Expected: {"message":"\u6210\u529f\u5220\u9664\u6240\u9009\u7684\u641c\u7d22\u540c\u4e49\u8bcd"}
+
+  To contain: 成功删除所选的搜索同义词
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SearchSynonymsTest.php:117
+    113▕     postJson(route('admin.marketing.search_seo.search_synonyms.mass_delete'), [
+    114▕         'indices' => $searchSynonyms->pluck('id')->toArray(),
+    115▕     ])
+    116▕         ->assertOk()
+  ➜ 117▕         ->assertSeeText(trans('admin::app.marketing.search-seo.search-synonyms.index.datagrid.mass-delete-success'));
+    118▕ 
+    119▕     foreach ($searchSynonyms as $searchSynonym) {
+    120▕         $this->assertDatabaseMissing('search_synonyms', [
+    121▕             'id' => $searchSynonym->id,
+
+
+  Tests:    4 failed, 3 passed (17 assertions)
+  Duration: 7.03s
+

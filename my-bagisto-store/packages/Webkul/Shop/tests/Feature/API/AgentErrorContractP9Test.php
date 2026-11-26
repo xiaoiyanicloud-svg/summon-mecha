@@ -65,6 +65,7 @@ it('P9 · 对已 success 的任务报 failed → 409 + TASK_TRANSITION_INVALID,�
     postJson(route('shop.api.agent.event'), [
         'task_no' => $task->task_no,
         'did'     => $task->did,
+        'event_id' => 'evt_p9_failed',
         'phase'   => 'failed',
     ], p9Headers())
         ->assertStatus(409)
@@ -74,6 +75,11 @@ it('P9 · 对已 success 的任务报 failed → 409 + TASK_TRANSITION_INVALID,�
         ->assertJsonPath('data.status', 'success');
 
     expect($task->fresh()->status)->toBe('success');
+    expect(DB::table('deploy_inbox_event')
+        ->where('did', $task->did)
+        ->where('event_id', 'evt_p9_failed')
+        ->where('late_report', true)
+        ->count())->toBe(1);
 });
 
 it('P9 · 重复报 done(已是 success)是幂等短路,不报错', function () {
@@ -82,6 +88,7 @@ it('P9 · 重复报 done(已是 success)是幂等短路,不报错', function () 
     postJson(route('shop.api.agent.event'), [
         'task_no' => $task->task_no,
         'did'     => $task->did,
+        'event_id' => 'evt_p9_done_'.uniqid(),
         'phase'   => 'done',
     ], p9Headers())
         ->assertOk()
@@ -95,6 +102,7 @@ it('P9 · 乱序回报(downloading 晚于 installing 到达)也被拒,不静默�
     postJson(route('shop.api.agent.event'), [
         'task_no' => $task->task_no,
         'did'     => $task->did,
+        'event_id' => 'evt_p9_out_of_order',
         'phase'   => 'downloading',
     ], p9Headers())
         ->assertStatus(409)
@@ -111,6 +119,7 @@ it('P9 · event 成功体是信封(success:true + data.status)', function () {
     postJson(route('shop.api.agent.event'), [
         'task_no' => $task->task_no,
         'did'     => $task->did,
+        'event_id' => 'evt_p9_done_'.uniqid(),
         'phase'   => 'done',
     ], p9Headers())
         ->assertOk()
@@ -155,6 +164,7 @@ it('P9 · 任务不存在 → 404 + TASK_NOT_FOUND(不再返回裸 message)', fu
     postJson(route('shop.api.agent.event'), [
         'task_no' => 'P9-not-exist',
         'did'     => 'did_p9_x',
+        'event_id' => 'evt_p9_not_found',
         'phase'   => 'done',
     ], p9Headers())
         ->assertStatus(404)

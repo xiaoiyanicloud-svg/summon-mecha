@@ -1,8 +1,13 @@
 <template>
   <view class="skill-market" :class="{ compact }">
     <view class="market-search">
-      <input v-model="query" placeholder="搜索已上架技能" confirm-type="search" @confirm="refreshNow" @input="onQueryInput" />
-      <button size="mini" @click="refreshNow">搜索</button>
+      <SearchInput
+        v-model="query"
+        placeholder="搜索已上架技能"
+        @input="onQueryInput"
+        @confirm="refreshNow"
+        @clear="clearSearch"
+      />
     </view>
     <view v-if="showFilters">
       <view v-if="filterLoading" class="market-filter-loading"><SmLoading inline size="sm" text="筛选条件加载中…" /></view>
@@ -60,6 +65,7 @@ import { createSkillMarketState, loadSkillMarket } from '@/utils/skill-market'
 import { normalizeCatalogImageUrl, catalogFallbackImage } from '@/utils/product-catalog'
 import SmLoading from '@/components/SmLoading.vue'
 import SmIcon from '@/components/SmIcon.vue'
+import SearchInput from '@/components/SearchInput.vue'
 
 // 首页/机器页共用:2 分钟内重复进入不再请求技能列表。
 // 返回首页(onShow)只做「过期才刷新」,且刷新期间保留旧卡片,避免闪成加载态。
@@ -67,7 +73,7 @@ const SKILL_MARKET_TTL = 120000
 
 export default {
   name: 'SkillMarket',
-  components: { SmLoading, SmIcon },
+  components: { SmLoading, SmIcon, SearchInput },
   props: {
     compact: Boolean,
     active: { type: Boolean, default: true },
@@ -79,7 +85,7 @@ export default {
     return {
       query: '', filters: { model: '', channel: '', motion: '' }, market: createSkillMarketState(),
       filterLoading: false, filterError: '', options: { models: [], channels: [], risks: [], motions: [] },
-      _loadedKey: '', _loadedAt: 0, _pending: null, _pendingKey: '',
+      _loadedKey: '', _loadedAt: 0, _pending: null, _pendingKey: '', _searchTimer: null,
     }
   },
   computed: {
@@ -102,7 +108,10 @@ export default {
     },
   },
   mounted() { if (this.showFilters) this.loadFilters(); if (this.active) this.refreshIfStale() },
-  beforeUnmount() { this.market.sequence++ },
+  beforeUnmount() {
+    if (this._searchTimer) clearTimeout(this._searchTimer)
+    this.market.sequence++
+  },
   methods: {
     // 用户显式动作(搜索/筛选/重试):强制走网络;同条件刷新时保留旧卡片直到新结果返回
     refreshNow() { return this.refresh({ force: true, keepRows: true }) },
@@ -135,7 +144,20 @@ export default {
     filterIndex(group) { return Math.max(0, group.options.findIndex(x => x.value === this.filters[group.key])) },
     pickFilter(group, event) { this.filters[group.key] = group.options[Number(event.detail.value)]?.value || ''; this.refreshNow() },
     resetFilters() { this.query = ''; Object.keys(this.filters).forEach(key => { this.filters[key] = '' }); this.refreshNow() },
-    onQueryInput(event) { if (!String(event.detail.value || '').trim()) this.refreshNow() },
+    clearSearch() {
+      if (this._searchTimer) clearTimeout(this._searchTimer)
+      this.query = ''
+      this.refreshNow()
+    },
+    onQueryInput(val) {
+      if (this._searchTimer) clearTimeout(this._searchTimer)
+      const text = typeof val === 'string' ? val : String(val?.detail?.value || '')
+      if (!text.trim()) {
+        this.refreshNow()
+        return
+      }
+      this._searchTimer = setTimeout(() => this.refreshNow(), 350)
+    },
     select(item) { if (item.market_eligible === true) this.$emit('select', item) },
     imageUrl(url) { return normalizeCatalogImageUrl(url, BASE_URL) },
     displayImage(item) { return this.imageUrl(item.image) || catalogFallbackImage('skill', item.id) },
@@ -156,9 +178,8 @@ export default {
 </script>
 
 <style scoped>
-.skill-market { padding: 24rpx; color: #102f6e; background: #f5f7fc; }
-.market-search { display: flex; gap: 16rpx; align-items: center; margin-bottom: 20rpx; }
-.market-search input { flex: 1; min-width: 0; padding: 18rpx 22rpx; background: #fff; border: 1rpx solid #dbe4f3; border-radius: 14rpx; font-size: 26rpx; }
+.skill-market { padding: 8rpx 20rpx 24rpx; color: #102f6e; background: #f5f7fc; }
+.market-search { margin-bottom: 16rpx; }
 .skill-market button { color: #165dff; background: #eef3ff; border-radius: 12rpx; font-size: 24rpx; flex-shrink: 0; }
 .market-filters { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 16rpx; }
 .market-filter-loading { display: flex; align-items: center; padding: 10rpx 0 16rpx; }

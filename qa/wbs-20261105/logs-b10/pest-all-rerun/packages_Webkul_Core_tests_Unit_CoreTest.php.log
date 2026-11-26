@@ -1,0 +1,28 @@
+﻿
+  ............⨯.........................
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Core\tests\Unit\CoreTest > it should format the price with default symbol based on the cu…   
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'$34.20'
++'¥34.20'
+
+  at packages\Webkul\Core\tests\Unit\CoreTest.php:190
+    186▕     // Act
+    187▕     $formattedPrice = core()->formatPrice($price);
+    188▕ 
+    189▕     // Assert
+  ➜ 190▕     expect($formattedPrice)->toBe($expectedSymbol.$price);
+    191▕ });
+    192▕ 
+    193▕ it('should format the price with custom symbol based on the current currency and use default formatter if currency position is not defined', function () {
+    194▕     // Arrange
+
+  1   packages\Webkul\Core\tests\Unit\CoreTest.php:190
+
+
+  Tests:    1 failed, 37 passed (46 assertions)
+  Duration: 15.85s
+

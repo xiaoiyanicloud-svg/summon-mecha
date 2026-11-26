@@ -1,0 +1,13 @@
+test_live_01_heartbeat (test_live_http_integration.TestLiveHttpIntegration.test_live_01_heartbeat)
+���� 1: ��ʵ HTTP POST /api/agent/heartbeat ����ˢ�� ... ok
+test_live_02_fetch_and_ack_command (test_live_http_integration.TestLiveHttpIntegration.test_live_02_fetch_and_ack_command)
+���� 2: ��ʵ HTTP GET /api/agent/commands ��ȡָ�� -> POST /api/agent/ack ˫�� ACK ... ok
+test_live_03_send_event (test_live_http_integration.TestLiveHttpIntegration.test_live_03_send_event)
+���� 3: ��ʵ HTTP POST /api/agent/evt �ϱ���������¼� ... ok
+test_live_04_reconciliation (test_live_http_integration.TestLiveHttpIntegration.test_live_04_reconciliation)
+���� 4: ��ʵ HTTP POST /api/agent/reconcile ˫����ʵ���� ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 8.587s
+
+OK

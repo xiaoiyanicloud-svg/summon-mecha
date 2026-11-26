@@ -1,0 +1,2 @@
+﻿数据 preflight 通过：没有发现重复、孤儿、计数或状态问题。
+PREFLIGHT_EXIT=0

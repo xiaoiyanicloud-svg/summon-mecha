@@ -1,0 +1,29 @@
+{
+    "database": "summon_mecha_step10_test",
+    "duplicate_commands_attempted": 1000,
+    "effective_task_count": 1,
+    "duplicate_acks_attempted": 1000,
+    "effective_inbox_event_count": 1,
+    "command_n": 1000,
+    "command_failures_k": 0,
+    "command_error_rate": 0,
+    "command_failure_rate_cp95_upper": 0.00299125,
+    "ack_n": 1000,
+    "ack_failures_k": 0,
+    "ack_error_rate": 0,
+    "ack_failure_rate_cp95_upper": 0.00299125,
+    "command_latency_ms": {
+        "p50": 2.269,
+        "p95": 3.669,
+        "p99": 4.061,
+        "max": 83.639
+    },
+    "ack_latency_ms": {
+        "p50": 1.825,
+        "p95": 2.593,
+        "p99": 3.107,
+        "max": 125.996
+    },
+    "duplicate_ack_same_idempotent_result": true,
+    "passed": true
+}

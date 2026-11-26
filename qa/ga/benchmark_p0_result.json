@@ -1,0 +1,10 @@
+{
+    "database": "summon_mecha_step10_test",
+    "duplicate_commands_attempted": 1000,
+    "effective_task_count": 1,
+    "duplicate_acks_attempted": 1000,
+    "effective_inbox_event_count": 1,
+    "command_p95_ms": 6.837,
+    "ack_p95_ms": 5.507,
+    "duplicate_ack_same_idempotent_result": true
+}

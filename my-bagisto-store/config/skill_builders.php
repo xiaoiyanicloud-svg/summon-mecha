@@ -23,6 +23,11 @@ return [
             'class' => Webkul\Shop\Services\SkillCompile\Builders\MotionCarrierBuilder::class,
         ],
 
+        // 应用类(容器/资源包/Runner 插件):C1 实现 —— 只装配厂商载体目录，不调用厂商 SDK
+        [
+            'class' => Webkul\Shop\Services\SkillCompile\Builders\AppCarrierBuilder::class,
+        ],
+
         // 容器应用类(宇树 Docker 载体):P1 实现
         // [
         //     'class' => Webkul\Shop\Services\SkillCompile\Builders\AppCarrierBuilder::class,

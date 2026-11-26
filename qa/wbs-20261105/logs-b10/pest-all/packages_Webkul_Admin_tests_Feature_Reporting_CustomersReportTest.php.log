@@ -1,0 +1,26 @@
+﻿
+  ...猕?.
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Reporting\CustomersReportTest > it should return the top customers gr鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'General'
++'鏅€?
+
+  at packages\Webkul\Admin\tests\Feature\Reporting\CustomersReportTest.php:106
+    102鈻?        'type' => 'top-customer-groups',
+    103鈻?    ]))
+    104鈻?        ->assertOk()
+    105鈻?        ->assertJsonPath('statistics.0.id', $customer->id)
+  鉃?106鈻?        ->assertJsonPath('statistics.0.group_name', 'General');
+    107鈻?});
+    108鈻?
+    109鈻?it('should return the customers with most orders stats report', function () {
+    110鈻?    // Arrange.
+
+
+  Tests:    1 failed, 5 passed (51 assertions)
+  Duration: 6.77s
+

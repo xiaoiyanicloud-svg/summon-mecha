@@ -422,11 +422,14 @@ class TestAcceptanceAT01toAT26(unittest.TestCase):
         """A-T15: 运行中技能收到取消指令，状态变迁为 CANCELED 并观察到 is_stopped=True"""
         class LongRunningAdapter(MockAdapter):
             def observe_execution(self, eid):
+                from zhjj_agent.stop_observation import synthetic_observation
                 info = self._executions.get(eid, {})
+                stopped = info.get("is_stopped", False)
                 return {
                     "status": info.get("status", "UNKNOWN"),
-                    "is_stopped": info.get("is_stopped", False),
-                    "error_msg": info.get("error_msg")
+                    "is_stopped": stopped,
+                    "error_msg": info.get("error_msg"),
+                    "observation": synthetic_observation(eid) if stopped else None,
                 }
 
         long_adapter = LongRunningAdapter(app_dir=self.temp_dir)

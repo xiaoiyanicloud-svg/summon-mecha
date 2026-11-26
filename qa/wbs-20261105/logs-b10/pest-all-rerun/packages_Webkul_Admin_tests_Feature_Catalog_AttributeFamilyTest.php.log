@@ -1,0 +1,40 @@
+﻿
+  ........⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest > it should delete the existing attribute…   
+  Expected: {"message":"\u6210\u529f\u5220\u9664\u5bb6\u65cf\u3002"}
+
+  To contain: 成功删除家族。
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest.php:141
+    137▕     $this->loginAsAdmin();
+    138▕ 
+    139▕     deleteJson(route('admin.catalog.families.delete', $attributeFamily->id))
+    140▕         ->assertOk()
+  ➜ 141▕         ->assertSeeText(trans('admin::app.catalog.families.delete-success'));
+    142▕ 
+    143▕     $this->assertDatabaseMissing('attribute_families', [
+    144▕         'id' => $attributeFamily->id,
+    145▕     ]);
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest > it should not be able to delete the att…   
+  Expected: {"message":"\u81f3\u5c11\u9700\u8981\u4e00\u4e2a\u5bb6\u65cf\u3002"}
+
+  To contain: 至少需要一个家族。
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest.php:154
+    150▕     $this->loginAsAdmin();
+    151▕ 
+    152▕     deleteJson(route('admin.catalog.families.delete', $attributeFamilyId = 1))
+    153▕         ->assertBadRequest()
+  ➜ 154▕         ->assertSeeText(trans('admin::app.catalog.families.last-delete-error'));
+    155▕ 
+    156▕     $this->assertModelWise([
+    157▕         AttributeFamilyModel::class => [
+    158▕             [
+
+
+  Tests:    2 failed, 8 passed (29 assertions)
+  Duration: 4.63s
+

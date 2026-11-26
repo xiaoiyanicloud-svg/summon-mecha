@@ -1,0 +1,117 @@
+
+  [39;41;1m FAIL [39;49;22m[39m Packages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[39m
+  [31;1m⨯[39;22m[90m [39m[90mit B4-02 源包含 [39m[37m../[39m[90m 穿越条目 → 拒绝，码 SOURCE_PACKAGE_UNSAFE_ENTRY[39m[90m                                                    [39m [90m0.95s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit B4-03 源包含绝对路径条目 → 拒绝[39m[90m                                                                                     [39m [90m0.24s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit B4-04 源包含反斜杠条目 → 拒绝（Windows 路径语义穿越）[39m[90m                                                                      [39m [90m0.18s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit B4-05 源包含盘符条目 → 拒绝[39m[90m                                                                                       [39m [90m0.18s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit B4-06 源包含 [39m[37ma/./b[39m[90m 与双斜杠条目 → 拒绝（非规范路径）[39m[90m                                                                       [39m [90m0.22s[39m  
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[22m [90m>[39m it B4-02 源包含 `../` 穿越条目 → 拒…           
+[39;1m  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'failed'
++'success'[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39m:[32m158[39m
+    154▕ 
+    155▕ it('B4-02 源包含 `../` 穿越条目 → 拒绝，码 SOURCE_PACKAGE_UNSAFE_ENTRY', function () {
+    156▕     $result = b4Build(b4Version(), b4Zip(['../evil.txt' => 'pwned']));
+    157▕ 
+  ➜ 158▕     expect($result->status)->toBe('failed')
+    159▕         ->and($result->errorCode)->toBe(SourcePackageReader::CODE_UNSAFE_ENTRY)
+    160▕         ->and($result->error)->toContain('../evil.txt');
+    161▕ });
+    162▕
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39;22m:[39;1m158[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[22m [90m>[39m it B4-03 源包含绝对路径条目 → 拒绝                
+[39;1m  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'failed'
++'success'[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39m:[32m166[39m
+    162▕ 
+    163▕ it('B4-03 源包含绝对路径条目 → 拒绝', function () {
+    164▕     $result = b4Build(b4Version(), b4Zip(['/etc/passwd' => 'x']));
+    165▕ 
+  ➜ 166▕     expect($result->status)->toBe('failed')
+    167▕         ->and($result->errorCode)->toBe(SourcePackageReader::CODE_UNSAFE_ENTRY);
+    168▕ });
+    169▕ 
+    170▕ it('B4-04 源包含反斜杠条目 → 拒绝（Windows 路径语义穿越）', function () {
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39;22m:[39;1m166[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[22m [90m>[39m it B4-04 源包含反斜杠条目 → 拒绝（W…              
+[39;1m  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'failed'
++'success'[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39m:[32m173[39m
+    169▕ 
+    170▕ it('B4-04 源包含反斜杠条目 → 拒绝（Windows 路径语义穿越）', function () {
+    171▕     $result = b4Build(b4Version(), b4Zip(['a\\b.txt' => 'x']));
+    172▕ 
+  ➜ 173▕     expect($result->status)->toBe('failed')
+    174▕         ->and($result->errorCode)->toBe(SourcePackageReader::CODE_UNSAFE_ENTRY);
+    175▕ });
+    176▕ 
+    177▕ it('B4-05 源包含盘符条目 → 拒绝', function () {
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39;22m:[39;1m173[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[22m [90m>[39m it B4-05 源包含盘符条目 → 拒绝                  
+[39;1m  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'failed'
++'success'[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39m:[32m180[39m
+    176▕ 
+    177▕ it('B4-05 源包含盘符条目 → 拒绝', function () {
+    178▕     $result = b4Build(b4Version(), b4Zip(['C:/win.txt' => 'x']));
+    179▕ 
+  ➜ 180▕     expect($result->status)->toBe('failed')
+    181▕         ->and($result->errorCode)->toBe(SourcePackageReader::CODE_UNSAFE_ENTRY);
+    182▕ });
+    183▕ 
+    184▕ it('B4-06 源包含 `a/./b` 与双斜杠条目 → 拒绝（非规范路径）', function () {
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39;22m:[39;1m180[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[22m [90m>[39m it B4-06 源包含 `a/./b` 与双斜杠条…            
+[39;1m  Failed asserting that null is identical to 'SOURCE_PACKAGE_UNSAFE_ENTRY'.[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39m:[32m188[39m
+    184▕ it('B4-06 源包含 `a/./b` 与双斜杠条目 → 拒绝（非规范路径）', function () {
+    185▕     $dot = b4Build(b4Version(), b4Zip(['a/./b.txt' => 'x']));
+    186▕     $dbl = b4Build(b4Version(), b4Zip(['x//y.txt' => 'x']));
+    187▕ 
+  ➜ 188▕     expect($dot->errorCode)->toBe(SourcePackageReader::CODE_UNSAFE_ENTRY)
+    189▕         ->and($dbl->errorCode)->toBe(SourcePackageReader::CODE_UNSAFE_ENTRY);
+    190▕ });
+    191▕ 
+    192▕ // ==================== ③ 软链接条目 ====================
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest.php[39;22m:[39;1m188[39;22m
+
+
+  [90mTests:[39m    [31;1m5 failed[39;22m[90m (5 assertions)[39m
+  [90mDuration:[39m [39m2.16s[39m
+
+===== RED (mutation: 关闭 SourcePackageReader::readEntries 的 isSafeRelativePath 校验) =====

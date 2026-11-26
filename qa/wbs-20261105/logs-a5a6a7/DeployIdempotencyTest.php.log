@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployIdempotencyTest
+  ✓ it 建任务去重：同设备 + 同版本 + 同操作连建两次，只有一条任务（双击不再落两条）                                                                 1.10s  
+  ✓ it 去重不挡重来：上一条已终结（failed）之后再建是合法的                                                                             0.43s  
+  ✓ it 去重按 (did, 版本, 操作) 三元组：换版本或换操作都不算重复                                                                        0.28s  
+  ✓ it 投递标记：取走过一次的指令，设备重启后再拉不再返回（不重装）                                                                            0.39s  
+  ✓ it 投递标记不误伤离线挂起：pending_online 从未投递过，设备上线后照常取到                                                                0.30s  
+  ✓ it 灰度 abort 幂等：重复调用不再建第二轮回滚任务，也不再多写 rollback_record                                                          0.27s  
+
+  Tests:    6 passed (21 assertions)
+  Duration: 3.26s
+

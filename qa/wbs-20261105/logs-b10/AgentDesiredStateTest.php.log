@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\AgentDesiredStateTest
+  ✓ it A4-D-01 有效授权 + 已发布版本 → desired 含该技能，actual 为空 → drift.missing                                             1.98s  
+  ✓ it A4-D-02 实际已装同一版本 → 无 drift                                                                                0.40s  
+  ✓ it A4-D-03 实际版本落后 → version_mismatch；实际多出的技能 → extra（不自动卸载）                                                  0.31s  
+  ✓ it A4-D-04 未支付 / 未发布版本的授权不进入 desired                                                                         0.25s  
+  ✓ it A4-D-05 auto_converge 默认关闭：只报告，不建任务                                                                       0.33s  
+  ✓ it A4-D-06 auto_converge 打开：仅对有 agent 通道 + 有包哈希的缺失项建任务，且幂等                                                   0.62s  
+
+  Tests:    6 passed (28 assertions)
+  Duration: 4.53s
+

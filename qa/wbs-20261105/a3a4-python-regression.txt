@@ -1,0 +1,626 @@
+﻿python.exe : test_at01_startup_and_discovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at01_startup_and_
+discovery)
+At line:4 char:1
++ & $py -m unittest discover -s tests -p "test_*.py" -v 2>&1 | Tee-Obje ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_at01_start..._and_discovery):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+A-T01: 无模块加载错误，支持 Python 3.12/3.14 规范导入 ... ok
+test_at02_unsigned_operation_tamper (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at02_unsigned_operation_ta
+mper)
+A-T02: signed.operation=5 (DISABLE), 外层改成 4 (ENABLE) -> 副作用前拒绝，原禁用状态不被启用 ... {"timestamp":"2026-11-05T06:01:55Z","level
+":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_received","correlation_id":"tamper-task","tas
+k_id":"tamper-task","execution_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation"
+:4,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:56Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"tamper-task","task_id":"tamper-task","execution_id":null,"build_key":null,"did":"device-A","ven
+dor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_IN
+VALID"}
+ok
+test_at03_device_and_field_mismatch (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at03_device_and_field_mism
+atch)
+A-T03: 有效签给 B 的任务放到 A，或内外层 DID/skill/version 不一致 -> 拒绝 ... {"timestamp":"2026-11-05T06:01:56Z","level":"INFO","service"
+:"zhjj-agent","env":"production","event":"agent.command_received","correlation_id":"task-b","task_id":"task-b","executi
+on_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":5,"status":"RECEIVED","atte
+mpt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:57Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"task-b","task_id":"task-b","execution_id":null,"build_key":null,"did":"device-A","vendor":null,
+"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVALID"}
+{"timestamp":"2026-11-05T06:01:57Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"task-skill","task_id":"task-skill","execution_id":null,"build_key":null,"did":"device-A","vend
+or":null,"model_code":"mock","operation":5,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:57Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"task-skill","task_id":"task-skill","execution_id":null,"build_key":null,"did":"device-A","vendo
+r":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVA
+LID"}
+{"timestamp":"2026-11-05T06:01:57Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"task-ver","task_id":"task-ver","execution_id":null,"build_key":null,"did":"device-A","vendor":
+null,"model_code":"mock","operation":5,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:57Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"task-ver","task_id":"task-ver","execution_id":null,"build_key":null,"did":"device-A","vendor":n
+ull,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVALID"
+}
+ok
+test_at04_invalid_signature_and_protocol (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at04_invalid_signatur
+e_and_protocol)
+A-T04: v2 缺字段/未知协议/签名损坏/operation 缺失；v1 携带 7 或 8 -> 拒绝 ... {"timestamp":"2026-11-05T06:01:58Z","level":"INFO","service"
+:"zhjj-agent","env":"production","event":"agent.command_received","correlation_id":"no-op","task_id":"no-op","execution
+_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":null,"status":"RECEIVED","att
+empt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:58Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"no-op","task_id":"no-op","execution_id":null,"build_key":null,"did":"device-A","vendor":null,"m
+odel_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"MISSING_OPERATION"
+}
+{"timestamp":"2026-11-05T06:01:58Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"bad-sig","task_id":"bad-sig","execution_id":null,"build_key":null,"did":"device-A","vendor":nu
+ll,"model_code":"mock","operation":5,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:58Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"bad-sig","task_id":"bad-sig","execution_id":null,"build_key":null,"did":"device-A","vendor":nul
+l,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVALID"}
+{"timestamp":"2026-11-05T06:01:58Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"v1-exec","task_id":"v1-exec","execution_id":null,"build_key":null,"did":"device-A","vendor":nu
+ll,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:58Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"v1-exec","task_id":"v1-exec","execution_id":null,"build_key":null,"did":"device-A","vendor":nul
+l,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVALID"}
+ok
+test_at05_expired_task_and_authorization (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at05_expired_task_and
+_authorization)
+A-T05: 任务已过有效期或使用授权已过期 -> 拒绝执行 ... {"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service":"zhjj-agent","env":"pro
+duction","event":"agent.command_received","correlation_id":"expired-task","task_id":"expired-task","execution_id":null,
+"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":4,"status":"RECEIVED","attempt":null,"d
+uration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:59Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"expired-task","task_id":"expired-task","execution_id":null,"build_key":null,"did":"device-A","v
+endor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"TASK
+_EXPIRED"}
+{"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"expired-auth","task_id":"expired-auth","execution_id":null,"build_key":null,"did":"device-A","
+vendor":null,"model_code":"mock","operation":4,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:59Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"expired-auth","task_id":"expired-auth","execution_id":null,"build_key":null,"did":"device-A","v
+endor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"REVO
+KED"}
+ok
+test_at06_same_task_refreshed_expiry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at06_same_task_refreshed_
+expiry)
+A-T06: 任务构建后签名载荷被冻结，多次刷新不能导致过期时间漂移 ... ok
+test_at07_deduplication_by_execution_id (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at07_deduplication_by_
+execution_id)
+A-T07: 同 execution_id、不同 task_id 重投 -> 适配器仅启动一次，取消仍能定位 ... {"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service"
+:"zhjj-agent","env":"production","event":"agent.command_received","correlation_id":"task-e1","task_id":"task-e1","execu
+tion_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":7,"status":"RECEIVED","at
+tempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-e1","task_id":"task-e1","execution_id":"session-42","build_key":null,"did":"device-A","vend
+or":null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-e1","task_id":"task-e1","execution_id":"session-42","build_key":null,"did":"device-A","vend
+or":null,"model_code":"mock","operation":null,"status":"running","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-e1","task_id":"task-e1","execution_id":"session-42","build_key":null,"did":"device-A","vend
+or":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"task-e2","task_id":"task-e2","execution_id":null,"build_key":null,"did":"device-A","vendor":nu
+ll,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:01:59Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-e2","task_id":"task-e2","execution_id":"session-42","build_key":null,"did":"device-A","vend
+or":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+ok
+test_at08_execution_id_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at08_execution_id_isolation)
+A-T08: 两个不同 execution_id 顺序执行，各自有独立身份，不能吞掉合法执行 ... {"timestamp":"2026-11-05T06:02:00Z","level":"INFO","service":"zhjj-a
+gent","env":"production","event":"agent.command_received","correlation_id":"task-1","task_id":"task-1","execution_id":n
+ull,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":nul
+l,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:00Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-1","task_id":"task-1","execution_id":"exec-001","build_key":null,"did":"device-A","vendor":
+null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:00Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-1","task_id":"task-1","execution_id":"exec-001","build_key":null,"did":"device-A","vendor":
+null,"model_code":"mock","operation":null,"status":"running","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:00Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-1","task_id":"task-1","execution_id":"exec-001","build_key":null,"did":"device-A","vendor":
+null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"task-2","task_id":"task-2","execution_id":null,"build_key":null,"did":"device-A","vendor":null
+,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-2","task_id":"task-2","execution_id":"exec-002","build_key":null,"did":"device-A","vendor":
+null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-2","task_id":"task-2","execution_id":"exec-002","build_key":null,"did":"device-A","vendor":
+null,"model_code":"mock","operation":null,"status":"running","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-2","task_id":"task-2","execution_id":"exec-002","build_key":null,"did":"device-A","vendor":
+null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+ok
+test_at09_adapter_no_sdk_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at09_adapter_no_sdk_rejecti
+on)
+A-T09: Unitree G1 适配器在无真实 SDK 且无 stub 时拒绝执行，绝不计时假冒成功 ... ok
+test_at10_crash_during_download_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at10_crash_during_dow
+nload_recovery)
+A-T10: 安装 v2 在下载阶段中断，设备真实版本为 v1 -> 绝不能报告 v2 成功 ... {"timestamp":"2026-11-05T06:02:01Z","level":"ERROR","service":"zhjj-
+agent","env":"production","event":"agent.execution_fact","correlation_id":"interrupted-v2","task_id":"interrupted-v2","
+execution_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":null,"status":"faile
+d","attempt":null,"duration_ms":null,"error_code":"RECOVERY_INCOMPLETE"}
+{"timestamp":"2026-11-05T06:02:01Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.reconcile_
+failed","correlation_id":null,"task_id":null,"execution_id":null,"build_key":null,"did":"device-A","vendor":null,"model
+_code":"mock","operation":null,"status":"'MockPlatformClient' object has no attribute 'reconcile'","attempt":null,"dura
+tion_ms":null,"error_code":"RECONCILE_EXCEPTION"}
+ok
+test_at11_crash_and_restart_recovery (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at11_crash_and_restart_re
+covery)
+A-T11: 真实模拟崩溃后重启恢复，未完成事务不重放且状态收敛为 FAILED ... {"timestamp":"2026-11-05T06:02:01Z","level":"ERROR","service":"zhjj-agent"
+,"env":"production","event":"agent.execution_fact","correlation_id":"task-crash-down","task_id":"task-crash-down","exec
+ution_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":null,"status":"failed","
+attempt":null,"duration_ms":null,"error_code":"RECOVERY_INCOMPLETE"}
+{"timestamp":"2026-11-05T06:02:01Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.reconcile_
+failed","correlation_id":null,"task_id":null,"execution_id":null,"build_key":null,"did":"device-A","vendor":null,"model
+_code":"mock","operation":null,"status":"'MockPlatformClient' object has no attribute 'reconcile'","attempt":null,"dura
+tion_ms":null,"error_code":"RECONCILE_EXCEPTION"}
+ok
+test_at12_lost_commands_ack_and_event_retry (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at12_lost_commands
+_ack_and_event_retry)
+A-T12: 事件发送后只有在网络收到有效响应时才标记 ACK，网络失败保留在 Outbox 补发 ... {"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhj
+j-agent","env":"production","event":"agent.execution_fact","correlation_id":"t12","task_id":"t12","execution_id":null,"
+build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"dur
+ation_ms":null,"error_code":null}
+ok
+test_at13_rejected_fact_and_409_preservation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at13_rejected_fac
+t_and_409_preservation)
+A-T13: 服务端返回 409 TASK_TRANSITION_INVALID 时保留事件日志，不丢弃事实 ... {"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service"
+:"zhjj-agent","env":"production","event":"agent.execution_fact","correlation_id":"late-done-task","task_id":"late-done-
+task","execution_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":null,"status"
+:"done","attempt":null,"duration_ms":null,"error_code":null}
+ok
+test_at14_reconciliation_mismatches (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at14_reconciliation_mismat
+ches)
+A-T14: 事实对账完整核对端侧状态与服务端状态差异 ... ok
+test_at15_running_execution_cancel (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at15_running_execution_canc
+el)
+A-T15: 运行中技能收到取消指令，状态变迁为 CANCELED 并观察到 is_stopped=True ... {"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service"
+:"zhjj-agent","env":"production","event":"agent.command_received","correlation_id":"task-ex","task_id":"task-ex","execu
+tion_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":7,"status":"RECEIVED","at
+tempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-ex","task_id":"task-ex","execution_id":"running-session","build_key":null,"did":"device-A",
+"vendor":null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"duration_ms":null,"error_code":n
+ull}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"task-ca","task_id":"task-ca","execution_id":null,"build_key":null,"did":"device-A","vendor":nu
+ll,"model_code":"mock","operation":8,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-ex","task_id":"task-ex","execution_id":"running-session","build_key":null,"did":"device-A",
+"vendor":null,"model_code":"mock","operation":null,"status":"running","attempt":null,"duration_ms":null,"error_code":nu
+ll}
+{"timestamp":"2026-11-05T06:02:01Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-ca","task_id":"task-ca","execution_id":"running-session","build_key":null,"did":"device-A",
+"vendor":null,"model_code":"mock","operation":null,"status":"cancel_requested","attempt":null,"duration_ms":null,"error
+_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-ca","task_id":"task-ca","execution_id":"running-session","build_key":null,"did":"device-A",
+"vendor":null,"model_code":"mock","operation":null,"status":"canceled","attempt":null,"duration_ms":null,"error_code":n
+ull}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-ex","task_id":"task-ex","execution_id":"running-session","build_key":null,"did":"device-A",
+"vendor":null,"model_code":"mock","operation":null,"status":"canceled","attempt":null,"duration_ms":null,"error_code":n
+ull}
+ok
+test_at16_lease_expiry_and_usurpation_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at16_lease_ex
+piry_and_usurpation_prevention)
+A-T16: 未经确认停止的执行租约，即使时间已过也不能被新执行篡抢 ... ok
+test_at17_revocation_epoch_enforcement (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at17_revocation_epoch_e
+nforcement)
+A-T17: 收到 epoch=5 停用/回收后，旧 epoch=4 任务被强行拒绝 ... {"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent
+","env":"production","event":"agent.command_received","correlation_id":"cmd-epoch5","task_id":"cmd-epoch5","execution_i
+d":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":5,"status":"RECEIVED","attempt"
+:null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"cmd-epoch5","task_id":"cmd-epoch5","execution_id":null,"build_key":null,"did":"device-A","vendor
+":null,"model_code":"mock","operation":null,"status":"installing","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"cmd-epoch5","task_id":"cmd-epoch5","execution_id":null,"build_key":null,"did":"device-A","vendor
+":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"cmd-epoch4","task_id":"cmd-epoch4","execution_id":null,"build_key":null,"did":"device-A","vend
+or":null,"model_code":"mock","operation":4,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"cmd-epoch4","task_id":"cmd-epoch4","execution_id":null,"build_key":null,"did":"device-A","vendo
+r":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"REVOKED"
+}
+ok
+test_at18_explicit_rollback_to_good_version (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at18_explicit_roll
+back_to_good_version)
+A-T18: v2 异常回滚至 v1，激活字节恢复为 v1，记录状态置 rolled_back ... {"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-
+agent","env":"production","event":"agent.command_received","correlation_id":"task-rb","task_id":"task-rb","execution_id
+":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":3,"status":"RECEIVED","attempt":
+null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-rb","task_id":"task-rb","execution_id":null,"build_key":null,"did":"device-A","vendor":null
+,"model_code":"mock","operation":null,"status":"installing","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-rb","task_id":"task-rb","execution_id":null,"build_key":null,"did":"device-A","vendor":null
+,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+ok
+test_at19_first_install_rollback_safe_disable (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at19_first_insta
+ll_rollback_safe_disable)
+A-T19: 首装即失败回滚，无旧版时明确安全停用，不虚报假恢复 ... {"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"p
+roduction","event":"agent.command_received","correlation_id":"task-rb-first","task_id":"task-rb-first","execution_id":n
+ull,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":3,"status":"RECEIVED","attempt":nul
+l,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"task-rb-first","task_id":"task-rb-first","execution_id":null,"build_key":null,"did":"device-A","
+vendor":null,"model_code":"mock","operation":null,"status":"installing","attempt":null,"duration_ms":null,"error_code":
+null}
+{"timestamp":"2026-11-05T06:02:02Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"task-rb-first","task_id":"task-rb-first","execution_id":null,"build_key":null,"did":"device-A",
+"vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":"NO_P
+REVIOUS_VERSION"}
+ok
+test_at20_model_fallback_prevention (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at20_model_fallback_preven
+tion)
+A-T20: 平台产物解析器/适配器在存在目标机型构建时，拒绝向不兼容机型错发二进制产物 ... ok
+test_at21_package_security_checks (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at21_package_security_checks
+)
+A-T21: 拦截路径穿越 (Zip Slip)、解压炸弹与符号链接，保留旧版本完好 ... ok
+test_at22_forbidden_param_and_execution_guard (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at22_forbidden_p
+aram_and_execution_guard)
+A-T22: 拒绝外层篡改与越权参数注入，适配器绝不接收未签越权参数 ... {"timestamp":"2026-11-05T06:02:03Z","level":"INFO","service":"zhjj-agent","env":
+"production","event":"agent.command_received","correlation_id":"task-tamper-param","task_id":"task-tamper-param","execu
+tion_id":null,"build_key":null,"did":"device-A","vendor":null,"model_code":"mock","operation":7,"status":"RECEIVED","at
+tempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:03Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"task-tamper-param","task_id":"task-tamper-param","execution_id":null,"build_key":null,"did":"de
+vice-A","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_c
+ode":"SIG_INVALID"}
+ok
+test_at23_execution_fact_isolation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at23_execution_fact_isolati
+on)
+A-T23: OP_EXECUTE 产生执行事实，绝不篡改或新增 install_record ... ok
+test_at24_killswitch_rejection (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at24_killswitch_rejection)
+A-T24: 熔断生效时新任务被拒，恢复与对账通路仍放行 ... {"timestamp":"2026-11-05T06:02:03Z","level":"INFO","service":"zhjj-agent","env":"produ
+ction","event":"agent.command_received","correlation_id":"task-ks-1","task_id":"task-ks-1","execution_id":null,"build_k
+ey":null,"did":"device-A","vendor":null,"model_code":"mock","operation":1,"status":"RECEIVED","attempt":null,"duration_
+ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:03Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"task-ks-1","task_id":"task-ks-1","execution_id":null,"build_key":null,"did":"device-A","vendor"
+:null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"REVOKED"}
+ok
+test_at25_rfc8785_cross_language_vectors (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at25_rfc8785_cross_la
+nguage_vectors)
+A-T25: PHP 与 Python 规范化 JSON 字节完全一致（UTF-16 键排序、ECMAScript 数字格式、1e-6、1e20） ... ok
+test_at26_per_device_credential_revocation (test_acceptance_at01_at26.TestAcceptanceAT01toAT26.test_at26_per_device_cre
+dential_revocation)
+A-T26: 设备凭据吊销后，禁止通过省略 did 或共享密钥退路绕过鉴权 ... ok
+test_kill_then_restart_recovers (test_crash_restart.TestCrashRestart.test_kill_then_restart_recovers) ... ok
+test_canonical_v2_prefix (test_crypto.TestCrypto.test_canonical_v2_prefix) ... ok
+test_jcs_canonicalize_order (test_crypto.TestCrypto.test_jcs_canonicalize_order) ... ok
+test_jcs_types (test_crypto.TestCrypto.test_jcs_types) ... ok
+test_rsa_signature_and_verify (test_crypto.TestCrypto.test_rsa_signature_and_verify) ... ok
+test_compiled_portable_skill_execution_on_unitree_g1 (test_e2e_simulator.TestE2ESimulator.test_compiled_portable_skill_
+execution_on_unitree_g1)
+测试编译器产出的标准技能包在 Unitree G1 适配器上的端到端部署与执行 ... {"timestamp":"2026-11-05T06:02:04Z","level":"INFO","service":"zhjj-agent","
+env":"production","event":"agent.command_received","correlation_id":"T_G1_INSTALL_001","task_id":"T_G1_INSTALL_001","ex
+ecution_id":null,"build_key":null,"did":"did_simulated_g1_001","vendor":null,"model_code":"unitree_g1","operation":1,"s
+tatus":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:04Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_G1_INSTALL_001","task_id":"T_G1_INSTALL_001","execution_id":null,"build_key":null,"did":"did_s
+imulated_g1_001","vendor":null,"model_code":"unitree_g1","operation":null,"status":"downloading","attempt":null,"durati
+on_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:04Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_G1_INSTALL_001","task_id":"T_G1_INSTALL_001","execution_id":null,"build_key":null,"did":"did_s
+imulated_g1_001","vendor":null,"model_code":"unitree_g1","operation":null,"status":"installing","attempt":null,"duratio
+n_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:04Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_G1_INSTALL_001","task_id":"T_G1_INSTALL_001","execution_id":null,"build_key":null,"did":"did_s
+imulated_g1_001","vendor":null,"model_code":"unitree_g1","operation":null,"status":"done","attempt":null,"duration_ms":
+null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:04Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"T_G1_EXEC_001","task_id":"T_G1_EXEC_001","execution_id":null,"build_key":null,"did":"did_simul
+ated_g1_001","vendor":null,"model_code":"unitree_g1","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":nul
+l,"error_code":null}
+{"timestamp":"2026-11-05T06:02:04Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_G1_EXEC_001","task_id":"T_G1_EXEC_001","execution_id":"exec_g1_session_101","build_key":null,"
+did":"did_simulated_g1_001","vendor":null,"model_code":"unitree_g1","operation":null,"status":"accepted","attempt":null
+,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:04Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_G1_EXEC_001","task_id":"T_G1_EXEC_001","execution_id":"exec_g1_session_101","build_key":null,"
+did":"did_simulated_g1_001","vendor":null,"model_code":"unitree_g1","operation":null,"status":"running","attempt":null,
+"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:05Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_G1_EXEC_001","task_id":"T_G1_EXEC_001","execution_id":"exec_g1_session_101","build_key":null,"
+did":"did_simulated_g1_001","vendor":null,"model_code":"unitree_g1","operation":null,"status":"done","attempt":null,"du
+ration_ms":null,"error_code":null}
+ok
+test_full_agent_lifecycle_end_to_end (test_e2e_simulator.TestE2ESimulator.test_full_agent_lifecycle_end_to_end) ... {"t
+imestamp":"2026-11-05T06:02:05Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_receiv
+ed","correlation_id":"T_E2E_INSTALL_001","task_id":"T_E2E_INSTALL_001","execution_id":null,"build_key":null,"did":"did_
+simulated_g1_001","vendor":null,"model_code":"mock","operation":1,"status":"RECEIVED","attempt":null,"duration_ms":null
+,"error_code":null}
+{"timestamp":"2026-11-05T06:02:05Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_E2E_INSTALL_001","task_id":"T_E2E_INSTALL_001","execution_id":null,"build_key":null,"did":"did
+_simulated_g1_001","vendor":null,"model_code":"mock","operation":null,"status":"downloading","attempt":null,"duration_m
+s":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:05Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_E2E_INSTALL_001","task_id":"T_E2E_INSTALL_001","execution_id":null,"build_key":null,"did":"did
+_simulated_g1_001","vendor":null,"model_code":"mock","operation":null,"status":"installing","attempt":null,"duration_ms
+":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:05Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_E2E_INSTALL_001","task_id":"T_E2E_INSTALL_001","execution_id":null,"build_key":null,"did":"did
+_simulated_g1_001","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null
+,"error_code":null}
+{"timestamp":"2026-11-05T06:02:05Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"T_E2E_EXEC_001","task_id":"T_E2E_EXEC_001","execution_id":null,"build_key":null,"did":"did_sim
+ulated_g1_001","vendor":null,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":null,"e
+rror_code":null}
+{"timestamp":"2026-11-05T06:02:05Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_E2E_EXEC_001","task_id":"T_E2E_EXEC_001","execution_id":"exec_e2e_session_99","build_key":null
+,"did":"did_simulated_g1_001","vendor":null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"du
+ration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:06Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_E2E_EXEC_001","task_id":"T_E2E_EXEC_001","execution_id":"exec_e2e_session_99","build_key":null
+,"did":"did_simulated_g1_001","vendor":null,"model_code":"mock","operation":null,"status":"running","attempt":null,"dur
+ation_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:06Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_E2E_EXEC_001","task_id":"T_E2E_EXEC_001","execution_id":"exec_e2e_session_99","build_key":null
+,"did":"did_simulated_g1_001","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"durati
+on_ms":null,"error_code":null}
+ok
+test_disabled_skill_cannot_execute (test_executor.TestExecutor.test_disabled_skill_cannot_execute) ... ok
+test_execute_and_observe_succeeded (test_executor.TestExecutor.test_execute_and_observe_succeeded) ... ok
+test_resource_mutex_conflict_blocked (test_executor.TestExecutor.test_resource_mutex_conflict_blocked) ... ok
+test_safe_cancel_execution (test_executor.TestExecutor.test_safe_cancel_execution) ... ok
+test_client_builds_verifiable_envelope (test_fact_envelope_v3.TestFactEnvelopeV3.test_client_builds_verifiable_envelope
+) ... ok
+test_cross_language_canonical_and_key_id (test_fact_envelope_v3.TestFactEnvelopeV3.test_cross_language_canonical_and_ke
+y_id) ... ok
+test_emit_event_persists_signed_envelope_in_outbox (test_fact_envelope_v3.TestFactEnvelopeV3.test_emit_event_persists_s
+igned_envelope_in_outbox) ... {"timestamp":"2026-11-05T06:02:07Z","level":"INFO","service":"zhjj-agent","env":"producti
+on","event":"agent.execution_fact","correlation_id":"T_OUTBOX","task_id":"T_OUTBOX","execution_id":"exec_outbox","build
+_key":null,"did":"did_v3_outbox","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"dur
+ation_ms":null,"error_code":null}
+ok
+test_no_private_key_means_no_envelope (test_fact_envelope_v3.TestFactEnvelopeV3.test_no_private_key_means_no_envelope) 
+... ok
+test_cancel_requires_observed_stop (test_five_model_adapters.TestFiveModelAdapters.test_cancel_requires_observed_stop) 
+... ok
+test_cross_model_manifest_is_rejected (test_five_model_adapters.TestFiveModelAdapters.test_cross_model_manifest_is_reje
+cted) ... ok
+test_four_adapters_install_observe_and_execute_separately (test_five_model_adapters.TestFiveModelAdapters.test_four_ada
+pters_install_observe_and_execute_separately) ... ok
+test_g1_print_only_action_is_not_success (test_five_model_adapters.TestFiveModelAdapters.test_g1_print_only_action_is_n
+ot_success) ... ok
+test_g1_script_success_is_not_stop_evidence (test_five_model_adapters.TestFiveModelAdapters.test_g1_script_success_is_n
+ot_stop_evidence) ... ok
+test_g1_uninstall_refuses_without_observed_stop (test_five_model_adapters.TestFiveModelAdapters.test_g1_uninstall_refus
+es_without_observed_stop) ... ok
+test_nonce_replay_is_scoped_across_tasks (test_five_model_adapters.TestFiveModelAdapters.test_nonce_replay_is_scoped_ac
+ross_tasks) ... ok
+test_registry_returns_independent_adapters_and_rejects_a2 (test_five_model_adapters.TestFiveModelAdapters.test_registry
+_returns_independent_adapters_and_rejects_a2) ... ok
+test_success_without_stop_evidence_is_unknown (test_five_model_adapters.TestFiveModelAdapters.test_success_without_stop
+_evidence_is_unknown) ... ok
+test_uninstall_refuses_without_observed_stop (test_five_model_adapters.TestFiveModelAdapters.test_uninstall_refuses_wit
+hout_observed_stop) ... ok
+test_live_01_heartbeat (test_live_http_integration.TestLiveHttpIntegration.test_live_01_heartbeat)
+测试 1: 真实 HTTP POST /api/agent/heartbeat 心跳刷新 ... ok
+test_live_02_fetch_and_ack_command (test_live_http_integration.TestLiveHttpIntegration.test_live_02_fetch_and_ack_comma
+nd)
+测试 2: 真实 HTTP GET /api/agent/commands 拉取指令 -> POST /api/agent/ack 双向 ACK ... ok
+test_live_03_send_event (test_live_http_integration.TestLiveHttpIntegration.test_live_03_send_event)
+测试 3: 真实 HTTP POST /api/agent/evt 上报任务进度事件 ... ok
+test_live_04_reconciliation (test_live_http_integration.TestLiveHttpIntegration.test_live_04_reconciliation)
+测试 4: 真实 HTTP POST /api/agent/reconcile 双向事实对账 ... ok
+test_ack_clears_pending_and_is_idempotent (test_metrics.TestMetricBatches.test_ack_clears_pending_and_is_idempotent) ..
+. ok
+test_batch_is_reused_until_acked (test_metrics.TestMetricBatches.test_batch_is_reused_until_acked) ... ok
+test_drop_batch_discards_without_acking (test_metrics.TestMetricBatches.test_drop_batch_discards_without_acking) ... ok
+test_increments_after_ack_form_a_new_batch (test_metrics.TestMetricBatches.test_increments_after_ack_form_a_new_batch) 
+... ok
+test_cumulative_and_pending (test_metrics.TestMetricRegistry.test_cumulative_and_pending) ... ok
+test_increment_must_be_positive (test_metrics.TestMetricRegistry.test_increment_must_be_positive) ... ok
+test_key_set_is_closed_at_nine (test_metrics.TestMetricRegistry.test_key_set_is_closed_at_nine) ... ok
+test_platform_key_cannot_be_incremented_by_agent (test_metrics.TestMetricRegistry.test_platform_key_cannot_be_increment
+ed_by_agent) ... ok
+test_unknown_key_is_rejected (test_metrics.TestMetricRegistry.test_unknown_key_is_rejected) ... ok
+test_lease_conflict_is_counted (test_metrics.TestStartupSelfHealing.test_lease_conflict_is_counted) ... ok
+test_mark_agent_start_counts_restart (test_metrics.TestStartupSelfHealing.test_mark_agent_start_counts_restart) ... ok
+test_outbox_flush_failure_is_counted (test_metrics.TestStartupSelfHealing.test_outbox_flush_failure_is_counted) ... {"t
+imestamp":"2026-11-05T06:02:33Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_fac
+t","correlation_id":"task_flush","task_id":"task_flush","execution_id":null,"build_key":null,"did":"did_a3_bot","vendor
+":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"E_TEST"}
+ok
+test_signature_rejection_is_counted_at_the_single_choke_point (test_metrics.TestStartupSelfHealing.test_signature_rejec
+tion_is_counted_at_the_single_choke_point) ... {"timestamp":"2026-11-05T06:02:33Z","level":"ERROR","service":"zhjj-agen
+t","env":"production","event":"agent.execution_fact","correlation_id":"task_x","task_id":"task_x","execution_id":null,"
+build_key":null,"did":"did_a3_bot","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,
+"duration_ms":null,"error_code":"SIG_INVALID"}
+ok
+test_startup_sweeps_and_counts_staging_orphans (test_metrics.TestStartupSelfHealing.test_startup_sweeps_and_counts_stag
+ing_orphans) ... ok
+test_staging_install_success_and_failure_isolation (test_package_manager.TestPackageManager.test_staging_install_succes
+s_and_failure_isolation) ... ok
+test_valid_unpack_and_manifest (test_package_manager.TestPackageManager.test_valid_unpack_and_manifest) ... ok
+test_zip_bomb_file_count_rejected (test_package_manager.TestPackageManager.test_zip_bomb_file_count_rejected) ... ok
+test_zip_slip_attack_rejected (test_package_manager.TestPackageManager.test_zip_slip_attack_rejected) ... ok
+test_zip_symlink_rejected (test_package_manager.TestPackageManager.test_zip_symlink_rejected) ... ok
+test_bad_quality_is_rejected (test_stop_observation_time.TestStopObservationTime.test_bad_quality_is_rejected) ... ok
+test_forbidden_source_type_is_rejected (test_stop_observation_time.TestStopObservationTime.test_forbidden_source_type_i
+s_rejected) ... ok
+test_missing_observation_downgrades_terminal_to_unknown (test_stop_observation_time.TestStopObservationTime.test_missin
+g_observation_downgrades_terminal_to_unknown) ... ok
+test_stopped_at_comes_from_observation_not_now (test_stop_observation_time.TestStopObservationTime.test_stopped_at_come
+s_from_observation_not_now) ... ok
+test_storage_installed_skills_and_json_sync (test_storage.TestStorage.test_storage_installed_skills_and_json_sync) ... 
+ok
+test_storage_journal_and_idempotency (test_storage.TestStorage.test_storage_journal_and_idempotency) ... ok
+test_storage_outbox_and_leases (test_storage.TestStorage.test_storage_outbox_and_leases) ... ok
+test_distinct_execution_ids_not_deduped (test_task_manager.TestTaskManager.test_distinct_execution_ids_not_deduped) ...
+ {"timestamp":"2026-11-05T06:02:35Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_re
+ceived","correlation_id":"T_EXEC_A","task_id":"T_EXEC_A","execution_id":null,"build_key":null,"did":"did_robot_101","ve
+ndor":null,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:35Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_A","task_id":"T_EXEC_A","execution_id":"exec_unique_A","build_key":null,"did":"did_robot_
+101","vendor":null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"duration_ms":null,"error_co
+de":null}
+{"timestamp":"2026-11-05T06:02:35Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_A","task_id":"T_EXEC_A","execution_id":"exec_unique_A","build_key":null,"did":"did_robot_
+101","vendor":null,"model_code":"mock","operation":null,"status":"running","attempt":null,"duration_ms":null,"error_cod
+e":null}
+{"timestamp":"2026-11-05T06:02:35Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_A","task_id":"T_EXEC_A","execution_id":"exec_unique_A","build_key":null,"did":"did_robot_
+101","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":
+null}
+{"timestamp":"2026-11-05T06:02:35Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"T_EXEC_B","task_id":"T_EXEC_B","execution_id":null,"build_key":null,"did":"did_robot_101","ven
+dor":null,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:35Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_B","task_id":"T_EXEC_B","execution_id":"exec_unique_B","build_key":null,"did":"did_robot_
+101","vendor":null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"duration_ms":null,"error_co
+de":null}
+{"timestamp":"2026-11-05T06:02:36Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_B","task_id":"T_EXEC_B","execution_id":"exec_unique_B","build_key":null,"did":"did_robot_
+101","vendor":null,"model_code":"mock","operation":null,"status":"running","attempt":null,"duration_ms":null,"error_cod
+e":null}
+{"timestamp":"2026-11-05T06:02:36Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_B","task_id":"T_EXEC_B","execution_id":"exec_unique_B","build_key":null,"did":"did_robot_
+101","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":
+null}
+ok
+test_execution_fact_contains_independent_stop_evidence (test_task_manager.TestTaskManager.test_execution_fact_contains_
+independent_stop_evidence) ... {"timestamp":"2026-11-05T06:02:36Z","level":"INFO","service":"zhjj-agent","env":"product
+ion","event":"agent.execution_fact","correlation_id":"T_EXEC_EVIDENCE","task_id":"T_EXEC_EVIDENCE","execution_id":"exec
+_evidence_1","build_key":null,"did":"did_robot_101","vendor":null,"model_code":"mock","operation":null,"status":"done",
+"attempt":null,"duration_ms":null,"error_code":null}
+ok
+test_first_install_rollback_safely_disables (test_task_manager.TestTaskManager.test_first_install_rollback_safely_disab
+les) ... {"timestamp":"2026-11-05T06:02:36Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.co
+mmand_received","correlation_id":"T_ROLLBACK_01","task_id":"T_ROLLBACK_01","execution_id":null,"build_key":null,"did":"
+did_robot_101","vendor":null,"model_code":"mock","operation":3,"status":"RECEIVED","attempt":null,"duration_ms":null,"e
+rror_code":null}
+{"timestamp":"2026-11-05T06:02:36Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_ROLLBACK_01","task_id":"T_ROLLBACK_01","execution_id":null,"build_key":null,"did":"did_robot_1
+01","vendor":null,"model_code":"mock","operation":null,"status":"installing","attempt":null,"duration_ms":null,"error_c
+ode":null}
+{"timestamp":"2026-11-05T06:02:36Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"T_ROLLBACK_01","task_id":"T_ROLLBACK_01","execution_id":null,"build_key":null,"did":"did_robot_
+101","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":
+"NO_PREVIOUS_VERSION"}
+ok
+test_interrupted_install_recovery_on_startup (test_task_manager.TestTaskManager.test_interrupted_install_recovery_on_st
+artup) ... {"timestamp":"2026-11-05T06:02:36Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent
+.execution_fact","correlation_id":"T_CRASH_01","task_id":"T_CRASH_01","execution_id":null,"build_key":null,"did":"did_r
+obot_101","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error
+_code":"RECOVERY_INCOMPLETE"}
+ok
+test_op_execute_and_cancel_lifecycle (test_task_manager.TestTaskManager.test_op_execute_and_cancel_lifecycle) ... {"tim
+estamp":"2026-11-05T06:02:37Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_received
+","correlation_id":"T_EXEC_001","task_id":"T_EXEC_001","execution_id":null,"build_key":null,"did":"did_robot_101","vend
+or":null,"model_code":"mock","operation":7,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:37Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_001","task_id":"T_EXEC_001","execution_id":"exec_round_1","build_key":null,"did":"did_rob
+ot_101","vendor":null,"model_code":"mock","operation":null,"status":"accepted","attempt":null,"duration_ms":null,"error
+_code":null}
+{"timestamp":"2026-11-05T06:02:37Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_001","task_id":"T_EXEC_001","execution_id":"exec_round_1","build_key":null,"did":"did_rob
+ot_101","vendor":null,"model_code":"mock","operation":null,"status":"running","attempt":null,"duration_ms":null,"error_
+code":null}
+{"timestamp":"2026-11-05T06:02:37Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_EXEC_001","task_id":"T_EXEC_001","execution_id":"exec_round_1","build_key":null,"did":"did_rob
+ot_101","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_cod
+e":null}
+{"timestamp":"2026-11-05T06:02:37Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"T_CANCEL_001","task_id":"T_CANCEL_001","execution_id":null,"build_key":null,"did":"did_robot_1
+01","vendor":null,"model_code":"mock","operation":8,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":
+null}
+{"timestamp":"2026-11-05T06:02:37Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_CANCEL_001","task_id":"T_CANCEL_001","execution_id":"exec_round_1","build_key":null,"did":"did
+_robot_101","vendor":null,"model_code":"mock","operation":null,"status":"cancel_requested","attempt":null,"duration_ms"
+:null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:37Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_CANCEL_001","task_id":"T_CANCEL_001","execution_id":"exec_round_1","build_key":null,"did":"did
+_robot_101","vendor":null,"model_code":"mock","operation":null,"status":"canceled","attempt":null,"duration_ms":null,"e
+rror_code":null}
+ok
+test_outbox_offline_retry_and_flush (test_task_manager.TestTaskManager.test_outbox_offline_retry_and_flush) ... {"times
+tamp":"2026-11-05T06:02:38Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_fact","c
+orrelation_id":"T_OFFLINE_01","task_id":"T_OFFLINE_01","execution_id":null,"build_key":null,"did":"did_robot_101","vend
+or":null,"model_code":"mock","operation":null,"status":"downloading","attempt":null,"duration_ms":null,"error_code":nul
+l}
+{"timestamp":"2026-11-05T06:02:38Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_OFFLINE_01","task_id":"T_OFFLINE_01","execution_id":null,"build_key":null,"did":"did_robot_101
+","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":nul
+l}
+ok
+test_replay_duplicate_task_idempotency (test_task_manager.TestTaskManager.test_replay_duplicate_task_idempotency) ... {
+"timestamp":"2026-11-05T06:02:38Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rece
+ived","correlation_id":"T_REPLAY_01","task_id":"T_REPLAY_01","execution_id":null,"build_key":null,"did":"did_robot_101"
+,"vendor":null,"model_code":"mock","operation":4,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":nul
+l}
+{"timestamp":"2026-11-05T06:02:38Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_REPLAY_01","task_id":"T_REPLAY_01","execution_id":null,"build_key":null,"did":"did_robot_101",
+"vendor":null,"model_code":"mock","operation":null,"status":"installing","attempt":null,"duration_ms":null,"error_code"
+:null}
+{"timestamp":"2026-11-05T06:02:38Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_REPLAY_01","task_id":"T_REPLAY_01","execution_id":null,"build_key":null,"did":"did_robot_101",
+"vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:38Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"T_REPLAY_01","task_id":"T_REPLAY_01","execution_id":null,"build_key":null,"did":"did_robot_101
+","vendor":null,"model_code":"mock","operation":4,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":nu
+ll}
+{"timestamp":"2026-11-05T06:02:38Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.execution_f
+act","correlation_id":"T_REPLAY_01","task_id":"T_REPLAY_01","execution_id":null,"build_key":null,"did":"did_robot_101",
+"vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,"error_code":null}
+ok
+test_task_expired_rejected_before_side_effects (test_task_manager.TestTaskManager.test_task_expired_rejected_before_sid
+e_effects) ... {"timestamp":"2026-11-05T06:02:39Z","level":"INFO","service":"zhjj-agent","env":"production","event":"ag
+ent.command_received","correlation_id":"T_EXPIRED_01","task_id":"T_EXPIRED_01","execution_id":null,"build_key":null,"di
+d":"did_robot_101","vendor":null,"model_code":"mock","operation":1,"status":"RECEIVED","attempt":null,"duration_ms":nul
+l,"error_code":null}
+{"timestamp":"2026-11-05T06:02:39Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"T_EXPIRED_01","task_id":"T_EXPIRED_01","execution_id":null,"build_key":null,"did":"did_robot_10
+1","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":
+"TASK_EXPIRED"}
+ok
+test_v2_signature_tamper_all_fields_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_all_fields_rej
+ected) ... {"timestamp":"2026-11-05T06:02:44Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.
+command_received","correlation_id":"T_TAMPER_FIELDS","task_id":"T_TAMPER_FIELDS","execution_id":null,"build_key":null,"
+did":"did_robot_101","vendor":null,"model_code":"mock","operation":1,"status":"RECEIVED","attempt":null,"duration_ms":n
+ull,"error_code":null}
+{"timestamp":"2026-11-05T06:02:44Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"T_TAMPER_FIELDS","task_id":"T_TAMPER_FIELDS","execution_id":null,"build_key":null,"did":"did_ro
+bot_101","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_
+code":"SIG_INVALID"}
+{"timestamp":"2026-11-05T06:02:44Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"T_TAMPER_FIELDS","task_id":"T_TAMPER_FIELDS","execution_id":null,"build_key":null,"did":"did_r
+obot_101","vendor":null,"model_code":"mock","operation":1,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_
+code":null}
+{"timestamp":"2026-11-05T06:02:44Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"T_TAMPER_FIELDS","task_id":"T_TAMPER_FIELDS","execution_id":null,"build_key":null,"did":"did_ro
+bot_101","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_
+code":"SIG_INVALID"}
+{"timestamp":"2026-11-05T06:02:44Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_rec
+eived","correlation_id":"T_TAMPER_FIELDS","task_id":"T_TAMPER_FIELDS","execution_id":null,"build_key":null,"did":"did_r
+obot_101","vendor":null,"model_code":"mock","operation":1,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_
+code":null}
+{"timestamp":"2026-11-05T06:02:45Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"T_TAMPER_FIELDS","task_id":"T_TAMPER_FIELDS","execution_id":null,"build_key":null,"did":"did_ro
+bot_101","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_
+code":"SIG_INVALID"}
+ok
+test_v2_signature_tamper_rejected (test_task_manager.TestTaskManager.test_v2_signature_tamper_rejected) ... {"timestamp
+":"2026-11-05T06:02:45Z","level":"INFO","service":"zhjj-agent","env":"production","event":"agent.command_received","cor
+relation_id":"T_TAMPER_01","task_id":"T_TAMPER_01","execution_id":null,"build_key":null,"did":"did_robot_101","vendor":
+null,"model_code":"mock","operation":2,"status":"RECEIVED","attempt":null,"duration_ms":null,"error_code":null}
+{"timestamp":"2026-11-05T06:02:46Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_
+fact","correlation_id":"T_TAMPER_01","task_id":"T_TAMPER_01","execution_id":null,"build_key":null,"did":"did_robot_101"
+,"vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"S
+IG_INVALID"}
+ok
+
+----------------------------------------------------------------------
+Ran 91 tests in 55.892s
+
+OK
+pretend success

@@ -1,0 +1,41 @@
+{
+    "db": "summon_mecha_step10_test",
+    "probe": "A7 key lifecycle",
+    "capabilities": {
+        "kms": false,
+        "hsm": false,
+        "rotation": true,
+        "revocation": true,
+        "epochs": true,
+        "offline_recovery": true
+    },
+    "epochs": {
+        "after_issue": 1,
+        "after_rotate_1": 2,
+        "after_rotate_2": 3,
+        "current": 3
+    },
+    "keys": {
+        "k1": {
+            "key_id_prefix": "1895880ab1fb",
+            "status": "retired",
+            "epoch": 1,
+            "usable_under_policy": false
+        },
+        "k2": {
+            "key_id_prefix": "b31d31f5c499",
+            "status": "retired",
+            "epoch": 2,
+            "usable_under_policy": true
+        },
+        "k3": {
+            "key_id_prefix": "7dffb44cf59b",
+            "status": "revoked (probe)"
+        }
+    },
+    "min_accepted_epoch": 2,
+    "active_key_before_revoke_prefix": "7dffb44cf59b",
+    "active_key_after_revoke": null,
+    "revoke_ok": true,
+    "certificate_pem_present": true
+}

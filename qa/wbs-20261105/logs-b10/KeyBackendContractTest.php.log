@@ -1,0 +1,11 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KeyBackendContractTest
+  ✓ it C2-K-01 本地签名后端与 SigningService 逐字节等价                                                                      1.76s  
+  ✓ it C2-K-02 CA 后端签发的证书可链到平台 CA，且 CSR 私钥签名可被证书验证                                                               1.42s  
+  ✓ it C2-K-03 capabilities 如实声明 local，不冒充 KMS/HSM                                                               0.17s  
+  ✓ it C2-K-04 未知后端直接抛异常，不静默回落本地                                                                                 0.23s  
+  ✓ it C2-K-05 KeyBackendManager 默认 local，且契约实例可注入                                                               0.19s  
+
+  Tests:    5 passed (19 assertions)
+  Duration: 4.17s
+

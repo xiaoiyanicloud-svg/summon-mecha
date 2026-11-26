@@ -1,0 +1,13 @@
+﻿# six php -S probe · 2026-11-05 18:50:04 · DB=summon_mecha_step10_test
+port=8811 ready=True pid=5940
+port=8812 ready=True pid=11324
+port=8813 ready=True pid=25308
+port=8814 ready=True pid=15480
+port=8815 ready=True pid=26260
+port=8816 ready=True pid=752
+port=8811 alive_after_kill=False
+port=8812 alive_after_kill=False
+port=8813 alive_after_kill=False
+port=8814 alive_after_kill=False
+port=8815 alive_after_kill=False
+port=8816 alive_after_kill=False

@@ -1,0 +1,57 @@
+﻿
+  ..⨯.⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest > it should store the newly create…   
+  Expected: {"message":"\u7ad9\u70b9\u5730\u56fe\u521b\u5efa\u6210\u529f"}
+
+  To contain: 站点地图创建成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest.php:39
+     35▕         'file_name' => $fileName = strtolower(fake()->word()).'.xml',
+     36▕         'path'      => $filePath = '/',
+     37▕     ])
+     38▕         ->assertOk()
+  ➜  39▕         ->assertSeeText(trans('admin::app.marketing.search-seo.sitemaps.index.create.success'));
+     40▕ 
+     41▕     $this->assertModelWise([
+     42▕         Sitemap::class => [
+     43▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest > it should update the sitemap        
+  Expected: {"message":"\u7ad9\u70b9\u5730\u56fe\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 站点地图更新成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest.php:77
+     73▕         'file_name' => $fileName = strtolower(fake()->word()).'.xml',
+     74▕         'path'      => $sitemap->path,
+     75▕     ])
+     76▕         ->assertOk()
+  ➜  77▕         ->assertSeeText(trans('admin::app.marketing.search-seo.sitemaps.index.edit.success'));
+     78▕ 
+     79▕     $this->assertModelWise([
+     80▕         Sitemap::class => [
+     81▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest > it should delete the sitemap        
+  Expected: {"message":"\u7ad9\u70b9\u5730\u56fe\u5220\u9664\u6210\u529f"}
+
+  To contain: 站点地图删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\SitemapTest.php:99
+     95▕     $this->loginAsAdmin();
+     96▕ 
+     97▕     deleteJson(route('admin.marketing.search_seo.sitemaps.delete', $sitemap->id))
+     98▕         ->assertOk()
+  ➜  99▕         ->assertSeeText(trans('admin::app.marketing.search-seo.sitemaps.index.edit.delete-success'));
+    100▕ 
+    101▕     $this->assertDatabaseMissing('sitemaps', [
+    102▕         'id' => $sitemap->id,
+    103▕     ]);
+
+
+  Tests:    3 failed, 3 passed (15 assertions)
+  Duration: 4.83s
+

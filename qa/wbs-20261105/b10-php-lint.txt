@@ -1,0 +1,10 @@
+﻿# b10 php -l · 2026-11-05 19:04:19
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/ToolchainFingerprint.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeployMetricCounter.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeviceCredentialService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillAudit/SkillPublisher.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/ToolchainFingerprintTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/DeployMetricHttpConcurrencyTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/SkillPublishHttpConcurrencyTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/DeviceCredentialConcurrencyTest.php
+LINT_FAILURES=0

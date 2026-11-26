@@ -1,0 +1,151 @@
+{
+    "profile_schema": "zhaohuan.support-matrix/v1",
+    "generated_at": "2026-11-04T23:42:19+08:00",
+    "default_enabled": false,
+    "models": [
+        {
+            "vendor": "unitree",
+            "model_code": "unitree_g1",
+            "model_name": "Unitree G1 EDU",
+            "sdk_name": "unitree_sdk2py",
+            "sdk_version_range": ">=1.1.0 <3.0.0",
+            "firmware_range": "vendor-confirmation-required; captured per device at enrollment",
+            "compatibility_level": "L2",
+            "feature_enabled": false,
+            "capability_actions": [
+                "SM_GestureWave",
+                "SM_AudioPlay",
+                "SM_Wait"
+            ],
+            "artifact_abi": "zhaohuan.skill-target/v1;python-3.12;linux-aarch64",
+            "profile_digest": "sha256:81f8156ba3d123a52f069c14d0657f5d1d764a84ae567f5cae23e9aa6bacebae",
+            "software_complete": "PASS",
+            "sdk_integrated": "PARTIAL",
+            "sil": "NOT_RUN",
+            "hil": "HARDWARE_UNVERIFIED",
+            "hardware_verification_status": "HARDWARE_UNVERIFIED",
+            "production_ready": "BLOCKED",
+            "blocked_reasons": [
+                "COMPATIBILITY_NOT_L1",
+                "HIL_HARDWARE_UNVERIFIED",
+                "SIL_NOT_PASSED"
+            ]
+        },
+        {
+            "vendor": "unitree",
+            "model_code": "unitree_r1",
+            "model_name": "Unitree R1",
+            "sdk_name": "unitree_sdk2py",
+            "sdk_version_range": ">=1.1.0 <3.0.0",
+            "firmware_range": "vendor-confirmation-required; captured per device at enrollment",
+            "compatibility_level": "L2",
+            "feature_enabled": false,
+            "capability_actions": [
+                "SM_GestureWave",
+                "SM_AudioPlay",
+                "SM_Wait"
+            ],
+            "artifact_abi": "zhaohuan.skill-target/v1;python-3.12;linux-aarch64",
+            "profile_digest": "sha256:5c837ea54f514d0bf1ea8ed045aacb01ad313a6449807a225e0ae1c29e9ba88b",
+            "software_complete": "PARTIAL",
+            "sdk_integrated": "PARTIAL",
+            "sil": "NOT_RUN",
+            "hil": "HARDWARE_UNVERIFIED",
+            "hardware_verification_status": "HARDWARE_UNVERIFIED",
+            "production_ready": "BLOCKED",
+            "blocked_reasons": [
+                "COMPATIBILITY_NOT_L1",
+                "HIL_HARDWARE_UNVERIFIED",
+                "VENDOR_LIMITS_UNRESOLVED",
+                "SIL_NOT_PASSED"
+            ]
+        },
+        {
+            "vendor": "agibot",
+            "model_code": "agibot_x2",
+            "model_name": "Agibot Lingxi X2",
+            "sdk_name": "aimdk",
+            "sdk_version_range": "vendor-confirmation-required",
+            "firmware_range": "vendor-confirmation-required; captured per device at enrollment",
+            "compatibility_level": "L2",
+            "feature_enabled": false,
+            "capability_actions": [
+                "SM_GestureWave",
+                "SM_AudioPlay",
+                "SM_Wait"
+            ],
+            "artifact_abi": "zhaohuan.skill-target/v1;python-3.12;linux-aarch64",
+            "profile_digest": "sha256:3392b9a2f5d809eb70f4f3c156cd439ae269b44ee41e52689545944acfb65a0a",
+            "software_complete": "PARTIAL",
+            "sdk_integrated": "PARTIAL",
+            "sil": "NOT_RUN",
+            "hil": "HARDWARE_UNVERIFIED",
+            "hardware_verification_status": "HARDWARE_UNVERIFIED",
+            "production_ready": "BLOCKED",
+            "blocked_reasons": [
+                "COMPATIBILITY_NOT_L1",
+                "HIL_HARDWARE_UNVERIFIED",
+                "VENDOR_LIMITS_UNRESOLVED",
+                "SIL_NOT_PASSED"
+            ]
+        },
+        {
+            "vendor": "agibot",
+            "model_code": "agibot_a3",
+            "model_name": "Agibot Expedition A3",
+            "sdk_name": "aimdk",
+            "sdk_version_range": "vendor-confirmation-required",
+            "firmware_range": "vendor-confirmation-required; captured per device at enrollment",
+            "compatibility_level": "L2",
+            "feature_enabled": false,
+            "capability_actions": [
+                "SM_GestureWave",
+                "SM_AudioPlay",
+                "SM_Wait"
+            ],
+            "artifact_abi": "zhaohuan.skill-target/v1;python-3.12;linux-aarch64",
+            "profile_digest": "sha256:4de998c4063c0d8c760862f09aa5a7e577dff8dc489fe82647bd2219075f1f72",
+            "software_complete": "PARTIAL",
+            "sdk_integrated": "PARTIAL",
+            "sil": "NOT_RUN",
+            "hil": "HARDWARE_UNVERIFIED",
+            "hardware_verification_status": "HARDWARE_UNVERIFIED",
+            "production_ready": "BLOCKED",
+            "blocked_reasons": [
+                "COMPATIBILITY_NOT_L1",
+                "HIL_HARDWARE_UNVERIFIED",
+                "VENDOR_LIMITS_UNRESOLVED",
+                "SIL_NOT_PASSED"
+            ]
+        },
+        {
+            "vendor": "engineai",
+            "model_code": "engineai_t800",
+            "model_name": "EngineAI T800",
+            "sdk_name": "engineai_native_sdk",
+            "sdk_version_range": "vendor-confirmation-required",
+            "firmware_range": "vendor-confirmation-required; captured per device at enrollment",
+            "compatibility_level": "L2",
+            "feature_enabled": false,
+            "capability_actions": [
+                "SM_GestureWave",
+                "SM_AudioPlay",
+                "SM_Wait"
+            ],
+            "artifact_abi": "zhaohuan.skill-target/v1;python-3.12;linux-aarch64",
+            "profile_digest": "sha256:011bc1cc6d3ddf38484e2b378b5a42751c3b7f65709588f61a9dacb505a0ab70",
+            "software_complete": "PARTIAL",
+            "sdk_integrated": "PARTIAL",
+            "sil": "NOT_RUN",
+            "hil": "HARDWARE_UNVERIFIED",
+            "hardware_verification_status": "HARDWARE_UNVERIFIED",
+            "production_ready": "BLOCKED",
+            "blocked_reasons": [
+                "COMPATIBILITY_NOT_L1",
+                "HIL_HARDWARE_UNVERIFIED",
+                "VENDOR_LIMITS_UNRESOLVED",
+                "SIL_NOT_PASSED"
+            ]
+        }
+    ]
+}

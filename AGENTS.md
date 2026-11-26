@@ -7,6 +7,13 @@
 3. [docs/ai-project-brief.md](docs/ai-project-brief.md) —— 项目理解手册。
 4. 当前任务相关批次证据：`docs/skill-dev-step10-agent-delivery.md`、`docs/ecosystem/*-evidence.md`、`*-implementation-plan.md`。
 
+## 当前冻结决策（2026-11-06）
+
+- **通用运动编译器、跨品牌动作重定向、轨迹生成、物理验证与五机型 HIL 已冻结。**
+- 冻结不等于删除：相关代码保留为实验性技术储备，默认关闭，不计入当前 MVP 完成度。
+- 当前主线转向真实技能需求、技能包可信交付、L2 开发者自测、厂商原生静态回播和单机型闭环。
+- 冻结范围、保留范围与解冻条件见 [ADR-0002](docs/adr/ADR-0002-freeze-universal-motion-compiler.md)。
+
 ## 当前状态（2026-11-04）
 
 - **工业级机器人技能物理在环、非线性电机动力学与硬件安全联锁（HIL）闭环深化**：

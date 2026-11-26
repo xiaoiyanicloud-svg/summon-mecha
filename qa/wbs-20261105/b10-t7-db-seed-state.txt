@@ -1,0 +1,15 @@
+﻿# b10-t7 · 隔离库播种状态 · 2026-11-05 20:48:34
+# DB=summon_mecha_step10_test（只读计数）
+
+admins           = 1
+roles            = 1
+channels         = 1
+categories       = 1
+products         = 0
+customers        = 0
+core_config      = 20
+locales          = 1
+currencies       = 1
+
+# 说明：Bagisto 默认种子的 products/customers/core_config 远多于此；
+# 全量套件中依赖默认商品的 Admin/Shop 用例因此必红，这与单进程设计无关。

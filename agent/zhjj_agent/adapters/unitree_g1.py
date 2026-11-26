@@ -21,6 +21,7 @@ import time
 from typing import Any, Dict, Optional
 
 from zhjj_agent.adapters.base import BaseInstallAdapter
+from zhjj_agent.stop_observation import validate_observation
 
 
 class UnitreeG1Adapter(BaseInstallAdapter):
@@ -28,11 +29,13 @@ class UnitreeG1Adapter(BaseInstallAdapter):
         self,
         network_interface: str = "eth0",
         app_dir: Optional[str] = None,
-        sdk_stub: Optional[Any] = None
+        sdk_stub: Optional[Any] = None,
+        stop_observer: Optional[Any] = None
     ):
         self.network_interface = network_interface
         self.app_dir = app_dir
         self.sdk_stub = sdk_stub
+        self.stop_observer = stop_observer
         self._skills: Dict[str, Dict[str, Any]] = {}
         self._executions: Dict[str, Dict[str, Any]] = {}
         self._active_threads: Dict[str, threading.Thread] = {}
@@ -145,27 +148,37 @@ class UnitreeG1Adapter(BaseInstallAdapter):
                 return True
         return False
 
+    def _wait_for_all_executions_stopped(self, skill_id: str) -> bool:
+        for eid, ex in list(self._executions.items()):
+            if ex.get("skill_id") != str(skill_id) or ex.get("is_stopped"):
+                continue
+            self.cancel_execution(eid)
+            observed = self.observe_execution(eid)
+            if observed.get("is_stopped") is not True:
+                return False
+        return True
+
     def disable(self, skill_id: str) -> bool:
         obs = self.observe(skill_id)
         if obs.get("installed"):
+            if not self._wait_for_all_executions_stopped(skill_id):
+                return False
             info = self._skills.get(str(skill_id))
             if info:
                 info["enabled"] = False
-                for eid, ex in list(self._executions.items()):
-                    if ex.get("skill_id") == str(skill_id) and not ex.get("is_stopped"):
-                        self.cancel_execution(eid)
                 return True
         return False
 
     def uninstall(self, skill_id: str, install_path: str) -> bool:
+        if not self._wait_for_all_executions_stopped(skill_id):
+            return False
         self._skills.pop(str(skill_id), None)
-        for eid, ex in list(self._executions.items()):
-            if ex.get("skill_id") == str(skill_id) and not ex.get("is_stopped"):
-                self.cancel_execution(eid)
         return True
 
     def rollback(self, skill_id: str, restore_version: str, restore_path: str) -> bool:
         if not os.path.isdir(restore_path):
+            return False
+        if not self._wait_for_all_executions_stopped(skill_id):
             return False
 
         obs = self.observe(skill_id)
@@ -190,6 +203,27 @@ class UnitreeG1Adapter(BaseInstallAdapter):
 
     # ── 技能执行与取消 ───────────────────────────────────────────────────────
 
+    def _observe_independent_stop(self, execution_id: str):
+        """返回 (是否已停, 错误, 结构化观察)。
+
+        只有独立观察器同时给出 `is_stopped=true` 和合法的 `observation` 才能确认物理停止；
+        只给布尔值 = 不可验证，按未停止处理（WBS A2）。
+        """
+        observer = self.stop_observer
+        if observer is None:
+            return False, "STOP_OBSERVER_UNAVAILABLE", None
+        try:
+            result = observer.observe_execution(execution_id) if hasattr(observer, "observe_execution") else observer(execution_id)
+            if not isinstance(result, dict):
+                return False, "STOP_OBSERVER_INVALID_RESULT", None
+            if result.get("is_stopped") is not True:
+                return False, str(result.get("error_msg") or "STOP_NOT_OBSERVED"), None
+            observation = validate_observation(result.get("observation"))
+            if observation is None:
+                return False, "STOP_OBSERVATION_MISSING", None
+            return True, None, observation
+        except Exception as exc:
+            return False, f"STOP_OBSERVER_ERROR: {exc}", None
     def execute_skill(
         self,
         execution_id: str,
@@ -286,66 +320,66 @@ class UnitreeG1Adapter(BaseInstallAdapter):
                 spec = importlib.util.spec_from_file_location(f"action_{execution_id}", entrypoint_file)
                 if spec and spec.loader:
                     mod = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(mod)
-                    if hasattr(mod, "run"):
-                        class Context:
-                            def __init__(self, stub, eid, p, cev):
-                                self.stub = stub
-                                self.execution_id = eid
-                                self.execution_params = p
-                                self.cancel_event = cev
+                    previous_dont_write_bytecode = sys.dont_write_bytecode
+                    sys.dont_write_bytecode = True
+                    try:
+                        spec.loader.exec_module(mod)
+                    finally:
+                        sys.dont_write_bytecode = previous_dont_write_bytecode
+                    if not hasattr(mod, "run"):
+                        raise RuntimeError("技能入口缺少 run(context)")
 
-                            def is_canceled(self):
-                                return self.cancel_event.is_set()
+                    class Context:
+                        def __init__(self, stub, eid, p, cev):
+                            self.stub = stub
+                            self.execution_id = eid
+                            self.execution_params = p
+                            self.cancel_event = cev
 
-                        ctx = Context(self.sdk_stub, execution_id, params, cancel_event)
-                        ret = mod.run(context=ctx)
-                        if isinstance(ret, dict):
-                            if ret.get("status") in ("FAILED", "CANCELED", "SUCCEEDED"):
-                                exec_state["status"] = ret["status"]
-                            if "stopped" in ret:
-                                exec_state["is_stopped"] = bool(ret["stopped"])
-                            elif ret.get("status") in ("FAILED", "SUCCEEDED", "CANCELED"):
-                                exec_state["is_stopped"] = True
-                            if ret.get("error_msg"):
-                                exec_state["error_msg"] = str(ret["error_msg"])
-                        elif cancel_event.is_set():
-                            exec_state["status"] = "CANCELED"
-                            exec_state["is_stopped"] = True
-                        else:
-                            exec_state["status"] = "SUCCEEDED"
-                            exec_state["is_stopped"] = True
-                    else:
-                        exec_state["status"] = "SUCCEEDED"
+                        def is_canceled(self):
+                            return self.cancel_event.is_set()
+
+                    ctx = Context(self.sdk_stub, execution_id, params, cancel_event)
+                    ret = mod.run(context=ctx)
+                    if not isinstance(ret, dict):
+                        raise RuntimeError("技能入口必须返回结构化执行结果")
+                    status = ret.get("status")
+                    if status not in ("FAILED", "CANCELED", "SUCCEEDED"):
+                        raise RuntimeError("技能入口返回未知状态")
+                    stopped, stop_error, observation = self._observe_independent_stop(execution_id)
+                    if stopped:
+                        exec_state["status"] = status
                         exec_state["is_stopped"] = True
+                        exec_state["observation"] = observation
+                    else:
+                        exec_state["status"] = "UNKNOWN"
+                        exec_state["is_stopped"] = False
+                        exec_state["error_msg"] = stop_error or "执行结束但未获独立停止证据"
+                    if ret.get("error_msg"):
+                        exec_state["error_msg"] = str(ret["error_msg"])
                 elif self.sdk_stub is not None and hasattr(self.sdk_stub, "execute"):
                     res = self.sdk_stub.execute(execution_id, skill_id, plan_digest, params, cancel_event)
-                    if isinstance(res, dict):
-                        if res.get("status") in ("FAILED", "CANCELED", "SUCCEEDED"):
-                            exec_state["status"] = res["status"]
-                        if "stopped" in res:
-                            exec_state["is_stopped"] = bool(res["stopped"])
-                        elif res.get("status") in ("FAILED", "SUCCEEDED", "CANCELED"):
-                            exec_state["is_stopped"] = True
-                        if res.get("error_msg"):
-                            exec_state["error_msg"] = str(res["error_msg"])
-                    elif cancel_event.is_set():
-                        exec_state["status"] = "CANCELED"
+                    if not isinstance(res, dict) or res.get("status") not in ("FAILED", "CANCELED", "SUCCEEDED"):
+                        raise RuntimeError("SDK 执行桥必须返回结构化终态")
+                    stopped, stop_error, observation = self._observe_independent_stop(execution_id)
+                    if stopped:
+                        exec_state["status"] = res["status"]
                         exec_state["is_stopped"] = True
+                        exec_state["observation"] = observation
                     else:
-                        exec_state["status"] = "SUCCEEDED"
-                        exec_state["is_stopped"] = True
+                        exec_state["status"] = "UNKNOWN"
+                        exec_state["is_stopped"] = False
+                        exec_state["error_msg"] = stop_error or "SDK 返回终态但未获独立停止证据"
+                    if res.get("error_msg"):
+                        exec_state["error_msg"] = str(res["error_msg"])
                 else:
-                    if cancel_event.is_set():
-                        exec_state["status"] = "CANCELED"
-                        exec_state["is_stopped"] = True
-                    else:
-                        exec_state["status"] = "SUCCEEDED"
-                        exec_state["is_stopped"] = True
+                    raise RuntimeError("真实厂商 SDK 执行桥尚未接入或未提供受控 stub")
             except Exception as e:
-                exec_state["status"] = "FAILED"
-                exec_state["is_stopped"] = True
-                exec_state["error_msg"] = str(e)
+                stopped, stop_error, observation = self._observe_independent_stop(execution_id)
+                exec_state["status"] = "FAILED" if stopped else "UNKNOWN"
+                exec_state["is_stopped"] = stopped
+                exec_state["observation"] = observation if stopped else None
+                exec_state["error_msg"] = str(e) if stopped else f"{e}; {stop_error or 'STOP_NOT_OBSERVED'}"
 
         th = threading.Thread(target=_worker, daemon=True)
         self._active_threads[execution_id] = th
@@ -365,18 +399,18 @@ class UnitreeG1Adapter(BaseInstallAdapter):
             self.sdk_stub.cancel(execution_id)
 
         exec_info["status"] = "CANCEL_REQUESTED"
-        # 必须等待工作线程退出后才确认 is_stopped 为 True
         th = self._active_threads.get(execution_id)
         if th:
             th.join(timeout=1.0)
-            if not th.is_alive():
-                exec_info["status"] = "CANCELED"
-                exec_info["is_stopped"] = True
-            else:
-                exec_info["is_stopped"] = False
-        else:
+        stopped, stop_error, observation = self._observe_independent_stop(execution_id)
+        if stopped and (th is None or not th.is_alive()):
             exec_info["status"] = "CANCELED"
             exec_info["is_stopped"] = True
+            exec_info["observation"] = observation
+        else:
+            exec_info["status"] = "CANCEL_REQUESTED"
+            exec_info["is_stopped"] = False
+            exec_info["error_msg"] = stop_error or "取消请求尚未获得独立停止证据"
 
         return True
 
@@ -393,4 +427,5 @@ class UnitreeG1Adapter(BaseInstallAdapter):
             "status": exec_info["status"],
             "is_stopped": exec_info["is_stopped"],
             "error_msg": exec_info.get("error_msg"),
+            "observation": exec_info.get("observation") if exec_info.get("is_stopped") else None,
         }

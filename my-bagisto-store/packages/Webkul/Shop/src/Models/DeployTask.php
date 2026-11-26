@@ -154,6 +154,9 @@ class DeployTask extends Model
     protected $fillable = [
         'task_no',
         'command_seq',
+        'delivery_attempt',
+        'outbox_lease_token',
+        'outbox_lease_expires_at',
         'did',
         'channel',
         'protocol_version',
@@ -181,6 +184,8 @@ class DeployTask extends Model
 
     protected $casts = [
         'command_seq'      => 'integer',
+        'delivery_attempt' => 'integer',
+        'outbox_lease_expires_at' => 'datetime',
         'operation'        => 'integer',
         'package_asset_id' => 'integer',
         'retry_count'      => 'integer',

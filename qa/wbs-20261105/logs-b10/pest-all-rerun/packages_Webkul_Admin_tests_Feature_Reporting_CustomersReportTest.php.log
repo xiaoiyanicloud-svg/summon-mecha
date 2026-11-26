@@ -1,0 +1,26 @@
+﻿
+  ...⨯..
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Reporting\CustomersReportTest > it should return the top customers gr…   
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'General'
++'普通'
+
+  at packages\Webkul\Admin\tests\Feature\Reporting\CustomersReportTest.php:106
+    102▕         'type' => 'top-customer-groups',
+    103▕     ]))
+    104▕         ->assertOk()
+    105▕         ->assertJsonPath('statistics.0.id', $customer->id)
+  ➜ 106▕         ->assertJsonPath('statistics.0.group_name', 'General');
+    107▕ });
+    108▕ 
+    109▕ it('should return the customers with most orders stats report', function () {
+    110▕     // Arrange.
+
+
+  Tests:    1 failed, 5 passed (51 assertions)
+  Duration: 8.35s
+

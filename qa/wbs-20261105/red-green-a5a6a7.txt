@@ -1,0 +1,124 @@
+# A5/A6/A7 red → green（变异验证）· 2026-11-05
+
+> 目的：证明新用例**真的在断言**被实现的行为，而不是碰巧通过。
+> 做法：临时把实现改成"错误版本"，跑对应用例确认变红，恢复后再确认变绿。
+> 所有变异均已还原（`cmp` 与备份逐字节一致，仓库内无 `MUTATION` 残留）。
+
+---
+
+## ① A5 · 关闭"安装失败回退" → A5-10 / A5-11 两红
+
+变异（`agent/zhjj_agent/task_manager.py` 的 `_abort_install`）：
+
+```python
+try:
+    return  # MUTATION: 关闭安装失败回退
+    with transaction.lock(skill_id):
+        transaction.abort_commit(committed_dir, backup_dir)
+```
+
+命令：
+
+```
+python -m unittest tests.test_install_transaction.TestTaskManagerInstallRollback.test_a5_10_... test_a5_11_...
+```
+
+红（节选）：
+
+```
+AssertionError: True is not false     # A5-10：首装失败后版本目录仍存在
+AssertionError: True is not false     # A5-11：健康探针失败后版本目录仍存在
+Ran 2 tests ... FAILED (failures=2)
+```
+
+还原后：
+
+```
+Ran 2 tests in 1.691s
+OK
+```
+
+结论：A5-10/A5-11 断言的是"失败路径真的把半成品清掉了"，不是"函数返回 False"。
+
+---
+
+## ② A6 · 只杀父进程、不杀进程树 → A6-07 红
+
+变异（`agent/zhjj_agent/sandbox.py` 的 `_kill_tree`）：
+
+```python
+# MUTATION: 只杀父进程，不杀进程树
+try:
+    process.kill()
+except OSError:
+    pass
+return
+```
+
+命令：
+
+```
+python -m unittest tests.test_sandbox.TestSubprocessSandbox.test_a6_07_...
+```
+
+红：
+
+```
+AssertionError: True is not false : 孙进程未被杀死：只杀了父进程
+Ran 1 test ... FAILED (failures=1)
+```
+
+还原后：
+
+```
+Ran 1 test in 4.650s
+OK
+```
+
+结论：A6-07 真的在验证"孙进程也被杀掉"（Windows 走 `taskkill /T`，POSIX 走 `killpg`），
+不是只看父进程返回值。
+
+---
+
+## ③ A7 · 关闭吊销分支 → A7-05 红
+
+变异（`AgentFactSignatureVerifier`）：
+
+```php
+if (false && $material->isRevoked()) { // MUTATION: 关闭吊销分支
+    return $this->result(false, self::CODE_KEY_REVOKED, '该密钥已被吊销。');
+}
+```
+
+命令：
+
+```
+DB_DATABASE=summon_mecha_step10_test php vendor/bin/pest \
+  packages/Webkul/Shop/tests/Feature/Deploy/KeyLifecycleTest.php --filter="A7-05"
+```
+
+红（节选）：
+
+```
+➜ 235▕ ->assertJsonPath('code', 'AGENT_FACT_KEY_REVOKED');
+Tests:  1 failed (4 assertions)
+```
+
+（关闭专用分支后，吊销密钥退化为 `AGENT_FACT_KEY_STALE` —— 仍然是拒绝，但运维再也分不清
+"被吊销"和"超窗"，这正是 A7.2 要求独立错误码的原因。）
+
+还原后整文件：
+
+```
+Tests:  9 passed (55 assertions)
+```
+
+结论：A7-05 断言的是吊销的**语义**，而不只是"401"。
+
+---
+
+## 诚实标注
+
+- 首轮实现即绿的用例没有单次 red 记录（A5-01~09/12~18、A6-01~06/08、A7-01~04/06~09）。
+- A5-08 的"权限不足"是**注入 `PermissionError`** 验证错误码翻译，不是真的把目录 chmod 成只读
+  （Windows 上目录只读位不阻止写入，做不到真实复现）；文档已按此标注。

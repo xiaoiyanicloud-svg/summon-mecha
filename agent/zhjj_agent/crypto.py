@@ -120,6 +120,38 @@ def canonical_v2(signed: Dict[str, Any]) -> bytes:
     return prefix + jcs_body
 
 
+FACT_V3_PREFIX = b"summon-mecha/agent-fact/v3\n"
+
+
+def canonical_fact_v3(signed: Dict[str, Any]) -> bytes:
+    """事件正文 v3 规范字节（WBS A1）：
+    UTF-8("summon-mecha/agent-fact/v3") || 0x0A || UTF-8(JCS(signed))
+    """
+    return FACT_V3_PREFIX + jcs_canonicalize(signed)
+
+
+def normalize_pem(pem: str) -> str:
+    """与 PHP `DeviceCredentialService::normalizePem()` 同一口径。"""
+    return pem.replace("\r\n", "\n").replace("\r", "\n").strip()
+
+
+def public_key_pem_from_private(privkey_pem: str) -> str:
+    """从设备私钥导出 SubjectPublicKeyInfo PEM（用于 key_id）。"""
+    from cryptography.hazmat.primitives import serialization
+
+    priv = serialization.load_pem_private_key(privkey_pem.encode("utf-8"), password=None)
+
+    return priv.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("ascii")
+
+
+def fact_key_id(privkey_pem: str) -> str:
+    """设备事实签名 key_id = sha256(归一化公钥 PEM)。"""
+    return sha256_bytes(normalize_pem(public_key_pem_from_private(privkey_pem)).encode("utf-8"))
+
+
 def verify_signature(data: Union[bytes, str], signature_b64: str, pubkey_pem: str) -> bool:
     """RSA-SHA256 签名核验。优先使用 cryptography 库，若不可用则回退 openssl CLI。"""
     if isinstance(data, str):

@@ -1,0 +1,50 @@
+﻿
+   PASS  Packages\Webkul\Admin\tests\Feature\Catalog\EcosystemPublishingAclG1Test
+  ✓ it 每一条生态发布路由都登记了权限，且权限 key 已进入 ACL                                                                           1.02s  
+  ✓ it custom 角色无 ecosystem 权限时：所有直接 URL / Ajax 一律 403 且无副作用                                                     2.15s  
+  ✓ it 中间件对 ecosystem.* 路由先做 403 防线，绕过控制器也无法访问                                                                   0.30s  
+  ✓ it 超级管理员可以打开工作台并看到生态发布菜单                                                                                     0.59s  
+  ✓ it 超级管理员访问全部页面与预览不会触发授权层拦截                                                                                   6.73s  
+  ✓ it 未登录访问生态发布路由会重定向到后台登录                                                                                      0.23s  
+  ✓ it 媒体上传与审核权限分离，引用审核归 ecosystem.media.review                                                                  0.46s  
+
+  Tests:    7 passed (437 assertions)
+  Duration: 11.93s
+
+
+   PASS  Packages\Webkul\Admin\tests\Feature\Catalog\CompetitionG3PermissionsTest
+  ✓ it G3 Admin · 仅查看权不能调用任何赛务写入口                                                                                1.07s  
+  ✓ it G3 Admin · scoring 只能录分/提交，不能复核发布                                                                         0.19s  
+  ✓ it G3 Admin · results 能复核发布，但不能直接录分/裁决/发奖/发展示                                                                0.22s  
+  ✓ it G3 Admin · appeal / awards / showcase 权限互不越界                                                              0.24s  
+
+  Tests:    4 passed (25 assertions)
+  Duration: 2.04s
+
+
+   PASS  Packages\Webkul\Admin\tests\Feature\Settings\RoleTest
+  ✓ it should returns the role index page                                                                        1.23s  
+  ✓ it should returns the create page of role                                                                    0.35s  
+  ✓ it should fail the validation with errors when certain field not provided when store the roles               0.19s  
+  ✓ it should store the newly created roles                                                                      0.29s  
+  ✓ it should returns the edit page of roles                                                                     0.22s  
+  ✓ it should fail the validation with errors when certain field not provided when update the roles              0.26s  
+  ✓ it should update the existing role                                                                           0.18s  
+  ✓ it should delete the existing role                                                                           0.22s  
+
+  Tests:    8 passed (26 assertions)
+  Duration: 3.29s
+
+
+   PASS  Packages\Webkul\Admin\tests\Feature\Catalog\SkillReviewModerationConsoleTest
+  ✓ it A1 · 评价列表页可以渲染                                                                                            1.25s  
+  ✓ it A1 · 用户评价在后台可见：列表那一行 + 详情正文 + 机器判定                                                                        0.42s  
+  ✓ it A1 · 匿名评价在后台也不显示真名                                                                                        0.51s  
+  ✓ it A1 · 隐藏一条评价 → 落库 + 留 operation_log                                                                        0.21s  
+  ✓ it A1 · 恢复显示必须写理由，否则不落库                                                                                      0.20s  
+  ✓ it A1 · 写了理由的恢复显示可以落库（词表误判的出口）                                                                               0.19s  
+  ✓ it A1 · 处置值域受限：不能退回"待人工看"，也不能自造状态                                                                            0.24s  
+
+  Tests:    7 passed (29 assertions)
+  Duration: 3.37s
+

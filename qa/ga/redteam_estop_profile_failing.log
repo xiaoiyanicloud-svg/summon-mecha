@@ -1,0 +1,24 @@
+
+   FAIL  Packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest
+  ⨯ it P0: 未完成 HIL 前五机型不得宣称 E-Stop 已支持                                                                           1.03s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest > it P0: 未完成 HIL 前五机型不得宣称 E-Stop 已支持       
+  Failed asserting that true is null.
+
+  at packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest.php:42
+     38▕     $service = app(\Webkul\Shop\Services\SkillCompile\Portable\TargetProfileService::class);
+     39▕     foreach ($service::GA_TARGET_MODELS as $modelCode) {
+     40▕         $profile = $service->getProfile($modelCode);
+     41▕         expect($profile)->not->toBeNull()
+  ➜  42▕             ->and($profile['safety_envelope']['estop_supported'])->toBeNull()
+     43▕             ->and($profile['safety_envelope']['estop_evidence_status'])->toBe('HARDWARE_UNVERIFIED')
+     44▕             ->and($profile['safe_stop_procedure']['method'])->toBeNull()
+     45▕             ->and($profile['safe_stop_procedure']['status'])->toBe('HARDWARE_UNVERIFIED');
+     46▕     }
+
+  1   packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest.php:42
+
+
+  Tests:    1 failed (2 assertions)
+  Duration: 1.85s
+

@@ -1,0 +1,74 @@
+﻿
+  ..猕?猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should store the newly cr鈥?  
+  Expected: {"message":"\u5df2\u6210\u529f\u521b\u5efa URL \u91cd\u5199\u3002"}
+
+  To contain: 宸叉垚鍔熷垱寤?URL 閲嶅啓銆?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:45
+     41鈻?        'redirect_type' => $redirectType = fake()->randomElement([302, 301]),
+     42鈻?        'locale'        => $localeCode = core()->getCurrentLocale()->code,
+     43鈻?    ])
+     44鈻?        ->assertOk()
+  鉃? 45鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.create.success'));
+     46鈻?
+     47鈻?    $this->assertModelWise([
+     48鈻?        URLRewrite::class => [
+     49鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should update the existin鈥?  
+  Expected: {"message":"\u5df2\u6210\u529f\u66f4\u65b0 URL \u91cd\u5199\u3002"}
+
+  To contain: 宸叉垚鍔熸洿鏂?URL 閲嶅啓銆?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:92
+     88鈻?        'redirect_type' => $redirectType = fake()->randomElement([302, 301]),
+     89鈻?        'locale'        => $localeCode = core()->getCurrentLocale()->code,
+     90鈻?    ])
+     91鈻?        ->assertOk()
+  鉃? 92鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.edit.success'));
+     93鈻?
+     94鈻?    $this->assertModelWise([
+     95鈻?        URLRewrite::class => [
+     96鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should delete the existin鈥?  
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664 URL \u91cd\u5199\u3002"}
+
+  To contain: 宸叉垚鍔熷垹闄?URL 閲嶅啓銆?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:117
+    113鈻?    $this->loginAsAdmin();
+    114鈻?
+    115鈻?    deleteJson(route('admin.marketing.search_seo.url_rewrites.delete', $urlRewrite->id))
+    116鈻?        ->assertOk()
+  鉃?117鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.edit.delete-success'));
+    118鈻?
+    119鈻?    $this->assertDatabaseMissing('url_rewrites', [
+    120鈻?        'id' => $urlRewrite->id,
+    121鈻?    ]);
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should mass delete the ex鈥?  
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664\u9009\u5b9a\u7684 URL \u91cd\u5199\u3002"}
+
+  To contain: 宸叉垚鍔熷垹闄ら€夊畾鐨?URL 閲嶅啓銆?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:135
+    131鈻?    postJson(route('admin.marketing.search_seo.url_rewrites.mass_delete'), [
+    132鈻?        'indices' => $urlRewrites->pluck('id')->toArray(),
+    133鈻?    ])
+    134鈻?        ->assertOk()
+  鉃?135鈻?        ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.datagrid.mass-delete-success'));
+    136鈻?
+    137鈻?    foreach ($urlRewrites as $urlRewrite) {
+    138鈻?        $this->assertDatabaseMissing('url_rewrites', [
+    139鈻?            'id' => $urlRewrite->id,
+
+
+  Tests:    4 failed, 3 passed (23 assertions)
+  Duration: 3.75s
+

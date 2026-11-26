@@ -23,6 +23,8 @@ class SkillTargetRelease extends Model
         'target_model_code',
         'artifact_asset_id',
         'build_key',
+        'target_profile_digest',
+        'source_digest',
         'review_status',
         'reviewed_at',
         'reviewer_id',

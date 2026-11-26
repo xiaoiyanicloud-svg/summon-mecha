@@ -1,0 +1,490 @@
+{
+  "schema": "summon-mecha/evidence-ledger/v1",
+  "generated_on": "2026-11-05",
+  "claims": [
+    {
+      "claim_id": "C-ENV-001",
+      "claim": "Host runs Windows/PHP 8.4.24 with fixed Python 3.12.14; PHP 8.3 is not installed.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "final_host_probe.log + environment-probe.log",
+      "command": "PowerShell host/PHP/Python probes",
+      "pass_or_fail": "PASS_WITH_ENVIRONMENT_DEVIATION",
+      "not_proven": "PHP 8.3 target-runtime compatibility remains unverified.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_host_probe.log",
+          "sha256": "5f3fc825f04fde5343932e3fa30ccd3a516e8644bb8f4fbd91e047f4a116bb2c",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/environment-probe.log",
+          "sha256": "2c6dde8c1d237431db69de6255eb3dfc28a95a4adc340c16b51a575e66503f5a",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-FIVE-001",
+      "claim": "Exactly five run targets are registered; A2 is excluded; all five remain HARDWARE_UNVERIFIED and Production BLOCKED.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "TargetProfileService + GaSupportMatrixService + profiles",
+      "command": "php artisan tinker -> GaSupportMatrixService::build()",
+      "pass_or_fail": "PASS",
+      "not_proven": "A2 historical physical assets are not runtime targets and were not revalidated.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_support_matrix.json",
+          "sha256": "865b101408efc33938e737a1aeec201f7306754ec877d33d6cc00836e1c6f6d8",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/final_deploy_tests_redteam_v2.log",
+          "sha256": "86faa82a8f8032251192c1c548847fbd6c0f88a2b7c4fafe70d4c6ecef4013cc",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-PROFILE-002",
+      "claim": "Unverified profiles do not claim E-Stop support or a vendor-approved physical stop method.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "five skill-target-profile JSON files + GaFiveModelContractTest",
+      "command": "php artisan test ...GaFiveModelContractTest.php --filter='E-Stop'",
+      "pass_or_fail": "PASS",
+      "not_proven": "Actual E-Stop behavior on any robot.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_estop_profile_honesty.log",
+          "sha256": "9f2a7fc83189ba7e95e9fcc1f363df5f28b894638bbb9073aeedc5fb547e60fc",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/final_ga_contract_tests_v2.log",
+          "sha256": "c2ac20207361f8f9f5bc9cbc6d0cc713c284d0945b2188e84671428d7e061b33",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-HIL-001",
+      "claim": "HIL validator rejects sdk_return, sdk_true, bt_halt, cancel_requested, cloud_ack, script_assertion, mock, sil and non-independent observation sources.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "qa/ga/hil_evidence_validator.py + test_hil_evidence_validator.py",
+      "command": "python -m unittest -v test_hil_evidence_validator.py",
+      "pass_or_fail": "PASS",
+      "not_proven": "Validator proves evidence-shape rejection, not that a physical HIL run occurred.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_hil_validator_tests.log",
+          "sha256": "55b5b0895d33088dd644b6516df3a84a6e568c8bf3b5feca611c5d2f0b14915c",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/hil_rejection_cli.log",
+          "sha256": "2d2b374c78ab1dbd5f40f29c1a187f1704961749789335768f8bbf9db4aeeca5",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-HIL-002",
+      "claim": "Legacy qa/hil-verification/hil_safety_report.json is Mock/hard-coded evidence and is INVALID_NON_HIL.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "MockHardwareSafetyInterlock + hard-coded decel_time_ms=12.5",
+      "command": "python qa/ga/claim_audit.py",
+      "pass_or_fail": "PASS_REJECTION",
+      "not_proven": "No real hardware E-Stop evidence exists.",
+      "evidence": [
+        {
+          "path": "qa/ga/claim_audit_result.json",
+          "sha256": "845346ddea97c68f602f79d4947e54c2b6858411d14c6f732ee1f4d2ecfb08b9",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/final_claim_audit.log",
+          "sha256": "36b81474a20195f72c67bb51789b20492484643ca4f55e7a121117d056bce998",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-EVT-001",
+      "claim": "1000 duplicate command attempts create one task and 1000 duplicate ACK attempts create one Inbox fact.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "deploy_task idempotency + deploy_inbox_event unique(did,event_id)",
+      "command": "php qa/ga/benchmark_p0.php",
+      "pass_or_fail": "PASS",
+      "not_proven": "Production MySQL contention and multi-host behavior.",
+      "evidence": [
+        {
+          "path": "qa/ga/redteam_benchmark_p0.log",
+          "sha256": "78e3df100d81c3ed4805596768dc7d38859c6b9b8db9018c228d8a8b65bb308c",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-EVT-002",
+      "claim": "Same (did,event_id) with same payload is idempotent; same key with different payload returns 409 CONFLICT.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "DeployInboxService + AgentV2ExecutionTest",
+      "command": "php artisan test packages/Webkul/Shop/tests/Feature/API/AgentV2ExecutionTest.php",
+      "pass_or_fail": "PASS",
+      "not_proven": "Real device event-signature independence.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_agent_api_tests.log",
+          "sha256": "a19a3ddb648707289fa97623407400b429585a1a1389742f89df7d1be7c10d2a",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-EVT-003",
+      "claim": "A lower event_seq cannot overwrite the current execution fact cursor.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "DeployTaskService::persistExecutionFact + stale event_seq test",
+      "command": "php artisan test ...AgentV2ExecutionTest.php --filter='旧 event_seq'",
+      "pass_or_fail": "PASS",
+      "not_proven": "Clock rollback and device journal erasure are not covered.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_stale_event_seq_test.log",
+          "sha256": "956357930d52ed91882b3b192edd5a00e81dad798eadd14370d7abd2ef477b3c",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/mutation_event_seq_check.log",
+          "sha256": "9a5596a5328198bb4664cfd3971e576e559f52016a9bdaa8a9ccdd079dc3d094",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-EXEC-001",
+      "claim": "Script-returned success and print-only actions do not become terminal success; absent independent stop evidence yields UNKNOWN and blocks uninstall.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "UnitreeG1Adapter + VendorPlanAdapter + test_five_model_adapters.py",
+      "command": "python -m unittest discover -s agent/tests",
+      "pass_or_fail": "PASS",
+      "not_proven": "The explicit test observer is synthetic and is not physical HIL evidence.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_agent_tests_redteam_v2.log",
+          "sha256": "8cdd5553b32a2c8b0c72973580a63cafdd25557d570c7c1aa65b97b9ff833876",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/final_install_uninstall_mutex_tests.log",
+          "sha256": "bb6966cc5322d5a463fc569ddcd6244f2820d04feecfa7182c0b72d06e6f57ea",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-MUTEX-001",
+      "claim": "Two real PHP workers competing for one outbox task produce exactly one claim and delivery_attempt=1.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "claimNextCommand lockForUpdate + OutboxLease",
+      "command": "php qa/ga/benchmark_claim_concurrency.php",
+      "pass_or_fail": "PASS",
+      "not_proven": "Multi-host DB/network partition behavior.",
+      "evidence": [
+        {
+          "path": "qa/ga/redteam_claim_concurrency.log",
+          "sha256": "731a73461ec25f508b675aa1b312dfb258d0fdf62f026a7ee81e6a18adac02e5",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-STREAM-001",
+      "claim": "A 500MiB package streams in 64KiB chunks with bounded memory growth.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "PackageManager.download_package",
+      "command": "python qa/ga/benchmark_stream_500mb.py",
+      "pass_or_fail": "PASS",
+      "not_proven": "Production object storage/CDN and disk-full behavior.",
+      "evidence": [
+        {
+          "path": "qa/ga/redteam_stream_500mb.log",
+          "sha256": "df576e1e3663714d6eb3f5fa68d0519ba22964920f407821fb21734265026f63",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-SOAK-001",
+      "claim": "A 1800s software soak completed with 899 install/execute/uninstall cycles and no recorded errors or resource-threshold breach.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "qa/ga/soak_agent.py with MockAdapter and local HTTP",
+      "command": "python qa/ga/soak_agent.py --duration-seconds 1800 ...",
+      "pass_or_fail": "PASS",
+      "not_proven": "MockAdapter and local HTTP are not SIL/HIL; soak p99 was not captured by this tool.",
+      "evidence": [
+        {
+          "path": "qa/ga/redteam_soak_30m_result.json",
+          "sha256": "f167219b52a543316d63a618f93c57030ff00d74d740212904a2d2be2bf0d828",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/redteam_soak_30m_timeline.jsonl",
+          "sha256": "324d050e5cba7339b1348b32cca2d60ead98237ff4e725b4a9d66e8a1e336f0d",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/redteam_soak_30m_console.log",
+          "sha256": "d52427cad4d2f3d6a18ad39fbba259585189c2696bb342dd83bbbb6d2ea4bc0c",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-PERF-001",
+      "claim": "The local control-plane baseline exceeds the 300ms p95 gate and saturates at concurrency 2.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "benchmark_control_plane_saturation.py + PHP built-in server",
+      "command": "python qa/ga/benchmark_control_plane_saturation.py --main-requests 100 --level-requests 20 --levels 1,2,4,8",
+      "pass_or_fail": "FAIL",
+      "not_proven": "Production FPM/MySQL/OPcache/network SLO.",
+      "evidence": [
+        {
+          "path": "qa/ga/redteam_control_plane_saturation_result.json",
+          "sha256": "fc987858ea7eff77d2ae48d3a8624602234531074708e23adf3297c0d4d71b33",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/redteam_control_plane_saturation.log",
+          "sha256": "fc987858ea7eff77d2ae48d3a8624602234531074708e23adf3297c0d4d71b33",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-BUILD-001",
+      "claim": "Two fixed-input builds produced byte-identical artifacts.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "PortableSkillBuilder deterministic ZIP logic",
+      "command": "php artisan test ...PortableSkillCompilerAcceptanceTest.php --filter='C-T17'",
+      "pass_or_fail": "PASS",
+      "not_proven": "Same-host determinism only; independent build farms and toolchain image digests remain unverified.",
+      "evidence": [
+        {
+          "path": "qa/ga/ct17_deterministic_build_result.json",
+          "sha256": "a65cc16eaee2a9af37d526e3b8bac0bba066c3be3597a4c080386e43ad4655c1",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/final_portable_compiler_tests_py312.log",
+          "sha256": "3e3fb5bfcf27b4da4ba2fb649e56565db3ad287bd24580002cd5d9e4477eb06a",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-SUPPLY-001",
+      "claim": "Composer lockfile contains 76 unique known advisories: 3 critical, 24 high, 38 medium, 8 low, 3 unknown.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "composer.lock",
+      "command": "composer audit --locked --no-interaction --format=json",
+      "pass_or_fail": "FAIL",
+      "not_proven": "Runtime reachability/exploitability in deployment; no dependency upgrade was performed.",
+      "evidence": [
+        {
+          "path": "qa/ga/composer_audit.log",
+          "sha256": "01d5fd49d5e69ec05bbe195764a0a604ce7926de65217005c2d752edbc6b3677",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/composer_audit_summary.json",
+          "sha256": "f3f9387fa62d7ad68a35bebde4a810387962547ecea28d5b57f970e4e514b333",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-SECRET-001",
+      "claim": "High-signal regex scan found 6 review items; no full-history secret scanner is available.",
+      "evidence_level": "EXPLORATORY_HYPOTHESIS",
+      "code_or_source": "qa/ga/secret_scan.py",
+      "command": "python qa/ga/secret_scan.py",
+      "pass_or_fail": "REVIEW_REQUIRED",
+      "not_proven": "No gitleaks/trivy/trufflehog history scan; a clean regex scan cannot prove secret absence.",
+      "evidence": [
+        {
+          "path": "qa/ga/secret_scan_result.json",
+          "sha256": "c22f565bf952d45635ffd9de9e3ae274395d5808e347e3e73d0ec68cf24ef5e5",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/secret_scan.log",
+          "sha256": "c22f565bf952d45635ffd9de9e3ae274395d5808e347e3e73d0ec68cf24ef5e5",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-SIL-001",
+      "claim": "G1 SIL artifacts are internally consistent, but the MuJoCo replay is NOT_RUN in the fixed Python 3.12 runtime.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT for artifact arithmetic; UNKNOWN for current replay",
+      "code_or_source": "qa/simulation/sil_simulation_report.json + mujoco_telemetry.csv",
+      "command": "python artifact cross-check; python run_mujoco_sil.py",
+      "pass_or_fail": "ARTIFACT_CROSSCHECK_PASS; SIL_REPLAY_NOT_RUN",
+      "not_proven": "No available MuJoCo package; no independent engine attestation or hardware evidence.",
+      "evidence": [
+        {
+          "path": "qa/ga/sil_csv_crosscheck_result.json",
+          "sha256": "d5808bb36c751234ce223d0e5c692e9e28e7851b2b44dec21f7cbfe7e910677e",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/redteam_mujoco_sil.log",
+          "sha256": "b4682b2efb0aa3065df33fafdea51880706e2e3d3dd7662809c45527348545a9",
+          "missing": false
+        },
+        {
+          "path": "qa/simulation/sil_simulation_report.json",
+          "sha256": "ac23e74488de6b16d94c675430a30686dbaea32a64794842ded46e0c74e58631",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-DYN-001",
+      "claim": "Legacy dynamics report is not Pinocchio/RNEA; it is a reduced-model arithmetic check with hard-coded clearance/inertia.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "verify_kinematics_dynamics.py",
+      "command": "python qa/ga/claim_audit.py",
+      "pass_or_fail": "DEMOTED",
+      "not_proven": "Full multibody inverse dynamics, collision mesh clearance, and true SIL.",
+      "evidence": [
+        {
+          "path": "qa/ga/claim_audit_result.json",
+          "sha256": "845346ddea97c68f602f79d4947e54c2b6858411d14c6f732ee1f4d2ecfb08b9",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/redteam_kinematics_dynamics.log",
+          "sha256": "539e8e71615f661f91689de872e0f28ce4500156cae98d50196e9a0dd6959e62",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-DDS-001",
+      "claim": "Legacy DDS verifier is local struct/JCS-style layout arithmetic, not live DDS interoperability.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "verify_idl_layout.py",
+      "command": "python qa/ga/claim_audit.py",
+      "pass_or_fail": "DEMOTED",
+      "not_proven": "CycloneDDS participant, vendor IDL compiler, real QoS, DDS Security.",
+      "evidence": [
+        {
+          "path": "qa/ga/claim_audit_result.json",
+          "sha256": "845346ddea97c68f602f79d4947e54c2b6858411d14c6f732ee1f4d2ecfb08b9",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/redteam_dds_layout.log",
+          "sha256": "ba71af0ff3c7f96e74c5ad2534947d6025a6ee9d9cf09d7d5a1bd5b81cc8d651",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-MUT-001",
+      "claim": "Three critical safety/security mutations were killed: physical-stop requirement, stale event_seq rejection, forbidden HIL source rejection.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "mutation runs with backup/restore",
+      "command": "PowerShell mutate -> targeted test -> restore + SHA check",
+      "pass_or_fail": "PASS",
+      "not_proven": "Mutation coverage is not exhaustive; no mutation framework ran over the full codebase.",
+      "evidence": [
+        {
+          "path": "qa/ga/mutation_execution_fact_stop_check.log",
+          "sha256": "19c2f64fcffc4fa703f10a2b324a90ccc601fc34e3dd709a90575009cb04609c",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/mutation_event_seq_check.log",
+          "sha256": "9a5596a5328198bb4664cfd3971e576e559f52016a9bdaa8a9ccdd079dc3d094",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/mutation_hil_forbidden_source_check.log",
+          "sha256": "95d230de86ea2fff54b27d5325e3b3d5a02fd035c7cf4c48eb658f64f6811870",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-SUPPLY-002",
+      "claim": "A deterministic CycloneDX inventory was generated for locked Composer packages and the fixed Python runtime.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "composer.lock + Python importlib.metadata",
+      "command": "python qa/ga/generate_sbom.py",
+      "pass_or_fail": "PASS",
+      "not_proven": "Inventory presence does not remediate vulnerabilities or prove licenses/export compliance.",
+      "evidence": [
+        {
+          "path": "qa/ga/sbom.cdx.json",
+          "sha256": "5cdbaa4680e2f5bee8eca4432b51c9e79041312f36018b4e5da516a986d1f22a",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/sbom_generation.log",
+          "sha256": "b26c2370693ed8a1249d7dbfd99c6d530dc6eda16259f1dce849c6949162fe89",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-BLOCK-001",
+      "claim": "Ten external or environmental blockers are explicitly recorded and remain BLOCKED/NOT_RUN.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "qa/ga/blocked_items.json",
+      "command": "python JSON parse",
+      "pass_or_fail": "BLOCKED",
+      "not_proven": "All listed external prerequisites remain unavailable.",
+      "evidence": [
+        {
+          "path": "qa/ga/blocked_items.json",
+          "sha256": "65c8125ef3be49ad5eb92bbf005c90b0abbaf5dbe51f5b2faaee4a6ef5f9b26a",
+          "missing": false
+        },
+        {
+          "path": "qa/hil-verification/EVIDENCE_STATUS.json",
+          "sha256": "b96891d0c172c79f777ff074c1ce9980990c2ee5e3ad325481c3c9128308911b",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/npm_audit.log",
+          "sha256": "7bf323f36652b1511c5ecc4811144cd0adbb6e140ce7bd7349c0ee0acd8b7417",
+          "missing": false
+        }
+      ]
+    },
+    {
+      "claim_id": "C-VERIFY-001",
+      "claim": "Current PHP lint, routes, migrations, contract-check and data-preflight all passed on the isolated test database.",
+      "evidence_level": "HIGH_CONFIDENCE_FACT",
+      "code_or_source": "42 changed/new PHP files + Laravel artisan gates",
+      "command": "php -l; php artisan route:list; migrate:status; ecosystem:contract-check; ecosystem:data-preflight",
+      "pass_or_fail": "PASS_WITH_PHP_8_4_DEVIATION",
+      "not_proven": "PHP 8.3 target runtime and production FPM remain unverified.",
+      "evidence": [
+        {
+          "path": "qa/ga/final_gate_checks_redteam.log",
+          "sha256": "a0cf9d40bb79368f7a7114a189ee2dd6bdec3481558a19d8e7dba8f94806911e",
+          "missing": false
+        },
+        {
+          "path": "qa/ga/final_php_lint_v2.log",
+          "sha256": "46a040af94d7d2bd1b70dff2c66ec0b572ec221ac940e84cba3cf25746b3e6ae",
+          "missing": false
+        }
+      ]
+    }
+  ],
+  "missing_evidence": []
+}

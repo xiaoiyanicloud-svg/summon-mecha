@@ -1,0 +1,5 @@
+﻿EXIT=0 packages/Webkul/Admin/tests/Feature/Catalog/EcosystemPublishingAclG1Test.php
+EXIT=0 packages/Webkul/Admin/tests/Feature/Catalog/CompetitionG3PermissionsTest.php
+EXIT=0 packages/Webkul/Admin/tests/Feature/Settings/RoleTest.php
+EXIT=0 packages/Webkul/Admin/tests/Feature/Catalog/SkillReviewModerationConsoleTest.php
+REG_EXIT=0

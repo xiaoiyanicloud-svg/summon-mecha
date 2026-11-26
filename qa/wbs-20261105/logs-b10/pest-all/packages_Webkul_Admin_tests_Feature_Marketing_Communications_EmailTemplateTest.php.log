@@ -1,0 +1,21 @@
+﻿
+  .........猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EmailTemplateTest > it should delete the spe鈥?  
+  Expected: {"message":"\u6a21\u677f\u5220\u9664\u6210\u529f"}
+
+  To contain: 妯℃澘鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EmailTemplateTest.php:154
+    150鈻?    $this->loginAsAdmin();
+    151鈻?
+    152鈻?    deleteJson(route('admin.marketing.communications.email_templates.delete', $marketingEmailTemplate->id))
+    153鈻?        ->assertOk()
+  鉃?154鈻?        ->assertSeeText(trans('admin::app.marketing.communications.templates.delete-success'));
+    155鈻?});
+    156鈻?
+
+
+  Tests:    1 failed, 9 passed (34 assertions)
+  Duration: 4.47s
+

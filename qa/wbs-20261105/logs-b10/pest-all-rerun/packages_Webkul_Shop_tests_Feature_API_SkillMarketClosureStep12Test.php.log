@@ -1,0 +1,402 @@
+﻿
+  ⨯⨯⨯⨯⨯⨯⨯⨯⨯⨯⨯⨯⨯⨯⨯.⨯⨯⨯⨯⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 聚合与分…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 详情和版…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 类别被移…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 上架到归…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 技能伪装…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 技能伪装…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 技能伪装…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 技能伪装…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 技能伪装…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 游客改写…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 真实已发…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 混入不可…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 购物车加…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 已加入购…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 分页连续…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 当前购买…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 不可公开…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 不可公开…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 不可公开…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 不可公开…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 真实零元…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 回退到旧…      ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685▕         if (! is_null($model = $this->first($columns))) {
+    686▕             return $model;
+    687▕         }
+    688▕ 
+  ➜ 689▕         throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690▕     }
+    691▕ 
+    692▕     /**
+    693▕      * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+
+  Tests:    22 failed, 1 passed (48 assertions)
+  Duration: 8.07s
+

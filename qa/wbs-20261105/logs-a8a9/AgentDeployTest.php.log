@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentDeployTest
+  ✓ it enroll 用无效 token 返回 401                                                                                   0.89s  
+  ✓ it enroll 用已过期 token 返回 401                                                                                  0.16s  
+  ✓ it enroll 用合法 token 换取身份并清掉 token                                                                            0.49s  
+  ✓ it 灰度接口未配 internal key 时返回 503                                                                               0.16s  
+  ✓ it 灰度接口用错 internal key 时返回 401                                                                               0.18s  
+  ✓ it install_record:首次安装落 installed,同 skill 换版本落 updated                                                       0.31s  
+
+  Tests:    6 passed (16 assertions)
+  Duration: 2.56s
+

@@ -1,0 +1,41 @@
+{
+  "wbs": "A1",
+  "note": "synthetic-test-only RSA key; never use in production",
+  "protocol": "agent-fact/v3",
+  "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC3/7thEXoDDVZr\nfw2QPoPld6t/vxwGfFpqCnbnSkjNcMLbkI1tsfXyOWbUZGtZLpe4uVA5WnRsLKBa\nZy99+cD1AgTKD7oBVzQUsJ3bwLRatUDGS1Hz8NumhqFTv42h6p4c8MnkRT8T+v6k\nY4R9Jb6WDPSlx+d8/wHEXnormVISiJ0wtxlu+2yaeaoNDsYRHrVDRryYpQQc/zC1\ndZB0uy2synAG9YTePlbBZpGHMSz5XLemS+qV6YBE9JKzI321RP+Ju+lyEOU92u5+\n64VeG+MWxz8KDPgfBwt+BUweQ9wsHIpdeyQTSFoHj20FdVxKtnHJD9RDiaqNbgxB\nJU3mptJJAgMBAAECggEAAV5iHvE51p75RxhtWebVJVZUDMG3rCatp39HbiYDz59o\nm6iCHNBHk5MwvCC5GbM6hrG+MocFOa7FTJba6BV9BXWL4pLmX88twH+l1PYkgU46\n2p7Bz845XA5BUfWpUIyFu5Jg9hU7yGLEFSX2XNX0inozMa6AftIIydSoFP3xedjO\nCwGGpD2Dtv/JTFrvt+9nNPrkJXV/5abnP06Ox3ITXp72rGxtwsdIHNFLDflz+QH/\nyclJ225uJY9OrH4hqAsl7Ax3Nr7IiySq6NoPlyFttCOXsxvjjQhqrcFzTYzz+Kad\n9+Swvvd+uv+rOI3kccxGi3IS4P53MZZXeoWIA6QqQQKBgQD7Xwm/sPdUq0DjscnD\n8Irdvo3Yc5URbEeXDsciQ+MoqU1wAlpfrtM8mhjFc2BjYWXG2DlQXg3Qxzv3B+/Q\ntktCYY9weWIXnMmBxT57elupMmat1JXnzwSsO6gCNHroYMxDcyGPRnUXeN5fJyjR\ngPSLEn+KKd1DWMg2ZU9x5DPXEQKBgQC7Yxn5gQTnnZBQp0o4i6PInRbSobQgS/9V\nRikAsybixuxvZ4n7VCeuMASb4zy6peUxgia+mWGNXOy8VOunpx6EE8Cu8uhqayGt\nCxYYOumJJqZ+dgJmvLpRg/AIAlTjMreqKMG+/YkdA5XlDcN7/A3daEHf/SK4kqCM\nrNTKU7/3uQKBgQDQ3o+DMNDTEdnBWSGGJoG873F9wczDxW1XH3hoCHDggI1P3SSr\nDOGJIaIjr1MQQQYIy/ITzZM9P8+b3IRwsIioh9hgZPwVErp9kh/xCiLP3IllN5e4\nHlSLqKZZ7rGSFZylDy17l9gDwPNFrYxFSRnp1V0UuOSZ6VOzn0r8H9rTgQKBgGQe\npxowXTaDcUAmoflkYrYleLRBwcQf1uTw/6doETbJojpDz+2BIVJoRY4k86WmTbcO\nGzVrLjwhkjtuBBsnp55aD3FqR9PUOcIDUmLP10d4ZyzaUJ4j6Ej1faJJ3KEn0AoS\njLJHNKNT7xrbJ79vBNlvgwLydUK41R9UmL0h0kfBAoGAOlQ6uvg1WG/hmX8YHeTK\nOn2xs2NIih2Cf4pLYPbee9O3dPkubFwcfpTZ871FRhH7B+bcTtbV7N5dnaysRKtp\nmc0wGsgb8q14YjdCnWVe1WfZ3GTdHEH9e/QNt/FXThP3eouOTqEu7x0VVr/Jm1Wr\nulnyqJFwbt37+hAID7/nPJE=\n-----END PRIVATE KEY-----\n",
+  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt/+7YRF6Aw1Wa38NkD6D\n5Xerf78cBnxaagp250pIzXDC25CNbbH18jlm1GRrWS6XuLlQOVp0bCygWmcvffnA\n9QIEyg+6AVc0FLCd28C0WrVAxktR8/DbpoahU7+NoeqeHPDJ5EU/E/r+pGOEfSW+\nlgz0pcfnfP8BxF56K5lSEoidMLcZbvtsmnmqDQ7GER61Q0a8mKUEHP8wtXWQdLst\nrMpwBvWE3j5WwWaRhzEs+Vy3pkvqlemARPSSsyN9tUT/ibvpchDlPdrufuuFXhvj\nFsc/Cgz4HwcLfgVMHkPcLByKXXskE0haB49tBXVcSrZxyQ/UQ4mqjW4MQSVN5qbS\nSQIDAQAB\n-----END PUBLIC KEY-----\n",
+  "expected_key_id": "14d8a6d92f6d39a1aaaad85fd41afa5d6536bd32b7b7b00ef7c97942d8bc23fa",
+  "signed": {
+    "protocol": "agent-fact/v3",
+    "event_id": "evt_v3_golden_0001",
+    "did": "did_v3_golden",
+    "task_no": "T-V3-GOLDEN",
+    "event_seq": 7,
+    "phase": "done",
+    "execution_fact": {
+      "execution_id": "exec_v3_golden",
+      "observed_status": "SUCCEEDED",
+      "actual_started": true,
+      "actual_stopped": true,
+      "started_at": 1700000000,
+      "stopped_at": 1700000002,
+      "velocity": 1e-06,
+      "current": -0.0,
+      "unicode": "召唤机甲",
+      "nested": {
+        "z": 1,
+        "a": [
+          3,
+          2,
+          1
+        ]
+      }
+    },
+    "evidence": {
+      "observer": "synthetic-test-only",
+      "seq": 1
+    },
+    "reported_at": 1700000003
+  },
+  "expected_canonical": "summon-mecha/agent-fact/v3\n{\"did\":\"did_v3_golden\",\"event_id\":\"evt_v3_golden_0001\",\"event_seq\":7,\"evidence\":{\"observer\":\"synthetic-test-only\",\"seq\":1},\"execution_fact\":{\"actual_started\":true,\"actual_stopped\":true,\"current\":0,\"execution_id\":\"exec_v3_golden\",\"nested\":{\"a\":[3,2,1],\"z\":1},\"observed_status\":\"SUCCEEDED\",\"started_at\":1700000000,\"stopped_at\":1700000002,\"unicode\":\"召唤机甲\",\"velocity\":0.000001},\"phase\":\"done\",\"protocol\":\"agent-fact/v3\",\"reported_at\":1700000003,\"task_no\":\"T-V3-GOLDEN\"}"
+}

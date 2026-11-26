@@ -1,0 +1,75 @@
+﻿
+  猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest > it 闅愮鏀跨瓥椤碉細涓嶅啀杈撳嚭瀹夎鍣ㄥ崰浣嶆枃妗堬紝鏀逛负鏄庤銆屾鏂囧皻鏈畾绋裤€?                   
+  Expecting '<!-- SEO Meta Content -->鈥ml>' not to contain '闅辩鏀跨瓥闋侀潰鍏у'.
+
+  at packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:29
+     25鈻?
+     26鈻?it('闅愮鏀跨瓥椤碉細涓嶅啀杈撳嚭瀹夎鍣ㄥ崰浣嶆枃妗堬紝鏀逛负鏄庤銆屾鏂囧皻鏈畾绋裤€?, function () {
+     27鈻?    $html = get('/page/privacy-policy')->assertOk()->getContent();
+     28鈻?
+  鉃? 29鈻?    expect($html)->not->toContain('闅辩鏀跨瓥闋侀潰鍏у')
+     30鈻?        ->and($html)->toContain('鏈〉姝ｆ枃灏氭湭瀹氱')
+     31鈻?        // 瑕佽娓?涓轰粈涔堢幇鍦ㄦ槸绌虹殑"锛屽惁鍒欒鑰呬細浠ヤ负椤甸潰鍧忎簡
+     32鈻?        ->and($html)->toContain('寰嬪笀瀹氱');
+     33鈻?});
+
+  1   packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:29
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest > it 鍏ㄨ〃鎵弿锛氱畝浣撲腑鏂囦笅娌℃湁浠讳綍 CMS 椤佃繕鍦ㄨ緭鍑哄畨瑁呭櫒鍗犱綅涓?                   
+  Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &0 []
++Array &0 [
++    0 => 'about-us',
++    1 => 'return-policy',
++    2 => 'refund-policy',
++    3 => 'terms-conditions',
++    4 => 'terms-of-use',
++    5 => 'customer-service',
++    6 => 'whats-new',
++    7 => 'payment-policy',
++    8 => 'shipping-policy',
++    9 => 'privacy-policy',
++]
+
+  at packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:44
+     40鈻?        ->where('html_content', 'like', '%闋侀潰鍏у%')
+     41鈻?        ->pluck('url_key')
+     42鈻?        ->all();
+     43鈻?
+  鉃? 44鈻?    expect($leftovers)->toBe([]);
+     45鈻?});
+     46鈻?
+     47鈻?it('鍗犱綅璇存槑涓嶅緱浼鎴愭潯娆炬鏂?, function () {
+     48鈻?    // 鍙嶉潰锛氳鏄庨噷涓嶈兘鍑虹幇"鏈斂绛栭€傜敤浜庘€?杩欑被鏉℃鍙ｅ惢鐨勮〃杩?鈥斺€?
+
+  1   packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:44
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest > it 鍗犱綅璇存槑涓嶅緱浼鎴愭潯娆炬鏂?                                    
+  Expected: <div class="static-container"><div class="mb-5">闅辩鏀跨瓥闋侀潰鍏у</div></div>
+
+  To contain: 灏氭湭瀹氱
+
+  at packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:56
+     52鈻?            ->where('locale', 'zh_CN')
+     53鈻?            ->where('url_key', $urlKey)
+     54鈻?            ->value('html_content');
+     55鈻?
+  鉃? 56鈻?        expect($content)->toContain('灏氭湭瀹氱')
+     57鈻?            ->and($content)->not->toContain('鏈斂绛栭€傜敤浜?)
+     58鈻?            ->and($content)->not->toContain('鎮ㄥ悓鎰?);
+     59鈻?    }
+     60鈻?});
+
+  1   packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:56
+
+
+  Tests:    3 failed (4 assertions)
+  Duration: 3.08s
+

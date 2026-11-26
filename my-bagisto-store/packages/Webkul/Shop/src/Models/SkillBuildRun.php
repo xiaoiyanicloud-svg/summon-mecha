@@ -20,9 +20,11 @@ class SkillBuildRun extends Model
         'source_digest',
         'target_profile_digest',
         'status',
+        // 注意：target_profile_digest 必须在 fillable 内，否则 create() 会静默丢弃。
         'carrier_type',
         'artifact_asset_id',
         'build_log',
+        'toolchain_json',
         'error',
     ];
 
@@ -30,6 +32,7 @@ class SkillBuildRun extends Model
         'skill_version_id'  => 'integer',
         'run_number'        => 'integer',
         'artifact_asset_id' => 'integer',
+        'toolchain_json'    => 'array',
     ];
 
     public function version(): BelongsTo

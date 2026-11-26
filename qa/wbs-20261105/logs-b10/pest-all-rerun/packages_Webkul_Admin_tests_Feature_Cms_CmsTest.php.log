@@ -1,0 +1,60 @@
+﻿
+  .⨯.......⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Cms\CmsTest > it should returns the listing cms                          
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Privacy Policy'
++'隱私政策'
+
+  at packages\Webkul\Admin\tests\Feature\Cms\CmsTest.php:32
+     28▕         'X-Requested-With' => 'XMLHttpRequest',
+     29▕     ])
+     30▕         ->assertOk()
+     31▕         ->assertJsonPath('records.0.id', 10)
+  ➜  32▕         ->assertJsonPath('records.0.page_title', 'Privacy Policy')
+     33▕         ->assertJsonPath('records.0.url_key', 'privacy-policy')
+     34▕         ->assertJsonPath('meta.total', 10);
+     35▕ });
+     36▕
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Cms\CmsTest > it should delete the cms page                              
+  Expected: {"message":"CMS\u9875\u9762\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: CMS页面删除成功。
+
+  at packages\Webkul\Admin\tests\Feature\Cms\CmsTest.php:170
+    166▕     $this->loginAsAdmin();
+    167▕ 
+    168▕     deleteJson(route('admin.cms.delete', $cms->id))
+    169▕         ->assertOk()
+  ➜ 170▕         ->assertSeeText(trans('admin::app.cms.delete-success'));
+    171▕ 
+    172▕     $this->assertDatabaseMissing('cms_pages', [
+    173▕         'id' => $cms->id,
+    174▕     ]);
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Cms\CmsTest > it should mass delete cms pages                            
+  Expected: {"message":"\u6240\u9009\u6570\u636e\u5df2\u6210\u529f\u5220\u9664"}
+
+  To contain: 所选数据已成功删除
+
+  at packages\Webkul\Admin\tests\Feature\Cms\CmsTest.php:192
+    188▕     postJson(route('admin.cms.mass_delete'), [
+    189▕         'indices' => $cmsPages->pluck('id')->toArray(),
+    190▕     ])
+    191▕         ->assertOk()
+  ➜ 192▕         ->assertSeeText(trans('admin::app.cms.index.datagrid.mass-delete-success'));
+    193▕ 
+    194▕     foreach ($cmsPages as $page) {
+    195▕         $this->assertDatabaseMissing('cms_pages', [
+    196▕             'id' => $page->id,
+
+
+  Tests:    3 failed, 8 passed (34 assertions)
+  Duration: 7.70s
+

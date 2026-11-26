@@ -1,0 +1,140 @@
+{
+  "schema": "summon-mecha/hil-evidence/v1",
+  "claim_level": "HIL",
+  "target": {
+    "vendor": "unitree",
+    "model_code": "unitree_g1",
+    "hardware_serial_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "firmware_version": "unknown",
+    "sdk_name": "unitree_sdk2py",
+    "sdk_version": "unknown",
+    "agent_version": "test",
+    "artifact_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "target_profile_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "run": {
+    "started_at": "2026-11-04T08:00:00+08:00",
+    "ended_at": "2026-11-04T09:00:00+08:00",
+    "operator_id": "red-team",
+    "facility_id": "none",
+    "observation_source": "mock",
+    "actual_started": true,
+    "actual_stopped": true,
+    "physical_stop_observed": true,
+    "estop_independent": true,
+    "raw_log": {
+      "path": "raw_hil_report.json",
+      "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+    },
+    "replay_script": {
+      "path": "replay.py",
+      "sha256": "0d004bd621ddfe5d7c5177ba42586cdca6888d8b749eddbe41416cc0c4f3c7ae"
+    }
+  },
+  "scenarios": [
+    {
+      "id": "e_stop",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    },
+    {
+      "id": "watchdog_timeout",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    },
+    {
+      "id": "communication_loss",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    },
+    {
+      "id": "power_loss",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    },
+    {
+      "id": "sensor_failure",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    },
+    {
+      "id": "thermal_derating",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    },
+    {
+      "id": "rollback_failure",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    },
+    {
+      "id": "crash_after_start",
+      "result": "PASS",
+      "observed_by": "independent_encoder",
+      "n_trials": 10,
+      "failures": 0,
+      "confidence_level": 0.95,
+      "max_failure_rate_upper_bound": 0.3,
+      "evidence": {
+        "path": "raw_hil_report.json",
+        "sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda"
+      }
+    }
+  ]
+}

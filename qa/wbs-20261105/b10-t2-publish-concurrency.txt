@@ -1,0 +1,12 @@
+﻿# b10-t2-publish-concurrency.txt · 2026-11-05 19:18:25 · DB=summon_mecha_step10_test
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillPublishHttpConcurrencyTest
+  ✓ it B3-HTTP-01 · 3 进程并发发布同一 version：无 5xx、无重复行、恰好一条 published                                                11.83s  
+  ✓ it B3-HTTP-02 · 串行发布两次：第二次不产生新行（幂等）                                                                          5.86s  
+  ✓ it B3-HTTP-03 · 并发发布 3 个不同 version：各自成功，互不影响（不是全局锁）                                                         10.37s  
+  ✓ it B3-HTTP-04 · 数据一致性：发布后版本状态与商品可售状态不矛盾                                                                      3.08s  
+
+  Tests:    4 passed (104 assertions)
+  Duration: 31.85s
+
+EXIT=0

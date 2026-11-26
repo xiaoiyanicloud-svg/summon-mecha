@@ -1,0 +1,60 @@
+﻿
+  猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test > it B-16 路 ver鈥? ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test.php:24
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test > it B-16 路 鍙戔€?   ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test.php:24
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test > it B-16 路 鏈€?   ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillVersionHistoryB16Test.php:24
+
+
+  Tests:    3 failed (0 assertions)
+  Duration: 1.74s
+

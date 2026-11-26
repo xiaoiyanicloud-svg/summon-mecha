@@ -1,0 +1,38 @@
+﻿
+  .....猕ǒ
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest > it should upda鈥?  
+  Expected: {"message":"\u901a\u8baf\u8ba2\u9605\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 閫氳璁㈤槄鏇存柊鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest.php:77
+     73鈻?        'id'            => $subscriber->id,
+     74鈻?        'is_subscribed' => $isSubscribed = rand(0, 1),
+     75鈻?    ])
+     76鈻?        ->assertOk()
+  鉃? 77鈻?        ->assertSeeText(trans('admin::app.marketing.communications.subscribers.index.edit.success'));
+     78鈻?
+     79鈻?    $this->assertModelWise([
+     80鈻?        SubscribersList::class => [
+     81鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest > it should dele鈥?  
+  Expected: {"message":"\u8ba2\u9605\u8005\u5220\u9664\u6210\u529f"}
+
+  To contain: 璁㈤槄鑰呭垹闄ゆ垚鍔?
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest.php:98
+     94鈻?    $this->loginAsAdmin();
+     95鈻?
+     96鈻?    deleteJson(route('admin.marketing.communications.subscribers.delete', $subscriber->id))
+     97鈻?        ->assertOk()
+  鉃? 98鈻?        ->assertSeeText(trans('admin::app.marketing.communications.subscribers.delete-success'));
+     99鈻?});
+    100鈻?
+
+
+  Tests:    2 failed, 5 passed (20 assertions)
+  Duration: 5.22s
+

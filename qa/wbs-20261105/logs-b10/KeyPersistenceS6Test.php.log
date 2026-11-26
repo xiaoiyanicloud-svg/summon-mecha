@@ -1,0 +1,16 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KeyPersistenceS6Test
+  ✓ it a) 配置 AGENT_KEYS_DIR 后，读写都落在新目录                                                                           1.38s  
+  ✓ it b) 私钥在、公钥缺 → 公钥被重建且与私钥匹配（私钥字节不变）                                                                          1.00s  
+  ✓ it c) CA 私钥在、证书缺 → 重签后 CA 公钥不变，老设备证书仍能验证                                                                     3.35s  
+  ✓ it d) 两个文件都缺 → 生成新密钥对/新 CA（既有行为不回归）                                                                          1.58s  
+  ✓ it e1) agent:keys:generate 幂等：已存在不覆盖（hash 与 mtime 不变）                                                        3.51s  
+  ✓ it e2) agent:keys:generate --replace 会先备份再生成                                                                 1.30s  
+  ✓ it f) agent:keys:import 遇已存在默认 FAILURE；--replace 成功且旧文件进 backup-*                                            3.83s  
+  ✓ it g1) agent:keys:import 公私钥不匹配 → FAILURE 且不落盘                                                               1.12s  
+  ✓ it g2) agent:keys:import 私钥损坏 → FAILURE 且不落盘                                                                 0.41s  
+  ✓ it h) export → import 往返：导出目录能原样导入（关键文件 hash 一致）                                                             0.70s  
+
+  Tests:    10 passed (62 assertions)
+  Duration: 18.59s
+

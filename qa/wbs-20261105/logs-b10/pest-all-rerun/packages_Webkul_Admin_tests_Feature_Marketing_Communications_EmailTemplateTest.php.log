@@ -1,0 +1,21 @@
+﻿
+  .........⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EmailTemplateTest > it should delete the spe…   
+  Expected: {"message":"\u6a21\u677f\u5220\u9664\u6210\u529f"}
+
+  To contain: 模板删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EmailTemplateTest.php:154
+    150▕     $this->loginAsAdmin();
+    151▕ 
+    152▕     deleteJson(route('admin.marketing.communications.email_templates.delete', $marketingEmailTemplate->id))
+    153▕         ->assertOk()
+  ➜ 154▕         ->assertSeeText(trans('admin::app.marketing.communications.templates.delete-success'));
+    155▕ });
+    156▕
+
+
+  Tests:    1 failed, 9 passed (34 assertions)
+  Duration: 9.16s
+

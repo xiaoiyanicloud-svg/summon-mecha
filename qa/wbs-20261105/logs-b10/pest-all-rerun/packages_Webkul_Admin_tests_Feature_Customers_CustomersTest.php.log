@@ -1,0 +1,94 @@
+﻿
+  ....⨯⨯.⨯.....⨯⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomersTest > it should create a new customer                
+  Expected: {"data":{"is_verified":1,"channel_id":1,"first_name":"Zella","last_name":"Mosciski","gender":"male","email":"ariel09@skiles.com","phone":null,"updated_at":"2026-11-05T14:43:32.000000Z","created_at":"2026-11-05T14:43:32.000000Z","id":2032,"image_url":null},"message":"\u6210\u529f\u521b\u5efa\u5ba2\u6237"}
+
+  To contain: 成功创建客户
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomersTest.php:87
+     83▕         'gender'     => fake()->randomElement(['male', 'female', 'other']),
+     84▕         'email'      => fake()->email(),
+     85▕     ])
+     86▕         ->assertOk()
+  ➜  87▕         ->assertSeeText(trans('admin::app.customers.customers.index.create.create-success'));
+     88▕ 
+     89▕     $this->assertModelWise([
+     90▕         Customer::class => [
+     91▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomersTest > it should create a new customer and send no…   
+  Expected: {"data":{"is_verified":1,"channel_id":1,"first_name":"Eula","last_name":"Sauer","gender":"female","email":"trudie.bauch@johns.com","phone":null,"updated_at":"2026-11-05T14:43:33.000000Z","created_at":"2026-11-05T14:43:33.000000Z","id":2033,"image_url":null},"message":"\u6210\u529f\u521b\u5efa\u5ba2\u6237"}
+
+  To contain: 成功创建客户
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomersTest.php:120
+    116▕         'gender'     => fake()->randomElement(['male', 'female', 'other']),
+    117▕         'email'      => fake()->email(),
+    118▕     ])
+    119▕         ->assertOk()
+  ➜ 120▕         ->assertSeeText(trans('admin::app.customers.customers.index.create.create-success'));
+    121▕ 
+    122▕     $this->assertModelWise([
+    123▕         Customer::class => [
+    124▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomersTest > it should login the customer from the admin…   
+  Failed asserting that two strings are equal.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/customer/account/profile'
++'http://localhost/admin/customers/view/2035'
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomersTest.php:164
+    160▕     // Act and Assert.
+    161▕     $this->loginAsAdmin();
+    162▕ 
+    163▕     get(route('admin.customers.customers.login_as_customer', $customer->id))
+  ➜ 164▕         ->assertRedirect(route('shop.customers.account.profile.index'))
+    165▕         ->isRedirection();
+    166▕ });
+    167▕ 
+    168▕ it('should fail the validation with errors for notes', function () {
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomersTest > it should mass delete the customers            
+  Expected: {"message":"\u6210\u529f\u5220\u9664\u6240\u9009\u6570\u636e"}
+
+  To contain: 成功删除所选数据
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomersTest.php:297
+    293▕     postJson(route('admin.customers.customers.mass_delete'), [
+    294▕         'indices' => $customers->pluck('id')->toArray(),
+    295▕     ])
+    296▕         ->assertOk()
+  ➜ 297▕         ->assertSeeText(trans('admin::app.customers.customers.index.datagrid.delete-success'));
+    298▕ 
+    299▕     foreach ($customers as $customer) {
+    300▕         $this->assertDatabaseMissing('customers', [
+    301▕             'id' => $customer->id,
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomersTest > it should mass update the customers            
+  Expected: {"message":"\u6210\u529f\u66f4\u65b0\u6240\u9009\u5ba2\u6237"}
+
+  To contain: 成功更新所选客户
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomersTest.php:320
+    316▕         'indices' => $customers->pluck('id')->toArray(),
+    317▕         'value'   => 1,
+    318▕     ])
+    319▕         ->assertOk()
+  ➜ 320▕         ->assertSeeText(trans('admin::app.customers.customers.index.datagrid.update-success'));
+    321▕ 
+    322▕     foreach ($customers as $customer) {
+    323▕         $this->assertModelWise([
+    324▕             Customer::class => [
+
+
+  Tests:    5 failed, 11 passed (53 assertions)
+  Duration: 7.17s
+

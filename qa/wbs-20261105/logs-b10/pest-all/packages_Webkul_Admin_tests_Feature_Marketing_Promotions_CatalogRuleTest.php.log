@@ -1,0 +1,21 @@
+﻿
+  .......猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CatalogRuleTest > it should delete a specific ca鈥?  
+  Expected: {"message":"\u76ee\u5f55\u89c4\u5219\u5220\u9664\u6210\u529f"}
+
+  To contain: 鐩綍瑙勫垯鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CatalogRuleTest.php:173
+    169鈻?    $this->loginAsAdmin();
+    170鈻?
+    171鈻?    deleteJson(route('admin.marketing.promotions.catalog_rules.delete', $catalogRule->id))
+    172鈻?        ->assertOk()
+  鉃?173鈻?        ->assertSeeText(trans('admin::app.marketing.promotions.catalog-rules.delete-success'));
+    174鈻?});
+    175鈻?
+
+
+  Tests:    1 failed, 7 passed (30 assertions)
+  Duration: 9.04s
+

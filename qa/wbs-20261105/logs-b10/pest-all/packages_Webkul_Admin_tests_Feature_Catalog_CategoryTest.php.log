@@ -1,0 +1,116 @@
+﻿
+  ..猕?........猕ǒ猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should return listing items of categories      
+  Failed asserting that 1 is identical to 294.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:47
+     43鈻?    getJson(route('admin.catalog.categories.index'), [
+     44鈻?        'X-Requested-With' => 'XMLHttpRequest',
+     45鈻?    ])
+     46鈻?        ->assertOk()
+  鉃? 47鈻?        ->assertJsonPath('records.0.category_id', $category->id)
+     48鈻?        ->assertJsonPath('meta.total', 2);
+     49鈻?});
+     50鈻?
+     51鈻?it('should fail the validation with errors of logo path is not an array and image', function () {
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should update a category                       
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 422.
+Failed asserting that false is true.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "zh  c n.slug 瀛楁鏄繀濉殑銆?(and 1 more error)",
+    "errors": {
+        "zh_CN.slug": [
+            "zh  c n.slug 瀛楁鏄繀濉殑銆?
+        ],
+        "zh_CN.name": [
+            "zh  c n.name 瀛楁鏄繀濉殑銆?
+        ]
+    }
+}
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:258
+    254鈻?        'banner_path' => [
+    255鈻?            UploadedFile::fake()->image('banner.png'),
+    256鈻?        ],
+    257鈻?    ])
+  鉃?258鈻?        ->assertRedirect(route('admin.catalog.categories.index'))
+    259鈻?        ->isRedirection();
+    260鈻?
+    261鈻?    $this->assertModelWise([
+    262鈻?        CategoryTranslation::class => [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should delete a category                       
+  Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:280
+    276鈻?    // Act and Assert.
+    277鈻?    $this->loginAsAdmin();
+    278鈻?
+    279鈻?    deleteJson(route('admin.catalog.categories.delete', $category->id))
+  鉃?280鈻?        ->assertOk()
+    281鈻?        ->assertSeeText(trans('admin::app.catalog.categories.delete-success'));
+    282鈻?
+    283鈻?    $this->assertDatabaseMissing('categories', [
+    284鈻?        'id' => $category->id,
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should delete mass categories                  
+  Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:298
+    294鈻?
+    295鈻?    postJson(route('admin.catalog.categories.mass_delete', [
+    296鈻?        'indices' => $categories->pluck('id')->toArray(),
+    297鈻?    ]))
+  鉃?298鈻?        ->assertOk()
+    299鈻?        ->assertSeeText(trans('admin::app.catalog.categories.delete-success'));
+    300鈻?
+    301鈻?    foreach ($categories as $category) {
+    302鈻?        $this->assertDatabaseMissing('categories', [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should update mass categories                  
+  Expected: {"message":"\u5206\u7c7b\u66f4\u65b0\u6210\u529f\u3002"}
+
+  To contain: 鍒嗙被鏇存柊鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:320
+    316鈻?        'indices' => $categories->pluck('id')->toArray(),
+    317鈻?        'value'   => 1,
+    318鈻?    ]))
+    319鈻?        ->assertOk()
+  鉃?320鈻?        ->assertSeeText(trans('admin::app.catalog.categories.update-success'));
+    321鈻?
+    322鈻?    foreach ($categories as $category) {
+    323鈻?        $this->assertModelWise([
+    324鈻?            Category::class => [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest > it should search categories with mega search      
+  Failed asserting that 1 is identical to 311.
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\CategoryTest.php:345
+    341鈻?    getJson(route('admin.catalog.categories.search', [
+    342鈻?        'query' => $category->name,
+    343鈻?    ]))
+    344鈻?        ->assertOk()
+  鉃?345鈻?        ->assertJsonPath('data.0.id', $category->id)
+    346鈻?        ->assertJsonPath('total', 1);
+    347鈻?});
+    348鈻?
+    349鈻?it('should show the tree view of categories', function () {
+
+
+  Tests:    6 failed, 12 passed (56 assertions)
+  Duration: 11.64s
+

@@ -1,0 +1,10 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchTest
+  ✓ it 熔断生效后：POST /api/deploy/tasks 被拒（409），且不落任何任务                                                              1.01s  
+  ✓ it 未熔断时：同样的请求正常建任务（闸门不误伤）                                                                                    0.23s  
+  ✓ it 熔断只拦新下发：卸载 / 回滚 / 回收任务仍可建（补救动作放行）                                                                         0.16s  
+
+  Tests:    3 passed (7 assertions)
+  Duration: 1.70s
+
+

@@ -1,0 +1,123 @@
+[2026-11-04 22:10:23] testing.INFO: deploy.outbox.claimed {"service":"skill-deploy","env":"testing","task_id":"T_V2_OLD_6aeb3ccf55b32","did":"did_legacy_6aeb3ccf4fe53","operation":7,"status":"dispatching","attempt":1,"protocol":"agent-task/v2"} 
+[2026-11-04 22:10:24] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_FACT_6aeb3cd06a38f","did":"did_fact_6aeb3cd069cdf","event_id":"evt_accept_6aeb3cd06cba2","event_type":"execution_fact","stage":"ACCEPTED","result_status":"installing","late_report":false,"ack_id":"fact_992061a9-0baf-44c1-89ef-69db15c6a98b"} 
+[2026-11-04 22:10:24] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_FACT_6aeb3cd06a38f","did":"did_fact_6aeb3cd069cdf","event_id":"evt_running_6aeb3cd094094","event_type":"execution_fact","stage":"RUNNING","result_status":"installing","late_report":false,"ack_id":"fact_5b6f117c-bcb8-4604-a267-e4da7834821a"} 
+[2026-11-04 22:10:24] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_FACT_6aeb3cd06a38f","did":"did_fact_6aeb3cd069cdf","event_id":"evt_done_6aeb3cd09a5d0","event_type":"execution_fact","stage":"SUCCEEDED","result_status":"success","late_report":false,"ack_id":"fact_79cf2df6-593a-4fa4-aa6a-5b03d0d03c82"} 
+[2026-11-04 22:10:25] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_UNKNOWN_6aeb3cd13b0ed","did":"did_unknown_6aeb3cd13abce","event_id":"evt_cancel_req_6aeb3cd13cb66","event_type":"execution_fact","stage":"CANCEL_REQUESTED","result_status":"dispatching","late_report":false,"ack_id":"fact_34f4188d-6d88-49e2-a633-ab0c7b2a384d"} 
+[2026-11-04 22:10:25] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"T_UNKNOWN_6aeb3cd13b0ed","did":"did_unknown_6aeb3cd13abce","event_id":"evt_unknown_6aeb3cd14fcba","event_type":"execution_fact","stage":"UNKNOWN","result_status":"timeout","late_report":false,"ack_id":"fact_4eb6b800-80e3-4d35-b4f0-651746f66f71"} 
+[2026-11-04 22:10:25] testing.WARNING: 下发回报被拒:非法状态流转 {"task_no":"T_UNKNOWN_6aeb3cd13b0ed","did":"did_unknown_6aeb3cd13abce","from":"timeout","to":"success","phase":"done"} 
+[2026-11-04 22:10:25] testing.INFO: deploy.inbox.late_fact_recorded {"service":"skill-deploy","env":"testing","task_id":"T_UNKNOWN_6aeb3cd13b0ed","did":"did_unknown_6aeb3cd13abce","event_id":"evt_late_done_6aeb3cd1592f6","event_type":"execution_fact","stage":"SUCCEEDED","result_status":"timeout","late_report":true,"ack_id":"fact_f0457c9b-a3a4-49be-a2b4-2fed263c612a"} 
+[2026-11-04 22:10:25] testing.INFO: deploy.inbox.ack_processed {"service":"skill-deploy","env":"testing","task_id":"T_ACK_6aeb3cd191e8c","did":"did_ack_6aeb3cd191986","event_id":"evt_local_001","stage":"staged","ack_id":"ack_86d4279c-0d13-4a0c-a2db-40da61c224ab","duplicate":false} 
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 Agent 轮询时过滤掉 OP_EXECUTE(7) 与 OP_CANCEL_EXECUTION(8)                                                     1.93s  
+  ✓ it OP_EXECUTE 执行成功仅更新 SkillExecution 状态，绝不污染 InstallRecord                                                   0.24s  
+  ✓ it POST api/agent/evt 对执行事实幂等入账，并拒绝同键异载荷                                                                     0.47s  
+  ✓ it POST api/agent/evt 拒绝没有停止证据的执行成功                                                                          0.27s  
+  ✓ it 取消请求不是物理停止，UNKNOWN 终态不被迟到成功静默改写                                                                           0.42s  
+  ✓ it POST api/agent/ack 支持端云双向事件确认                                                                             0.25s  
+  ✓ it POST api/agent/reconcile 端侧安装事实与云端记录准确对账                                                                  0.30s  
+  ✓ it 客户侧能够发起技能执行与取消，流转为 OP 7/8 任务                                                                              0.47s  
+[2026-11-04 22:10:26] testing.WARNING: 下发回报被拒:非法状态流转 {"task_no":"P926110422102600011802","did":"did_p9_illegal","from":"success","to":"failed","phase":"failed"} 
+[2026-11-04 22:10:26] testing.INFO: deploy.inbox.late_fact_recorded {"service":"skill-deploy","env":"testing","task_id":"P926110422102600011802","did":"did_p9_illegal","event_id":"evt_p9_failed","event_type":"task_fact","stage":"failed","result_status":"success","late_report":true,"ack_id":"fact_442d8de6-06cb-4f86-bbc3-9be2712fd1eb"} 
+[2026-11-04 22:10:27] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"P926110422102600021722","did":"did_p9_idem","event_id":"evt_p9_done_6aeb3cd2ef92f","event_type":"task_fact","stage":"done","result_status":"success","late_report":false,"ack_id":"fact_7c9633eb-0d26-43ff-9aa3-ab75503d4719"} 
+[2026-11-04 22:10:27] testing.WARNING: 下发回报被拒:非法状态流转 {"task_no":"P926110422102700037891","did":"did_p9_outoforder","from":"installing","to":"downloading","phase":"downloading"} 
+[2026-11-04 22:10:27] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"P926110422102700049317","did":"did_p9_ok","event_id":"evt_p9_done_6aeb3cd3999a7","event_type":"task_fact","stage":"done","result_status":"success","late_report":false,"ack_id":"fact_e71f654d-3171-4719-af88-ced06ee40403"} 
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentErrorContractP9Test
+  ✓ it P9 · 对已 success 的任务报 failed → 409 + TASK_TRANSITION_INVALID,状态不动                                          0.33s  
+  ✓ it P9 · 重复报 done(已是 success)是幂等短路,不报错                                                                        0.28s  
+  ✓ it P9 · 乱序回报(downloading 晚于 installing 到达)也被拒,不静默吞掉                                                          0.30s  
+  ✓ it P9 · event 成功体是信封(success:true + data.status)                                                             0.37s  
+  ✓ it P9 · commands 是信封(data 为数组,含 success 键)                                                                   0.34s  
+  ✓ it P9 · heartbeat 是信封                                                                                        0.27s  
+  ✓ it P9 · register 是信封且维持 201                                                                                  0.24s  
+  ✓ it P9 · 失败体一律带 code(未注册设备 → 404 + DEVICE_NOT_REGISTERED)                                                     0.26s  
+  ✓ it P9 · 任务不存在 → 404 + TASK_NOT_FOUND(不再返回裸 message)                                                          0.24s  
+[2026-11-04 22:10:29] testing.INFO: deploy.inbox.fact_processed {"service":"skill-deploy","env":"testing","task_id":"DT26110422102900075474","did":"did_owner_A","event_id":"evt_owner_match_6aeb3cd58c27c","event_type":"task_fact","stage":"done","result_status":"success","late_report":false,"ack_id":"fact_2023125b-65da-4881-8672-2b017508a9cc"} 
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentEventOwnershipTest
+  ✓ it event：用 B 的 did 报 A 的任务 → 被拒（404），且 A 的状态未被推进                                                             0.29s  
+  ✓ it event：did 与任务一致时正常推进                                                                                      0.27s  
+  ✓ it event：缺 did 直接 422（契约要求必带 did）                                                                            0.22s  
+  ✓ it commands：未注册的 did 无法拉指令（当前可兑现的归属边界）                                                                       0.29s  
+Traceback (most recent call last):
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb3cd99dd1a\runner\broker.py", line 46, in _fail_without_bridge
+    importlib.import_module(sdk_name)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ <frozen importlib._bootstrap>tstrap>", line 1387, in _gcd_import
+<frozen importlib._bootstrap>otstrap>", line 1360, in _find_and_load
+<frozen importlib._bootstrap>ootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'mock_sdk'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb3cd99dd1a\test_runner_6aeb3cd9a7b53.p<module> 4, in <module>
+    action.run()
+    ~~~~~~~~~~^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb3cd99dd1a\action.py", line 35, in run
+    return runner.execute(context=context)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb3cd99dd1a\runner\bt_runner.py", line 46, in execute
+    res = self.broker.execute_gesture(hand, cycles, timeout_ms, context)
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb3cd99dd1a\runner\broker.py", line 58, in execute_gesture
+    self._fail_without_bridge()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb3cd99dd1a\runner\broker.py", line 48, in _fail_without_bridge
+    raise UnsupportedCapabilityError(
+        f"{sdk_name} δ��װ��û����ʽ Adapter �ţ��ܾ�ִ��"
+    ) from exc
+broker.UnsupportedCapabilityError: mock_sdk δ��װ��û����ʽ Adapter �ţ��ܾ�ִ��
+Traceback (most recent call last):
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct21_test_6aeb3cdfbc97e\test_runner_6aeb3cdfc17bf.py", line 6, in<module>>
+    action.run(context=Ctx())
+    ~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct21_test_6aeb3cdfbc97e\action.py", line 32, in run
+    raise ValueError("C-T21 Υ��: cycles ������������ܿ����� (max 50)")
+ValueError: C-T21 Υ��: cycles ������������ܿ����� (max 50)
+[2026-11-04 22:10:42] testing.INFO: skill_target_release.approved {"service":"skill-compiler","env":"testing","build_key":"bk_18477a296c35804348ce14d1c8925ae179b329df5c80b8f4bb6f8f0c51505726","vendor":"unitree","model_code":"unitree_g1","status":"approved","actor_id":42,"reason":null} 
+[2026-11-04 22:10:42] testing.INFO: skill_target_release.revoked {"service":"skill-compiler","env":"testing","build_key":"bk_18477a296c35804348ce14d1c8925ae179b329df5c80b8f4bb6f8f0c51505726","vendor":"unitree","model_code":"unitree_g1","status":"revoked","actor_id":44,"reason":"HIL evidence withdrawn"} 
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\PortableSkillCompilerAcceptanceTest
+  ✓ it C-T01: 无source资产但docs示例存在 -> 构建失败，无示例/服务器路径兜底产物                                                           0.26s  
+  ✓ it C-T02: 源引用音频缺失/损坏/空文件 -> 拒绝，不生成静音或空文件替代                                                                   0.21s  
+  ✓ it C-T03: DTD/entity/include/外部路径/超深/超节点 -> 按对应错误明确拒绝                                                        0.24s  
+  ✓ it C-T04: Parallel/Fallback/Repeat/Retry 及未知 Action -> 首版拒绝                                                  0.18s  
+  ✓ it C-T05: main=Main，另有未引用 Unused 树 -> Unused 无任何调用且不影响主树语义                                                   0.21s  
+  ✓ it C-T06: SM_MotionSequence 或其他未实现能力 -> 拒绝，不能变0步成功                                                           0.20s  
+  ✓ it C-T07: wave(right,3) 目标能力超出或无完成计数 -> UNSUPPORTED_CAPABILITY                                               0.22s  
+  ✓ it C-T08: 参数越界、非整数cycles、权限少报、总时长超限 -> 副作用前拒绝                                                                0.22s  
+  ✓ it C-T09: 编译完整源，解压归档并实际运行入口 -> 无 modelCode NameError 且输出独立轨迹                                                 1.43s  
+  ✓ it C-T10: 音频素材在运行时丢失 -> 整体失败，不 print/sleep 冒充成功                                                              0.85s  
+  ✓ it C-T11: 两个品牌 binding 使用相同完整源 -> source_digest 一致但产出各自独立 target 成品                                          0.36s  
+  ✓ it C-T12: 长节点取消 -> 确认终态才释放资源                                                                                 0.69s  
+  ✓ it C-T13: 只有 G1 成品，请求 X2 或显式其他目标 asset_id -> 拒绝                                                              0.35s  
+  ✓ it C-T14: 未审目标成品 / 已撤销目标 -> 不可交付，历史构建事实保留                                                                    0.44s  
+  ✓ it C-T15: 补新目标须独立审核，旧审核与旧成品身份不变                                                                              0.34s  
+  ✓ it C-T16: 同源同目标重复构建 -> 不覆盖历史 run，生成自增 run_number                                                             0.38s  
+  ✓ it C-T17: 固定输入在两个干净环境无缓存重建 -> 最终字节 SHA-256 绝对一致                                                              1.44s  
+  ✓ it C-T18: 修改源素材内容 -> 对应构建身份与哈希改变                                                                             0.72s  
+  ✓ it C-T19: 旧 motion/composite 无 btcpp source_format -> 走既有旧构建器                                                0.35s  
+  ✓ it C-T20: 打包后篡改文件哈希 -> 交付校验拒绝                                                                                0.28s  
+  ✓ it C-T21: 已安装并获准成品发起执行，传入额外客户 params -> 拒绝                                                                   1.09s  
+  ✓ it C-T22: 轨迹仅角度合规但速度/加速度超包络 -> 动力学约束失败并阻断                                                                    0.22s  
+  ✓ it C-T23: 上传 -> 构建 -> 目标审核 -> 发布 -> 交付全生命周期同一身份贯穿                                                            0.33s  
+  ✓ it C-T24: 关闭新构建/新安装时，取消与事实补报依然可达                                                                             0.41s  
+  ✓ it C-T25: 同一标准源分别构建五个 GA 目标，A2 不再是默认目标                                                                       0.41s  
+  ✓ it C-T26: 目标审核服务校验产物快照与 Profile 摘要，并留不可变审计事件                                                                 0.56s  
+  ✓ it C-T27: 运动型技能在未知厂商物理限值下 fail-closed，仅 G1 ground-truth 可构建                                                  0.39s  
+  ✓ it C-T28: 强类型 BuildCommand 入口核对源/Profile 摘要，陈旧输入不进入 builder                                                  0.40s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\PortableSkillCompilerTest
+  ✓ it TargetProfileService 能够加载各机型 Profile 并计算规范化 JCS 摘要                                                        0.43s  
+  ✓ it PortableSourceValidator 严格校验清单格式与行为树 XML 白名单及安全边界                                                         0.23s  
+  ✓ it SourceParser 正确将 BehaviorTree XML4 转换为结构化 IR 与不可变摘要                                                       0.34s  
+  ✓ it MotionTranscoder 为 Unitree G1 生成平滑且在物理限位内的关节轨迹                                                            0.35s  
+  ✓ it PortableSkillBuilder 成功编译标准源为 Unitree G1 目标成品并打通交付解析                                                      0.38s  
+
+  Tests:    54 passed (5345 assertions)
+  Duration: 25.82s
+

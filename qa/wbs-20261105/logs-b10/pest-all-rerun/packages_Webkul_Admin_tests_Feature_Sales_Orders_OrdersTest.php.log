@@ -1,0 +1,47 @@
+﻿
+  ....⨯....⨯..........
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest > it should update the cart item after add pr…   
+  Expected: {"data":{"id":468,"is_guest":0,"customer_id":2146,"items_count":1,"items_qty":3,"sub_total":776.28,"formatted_sub_total":"\u00a5776.28","sub_total_incl_tax":776.28,"formatted_sub_total_incl_tax":"\u00a5776.28","shipping_method":null,"shipping_amount":0,"formatted_shipping_amount":"\u00a50.00","shipping_amount_incl_tax":0,"formatted_shipping_amount_incl_tax":"\u00a50.00","tax_total":0,"formatted_tax_total":"\u00a50.00","applied_taxes":{" (0%)":"\u00a50.00"},"coupon_code":null,"discount_amount":0,"formatted_discount_amount":"\u00a50.00","grand_total":776.28,"formatted_grand_total":"\u00a5776.28","items":[{"id":722,"cart_id":468,"product_id":3718,"sku":"c9254cdc-29d6-3300-aa6d-369ca17b19a7","quantity":3,"type":"simple","name":"dolorem magni est","price":"258.7600","formatted_price":"\u00a5258.76","price_incl_tax":"258.7600","formatted_price_incl_tax":"\u00a5258.76","total":"776.2800","formatted_total":"\u00a5776.28","total_incl_tax":"776.2800","formatted_total_incl_tax":"\u00a5776.28","options":[],"additional":{"rating":"0","quantity":3,"is_buy_now":"0","product_id":3718},"product":{"id":3718,"type":"simple","sku":"c9254cdc-29d6-3300-aa6d-369ca17b19a7","name":"dolorem magni est","price":"258.7600","formatted_price":"\u00a5258.76","images":[],"inventories":[{"id":1697,"qty":187,"product_id":3718,"vendor_id":0,"inventory_source_id":1}],"is_options_required":false,"is_saleable":true}}],"billing_address":null,"shipping_address":null,"have_stockable_items":true,"payment_method":null,"payment_method_title":null},"message":"\u8d2d\u7269\u8f66\u9879\u76ee\u5df2\u6210\u529f\u66f4\u65b0"}
+
+  To contain: 购物车项目已成功更新
+
+  at packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest.php:223
+    219▕             $cartItem->id => $qty = rand(2, 10),
+    220▕         ],
+    221▕     ])
+    222▕         ->assertOk()
+  ➜ 223▕         ->assertSeeText(trans('admin::app.sales.orders.create.cart.success-update'));
+    224▕ 
+    225▕     $cart->refresh();
+    226▕ 
+    227▕     $cartItem->refresh();
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest > it should store the payment method after st…   
+  Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+ Array &0 [
+-    0 => '2557 Bernie Fork',
+-    1 => 'Lake Luellabury, OH 27781-1270',
++    0 => '2557 Bernie Fork\n
++Lake Luellabury, OH 27781-1270',
+ ]
+
+  at packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest.php:765
+    761▕         ->assertJsonPath('cart.billing_address.first_name', $cartBillingAddress->first_name)
+    762▕         ->assertJsonPath('cart.billing_address.last_name', $cartBillingAddress->last_name)
+    763▕         ->assertJsonPath('cart.billing_address.gender', $cartBillingAddress->gender)
+    764▕         ->assertJsonPath('cart.billing_address.company_name', $cartBillingAddress->company_name)
+  ➜ 765▕         ->assertJsonPath('cart.billing_address.address', explode("\n", $cartBillingAddress->address))
+    766▕         ->assertJsonPath('cart.billing_address.city', $cartBillingAddress->city)
+    767▕         ->assertJsonPath('cart.billing_address.state', $cartBillingAddress->state)
+    768▕         ->assertJsonPath('cart.billing_address.country', $cartBillingAddress->country)
+    769▕         ->assertJsonPath('cart.billing_address.postcode', $cartBillingAddress->postcode)
+
+
+  Tests:    2 failed, 18 passed (263 assertions)
+  Duration: 24.69s
+

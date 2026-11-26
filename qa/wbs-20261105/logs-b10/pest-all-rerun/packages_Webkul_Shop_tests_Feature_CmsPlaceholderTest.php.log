@@ -1,0 +1,75 @@
+﻿
+  ⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest > it 隐私政策页：不再输出安装器占位文案，改为明说「正文尚未定稿」                    
+  Expecting '<!-- SEO Meta Content -->…tml>' not to contain '隱私政策頁面內容'.
+
+  at packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:29
+     25▕ 
+     26▕ it('隐私政策页：不再输出安装器占位文案，改为明说「正文尚未定稿」', function () {
+     27▕     $html = get('/page/privacy-policy')->assertOk()->getContent();
+     28▕ 
+  ➜  29▕     expect($html)->not->toContain('隱私政策頁面內容')
+     30▕         ->and($html)->toContain('本页正文尚未定稿')
+     31▕         // 要讲清"为什么现在是空的"，否则读者会以为页面坏了
+     32▕         ->and($html)->toContain('律师定稿');
+     33▕ });
+
+  1   packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:29
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest > it 全表扫描：简体中文下没有任何 CMS 页还在输出安装器占位串                    
+  Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &0 []
++Array &0 [
++    0 => 'about-us',
++    1 => 'return-policy',
++    2 => 'refund-policy',
++    3 => 'terms-conditions',
++    4 => 'terms-of-use',
++    5 => 'customer-service',
++    6 => 'whats-new',
++    7 => 'payment-policy',
++    8 => 'shipping-policy',
++    9 => 'privacy-policy',
++]
+
+  at packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:44
+     40▕         ->where('html_content', 'like', '%頁面內容%')
+     41▕         ->pluck('url_key')
+     42▕         ->all();
+     43▕ 
+  ➜  44▕     expect($leftovers)->toBe([]);
+     45▕ });
+     46▕ 
+     47▕ it('占位说明不得伪装成条款正文', function () {
+     48▕     // 反面：说明里不能出现"本政策适用于…"这类条款口吻的表述 ——
+
+  1   packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:44
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest > it 占位说明不得伪装成条款正文                                     
+  Expected: <div class="static-container"><div class="mb-5">隱私政策頁面內容</div></div>
+
+  To contain: 尚未定稿
+
+  at packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:56
+     52▕             ->where('locale', 'zh_CN')
+     53▕             ->where('url_key', $urlKey)
+     54▕             ->value('html_content');
+     55▕ 
+  ➜  56▕         expect($content)->toContain('尚未定稿')
+     57▕             ->and($content)->not->toContain('本政策适用于')
+     58▕             ->and($content)->not->toContain('您同意');
+     59▕     }
+     60▕ });
+
+  1   packages\Webkul\Shop\tests\Feature\CmsPlaceholderTest.php:56
+
+
+  Tests:    3 failed (4 assertions)
+  Duration: 2.29s
+

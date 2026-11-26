@@ -1,0 +1,47 @@
+﻿
+  ....猕?...猕?.........
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest > it should update the cart item after add pr鈥?  
+  Expected: {"data":{"id":176,"is_guest":0,"customer_id":1038,"items_count":1,"items_qty":10,"sub_total":437,"formatted_sub_total":"\u00a5437.00","sub_total_incl_tax":437,"formatted_sub_total_incl_tax":"\u00a5437.00","shipping_method":null,"shipping_amount":0,"formatted_shipping_amount":"\u00a50.00","shipping_amount_incl_tax":0,"formatted_shipping_amount_incl_tax":"\u00a50.00","tax_total":0,"formatted_tax_total":"\u00a50.00","applied_taxes":{" (0%)":"\u00a50.00"},"coupon_code":null,"discount_amount":0,"formatted_discount_amount":"\u00a50.00","grand_total":437,"formatted_grand_total":"\u00a5437.00","items":[{"id":202,"cart_id":176,"product_id":1977,"sku":"39bf3769-7542-3141-8bc7-f8809b5a74ea","quantity":10,"type":"simple","name":"esse ut incidunt","price":"43.7000","formatted_price":"\u00a543.70","price_incl_tax":"43.7000","formatted_price_incl_tax":"\u00a543.70","total":"437.0000","formatted_total":"\u00a5437.00","total_incl_tax":"437.0000","formatted_total_incl_tax":"\u00a5437.00","options":[],"additional":{"rating":"0","quantity":10,"is_buy_now":"0","product_id":1977},"product":{"id":1977,"type":"simple","sku":"39bf3769-7542-3141-8bc7-f8809b5a74ea","name":"esse ut incidunt","price":"43.7000","formatted_price":"\u00a543.70","images":[],"inventories":[{"id":635,"qty":196,"product_id":1977,"vendor_id":0,"inventory_source_id":1}],"is_options_required":false,"is_saleable":true}}],"billing_address":null,"shipping_address":null,"have_stockable_items":true,"payment_method":null,"payment_method_title":null},"message":"\u8d2d\u7269\u8f66\u9879\u76ee\u5df2\u6210\u529f\u66f4\u65b0"}
+
+  To contain: 璐墿杞﹂」鐩凡鎴愬姛鏇存柊
+
+  at packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest.php:223
+    219鈻?            $cartItem->id => $qty = rand(2, 10),
+    220鈻?        ],
+    221鈻?    ])
+    222鈻?        ->assertOk()
+  鉃?223鈻?        ->assertSeeText(trans('admin::app.sales.orders.create.cart.success-update'));
+    224鈻?
+    225鈻?    $cart->refresh();
+    226鈻?
+    227鈻?    $cartItem->refresh();
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest > it should store the payment method after st鈥?  
+  Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+ Array &0 [
+-    0 => '1761 Saige Terrace Apt. 617',
+-    1 => 'Deannaburgh, WY 69340',
++    0 => '1761 Saige Terrace Apt. 617\n
++Deannaburgh, WY 69340',
+ ]
+
+  at packages\Webkul\Admin\tests\Feature\Sales\Orders\OrdersTest.php:765
+    761鈻?        ->assertJsonPath('cart.billing_address.first_name', $cartBillingAddress->first_name)
+    762鈻?        ->assertJsonPath('cart.billing_address.last_name', $cartBillingAddress->last_name)
+    763鈻?        ->assertJsonPath('cart.billing_address.gender', $cartBillingAddress->gender)
+    764鈻?        ->assertJsonPath('cart.billing_address.company_name', $cartBillingAddress->company_name)
+  鉃?765鈻?        ->assertJsonPath('cart.billing_address.address', explode("\n", $cartBillingAddress->address))
+    766鈻?        ->assertJsonPath('cart.billing_address.city', $cartBillingAddress->city)
+    767鈻?        ->assertJsonPath('cart.billing_address.state', $cartBillingAddress->state)
+    768鈻?        ->assertJsonPath('cart.billing_address.country', $cartBillingAddress->country)
+    769鈻?        ->assertJsonPath('cart.billing_address.postcode', $cartBillingAddress->postcode)
+
+
+  Tests:    2 failed, 18 passed (263 assertions)
+  Duration: 13.50s
+

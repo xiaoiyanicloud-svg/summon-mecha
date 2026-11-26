@@ -1,0 +1,146 @@
+{
+    "verdict": "IDENTICAL",
+    "checks": {
+        "same_build_key": true,
+        "same_package_sha256": true,
+        "same_artifact_size": true,
+        "same_entry_sequence": true,
+        "same_profile_digest": true,
+        "different_version_id": true,
+        "different_storage_root": true,
+        "different_tmp_dir": true,
+        "both_succeeded": true
+    },
+    "a": {
+        "worker": "w1",
+        "tmp_dir": "D:/main/qa/wbs-20261105/probes/_run_b5/w1/tmp",
+        "storage_root": "D:/main/qa/wbs-20261105/probes/_run_b5/w1/storage",
+        "skill_version_id": 1537,
+        "build_key": "bk_3a28e059afa05eb072b720c6ca79940fc73e594507fccab33b6602f04212a6fb",
+        "package_sha256": "a3f3345c87eb335fcf2eb2d9eedd0cca34eb8278fbe930e6286545a0382c92db",
+        "artifact_size": 8201
+    },
+    "b": {
+        "worker": "w2",
+        "tmp_dir": "D:/main/qa/wbs-20261105/probes/_run_b5/w2/tmp",
+        "storage_root": "D:/main/qa/wbs-20261105/probes/_run_b5/w2/storage",
+        "skill_version_id": 1538,
+        "build_key": "bk_3a28e059afa05eb072b720c6ca79940fc73e594507fccab33b6602f04212a6fb",
+        "package_sha256": "a3f3345c87eb335fcf2eb2d9eedd0cca34eb8278fbe930e6286545a0382c92db",
+        "artifact_size": 8201
+    },
+    "entries_count": 9,
+    "entries": [
+        {
+            "name": "action.py",
+            "size": 1435,
+            "mtime": 1700000000
+        },
+        {
+            "name": "artifact.json",
+            "size": 417,
+            "mtime": 1700000000
+        },
+        {
+            "name": "assets/welcome.wav",
+            "size": 38,
+            "mtime": 1700000000
+        },
+        {
+            "name": "bindings/target_binding.json",
+            "size": 884,
+            "mtime": 1700000000
+        },
+        {
+            "name": "data/wave_left_2.json",
+            "size": 37331,
+            "mtime": 1700000000
+        },
+        {
+            "name": "manifest.json",
+            "size": 860,
+            "mtime": 1700000000
+        },
+        {
+            "name": "plan.json",
+            "size": 901,
+            "mtime": 1700000000
+        },
+        {
+            "name": "runner/broker.py",
+            "size": 4835,
+            "mtime": 1700000000
+        },
+        {
+            "name": "runner/bt_runner.py",
+            "size": 2898,
+            "mtime": 1700000000
+        }
+    ],
+    "cleanup": [
+        {
+            "table": "skill_target_release_events",
+            "deleted": 1
+        },
+        {
+            "table": "skill_target_releases",
+            "deleted": 1
+        },
+        {
+            "table": "skill_build_runs",
+            "deleted": 1
+        },
+        {
+            "table": "skill_build_commands",
+            "deleted": 0
+        },
+        {
+            "table": "skill_assets",
+            "deleted": 2
+        },
+        {
+            "table": "skill_versions",
+            "deleted": 1
+        },
+        {
+            "table": "products",
+            "deleted": 1
+        },
+        {
+            "table": "skill_build_sequences",
+            "deleted": 1
+        },
+        {
+            "table": "skill_target_release_events",
+            "deleted": 1
+        },
+        {
+            "table": "skill_target_releases",
+            "deleted": 1
+        },
+        {
+            "table": "skill_build_runs",
+            "deleted": 1
+        },
+        {
+            "table": "skill_build_commands",
+            "deleted": 0
+        },
+        {
+            "table": "skill_assets",
+            "deleted": 2
+        },
+        {
+            "table": "skill_versions",
+            "deleted": 1
+        },
+        {
+            "table": "products",
+            "deleted": 1
+        },
+        {
+            "table": "skill_build_sequences",
+            "deleted": 0
+        }
+    ]
+}

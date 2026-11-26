@@ -1,0 +1,93 @@
+﻿
+   FAIL  Packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest
+  ⨯ it A3-05 同一 (did,batch_id) 只生效一次：重复上报不刷高计数                                                                   0.78s  
+  ⨯ it A3-07 心跳带 metrics 增量 → 平台计数生效                                                                             0.28s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest > it A3-05 同一 (did,batch_id) 只生效一…         
+  Failed asserting that true is false.
+
+  at packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest.php:113
+    109▕     $first = $counter->applyAgentBatch($did, $batch, ['agent_restart_total' => 2, 'staging_orphan_total' => 3]);
+    110▕     $second = $counter->applyAgentBatch($did, $batch, ['agent_restart_total' => 2, 'staging_orphan_total' => 3]);
+    111▕ 
+    112▕     expect($first)->toBeTrue()
+  ➜ 113▕         ->and($second)->toBeFalse()
+    114▕         ->and($counter->total('agent_restart_total'))->toBe(2)
+    115▕         ->and($counter->total('staging_orphan_total'))->toBe(3);
+    116▕ });
+    117▕
+
+  1   packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest.php:113
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest > it A3-07 心跳带 metrics 增量 → 平台计数生效         
+  Failed asserting that 2 is identical to 1.
+
+  at packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest.php:157
+    153▕             'counters' => ['agent_restart_total' => 1, 'outbox_flush_failed_total' => 2],
+    154▕         ],
+    155▕     ], a3Headers())->assertOk();
+    156▕ 
+  ➜ 157▕     expect(a3Counter()->total('agent_restart_total'))->toBe(1)
+    158▕         ->and(a3Counter()->total('outbox_flush_failed_total'))->toBe(2);
+    159▕ });
+    160▕ 
+    161▕ it('A3-08 心跳上报未注册的键 → 422（让 Agent 停止重试并丢弃该批）', function () {
+
+  1   packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest.php:157
+
+
+  Tests:    2 failed (7 assertions)
+  Duration: 1.51s
+
+
+===== 还原后（green）=====
+  ✓ it A3-11 快照里 9 个键全部是整数（不再有 null/non_instrumented），键数恒为 9                                                     0.35s  
+  ✓ it A3-12 重启告警按"累计启动次数 > 上报设备数"判定：首次启动不算重启                                                                    0.56s  
+
+  Tests:    12 passed (66 assertions)
+  Duration: 4.53s
+
+
+===== A4 mutation: 关掉启动自愈的 staging 清理（red）=====
+python.exe : test_kill_then_restart_recovers (tests.test_crash_restart.TestCrashRestart.test_kill_then_restart_recovers
+) ... FAIL
+At line:6 char:1
++ & $py -m unittest tests.test_crash_restart -v 2>&1 | Tee-Object -Appe ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_kill_then_...overs) ... FAIL:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+======================================================================
+FAIL: test_kill_then_restart_recovers (tests.test_crash_restart.TestCrashRestart.test_kill_then_restart_recovers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\agent\tests\test_crash_restart.py", line 140, in test_kill_then_restart_recovers
+    self.assertEqual(result["recovery"]["staging_orphans_cleaned"], 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 1 test in 0.840s
+
+FAILED (failures=1)
+
+===== 还原后（green）=====
+python.exe : ............{"timestamp":"2026-11-05T06:13:15Z","level":"ERROR","service":"zhjj-agent","env":"production",
+"event":"agent.execution_fact","correlation_id":"task_flush","task_id":"task_flush","execution_id":null,"build_key":nul
+l,"did":"did_a3_bot","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":
+null,"error_code":"E_TEST"}
+At line:6 char:1
++ & $py -m unittest tests.test_crash_restart tests.test_metrics 2>&1 |  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (............{"t...code":"E_TEST"}:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+.{"timestamp":"2026-11-05T06:13:15Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution
+_fact","correlation_id":"task_x","task_id":"task_x","execution_id":null,"build_key":null,"did":"did_a3_bot","vendor":nu
+ll,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVALID"}
+..
+----------------------------------------------------------------------
+Ran 15 tests in 1.429s
+
+OK

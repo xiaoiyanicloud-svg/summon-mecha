@@ -1,0 +1,10 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\BuildMetricsTest
+  ✓ it B8 · 按状态与时长输出有界指标                                                                                         0.88s  
+  ✓ it B8 · build_key 过滤只统计该关联 ID                                                                                0.17s  
+  ✓ it B8 · 同键重试不重复计数                                                                                            0.18s  
+
+  Tests:    3 passed (23 assertions)
+  Duration: 1.63s
+
+

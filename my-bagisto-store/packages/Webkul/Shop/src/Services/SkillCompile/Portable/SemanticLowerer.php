@@ -107,10 +107,16 @@ class SemanticLowerer
         $dataFiles['plan.json'] = json_encode($planData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $targetBinding = [
-            'schema'            => 'zhaohuan.binding/v1',
-            'target_model_code' => $targetModelCode,
-            'vendor'            => $profile['vendor'] ?? 'generic',
-            'actions'           => [
+            'schema'                => 'zhaohuan.binding/v2',
+            'target_model_code'     => $targetModelCode,
+            'vendor'                => $profile['vendor'] ?? 'generic',
+            'sdk_name'              => $profile['sdk_name'] ?? ($profile['sdk']['name'] ?? ''),
+            'sdk_version_range'     => $profile['sdk_version_range'] ?? ($profile['sdk']['version_range'] ?? ''),
+            'firmware_range'        => $profile['firmware_range'] ?? 'vendor-confirmation-required',
+            'artifact_abi'          => $profile['artifact_abi'] ?? 'zhaohuan.skill-target/v1',
+            'target_profile_digest' => $this->profileService->getDigest($targetModelCode),
+            'hardware_verification_status' => $profile['hardware_verification_status'] ?? 'HARDWARE_UNVERIFIED',
+            'actions'               => [
                 'SM_GestureWave' => ['broker_method' => 'execute_gesture', 'timeout_default_ms' => 12000],
                 'SM_AudioPlay'   => ['broker_method' => 'play_audio', 'timeout_default_ms' => 8000],
                 'SM_Wait'        => ['broker_method' => 'wait', 'timeout_default_ms' => 65000],
@@ -142,6 +148,10 @@ class SemanticLowerer
     protected function generateActionPy(string $modelCode, array $profile): string
     {
         $escapedModel = addslashes($modelCode);
+        $maxCycles = (int) ($profile['capabilities']['actions']['SM_GestureWave']['max_cycles'] ?? 0);
+        if ($maxCycles <= 0) {
+            $maxCycles = 1;
+        }
 
         return <<<PY
 #!/usr/bin/env python3
@@ -174,8 +184,8 @@ def run(context=None):
         if params is not None and isinstance(params, dict):
             if any(k in params for k in ("speed", "sdk_method", "override_plan")):
                 raise ValueError("C-T21 违规: 拒绝传入未授权额外执行参数")
-            if int(params.get("cycles", 0)) > 10:
-                raise ValueError("C-T21 违规: cycles 超过机型最大受控周期 (max 10)")
+            if int(params.get("cycles", 0)) > {$maxCycles}:
+                raise ValueError("C-T21 违规: cycles 超过机型最大受控周期 (max {$maxCycles})")
 
     runner = BTRunner(base_dir=BASE_DIR, target_model_code="{$escapedModel}")
     return runner.execute(context=context)
@@ -239,11 +249,15 @@ class BTRunner:
                 cycles = int(params.get("cycles", 3))
                 res = self.broker.execute_gesture(hand, cycles, timeout_ms, context)
                 step_entry.update(res)
+                if res.get("status") in ("FAILED", "CANCELED"):
+                    return {"status": res["status"], "stopped": True, "trace": trace + [step_entry]}
             elif action_id == "SM_AudioPlay":
                 asset = params.get("asset", "")
                 wait = str(params.get("wait", "true")).lower() in ("true", "1")
                 res = self.broker.play_audio(asset, wait, timeout_ms, context)
                 step_entry.update(res)
+                if res.get("status") in ("FAILED", "CANCELED"):
+                    return {"status": res["status"], "stopped": True, "trace": trace + [step_entry]}
             elif action_id == "SM_Wait":
                 duration_ms = int(params.get("duration_ms", 1000))
                 res = self.broker.wait(duration_ms, context)
@@ -263,91 +277,119 @@ PY;
     }
 
     /**
-     * 生成能力 Broker 脚本 broker.py。
+     * 生成能力 Broker 脚本 broker.py（Profile 驱动、默认 fail-closed）。
      */
     protected function generateBrokerPy(): string
     {
         return <<<'PY'
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-设备端最小权限 CapabilityBroker (Work Package C05)。
-隔离 SDK 调用，拦截非法参数与越界资源，对接外部可观测 stub。
+"""目标 Profile 驱动的受限 CapabilityBroker。
+
+安全边界：
+- 不根据“SDK 可 import”推断动作成功。
+- 无显式测试桩或真实 Adapter 桥时拒绝执行。
+- 取消只返回 CANCEL_REQUESTED；物理停止必须由 Adapter.observe_execution 独立确认。
 """
 
+import importlib
+import json
 import os
-import sys
 import time
 
+
 class UnsupportedCapabilityError(RuntimeError):
-    pass
+    """明确的能力缺失或安全拒绝。"""
+
 
 class CapabilityBroker:
     def __init__(self, target_model_code: str, base_dir: str):
         self.target_model_code = target_model_code
-        self.base_dir = base_dir
+        self.base_dir = os.path.abspath(base_dir)
+        binding_path = os.path.join(self.base_dir, "bindings", "target_binding.json")
+        with open(binding_path, "r", encoding="utf-8") as f:
+            self.binding = json.load(f)
 
-    def execute_gesture(self, hand: str, cycles: int, timeout_ms: int, context=None):
+        if self.binding.get("target_model_code") != target_model_code:
+            raise UnsupportedCapabilityError("编译产物目标机型与 Agent Adapter 不一致")
+        if not str(self.binding.get("target_profile_digest", "")).startswith("sha256:"):
+            raise UnsupportedCapabilityError("编译产物缺少有效 TargetProfile 摘要")
+
+    def _bridge(self, context):
         stub = getattr(context, "stub", None) if context else None
         if stub is not None:
-            if hasattr(stub, "execute_gesture"):
-                return stub.execute_gesture(hand, cycles, timeout_ms, context)
-            if hasattr(stub, "execute"):
-                return stub.execute(
-                    getattr(context, "execution_id", "test_exec"),
-                    "SM_GestureWave",
-                    None,
-                    {"hand": hand, "cycles": cycles, "timeout_ms": timeout_ms},
-                    getattr(context, "cancel_event", None)
-                )
+            return stub
+        bridge = getattr(context, "adapter", None) if context else None
+        if bridge is not None:
+            return bridge
+        return None
 
-        trace_log = os.environ.get("ZHJJ_BROKER_LOG_PATH")
-        if trace_log:
-            with open(trace_log, "a", encoding="utf-8") as f:
-                f.write(f'{{"event": "gesture_wave", "model": "{self.target_model_code}", "hand": "{hand}", "cycles": {cycles}}}\n')
-            return {"status": "SUCCEEDED", "hand": hand, "cycles": cycles, "evidence": "stub_trace"}
+    def _fail_without_bridge(self):
+        sdk_name = self.binding.get("sdk_name") or "unknown-vendor-sdk"
+        try:
+            importlib.import_module(sdk_name)
+        except ImportError as exc:
+            raise UnsupportedCapabilityError(
+                f"{sdk_name} 未安装；没有显式 Adapter 桥，拒绝执行"
+            ) from exc
+        raise UnsupportedCapabilityError(
+            f"{sdk_name} 可导入，但没有经验证的 Adapter 桥；禁止把 import 成功当作动作成功"
+        )
 
-        if self.target_model_code == "unitree_g1":
-            try:
-                import unitree_sdk2py  # type: ignore
-                return {"status": "SUCCEEDED", "hand": hand, "cycles": cycles, "hardware": "HARDWARE_UNVERIFIED"}
-            except ImportError:
-                raise UnsupportedCapabilityError("unitree_sdk2py 未安装且无 stub 注入，拒绝执行真实动作 (C-T10)")
-        elif self.target_model_code == "agibot_a2":
-            try:
-                import aimdk  # type: ignore
-                return {"status": "SUCCEEDED", "hand": hand, "cycles": cycles, "hardware": "HARDWARE_UNVERIFIED"}
-            except ImportError:
-                raise UnsupportedCapabilityError("aimdk 未安装且无 stub 注入，拒绝执行真实动作 (C-T10)")
-        elif self.target_model_code == "mock":
-            return {"status": "SUCCEEDED", "hand": hand, "cycles": cycles, "mock": True}
-
-        raise UnsupportedCapabilityError(f"未知或未经验证的机型: {self.target_model_code}")
+    def execute_gesture(self, hand: str, cycles: int, timeout_ms: int, context=None):
+        bridge = self._bridge(context)
+        if bridge is None:
+            self._fail_without_bridge()
+        if hasattr(bridge, "execute_gesture"):
+            return bridge.execute_gesture(hand, cycles, timeout_ms, context)
+        if hasattr(bridge, "execute_action"):
+            return bridge.execute_action(
+                "SM_GestureWave",
+                {"hand": hand, "cycles": cycles, "timeout_ms": timeout_ms},
+                getattr(context, "cancel_event", None),
+            )
+        if hasattr(bridge, "execute"):
+            return bridge.execute(
+                getattr(context, "execution_id", "unknown"),
+                "SM_GestureWave",
+                None,
+                {"hand": hand, "cycles": cycles, "timeout_ms": timeout_ms},
+                getattr(context, "cancel_event", None),
+            )
+        raise UnsupportedCapabilityError("Adapter 桥未实现受控手势执行")
 
     def play_audio(self, asset_rel_path: str, wait: bool, timeout_ms: int, context=None):
-        audio_full_path = os.path.join(self.base_dir, asset_rel_path)
+        if not asset_rel_path or os.path.isabs(asset_rel_path):
+            raise UnsupportedCapabilityError("音频素材必须是包内相对路径")
+        base_real = os.path.realpath(self.base_dir)
+        audio_full_path = os.path.realpath(os.path.join(base_real, asset_rel_path))
+        if not audio_full_path.startswith(base_real + os.sep):
+            raise UnsupportedCapabilityError("音频素材路径越界")
         if not os.path.isfile(audio_full_path):
-            raise FileNotFoundError(f"音频素材文件不存在: {asset_rel_path} (C-T10)")
+            raise FileNotFoundError(f"音频素材文件不存在: {asset_rel_path}")
 
-        stub = getattr(context, "stub", None) if context else None
-        if stub and hasattr(stub, "play_audio"):
-            return stub.play_audio(asset_rel_path, wait, timeout_ms, context)
-
-        trace_log = os.environ.get("ZHJJ_BROKER_LOG_PATH")
-        if trace_log:
-            with open(trace_log, "a", encoding="utf-8") as f:
-                f.write(f'{{"event": "audio_play", "model": "{self.target_model_code}", "asset": "{asset_rel_path}", "wait": {str(wait).lower()}}}\n')
-
-        return {"status": "SUCCEEDED", "asset": asset_rel_path}
+        bridge = self._bridge(context)
+        if bridge is None:
+            self._fail_without_bridge()
+        if hasattr(bridge, "play_audio"):
+            return bridge.play_audio(asset_rel_path, wait, timeout_ms, context)
+        if hasattr(bridge, "execute_action"):
+            return bridge.execute_action(
+                "SM_AudioPlay",
+                {"asset": asset_rel_path, "wait": wait, "timeout_ms": timeout_ms},
+                getattr(context, "cancel_event", None),
+            )
+        raise UnsupportedCapabilityError("Adapter 桥未实现受控音频播放")
 
     def wait(self, duration_ms: int, context=None):
         seconds = duration_ms / 1000.0
-        start = time.time()
-        while time.time() - start < seconds:
+        start = time.monotonic()
+        while time.monotonic() - start < seconds:
             if context and hasattr(context, "is_canceled") and context.is_canceled():
-                return {"status": "CANCELED"}
-            time.sleep(min(0.02, max(0.001, seconds - (time.time() - start))))
-        return {"status": "SUCCEEDED", "duration_ms": duration_ms}
+                return {"status": "CANCELED", "cancel_requested": True, "stopped": False}
+            remaining = seconds - (time.monotonic() - start)
+            time.sleep(min(0.02, max(0.001, remaining)))
+        return {"status": "SUCCEEDED", "duration_ms": duration_ms, "stopped": True}
 PY;
     }
 }

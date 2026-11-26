@@ -1,0 +1,27 @@
+### php -l (changed files)
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/Portable/SourcePackageRejected.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/Portable/SourcePackageReader.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/Portable/TargetAppBuilder.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/Builders/PortableSkillBuilder.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/Builders/MotionCarrierBuilder.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/SkillBuildService.php
+No syntax errors detected in config/skill_build.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/SourcePackageSecurityTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/BuildDeterminismTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/MotionCarrierFailClosedTest.php
+### contract-check
+契约版本：2026-10-20-q1
++-------------------+------+
+|[32m 项目              [39m|[32m 数量 [39m|
++-------------------+------+
+| admin_routes      | 113  |
+| public_routes     | 45   |
+| contracted_routes | 45   |
+| error_codes       | 85   |
+| state_inventories | 11   |
++-------------------+------+
+[32m契约检查通过。[39m
+exit=0
+### data-preflight
+[32m数据 preflight 通过：没有发现重复、孤儿、计数或状态问题。[39m
+exit=0

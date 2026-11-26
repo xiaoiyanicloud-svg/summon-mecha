@@ -1,0 +1,57 @@
+﻿
+  .........⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest > it should destroy an attribute                   
+  Expected: {"message":"\u5c5e\u6027\u5220\u9664\u6210\u529f"}
+
+  To contain: 属性删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest.php:146
+    142▕     $this->loginAsAdmin();
+    143▕ 
+    144▕     deleteJson(route('admin.catalog.attributes.delete', $attribute->id))
+    145▕         ->assertOk()
+  ➜ 146▕         ->assertSeeText(trans('admin::app.catalog.attributes.delete-success'));
+    147▕ 
+    148▕     $this->assertDatabaseMissing('attributes', [
+    149▕         'id' => $attribute->id,
+    150▕     ]);
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest > it should not destroy an attribute if it is n…   
+  Expected: {"message":"\u65e0\u6cd5\u5220\u9664\u7cfb\u7edf\u5c5e\u6027"}
+
+  To contain: 无法删除系统属性
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest.php:164
+    160▕     $this->loginAsAdmin();
+    161▕ 
+    162▕     deleteJson(route('admin.catalog.attributes.delete', $attribute->id))
+    163▕         ->assertBadRequest()
+  ➜ 164▕         ->assertSeeText(trans('admin::app.catalog.attributes.user-define-error'));
+    165▕ 
+    166▕     $this->assertModelWise([
+    167▕         Attribute::class => [
+    168▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest > it should mass delete attributes                 
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664\u6240\u9009\u5c5e\u6027"}
+
+  To contain: 已成功删除所选属性
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest.php:186
+    182▕     postJson(route('admin.catalog.attributes.mass_delete', [
+    183▕         'indices' => $attributes->pluck('id')->toArray(),
+    184▕     ]))
+    185▕         ->assertOk()
+  ➜ 186▕         ->assertSeeText(trans('admin::app.catalog.attributes.index.datagrid.mass-delete-success'));
+    187▕ 
+    188▕     foreach ($attributes as $attribute) {
+    189▕         $this->assertDatabaseMissing('attributes', [
+    190▕             'id' => $attribute->id,
+
+
+  Tests:    3 failed, 9 passed (35 assertions)
+  Duration: 6.37s
+

@@ -1,0 +1,12 @@
+﻿# A6 沙箱真实进程测试 · 2026-11-05 16:24:30 · exit=0
+python.exe : ........
+At line:1 char:801
++ ... ct -Last 4; $out2 = & $py -m unittest tests.test_sandbox 2>&1; $exit2 ...
++                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (........:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+----------------------------------------------------------------------
+Ran 8 tests in 6.867s
+
+OK

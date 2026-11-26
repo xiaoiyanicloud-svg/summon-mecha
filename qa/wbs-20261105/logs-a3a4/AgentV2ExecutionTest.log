@@ -1,0 +1,16 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 Agent 轮询时过滤掉 OP_EXECUTE(7) 与 OP_CANCEL_EXECUTION(8)                                                     0.99s  
+  ✓ it OP_EXECUTE 执行成功仅更新 SkillExecution 状态，绝不污染 InstallRecord                                                   0.17s  
+  ✓ it POST api/agent/evt 对执行事实幂等入账，并拒绝同键异载荷                                                                     0.34s  
+  ✓ it POST api/agent/evt 拒绝没有停止证据的执行成功                                                                          0.21s  
+  ✓ it 取消请求不是物理停止，UNKNOWN 终态不被迟到成功静默改写                                                                           0.34s  
+  ✓ it POST api/agent/ack 支持端云双向事件确认                                                                             0.20s  
+  ✓ it POST api/agent/reconcile 端侧安装事实与云端记录准确对账                                                                  0.25s  
+  ✓ it 旧 event_seq 不得覆盖新 event_seq                                                                               0.24s  
+  ✓ it 客户侧能够发起技能执行与取消，流转为 OP 7/8 任务                                                                              0.32s  
+
+  Tests:    9 passed (71 assertions)
+  Duration: 3.41s
+
+

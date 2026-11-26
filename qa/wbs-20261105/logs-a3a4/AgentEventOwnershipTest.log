@@ -1,0 +1,11 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentEventOwnershipTest
+  ✓ it event：用 B 的 did 报 A 的任务 → 被拒（404），且 A 的状态未被推进                                                             1.05s  
+  ✓ it event：did 与任务一致时正常推进                                                                                      0.23s  
+  ✓ it event：缺 did 直接 422（契约要求必带 did）                                                                            0.20s  
+  ✓ it commands：未注册的 did 无法拉指令（当前可兑现的归属边界）                                                                       0.19s  
+
+  Tests:    4 passed (7 assertions)
+  Duration: 2.09s
+
+

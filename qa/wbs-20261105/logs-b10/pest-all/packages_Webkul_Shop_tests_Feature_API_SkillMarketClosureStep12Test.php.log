@@ -1,0 +1,402 @@
+﻿
+  猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ猕?猕ǒ猕ǒ猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鑱氬悎涓庡垎鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 璇︽儏鍜岀増鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 绫诲埆琚Щ鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 涓婃灦鍒板綊鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鎶€鑳戒吉瑁呪€?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鎶€鑳戒吉瑁呪€?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鎶€鑳戒吉瑁呪€?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鎶€鑳戒吉瑁呪€?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鎶€鑳戒吉瑁呪€?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 娓稿鏀瑰啓鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鐪熷疄宸插彂鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 娣峰叆涓嶅彲鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 璐墿杞﹀姞鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 宸插姞鍏ヨ喘鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鍒嗛〉杩炵画鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 褰撳墠璐拱鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 涓嶅彲鍏紑鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 涓嶅彲鍏紑鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 涓嶅彲鍏紑鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 涓嶅彲鍏紑鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鐪熷疄闆跺厓鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test > it 鍥為€€鍒版棫鈥?     ModelNotFoundException   
+  No query results for model [Webkul\Category\Models\Category].
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+    685鈻?        if (! is_null($model = $this->first($columns))) {
+    686鈻?            return $model;
+    687鈻?        }
+    688鈻?
+  鉃?689鈻?        throw (new ModelNotFoundException)->setModel(get_class($this->model));
+    690鈻?    }
+    691鈻?
+    692鈻?    /**
+    693鈻?     * Execute the query and get the first result or call a callback.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:689
+  2   packages\Webkul\Shop\tests\Feature\API\SkillMarketClosureStep12Test.php:17
+
+
+  Tests:    22 failed, 1 passed (48 assertions)
+  Duration: 7.49s
+

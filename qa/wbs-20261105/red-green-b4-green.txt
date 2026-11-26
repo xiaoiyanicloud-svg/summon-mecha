@@ -1,0 +1,11 @@
+
+  [30;42;1m PASS [39;49;22m[39m Packages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit B4-02 源包含 [39m[37m../[39m[90m 穿越条目 → 拒绝，码 SOURCE_PACKAGE_UNSAFE_ENTRY[39m[90m                                                    [39m [90m0.80s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit B4-03 源包含绝对路径条目 → 拒绝[39m[90m                                                                                     [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit B4-04 源包含反斜杠条目 → 拒绝（Windows 路径语义穿越）[39m[90m                                                                      [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit B4-05 源包含盘符条目 → 拒绝[39m[90m                                                                                       [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit B4-06 源包含 [39m[37ma/./b[39m[90m 与双斜杠条目 → 拒绝（非规范路径）[39m[90m                                                                       [39m [90m0.24s[39m  
+
+  [90mTests:[39m    [32;1m5 passed[39;22m[90m (11 assertions)[39m
+  [90mDuration:[39m [39m2.15s[39m
+

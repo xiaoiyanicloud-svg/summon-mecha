@@ -1,0 +1,11 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\ToolchainFingerprintTest
+  ✓ it B5-5 · 工具链指纹包含版本与构建器清单，镜像摘要明确 NOT_RUN                                                                     0.83s  
+  ✓ it B5-5 · 构建 Run 落库时带上工具链指纹（可直接从历史 Run 追溯到工具链）                                                               0.15s  
+  ✓ it B5-5 · 未注入镜像摘要 → image_status=NOT_RUN 且 digest 为 null（不伪造）                                                0.12s  
+  ✓ it B5-5 · 注入合法 sha256 摘要 → PROBED 并随 Run 落进 toolchain_json                                                   0.15s  
+  ✓ it B5-5 · 格式不对的注入值 → INVALID_DIGEST，绝不把非摘要字符串当 digest                                                        0.12s  
+
+  Tests:    5 passed (26 assertions)
+  Duration: 1.64s
+

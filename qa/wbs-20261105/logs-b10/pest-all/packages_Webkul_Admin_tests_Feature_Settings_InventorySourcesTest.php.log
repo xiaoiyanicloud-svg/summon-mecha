@@ -1,0 +1,21 @@
+﻿
+  .......猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\InventorySourcesTest > it should delete the inventory source    
+  Expected: {"message":"\u5e93\u5b58\u6765\u6e90\u5220\u9664\u6210\u529f"}
+
+  To contain: 搴撳瓨鏉ユ簮鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Settings\InventorySourcesTest.php:165
+    161鈻?    $this->loginAsAdmin();
+    162鈻?
+    163鈻?    deleteJson(route('admin.settings.inventory_sources.delete', $inventorySource->id))
+    164鈻?        ->assertOk()
+  鉃?165鈻?        ->assertSeeText(trans('admin::app.settings.inventory-sources.delete-success'));
+    166鈻?});
+    167鈻?
+
+
+  Tests:    1 failed, 7 passed (40 assertions)
+  Duration: 3.22s
+

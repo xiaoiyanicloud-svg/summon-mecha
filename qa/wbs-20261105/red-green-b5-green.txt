@@ -1,0 +1,10 @@
+
+  [30;42;1m PASS [39;49;22m[39m Packages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit B5-01 同一份源 + 同一机型：两个不同版本 id、两个不同存储根 → build_key 与产物 sha256 完全一致[39m[90m                                          [39m [90m0.97s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit B5-02 产物 ZIP 每条目 mtime 固定为确定性时间戳，且条目按名排序[39m[90m                                                                 [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit B5-03 换目标机型 → build_key 与产物哈希都改变（确定性不等于"都一样"）[39m[90m                                                            [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit B5-04 源素材字节改变 → build_key 不变（身份只认 XML 的 IR 摘要）但产物哈希必须改变[39m[90m                                                  [39m [90m0.31s[39m  
+
+  [90mTests:[39m    [32;1m4 passed[39;22m[90m (18 assertions)[39m
+  [90mDuration:[39m [39m2.14s[39m
+

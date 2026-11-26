@@ -1,0 +1,86 @@
+﻿
+  猕?猕ǒ猕?...
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 闅愮鏀跨瓥锛氳繑鍥?200 涓?{slug, title, html_content}                 
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'闅愮鏀跨瓥'
++'闅辩鏀跨瓥'
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:31
+     27鈻?        ->json('data');
+     28鈻?
+     29鈻?    expect($data)->toHaveKeys(['slug', 'title', 'html_content'])
+     30鈻?        ->and($data['slug'])->toBe('privacy-policy')
+  鉃? 31鈻?        ->and($data['title'])->toBe('闅愮鏀跨瓥')
+     32鈻?        ->and($data['html_content'])->not->toBe('');
+     33鈻?});
+     34鈻?
+     35鈻?it('App 鎷垮埌鐨勬鏂囦笌缃戦〉绔槸**鍚屼竴浠?* 鈥斺€?杩欐槸杩欎釜鎺ュ彛瀛樺湪鐨勫叏閮ㄧ悊鐢?, function () {
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:31
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 杩炴煡涓ら〉閮藉繀椤绘纭?鈥斺€?浠撳偍瀹炰緥浼氭妸涓婁竴娆＄殑鏌ヨ鏉′欢鐣欎笅鏉ワ紝杩欓噷瀹堢潃鍒啀鍐欏洖鍘?                 
+  Expected: <div class="static-container"><div class="mb-5">闅辩鏀跨瓥闋侀潰鍏у</div></div>
+
+  To contain: 灏氭湭瀹氱
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:57
+     53鈻?    foreach (['privacy-policy', 'terms-of-use'] as $slug) {
+     54鈻?        $res = getJson('/api/cms/pages/'.$slug)->assertOk();
+     55鈻?
+     56鈻?        expect($res->json('data.slug'))->toBe($slug)
+  鉃? 57鈻?            ->and($res->json('data.html_content'))->toContain('灏氭湭瀹氱');
+     58鈻?    }
+     59鈻?});
+     60鈻?
+     61鈻?it('姝ｆ枃閲屼笉寰楀嚭鐜板畨瑁呭櫒鍗犱綅鏂囨锛堢綉椤电宸插幓浼紝鎺ュ彛杩欒竟涓嶈兘婕忥級', function () {
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:57
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 姝ｆ枃閲屼笉寰楀嚭鐜板畨瑁呭櫒鍗犱綅鏂囨锛堢綉椤电宸插幓浼紝鎺ュ彛杩欒竟涓嶈兘婕忥級                            
+  Expecting '<div class="static-container"鈥?/div>' not to contain '闋侀潰鍏у'.
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:65
+     61鈻?it('姝ｆ枃閲屼笉寰楀嚭鐜板畨瑁呭櫒鍗犱綅鏂囨锛堢綉椤电宸插幓浼紝鎺ュ彛杩欒竟涓嶈兘婕忥級', function () {
+     62鈻?    foreach (['privacy-policy', 'terms-of-use'] as $slug) {
+     63鈻?        $html = getJson('/api/cms/pages/'.$slug)->assertOk()->json('data.html_content');
+     64鈻?
+  鉃? 65鈻?        expect($html)->not->toContain('闋侀潰鍏у')
+     66鈻?            ->and($html)->toContain('灏氭湭瀹氱');
+     67鈻?    }
+     68鈻?});
+     69鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:65
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\CmsApiTest > it 涓€浠芥枃浠跺彧鏈変竴涓悕瀛楋細鎺ュ彛鏍囬銆佺綉椤垫爣棰樸€佹鏂囬噷宓岀殑鏂囨。鍚嶄笁鑰呬竴鑷?                        
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'鐢ㄦ埛鍗忚'
++'浣跨敤姊濇'
+
+  at packages\Webkul\Shop\tests\Feature\CmsApiTest.php:75
+     71鈻?    // 鐢ㄦ埛鍗忚杩欎竴椤垫浘缁忔湁涓夊鍚嶅瓧锛欰pp 鍏ュ彛銆岀敤鎴峰崗璁€? 椤靛ご銆屼娇鐢ㄦ潯娆俱€? 姝ｆ枃銆屻€婁娇鐢ㄦ潯娆俱€嬨€嶃€?
+     72鈻?    // 杩佺Щ 2026_10_15_000001 鍦ㄧ敓浜т晶鐨勬簮澶村榻愪簡瀹冧滑锛岃繖鏉″畧鐫€鍒啀鍒嗗弶銆?
+     73鈻?    $data = getJson('/api/cms/pages/terms-of-use')->assertOk()->json('data');
+     74鈻?
+  鉃? 75鈻?    expect($data['title'])->toBe('鐢ㄦ埛鍗忚')
+     76鈻?        ->and($data['html_content'])->toContain('銆婄敤鎴峰崗璁€?)
+     77鈻?        ->and($data['html_content'])->not->toContain('浣跨敤鏉℃');
+     78鈻?
+     79鈻?    // 缃戦〉绔悓婧愬悓缁撹
+
+  1   packages\Webkul\Shop\tests\Feature\CmsApiTest.php:75
+
+
+  Tests:    4 failed, 5 passed (33 assertions)
+  Duration: 7.74s
+

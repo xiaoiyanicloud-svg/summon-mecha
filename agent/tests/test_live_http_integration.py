@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+import urllib.error
 import urllib.request
 from typing import Any, Dict
 
@@ -65,18 +66,23 @@ class TestLiveHttpIntegration(unittest.TestCase):
             cwd=str(LARAVEL_DIR),
             env=env,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.PIPE
         )
 
-        # 等待服务就绪（最长 6 秒）
+        # 等待服务就绪（最长 40 秒）。
+        # 注意两点，都是实测踩过的：
+        #   1. PHP 内置服务在 Windows 上冷启动可能超过 6 秒；
+        #   2. 全套件一起跑时 CPU 争用会让首个请求更慢 —— 原来 `timeout=1.0`
+        #      会把「服务已经在回 401」误判成「没起来」，表现为随机失败。
+        # 判定标准是**服务回过一次 HTTP 响应**（401/422 也算就绪），不是 200。
         ready = False
         start_wait = time.time()
-        while time.time() - start_wait < 6.0:
+        while time.time() - start_wait < 40.0:
             try:
-                with urllib.request.urlopen(f"{cls.base_url}/api/agent/commands", timeout=1.0) as resp:
+                with urllib.request.urlopen(f"{cls.base_url}/api/agent/commands", timeout=3.0) as resp:
                     ready = True
                     break
-            except urllib.error.HTTPError as e:
+            except urllib.error.HTTPError:
                 # 401 或 422 均表示 Laravel 路由与框架已就绪
                 ready = True
                 break
@@ -85,7 +91,12 @@ class TestLiveHttpIntegration(unittest.TestCase):
 
         if not ready:
             cls.server_proc.terminate()
-            raise RuntimeError(f"Laravel HTTP server on port {cls.port} failed to start")
+            try:
+                _, stderr = cls.server_proc.communicate(timeout=3)
+            except subprocess.TimeoutExpired:
+                cls.server_proc.kill()
+                _, stderr = cls.server_proc.communicate()
+            raise RuntimeError(f"Laravel HTTP server on port {cls.port} failed to start: {stderr.decode('utf-8', 'replace')[-2000:]}")
 
         # 在 summon_mecha_step10_test 中初始化测试设备、凭据与任务
         setup_script = """
@@ -100,7 +111,8 @@ class TestLiveHttpIntegration(unittest.TestCase):
         $cred = app(Webkul\\Shop\\Services\\Deploy\\DeviceCredentialService::class)->issue($binding);
         $secret = $cred['secret'];
         
-        // 创建一条 OP_ENABLE 任务
+        // 创建一条 OP_ENABLE 任务（mock 目标必须显式绑定 Profile，禁止匿名通用目标）
+        $profileDigest = app(Webkul\\Shop\\Services\\SkillCompile\\Portable\\TargetProfileService::class)->getDigest('mock');
         $task = Webkul\\Shop\\Models\\DeployTask::create([
             'task_no' => 'LIVE_' . uniqid(),
             'did' => $did,
@@ -109,7 +121,10 @@ class TestLiveHttpIntegration(unittest.TestCase):
             'protocol_version' => Webkul\\Shop\\Models\\DeployTask::PROTOCOL_V2,
             'command_seq' => 1,
             'status' => 'dispatching',
-            'payload' => [],
+            'signed_payload' => [
+                'target_model_code' => 'mock',
+                'target_profile_digest' => $profileDigest,
+            ],
         ]);
 
         $pubkey = app(Webkul\\Shop\\Services\\Deploy\\SigningService::class)->publicKeyPem();
@@ -117,6 +132,7 @@ class TestLiveHttpIntegration(unittest.TestCase):
         echo json_encode([
             'did' => $did,
             'secret' => $secret,
+            'private_key_pem' => $cred['private_key_pem'],
             'pubkey_pem' => $pubkey,
             'task_no' => $task->task_no,
         ]);
@@ -141,6 +157,7 @@ class TestLiveHttpIntegration(unittest.TestCase):
         data = json.loads(out_lines[-1])
         cls.did = data["did"]
         cls.device_secret = data["secret"]
+        cls.private_key_pem = data["private_key_pem"]
         cls.pubkey_pem = data["pubkey_pem"]
         cls.task_no = data["task_no"]
 
@@ -149,9 +166,12 @@ class TestLiveHttpIntegration(unittest.TestCase):
         if cls.server_proc:
             cls.server_proc.terminate()
             try:
-                cls.server_proc.wait(timeout=3)
+                # `wait()` 不会排空/关闭 `stderr=PIPE`，残留的 BufferedReader 会在解释器退出时
+                # 变成 ResourceWarning（套件里出现 `unclosed file` 的来源）。必须 communicate()。
+                cls.server_proc.communicate(timeout=3)
             except subprocess.TimeoutExpired:
                 cls.server_proc.kill()
+                cls.server_proc.communicate()
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp(prefix="zhjj_live_")
@@ -161,6 +181,9 @@ class TestLiveHttpIntegration(unittest.TestCase):
             server_url=self.base_url,
             did=self.did,
             device_secret=self.device_secret,
+            # A1：设备持有证书后，平台**要求**事件正文带 agent-fact/v3 签名。
+            # 不进这条私钥，live 测试就只能测"被拒"。
+            private_key_pem=self.private_key_pem,
             timeout=10
         )
         self.manager = TaskManager(
@@ -178,7 +201,7 @@ class TestLiveHttpIntegration(unittest.TestCase):
         """测试 1: 真实 HTTP POST /api/agent/heartbeat 心跳刷新"""
         ok, res = self.client.heartbeat(
             agent_version="0.2.0",
-            capability_snapshot={"model_code": "unitree_g1", "firmware_version": "1.0.0"}
+            capability_snapshot={"model_code": "mock", "firmware_version": "test-only"}
         )
         self.assertTrue(ok, f"Heartbeat failed: {res}")
         self.assertTrue(res.get("success"))
@@ -237,7 +260,15 @@ class TestLiveHttpIntegration(unittest.TestCase):
         tasks = [
             {"task_no": self.task_no, "status": "COMMITTED"}
         ]
-        ok, res = self.client.reconcile(skills=skills, tasks=tasks)
+        ok, res = self.client.reconcile(
+            skills=skills,
+            tasks=tasks,
+            model_code="mock",
+            observed_generation=4,
+            active_executions=[],
+            outbox_cursor="evt_live_4",
+            reported_at=int(__import__("time").time()),
+        )
         self.assertTrue(ok, f"Reconcile failed: {res}")
         self.assertTrue(res.get("success"))
         data = res.get("data", {})

@@ -1,0 +1,23 @@
+﻿
+  .......猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SupplyChainFieldsTest > it 鍙湁闈炴枃浠剁被浜や粯鐗╋紙cloud_config鈥?            
+  Failed asserting that an array contains 3512.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SupplyChainFieldsTest.php:456
+    452鈻?    scfPublish($version->id)->assertOk();
+    453鈻?
+    454鈻?    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+    455鈻?        ->and(scfFlatStatus($productId))->toBe(1)
+  鉃?456鈻?        ->and(scfSearchIds($name))->toContain($productId);
+    457鈻?});
+    458鈻?
+    459鈻?// ==================== 鈶?杩愯惀鍚庡彴閫氶亾锛氬悓涓€闂搁棬銆佹樉寮忔槧灏勶紙涓嶈惤 default 鍏滃簳锛?===================
+    460鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SupplyChainFieldsTest.php:456
+
+
+  Tests:    1 failed, 8 passed (87 assertions)
+  Duration: 7.44s
+

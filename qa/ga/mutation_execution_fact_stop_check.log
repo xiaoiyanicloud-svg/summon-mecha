@@ -1,0 +1,24 @@
+
+   FAIL  Packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest
+  ⨯ it P0: ExecutionFact 拒绝把 CANCEL_REQUESTED 当作物理停止，并要求成功有停止证据                                                  1.24s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest > it P0: ExecutionFact 拒绝把 CANCEL_RE…      
+  Exception "InvalidArgumentException" not thrown.
+
+  at packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest.php:115
+    111▕     $falseSuccess = ['observedStatus' => 'SUCCEEDED'] + $base;
+    112▕ 
+    113▕     expect(fn () => new ExecutionFact(...$cancelRequested))->not->toThrow(Exception::class);
+    114▕     expect(fn () => new ExecutionFact(...$falseStop))->toThrow(InvalidArgumentException::class);
+  ➜ 115▕     expect(fn () => new ExecutionFact(...$falseSuccess))->toThrow(InvalidArgumentException::class);
+    116▕ });
+    117▕ 
+    118▕ it('P0: ReconcileReport 固化设备代次、安装与执行事实', function () {
+    119▕     $report = new ReconcileReport(
+
+  1   packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest.php:115
+
+
+  Tests:    1 failed (3 assertions)
+  Duration: 3.76s
+

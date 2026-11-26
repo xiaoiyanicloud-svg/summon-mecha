@@ -1,0 +1,23 @@
+﻿
+  .........猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\CampaignsTest > it should delete the campaig鈥?  
+  Expected: {"message":"\u6d3b\u52a8\u5220\u9664\u6210\u529f"}
+
+  To contain: 娲诲姩鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\CampaignsTest.php:190
+    186鈻?    $this->loginAsAdmin();
+    187鈻?
+    188鈻?    deleteJson(route('admin.marketing.communications.campaigns.delete', $campaign->id))
+    189鈻?        ->assertOk()
+  鉃?190鈻?        ->assertSeeText(trans('admin::app.marketing.communications.campaigns.delete-success'));
+    191鈻?
+    192鈻?    $this->assertDatabaseMissing('marketing_campaigns', [
+    193鈻?        'id' => $campaign->id,
+    194鈻?    ]);
+
+
+  Tests:    1 failed, 9 passed (46 assertions)
+  Duration: 4.73s
+

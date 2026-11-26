@@ -1,0 +1,98 @@
+{
+  "profile_schema": "zhaohuan.target-profile/v2",
+  "profile_revision": 1,
+  "vendor": "agibot",
+  "model_code": "agibot_x2",
+  "model_name": "Agibot Lingxi X2",
+  "display_name": "Agibot Lingxi X2",
+  "sku": "agibot_x2_standard",
+  "hardware_variants": ["agibot_x2_standard"],
+  "os_arch": ["linux-aarch64", "linux-x86_64"],
+  "sdk_name": "aimdk",
+  "sdk_version_range": "vendor-confirmation-required",
+  "firmware_range": "vendor-confirmation-required; captured per device at enrollment",
+  "sdk": {
+    "name": "aimdk",
+    "version_range": "vendor-confirmation-required",
+    "transport": "aimdk-rpc+ros2",
+    "domain_id": 0
+  },
+  "compatibility_level": "L2",
+  "artifact_abi": "zhaohuan.skill-target/v1;python-3.12;linux-aarch64",
+  "carrier_type": "file",
+  "capabilities": {
+    "actions": {
+      "SM_GestureWave": {
+        "description": "Adaptable arm gesture; exact trajectory mapping requires approved vendor/ground-truth profile",
+        "supported_hands": ["left", "right", "both"],
+        "max_cycles": 6,
+        "default_timeout_ms": 12000,
+        "required_permissions": ["motion_control"],
+        "evidence_status": "adapter_contract_only"
+      },
+      "SM_AudioPlay": {
+        "description": "Audio playback through vendor-approved local SDK boundary",
+        "supported_formats": ["wav", "mp3"],
+        "sample_rates": [16000, 44100, 48000],
+        "required_permissions": ["audio_play"],
+        "evidence_status": "adapter_contract_only"
+      },
+      "SM_Wait": {
+        "description": "Bounded local wait",
+        "max_duration_ms": 60000,
+        "default_timeout_ms": 65000,
+        "required_permissions": [],
+        "evidence_status": "builtin"
+      }
+    }
+  },
+  "dof": 0,
+  "joints": {
+    "left_arm": {},
+    "right_arm": {}
+  },
+  "joint_limits": {
+    "status": "UNRESOLVED",
+    "source": "approved vendor profile and runtime query required before L1",
+    "left_arm": {},
+    "right_arm": {}
+  },
+  "velocity_limits": {"status": "UNRESOLVED", "source": "approved vendor profile required"},
+  "torque_limits": {"status": "UNRESOLVED", "source": "approved vendor profile required"},
+  "temperature_limits": {"status": "UNRESOLVED", "source": "approved vendor profile required"},
+  "safety_envelope": {
+    "max_velocity_rad_s": null,
+    "max_acceleration_rad_s2": null,
+    "max_jerk_rad_s3": 60.0,
+    "max_torque_nm": null,
+    "min_collision_clearance_mm": 15.0,
+    "estop_supported": null,
+    "estop_evidence_status": "HARDWARE_UNVERIFIED",
+    "default_timeout_s": 30,
+    "status": "UNRESOLVED_VENDOR_LIMITS_FAIL_CLOSED"
+  },
+  "safe_stop_procedure": {
+    "method": null,
+    "status": "HARDWARE_UNVERIFIED",
+    "timeout_s": 2.0,
+    "observe_verification": "independent_device_observation_required"
+  },
+  "rollback_strategy": {
+    "mode": "previous_verified_version",
+    "requires_sha256": true,
+    "requires_entitlement": true,
+    "offline_behavior": "defer_until_online"
+  },
+  "release": {
+    "default_enabled": false,
+    "requires_target_review": true,
+    "requires_profile_digest_match": true
+  },
+  "hardware_verification_status": "HARDWARE_UNVERIFIED",
+  "verification_status": {
+    "software_driver": "PARTIAL",
+    "sdk_contract": "PARTIAL",
+    "sil": "NOT_RUN",
+    "hil": "HARDWARE_UNVERIFIED"
+  }
+}

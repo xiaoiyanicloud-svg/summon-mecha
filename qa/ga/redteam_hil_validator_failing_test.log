@@ -1,0 +1,24 @@
+test_clopper_pearson_nonzero_failure_bound (test_hil_evidence_validator.HILEvidenceValidatorTest.test_clopper_pearson_nonzero_failure_bound) ... ERROR
+
+======================================================================
+ERROR: test_clopper_pearson_nonzero_failure_bound (test_hil_evidence_validator.HILEvidenceValidatorTest.test_clopper_pearson_nonzero_failure_bound)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\qa\ga\test_hil_evidence_validator.py", line 77, in test_clopper_pearson_nonzero_failure_bound
+    self.assertAlmostEqual(clopper_pearson_upper(1, 10, 0.95), 0.3941633024, places=8)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\main\qa\ga\hil_evidence_validator.py", line 73, in clopper_pearson_upper
+    if binomial_cdf(failures, trials, mid) > alpha:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\main\qa\ga\hil_evidence_validator.py", line 58, in binomial_cdf
+    return sum(math.comb(n, i) * (p ** i) * ((1.0 - p) ** (n - i)) for i in range(k + 1))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\main\qa\ga\hil_evidence_validator.py", line 58, in <genexpr>
+    return sum(math.comb(n, i) * (p ** i) * ((1.0 - p) ** (n - i)) for i in range(k + 1))
+               ^^^^
+NameError: name 'math' is not defined. Did you forget to import 'math'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.028s
+
+FAILED (errors=1)

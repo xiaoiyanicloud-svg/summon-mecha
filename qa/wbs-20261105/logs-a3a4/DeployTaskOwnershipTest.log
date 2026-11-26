@@ -1,0 +1,10 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTaskOwnershipTest
+  ✓ it show：看不到别人的 task_no（404，与"不存在"同码）                                                                         0.98s  
+  ✓ it cancel：取消不了别人的任务（404，且对方任务未被改动）                                                                           0.21s  
+  ✓ it 本人任务：show / cancel 正常（归属校验不误伤）                                                                            0.22s  
+
+  Tests:    3 passed (8 assertions)
+  Duration: 1.77s
+
+

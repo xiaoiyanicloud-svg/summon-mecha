@@ -1,0 +1,62 @@
+
+  [39;41;1m FAIL [39;49;22m[39m Packages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest[39m
+  [31;1m⨯[39;22m[90m [39m[90mit B5-01 同一份源 + 同一机型：两个不同版本 id、两个不同存储根 → build_key 与产物 sha256 完全一致[39m[90m                                          [39m [90m0.81s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit B5-02 产物 ZIP 每条目 mtime 固定为确定性时间戳，且条目按名排序[39m[90m                                                                 [39m [90m0.23s[39m  
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest[22m [90m>[39m it B5-01 同一份源 + 同一机型：两个不同版…                 
+[39;1m  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'a1e24e5eb881195930d7287d56da8189f0d2037b00f481f446d444f89bad25bc'
++'d74c51b5d1f4dd75a61213aaa418ae21c5b54ddc31cc6d2b9c5f33613e486bbf'[39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest.php[39m:[32m128[39m
+    124▕         ->and($resB->status)->toBe('success')
+    125▕         // 版本 id 不同、存储根不同，构建身份必须相同
+    126▕         ->and($resA->buildKey)->toBe($resB->buildKey)
+    127▕         // 产物字节必须逐字节相同
+  ➜ 128▕         ->and($resA->packageSha256)->toBe($resB->packageSha256)
+    129▕         ->and($resA->buildKey)->toStartWith('bk_');
+    130▕ 
+    131▕     // 落盘的两份产物哈希也必须相同（不是只在内存里相同）
+    132▕     $assetA = SkillAsset::find($resA->artifactAssetId);
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest.php[39;22m:[39;1m128[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest[22m [90m>[39m it B5-02 产物 ZIP 每条目 mtime 固定为确…             
+[39;1m  Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+ Array &0 [
+-    0 => 1700000000,
++    0 => 1705451128,
++    1 => 1632206776,
++    2 => 1719802944,
++    3 => 1539906056,
++    4 => 1606682904,
++    5 => 1673381480,
++    6 => 1642970570,
++    7 => 1738742750,
++    8 => 1680186092,
+ ][39;22m
+
+  at [32mpackages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest.php[39m:[32m158[39m
+    154▕     }
+    155▕ 
+    156▕     $zip->close();
+    157▕ 
+  ➜ 158▕     expect(array_unique($mtimes))->toBe([TargetAppBuilder::DETERMINISTIC_MTIME]);
+    159▕ 
+    160▕     $sorted = $names;
+    161▕     sort($sorted, SORT_STRING);
+    162▕     expect($names)->toBe($sorted);
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\tests\Feature\Deploy\BuildDeterminismTest.php[39;22m:[39;1m158[39;22m
+
+
+  [90mTests:[39m    [31;1m2 failed[39;22m[90m (6 assertions)[39m
+  [90mDuration:[39m [39m1.30s[39m
+

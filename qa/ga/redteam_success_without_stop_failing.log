@@ -1,0 +1,17 @@
+test_success_without_stop_evidence_is_unknown (test_five_model_adapters.TestFiveModelAdapters.test_success_without_stop_evidence_is_unknown) ... FAIL
+
+======================================================================
+FAIL: test_success_without_stop_evidence_is_unknown (test_five_model_adapters.TestFiveModelAdapters.test_success_without_stop_evidence_is_unknown)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\agent\tests\test_five_model_adapters.py", line 107, in test_success_without_stop_evidence_is_unknown
+    self.assertEqual(observed['status'], 'UNKNOWN')
+AssertionError: 'SUCCEEDED' != 'UNKNOWN'
+- SUCCEEDED
++ UNKNOWN
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.085s
+
+FAILED (failures=1)

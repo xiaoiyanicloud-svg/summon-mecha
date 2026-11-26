@@ -1,0 +1,16 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KeyLifecycleTest
+  ✓ it A7-01 DeviceKeyProvider 实现 KeyProvider 接口，且如实声明无 KMS/HSM                                                  1.02s  
+  ✓ it A7-02 轮换：新 key_id 生效、代次 +1、旧密钥转入 retirement 窗口                                                            1.38s  
+  ✓ it A7-03 轮换窗口内：旧密钥仍可验签，新密钥也可验签                                                                               1.50s  
+  ✓ it A7-04 轮换窗口外：旧密钥被拒（KEY_STALE），且不写 Inbox                                                                    1.50s  
+  ✓ it A7-05 吊销立即生效：被吊销密钥 401 KEY_REVOKED，且没有活动密钥时退回无签名也被拒                                                       0.98s  
+  ✓ it A7-06 旧代次即使还在时间窗口内也被拒（epoch_grace 之外）                                                                     2.87s  
+  ✓ it A7-07 未知 key_id 一律 401 KEY_UNKNOWN（有密钥环时不再落回 v2 窗口）                                                       1.89s  
+  ✓ it A7-08 事实缺 key_id 被拒（不能借"没写 key_id"绕过密钥选择）                                                                 0.47s  
+  ✓ it A7-10 吊销凭据必须同时吊销密钥环：设备不能继续用旧私钥签事实                                                                         1.23s  
+  ✓ it A7-09 离线恢复：吊销后可重新签发新密钥恢复上报，旧密钥始终被拒                                                                        2.00s  
+
+  Tests:    10 passed (62 assertions)
+  Duration: 15.49s
+

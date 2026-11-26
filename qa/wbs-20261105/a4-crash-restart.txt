@@ -1,0 +1,27 @@
+﻿test_kill_then_restart_recovers (tests.test_crash_restart.TestCrashRestart.test_kill_then_restart_recovers) ... ok
+System.Management.Automation.RemoteException
+----------------------------------------------------------------------
+Ran 1 test in 0.624s
+System.Management.Automation.RemoteException
+OK
+test_ack_clears_pending_and_is_idempotent (tests.test_metrics.TestMetricBatches.test_ack_clears_pending_and_is_idempotent) ... ok
+test_batch_is_reused_until_acked (tests.test_metrics.TestMetricBatches.test_batch_is_reused_until_acked) ... ok
+test_drop_batch_discards_without_acking (tests.test_metrics.TestMetricBatches.test_drop_batch_discards_without_acking) ... ok
+test_increments_after_ack_form_a_new_batch (tests.test_metrics.TestMetricBatches.test_increments_after_ack_form_a_new_batch) ... ok
+test_cumulative_and_pending (tests.test_metrics.TestMetricRegistry.test_cumulative_and_pending) ... ok
+test_increment_must_be_positive (tests.test_metrics.TestMetricRegistry.test_increment_must_be_positive) ... ok
+test_key_set_is_closed_at_nine (tests.test_metrics.TestMetricRegistry.test_key_set_is_closed_at_nine) ... ok
+test_platform_key_cannot_be_incremented_by_agent (tests.test_metrics.TestMetricRegistry.test_platform_key_cannot_be_incremented_by_agent) ... ok
+test_unknown_key_is_rejected (tests.test_metrics.TestMetricRegistry.test_unknown_key_is_rejected) ... ok
+test_lease_conflict_is_counted (tests.test_metrics.TestStartupSelfHealing.test_lease_conflict_is_counted) ... ok
+test_mark_agent_start_counts_restart (tests.test_metrics.TestStartupSelfHealing.test_mark_agent_start_counts_restart) ... ok
+test_outbox_flush_failure_is_counted (tests.test_metrics.TestStartupSelfHealing.test_outbox_flush_failure_is_counted) ... {"timestamp":"2026-11-05T06:04:33Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_fact","correlation_id":"task_flush","task_id":"task_flush","execution_id":null,"build_key":null,"did":"did_a3_bot","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"E_TEST"}
+ok
+test_signature_rejection_is_counted_at_the_single_choke_point (tests.test_metrics.TestStartupSelfHealing.test_signature_rejection_is_counted_at_the_single_choke_point) ... {"timestamp":"2026-11-05T06:04:33Z","level":"ERROR","service":"zhjj-agent","env":"production","event":"agent.execution_fact","correlation_id":"task_x","task_id":"task_x","execution_id":null,"build_key":null,"did":"did_a3_bot","vendor":null,"model_code":"mock","operation":null,"status":"failed","attempt":null,"duration_ms":null,"error_code":"SIG_INVALID"}
+ok
+test_startup_sweeps_and_counts_staging_orphans (tests.test_metrics.TestStartupSelfHealing.test_startup_sweeps_and_counts_staging_orphans) ... ok
+System.Management.Automation.RemoteException
+----------------------------------------------------------------------
+Ran 14 tests in 2.096s
+System.Management.Automation.RemoteException
+OK

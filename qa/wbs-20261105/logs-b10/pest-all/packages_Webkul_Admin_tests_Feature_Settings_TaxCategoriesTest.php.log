@@ -1,0 +1,23 @@
+﻿
+  ..猕?...
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\TaxCategoriesTest > it should store the tax category            
+  Expected: {"message":"\u65b0\u7a0e\u6536\u5206\u7c7b\u5df2\u521b\u5efa"}
+
+  To contain: 鏂扮◣鏀跺垎绫诲凡鍒涘缓
+
+  at packages\Webkul\Admin\tests\Feature\Settings\TaxCategoriesTest.php:45
+     41鈻?        'description' => fake()->sentence(10),
+     42鈻?        'taxrates'    => TaxRate::factory()->count(2)->create()->pluck('id')->toArray(),
+     43鈻?    ])
+     44鈻?        ->assertOk()
+  鉃? 45鈻?        ->assertSeeText(trans('admin::app.settings.taxes.categories.index.create-success'));
+     46鈻?
+     47鈻?    $this->assertModelWise([
+     48鈻?        TaxCategory::class => [
+     49鈻?            [
+
+
+  Tests:    1 failed, 6 passed (25 assertions)
+  Duration: 2.79s
+

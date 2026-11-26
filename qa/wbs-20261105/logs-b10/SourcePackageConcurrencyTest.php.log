@@ -1,0 +1,8 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SourcePackageConcurrencyTest
+  ✓ it B4-4 · 4 个独立进程并发读取同一源包：全部成功且结果完全一致                                                                        1.84s  
+  ✓ it B4-4 · 并发读取时一个进程读到坏包，不影响其它进程的成功读取                                                                         1.11s  
+
+  Tests:    2 passed (14 assertions)
+  Duration: 3.60s
+

@@ -1,0 +1,44 @@
+# b10-t7 · 全量 Pest 单进程方案 · 2026-11-05
+# DB=summon_mecha_step10_test · PHP 8.4.24
+
+## 量化
+- phpunit.xml 声明的 testsuite 覆盖测试文件：**319**（不含 vendor）
+  （Admin Feature / Core Unit / DataGrid Unit / Shop Feature / Shop Unit）
+
+## 方案 a：测试环境跳过进程级 set_time_limit
+- 改动：`TtsController` / `AsrController` / `SummonAiController` 共 4 处
+- 守卫条件：`app()->runningUnitTests()`（生产行为不变）
+- 探针实测（临时 Pest 用例，跑完即删）：
+  `app_env=testing runningUnitTests=true config_app_env=testing max_execution_time=0`
+- 结论：旧的 60s / 240s 进程级砍杀已消除。
+
+## 字面全量单进程实测
+命令：`D:\php.exe vendor/bin/pest --compact --colors=never`
+- EXIT=-1
+- DURATION_S=1289.7
+- 已执行用例标记：约 1472 通过 + 152 失败 = 1624（进程在输出最终汇总前终止）
+- 诊断：日志无 PHP fatal；MySQL `SHOW FULL PROCESSLIST` 无锁等待；Windows 事件日志无 php 崩溃；
+  终止时遗留 6+3 个 `php -S` 子进程（并发用例的 server，其清理绑定在脚本结束）。
+- 结论：**字面全量单进程不可作为稳定门禁**。
+
+## 方案 b：按文件分进程（正式门禁）
+脚本：`tools/pest-all.ps1`（UTF-8 with BOM；汇总表 + 失败计数 + 退出码）
+- 逐文件日志：`qa/wbs-20261105/logs-b10/pest-all/*.log`
+- 汇总：`qa/wbs-20261105/logs-b10/pest-all/summary.txt`
+- 全量结果（2026-11-05 21:03:59）：
+  - **FILES=319**
+  - **FAILURES=50**（失败文件数；exit 非 0）
+  - **TESTS: 2609 passed + 166 failed = 2775**
+  - **ASSERTIONS=22051**
+  - **DURATION_S=2194.2**（约 36.6 分钟）
+  - 说明：`tools/pest-all.ps1` 的 summary.txt 里 TESTS/ASSERTIONS 只统计了
+    "N passed (M assertions)" 形式；本文件另行解析了 `N passed, M failed` 混合行，故总数更大。
+- 50 个失败文件的性质（抽样分类）：
+  - `Admin\...\AttributeTest` / `CategoryTest` / `Settings\*` 等：**本地化编码比较失败**
+    （期望中文文案，实测乱码），属环境/编码问题；
+  - `Shop\...\SkillCatalog*` / `SkillAudit\*` / `Checkout\*` 等：**隔离库播种稀薄**
+    （`products=0 / customers=0`，见 `b10-t7-db-seed-state.txt`）导致的既存失败；
+  - 本批 b10 的 `Deploy` 并发 / 密钥 / 工具链用例**均不在失败列表**（即通过）。
+- 结论：分文件门禁可给出可复现的通过/失败清单；失败与单进程设计无关，属环境既存问题；
+  单进程方案因 1289.7s 后 `exit -1` 未汇总，不采用。
+

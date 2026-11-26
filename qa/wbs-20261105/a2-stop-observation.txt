@@ -1,0 +1,16 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\API\StopObservationContractTest
+  ✓ it A2 · 白名单内的 source_type 可构造，toArray 字段完整                                                                   0.99s  
+  ✓ it A2 · 8 类非物理停止来源一律拒绝                                                                                       0.17s  
+  ✓ it A2 · 质量/物理量不满足停止判据时 isAcceptable=false                                                                    0.16s  
+  ✓ it A2 · 过期/未来时间戳判定                                                                                           0.15s  
+  ✓ it A2 · 终态缺少 StopObservation → 降级 UNKNOWN，绝不写 success                                                        0.51s  
+  ✓ it A2 · 禁止用 SDK 返回/云端 ACK/mock/SIL 冒充物理停止（422）                                                               0.37s  
+  ✓ it A2 · 过期观察 → 降级 UNKNOWN                                                                                    0.28s  
+  ✓ it A2 · 坏质量 / 物理量不合格 → 降级 UNKNOWN                                                                            0.23s  
+  ✓ it A2 · 有效独立观察 → SUCCEEDED                                                                                   0.23s  
+  ✓ it A2 · 观察与事实的 actual_stopped 矛盾 → 422                                                                       0.22s  
+
+  Tests:    10 passed (127 assertions)
+  Duration: 3.67s
+

@@ -1,0 +1,4 @@
+[Thu Nov  5 18:50:04 2026] PHP 8.4.24 Development Server (http://127.0.0.1:8816) started
+[Thu Nov  5 18:50:09 2026] 127.0.0.1:53780 Accepted
+[Thu Nov  5 18:50:10 2026] 127.0.0.1:53780 [200]: GET /up
+[Thu Nov  5 18:50:11 2026] 127.0.0.1:53780 Closing

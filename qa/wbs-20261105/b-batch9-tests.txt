@@ -1,0 +1,33 @@
+﻿# B1.2 / B4.4 / B5.5 · 2026-11-05 18:27:34
+=== RegistrationCommandTest.php
+exit=0
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\RegistrationCommandTest
+  ✓ it B1-2 · 登记型构建拒绝非 GA 机型（BUILD_TARGET_NOT_GA），且不落任何构建                                                        0.48s  
+  ✓ it B1-2 · manifest 摘要与命令不一致 → BUILD_MANIFEST_DIGEST_MISMATCH                                                 0.17s  
+  ✓ it B1-2 · 无匹配构建器 → BUILD_BUILDER_NOT_FOUND（不静默登记）                                                            0.14s  
+  ✓ it B1-2 · 命令的稳定键只由版本/摘要/目标构成，不含自由文本                                                                          0.14s  
+
+  Tests:    4 passed (10 assertions)
+  Duration: 1.14s
+
+=== SourcePackageConcurrencyTest.php
+exit=0
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SourcePackageConcurrencyTest
+  ✓ it B4-4 · 4 个独立进程并发读取同一源包：全部成功且结果完全一致                                                                        1.86s  
+  ✓ it B4-4 · 并发读取时一个进程读到坏包，不影响其它进程的成功读取                                                                         1.06s  
+
+  Tests:    2 passed (14 assertions)
+  Duration: 3.26s
+
+=== ToolchainFingerprintTest.php
+exit=0
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\ToolchainFingerprintTest
+  ✓ it B5-5 · 工具链指纹包含版本与构建器清单，镜像摘要明确 NOT_RUN                                                                     0.38s  
+  ✓ it B5-5 · 构建 Run 落库时带上工具链指纹（可直接从历史 Run 追溯到工具链）                                                               0.21s  
+
+  Tests:    2 passed (11 assertions)
+  Duration: 0.78s
+

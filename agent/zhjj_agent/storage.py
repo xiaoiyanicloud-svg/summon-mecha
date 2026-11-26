@@ -89,6 +89,12 @@ class Storage:
                 revoked_at INTEGER
             );
 
+            CREATE TABLE IF NOT EXISTS command_nonces (
+                nonce TEXT PRIMARY KEY,
+                task_id TEXT NOT NULL,
+                seen_at INTEGER NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS execution_leases (
                 execution_id TEXT PRIMARY KEY,
                 skill_id TEXT,
@@ -114,8 +120,41 @@ class Storage:
                 created_at INTEGER,
                 updated_at INTEGER
             );
+
+            -- A5：授权回源缓存。allowed 是布尔快照，checked_at 用于 TTL/最大陈旧窗口。
+            CREATE TABLE IF NOT EXISTS entitlement_cache (
+                skill_id TEXT PRIMARY KEY,
+                allowed INTEGER NOT NULL,
+                reason TEXT,
+                entitlement_id INTEGER,
+                expires_at INTEGER,
+                checked_at INTEGER NOT NULL
+            );
             """)
 
+    def claim_command_nonce(self, nonce: str, task_id: str) -> str:
+        """登记 nonce。返回 new/same/replay；same 仅用于同一 task 的可靠重投。"""
+        if not nonce or not task_id:
+            return "replay"
+        now = int(time.time())
+        with self._connection() as conn:
+            existing = conn.execute(
+                "SELECT task_id FROM command_nonces WHERE nonce = ?",
+                (nonce,),
+            ).fetchone()
+            if existing:
+                return "same" if existing["task_id"] == task_id else "replay"
+            conn.execute(
+                "INSERT INTO command_nonces (nonce, task_id, seen_at) VALUES (?, ?, ?)",
+                (nonce, task_id, now),
+            )
+            return "new"
+
+    def prune_command_nonces(self, older_than_seconds: int = 7 * 24 * 3600) -> int:
+        cutoff = int(time.time()) - max(3600, int(older_than_seconds))
+        with self._connection() as conn:
+            cur = conn.execute("DELETE FROM command_nonces WHERE seen_at < ?", (cutoff,))
+            return cur.rowcount
     # ── 任务 Journal ─────────────────────────────────────────────────────────
 
     def record_task_durable(
@@ -435,6 +474,52 @@ class Storage:
             ).fetchone()
             return int(row["epoch"]) if row else 0
 
+    # ── 授权回源缓存 Entitlement Cache（A5） ────────────────────────────────
+
+    def get_entitlement_cache(self, skill_id: str) -> Optional[Dict[str, Any]]:
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM entitlement_cache WHERE skill_id = ?",
+                (str(skill_id),)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def save_entitlement_cache(
+        self,
+        skill_id: str,
+        allowed: bool,
+        reason: str,
+        entitlement_id: Optional[int],
+        expires_at: Optional[int],
+        checked_at: int,
+    ) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO entitlement_cache
+                    (skill_id, allowed, reason, entitlement_id, expires_at, checked_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(skill_id) DO UPDATE SET
+                    allowed = excluded.allowed,
+                    reason = excluded.reason,
+                    entitlement_id = excluded.entitlement_id,
+                    expires_at = excluded.expires_at,
+                    checked_at = excluded.checked_at
+                """,
+                (
+                    str(skill_id),
+                    1 if allowed else 0,
+                    str(reason),
+                    entitlement_id,
+                    expires_at,
+                    int(checked_at),
+                )
+            )
+
+    def clear_entitlement_cache(self, skill_id: str) -> None:
+        with self._connection() as conn:
+            conn.execute("DELETE FROM entitlement_cache WHERE skill_id = ?", (str(skill_id),))
+
     # ── 执行租约与资源锁 Execution Leases ────────────────────────────────────
 
     def acquire_execution_lease(
@@ -477,6 +562,18 @@ class Storage:
             rows = conn.execute(
                 "SELECT * FROM execution_leases WHERE skill_id = ? AND status != 'RELEASED'",
                 (str(skill_id),)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_active_leases(self) -> List[Dict[str, Any]]:
+        """全设备范围内未释放的执行租约。
+
+        自更新用它回答「现在能不能替换 Agent」：有活动执行时替换二进制/代码，
+        等于在机器人运动过程中换掉控制进程。只读，不改变任何租约语义。
+        """
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM execution_leases WHERE status != 'RELEASED'"
             ).fetchall()
             return [dict(r) for r in rows]
 
@@ -541,6 +638,20 @@ class Storage:
             ).fetchone()
             return dict(row) if row else None
 
+    def get_executions_for_task(self, task_id: str) -> List[Dict[str, Any]]:
+        """按任务查执行记录。
+
+        A4.4 修复：恢复流程不能假设 execution_id == f"exec_{task_id}" —— 平台下发的是
+        签过名的 execution_id，必须能从本地记录里找回来，否则会把 UNKNOWN 写到一条不存在的记录上，
+        真正的执行永远停在 ACCEPTED。
+        """
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM executions WHERE task_id = ? ORDER BY created_at ASC",
+                (str(task_id),)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def update_execution_status(
         self,
         execution_id: str,
@@ -550,7 +661,7 @@ class Storage:
     ):
         now = int(time.time())
         started_at = now if status == "RUNNING" else None
-        completed_at = now if status in ("SUCCEEDED", "FAILED", "CANCELED") else None
+        completed_at = now if status in ("SUCCEEDED", "FAILED", "CANCELED", "UNKNOWN") else None
         with self._connection() as conn:
             conn.execute(
                 """

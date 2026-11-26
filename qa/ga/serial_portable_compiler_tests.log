@@ -1,0 +1,72 @@
+Traceback (most recent call last):
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb474c88b3f\runner\broker.py", line 46, in _fail_without_bridge
+    importlib.import_module(sdk_name)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ <frozen importlib._bootstrap>tstrap>", line 1387, in _gcd_import
+<frozen importlib._bootstrap>otstrap>", line 1360, in _find_and_load
+<frozen importlib._bootstrap>ootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'mock_sdk'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb474c88b3f\test_runner_6aeb474c8fd46.p<module> 4, in <module>
+    action.run()
+    ~~~~~~~~~~^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb474c88b3f\action.py", line 35, in run
+    return runner.execute(context=context)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb474c88b3f\runner\bt_runner.py", line 46, in execute
+    res = self.broker.execute_gesture(hand, cycles, timeout_ms, context)
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb474c88b3f\runner\broker.py", line 58, in execute_gesture
+    self._fail_without_bridge()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct10_test_6aeb474c88b3f\runner\broker.py", line 48, in _fail_without_bridge
+    raise UnsupportedCapabilityError(
+        f"{sdk_name} δ��װ��û����ʽ Adapter �ţ��ܾ�ִ��"
+    ) from exc
+broker.UnsupportedCapabilityError: mock_sdk δ��װ��û����ʽ Adapter �ţ��ܾ�ִ��
+Traceback (most recent call last):
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct21_test_6aeb47521df16\test_runner_6aeb475222c3b.py", line 6, in<module>>
+    action.run(context=Ctx())
+    ~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\ADMINI~1\AppData\Local\Temp\ct21_test_6aeb47521df16\action.py", line 32, in run
+    raise ValueError("C-T21 Υ��: cycles ������������ܿ����� (max 50)")
+ValueError: C-T21 Υ��: cycles ������������ܿ����� (max 50)
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\PortableSkillCompilerAcceptanceTest
+  ✓ it C-T01: 无source资产但docs示例存在 -> 构建失败，无示例/服务器路径兜底产物                                                           0.69s  
+  ✓ it C-T02: 源引用音频缺失/损坏/空文件 -> 拒绝，不生成静音或空文件替代                                                                   0.20s  
+  ✓ it C-T03: DTD/entity/include/外部路径/超深/超节点 -> 按对应错误明确拒绝                                                        0.17s  
+  ✓ it C-T04: Parallel/Fallback/Repeat/Retry 及未知 Action -> 首版拒绝                                                  0.12s  
+  ✓ it C-T05: main=Main，另有未引用 Unused 树 -> Unused 无任何调用且不影响主树语义                                                   0.10s  
+  ✓ it C-T06: SM_MotionSequence 或其他未实现能力 -> 拒绝，不能变0步成功                                                           0.09s  
+  ✓ it C-T07: wave(right,3) 目标能力超出或无完成计数 -> UNSUPPORTED_CAPABILITY                                               0.10s  
+  ✓ it C-T08: 参数越界、非整数cycles、权限少报、总时长超限 -> 副作用前拒绝                                                                0.09s  
+  ✓ it C-T09: 编译完整源，解压归档并实际运行入口 -> 无 modelCode NameError 且输出独立轨迹                                                 0.93s  
+  ✓ it C-T10: 音频素材在运行时丢失 -> 整体失败，不 print/sleep 冒充成功                                                              0.68s  
+  ✓ it C-T11: 两个品牌 binding 使用相同完整源 -> source_digest 一致但产出各自独立 target 成品                                          0.29s  
+  ✓ it C-T12: 长节点取消 -> 确认终态才释放资源                                                                                 0.63s  
+  ✓ it C-T13: 只有 G1 成品，请求 X2 或显式其他目标 asset_id -> 拒绝                                                              0.33s  
+  ✓ it C-T14: 未审目标成品 / 已撤销目标 -> 不可交付，历史构建事实保留                                                                    0.39s  
+  ✓ it C-T15: 补新目标须独立审核，旧审核与旧成品身份不变                                                                              0.32s  
+  ✓ it C-T16: 同源同目标重复构建 -> 不覆盖历史 run，生成自增 run_number                                                             0.48s  
+  ✓ it C-T17: 固定输入在两个干净环境无缓存重建 -> 最终字节 SHA-256 绝对一致                                                              1.40s  
+  ✓ it C-T18: 修改源素材内容 -> 对应构建身份与哈希改变                                                                             0.42s  
+  ✓ it C-T19: 旧 motion/composite 无 btcpp source_format -> 走既有旧构建器                                                0.26s  
+  ✓ it C-T20: 打包后篡改文件哈希 -> 交付校验拒绝                                                                                0.44s  
+  ✓ it C-T21: 已安装并获准成品发起执行，传入额外客户 params -> 拒绝                                                                   0.76s  
+  ✓ it C-T22: 轨迹仅角度合规但速度/加速度超包络 -> 动力学约束失败并阻断                                                                    0.37s  
+  ✓ it C-T23: 上传 -> 构建 -> 目标审核 -> 发布 -> 交付全生命周期同一身份贯穿                                                            0.37s  
+  ✓ it C-T24: 关闭新构建/新安装时，取消与事实补报依然可达                                                                             0.20s  
+  ✓ it C-T25: 同一标准源分别构建五个 GA 目标，A2 不再是默认目标                                                                       0.40s  
+  ✓ it C-T26: 目标审核服务校验产物快照与 Profile 摘要，并留不可变审计事件                                                                 0.35s  
+  ✓ it C-T27: 运动型技能在未知厂商物理限值下 fail-closed，仅 G1 ground-truth 可构建                                                  0.42s  
+  ✓ it C-T28: 强类型 BuildCommand 入口核对源/Profile 摘要，陈旧输入不进入 builder                                                  0.30s  
+
+  Tests:    28 passed (122 assertions)
+  Duration: 11.96s
+

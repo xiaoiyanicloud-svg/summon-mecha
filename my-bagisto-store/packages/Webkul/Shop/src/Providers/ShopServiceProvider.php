@@ -80,6 +80,12 @@ class ShopServiceProvider extends ServiceProvider
                 \Webkul\Shop\Console\Commands\EcosystemContractCheck::class,
                 // Q-05 存量数据 preflight（只读）
                 \Webkul\Shop\Console\Commands\EcosystemDataPreflight::class,
+                // 五机型 GA 只读指标与告警快照
+                \Webkul\Shop\Console\Commands\GaOperationalMetricsCommand::class,
+                // B1 构建命令 outbox worker（一轮有界批次，默认开关关闭）
+                \Webkul\Shop\Console\Commands\SkillBuildWorker::class,
+                // B8 构建指标只读快照
+                \Webkul\Shop\Console\Commands\SkillBuildMetrics::class,
                 \Webkul\Shop\Console\Commands\SceneOperations::class,
                 \Webkul\Shop\Console\Commands\SceneAttachmentRetention::class,
                 // 配件皮肤 P1：分类树安装（默认 dry-run）与上架前置校验（只读）

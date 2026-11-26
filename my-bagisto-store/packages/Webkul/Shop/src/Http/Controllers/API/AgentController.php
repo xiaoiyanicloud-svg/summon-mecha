@@ -8,10 +8,19 @@ use Webkul\Shop\Models\DeviceBinding;
 use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\DeployTask;
 use Webkul\Shop\Services\Deploy\AgentGatewayManager;
+use Webkul\Shop\Services\Deploy\AgentFactSignatureVerifier;
+use Webkul\Shop\Services\Deploy\AgentEntitlementService;
 use Webkul\Shop\Services\Deploy\AgentSelfUpdateService;
 use Webkul\Shop\Services\Deploy\DeployTaskService;
+use Webkul\Shop\Services\Deploy\DeployInboxService;
+use Webkul\Shop\Services\Deploy\DeployMetricCounter;
+use Webkul\Shop\Services\Deploy\DeployReconcileService;
+use Webkul\Shop\Services\Deploy\DesiredStateService;
 use Webkul\Shop\Services\Deploy\DeviceCredentialService;
+use Webkul\Shop\Services\Deploy\DeviceHealthService;
 use Webkul\Shop\Services\Deploy\IllegalTaskTransitionException;
+use Webkul\Shop\Services\Deploy\Contracts\StopObservation;
+use Webkul\Shop\Services\Deploy\Contracts\StopObservationSourceForbiddenException;
 
 /**
  * Agent 接入接口 —— v3.4 步骤 8(计划 §5.2)。
@@ -42,6 +51,8 @@ class AgentController extends APIController
     public function __construct(
         protected DeployTaskService $deploy,
         protected AgentGatewayManager $gateways,
+        protected DeployInboxService $inbox,
+        protected DeployReconcileService $reconciler,
     ) {}
 
     /**
@@ -220,6 +231,26 @@ class AgentController extends APIController
             'capability_snapshot.sdk_version'         => ['nullable', 'string', 'max:64'],
             'capability_snapshot.agent_version'       => ['nullable', 'string', 'max:32'],
             'capability_snapshot.vendor_code'         => ['nullable', 'string', 'max:32'],
+            // A3：设备端增量计数。键集由服务层白名单裁决（控制器不再维护第二份清单）。
+            'metrics'              => ['nullable', 'array'],
+            'metrics.batch_id'     => ['nullable', 'string', 'regex:/^[A-Za-z0-9_.:-]{8,64}$/'],
+            'metrics.counters'     => ['nullable', 'array', 'max:16'],
+            'metrics.counters.*'   => ['integer', 'min:0', 'max:1000000'],
+            'metrics.gauges'       => ['nullable', 'array', 'max:8'],
+            'metrics.gauges.*'     => ['integer', 'min:0', 'max:100000000'],
+            // A2：健康快照（瞬时值，覆盖）。采不到就不带 —— null 表示"本次未上报"。
+            'health'                      => ['nullable', 'array'],
+            'health.battery_pct'          => ['nullable', 'integer', 'min:0', 'max:100'],
+            'health.temperature_c'        => ['nullable', 'numeric', 'between:-40,150'],
+            'health.cpu_pct'              => ['nullable', 'numeric', 'between:0,100'],
+            'health.memory_used_mb'       => ['nullable', 'integer', 'min:0', 'max:16777216'],
+            'health.memory_total_mb'      => ['nullable', 'integer', 'min:0', 'max:16777216'],
+            'health.disk_free_mb'         => ['nullable', 'integer', 'min:0', 'max:16777216'],
+            'health.disk_total_mb'        => ['nullable', 'integer', 'min:0', 'max:16777216'],
+            'health.uptime_seconds'       => ['nullable', 'integer', 'min:0', 'max:3153600000'],
+            'health.error_counters'       => ['nullable', 'array', 'max:32'],
+            'health.error_counters.*'     => ['integer', 'min:0', 'max:1000000000'],
+            'health.sampled_at'           => ['nullable', 'integer', 'min:1'],
         ]);
 
         if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
@@ -241,7 +272,51 @@ class AgentController extends APIController
         // 只在注册时记一次会让适配判断一直停在首联那一刻。
         $this->rememberCapabilitySnapshot($binding, $payload);
 
+        // A2：健康快照（电量/温度/CPU/内存/磁盘/错误码趋势）。瞬时值，随心跳覆盖。
+        if (! empty($payload['health'])) {
+            try {
+                app(DeviceHealthService::class)->apply($binding, $payload['health']);
+            } catch (\InvalidArgumentException $exception) {
+                // 与 A3 未知指标键同口径：4xx 让 Agent 停止重试并丢弃该批，
+                // 而不是 5xx 制造一个永远重试不完的坏批次。
+                return $this->fail(ApiErrorCode::VALIDATION_ERROR, $exception->getMessage(), 422);
+            }
+        }
+
         $binding->save();
+
+        // A3：应用设备端增量计数。`(did, batch_id)` 幂等 —— Agent 重发同一批不会重复累加；
+        // 重复批次同样回 200，因为对 Agent 来说"我报过了"就够了，它要看的是能不能安全清空本地增量。
+        if (! empty($payload['metrics'])) {
+            $counters = (array) ($payload['metrics']['counters'] ?? []);
+            $gauges = (array) ($payload['metrics']['gauges'] ?? []);
+            $batchId = (string) ($payload['metrics']['batch_id'] ?? '');
+
+            // 有增量就必须带批次号：否则重发无法按 (did,batch_id) 去重，只会重复累加。
+            if ($counters !== [] && $batchId === '') {
+                return $this->fail(ApiErrorCode::VALIDATION_ERROR, 'metrics.counters 必须同时携带 metrics.batch_id。', 422);
+            }
+
+            try {
+                if ($counters !== []) {
+                    app(DeployMetricCounter::class)->applyAgentBatch(
+                        (string) $payload['did'],
+                        $batchId,
+                        $counters,
+                    );
+                }
+                if ($gauges !== []) {
+                    app(DeployMetricCounter::class)->applyAgentGauges(
+                        (string) $payload['did'],
+                        array_map('intval', $gauges),
+                    );
+                }
+            } catch (\InvalidArgumentException $exception) {
+                // 键不在白名单 = Agent 侧写错了指标名。回 4xx 让它**停止重试并丢弃该批**，
+                // 而不是 5xx 造成一个永远重试不完的坏批次。
+                return $this->fail(ApiErrorCode::VALIDATION_ERROR, $exception->getMessage(), 422);
+            }
+        }
 
         return $this->ok(['did' => $binding->did, 'online' => true], 'ok');
     }
@@ -257,70 +332,220 @@ class AgentController extends APIController
     public function event(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'task_no'    => ['required', 'string', 'max:40'],
-            'did'        => ['required', 'string', 'max:64'],
-            'phase'      => ['required', 'string', 'in:downloading,installing,download_failed,done,failed,timeout'],
+            'task_no' => ['required', 'string', 'max:40'],
+            'did' => ['required', 'string', 'max:64'],
+            'event_id' => ['required', 'string', 'regex:/^[A-Za-z0-9_.:-]{8,64}$/'],
+            'event_seq' => ['nullable', 'integer', 'min:1'],
+            'phase' => ['required', 'string', 'in:accepted,running,downloading,installing,cancel_requested,download_failed,done,failed,canceled,timeout,unknown'],
             'error_code' => ['nullable', 'string', 'max:32'],
-            'error_msg'  => ['nullable', 'string', 'max:512'],
+            'error_msg' => ['nullable', 'string', 'max:512'],
+            'execution_id' => ['nullable', 'string', 'max:64'],
+            'observed_status' => ['nullable', 'string', 'in:ACCEPTED,RUNNING,CANCEL_REQUESTED,SUCCEEDED,FAILED,CANCELED,UNKNOWN'],
+            'actual_started' => ['nullable', 'boolean'],
+            'actual_stopped' => ['nullable', 'boolean'],
+            'started_at' => ['nullable', 'integer', 'min:1'],
+            'stopped_at' => ['nullable', 'integer', 'min:1'],
+            'evidence' => ['nullable', 'array'],
+            'stop_observation' => ['nullable', 'array'],
+            'fact_envelope' => ['nullable', 'array'],
+            'reported_at' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        // per-device 身份下,上报者必须就是该设备本人(共享受限时 agent.did 为 null,跳过)。
         if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
             return $denied;
         }
 
-        // 归属:任务必须属于上报者声明的 did。不匹配按"不存在"返回(不泄漏他人任务的存在)
-        $owned = DeployTask::query()->where('task_no', $payload['task_no'])->first();
+        // A1：事件正文验签必须在 Inbox / 任务状态 / SkillExecution 修改之前完成。
+        $binding = DeviceBinding::query()->where('did', $payload['did'])->first();
 
-        if (! $owned || $owned->did !== $payload['did']) {
+        if ($binding) {
+            $factAuth = app(AgentFactSignatureVerifier::class)->verify($binding, $payload);
+
+            if (! $factAuth['ok']) {
+                $status = in_array($factAuth['code'], [
+                    AgentFactSignatureVerifier::CODE_INVALID,
+                    AgentFactSignatureVerifier::CODE_KEY_UNKNOWN,
+                    AgentFactSignatureVerifier::CODE_KEY_REVOKED,
+                    AgentFactSignatureVerifier::CODE_KEY_STALE,
+                    AgentFactSignatureVerifier::CODE_KEY_INACTIVE,
+                ], true) ? 401 : 422;
+
+                // A3：验签被拒的次数就是"有人在伪造/配错了密钥"的可观测信号，
+                // 必须在**拒绝发生的那一处**计数，否则事后只能翻日志、算不出趋势。
+                app(DeployMetricCounter::class)->increment('fact_auth_rejected_total');
+
+                return $this->fail($factAuth['code'], $factAuth['message'] ?? '事件正文认证失败。', $status);
+            }
+
+            // 只记确定性元数据（level/key_id），不写时间戳 —— 否则同载荷重投的哈希会漂移。
+            $payload['_platform_fact_auth'] = [
+                'level'  => $factAuth['level'],
+                'key_id' => $factAuth['key_id'],
+            ];
+        }
+
+        $task = DeployTask::query()->where('task_no', $payload['task_no'])->first();
+        if (! $task || $task->did !== $payload['did']) {
             return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
+        }
+
+        $fact = null;
+        if (in_array((int) $task->operation, DeployTask::EXECUTION_OPERATIONS, true)) {
+            $executionId = (string) ($payload['execution_id'] ?? $task->execution_id ?? '');
+            if ($task->execution_id && $executionId !== (string) $task->execution_id) {
+                return $this->fail(ApiErrorCode::VALIDATION_ERROR, 'execution_id 与任务不一致。', 422);
+            }
+
+            $observedStatus = (string) ($payload['observed_status'] ?? $this->executionStatusForPhase($payload['phase']));
+            $isTerminal = in_array($observedStatus, ['SUCCEEDED', 'FAILED', 'CANCELED'], true);
+            $reportedAt = (int) ($payload['reported_at'] ?? now()->timestamp);
+
+            $observation = null;
+            $downgradeReason = null;
+
+            if (! empty($payload['stop_observation']) && is_array($payload['stop_observation'])) {
+                $observationData = $payload['stop_observation'];
+                $observationData['execution_id'] = $observationData['execution_id'] ?? $executionId;
+
+                if ((string) $observationData['execution_id'] !== $executionId) {
+                    return $this->fail(ApiErrorCode::VALIDATION_ERROR, 'stop_observation.execution_id 与任务不一致。', 422);
+                }
+
+                try {
+                    $observation = StopObservation::fromArray($observationData);
+                } catch (StopObservationSourceForbiddenException $exception) {
+                    // A2.2：SDK 返回 / BT halt / 云端 ACK / mock / SIL 冒充物理停止 → 明确拒绝。
+                    return $this->fail(ApiErrorCode::VALIDATION_ERROR, $exception->getMessage(), 422);
+                } catch (\InvalidArgumentException $exception) {
+                    // A2.3：形状非法 → 不进入终态，降级 UNKNOWN。
+                    $downgradeReason = 'INVALID_STOP_OBSERVATION';
+                    $observation = null;
+                }
+
+                if ($observation !== null) {
+                    // 观察与事实必须描述同一件事，禁止“事实说已停、观察说未停”的拼接。
+                    if ($observation->actualStarted !== (bool) ($payload['actual_started'] ?? false)
+                        || $observation->actualStopped !== (bool) ($payload['actual_stopped'] ?? false)) {
+                        return $this->fail(
+                            ApiErrorCode::VALIDATION_ERROR,
+                            'stop_observation 与事实的 actual_started/actual_stopped 不一致。',
+                            422,
+                        );
+                    }
+
+                    if (! $observation->isAcceptable()) {
+                        $downgradeReason = 'UNACCEPTABLE_STOP_OBSERVATION';
+                        $observation = null;
+                    } elseif (! $observation->isFresh($reportedAt)) {
+                        $downgradeReason = 'STALE_STOP_OBSERVATION';
+                        $observation = null;
+                    }
+                }
+            } elseif ($isTerminal) {
+                $downgradeReason = 'STOP_OBSERVATION_MISSING';
+            }
+
+            // 只有“声称已停但观察不可信”才降级为 UNKNOWN；声称未停的终态仍按原契约 422。
+            // 降级依据只使用 payload 内的 reported_at/observed_at，重试同载荷得到同一哈希。
+            if ($isTerminal
+                && (bool) ($payload['actual_stopped'] ?? false)
+                && $observation === null) {
+                $observedStatus = 'UNKNOWN';
+                $payload['actual_stopped'] = false;
+                $payload['stopped_at'] = null;
+                // 保留端侧原始 phase（如 done）用于迟到判定与审计；
+                // onEvent 会在 fact=UNKNOWN 时把任务安全收敛到 timeout，绝不推进到 success。
+                $payload['evidence'] = array_merge(
+                    is_array($payload['evidence'] ?? null) ? $payload['evidence'] : [],
+                    ['stop_observation_downgrade' => $downgradeReason],
+                );
+            } elseif (! $isTerminal && $downgradeReason !== null) {
+                $payload['evidence'] = array_merge(
+                    is_array($payload['evidence'] ?? null) ? $payload['evidence'] : [],
+                    ['stop_observation_ignored' => $downgradeReason],
+                );
+            }
+
+            try {
+                $fact = new \Webkul\Shop\Services\Deploy\Contracts\ExecutionFact(
+                    executionId: $executionId,
+                    observedStatus: $observedStatus,
+                    actualStarted: (bool) ($payload['actual_started'] ?? false),
+                    actualStopped: (bool) ($payload['actual_stopped'] ?? false),
+                    startedAt: isset($payload['started_at']) ? (int) $payload['started_at'] : null,
+                    stoppedAt: isset($payload['stopped_at']) ? (int) $payload['stopped_at'] : null,
+                    errorCode: $payload['error_code'] ?? null,
+                    evidence: is_array($payload['evidence'] ?? null) ? $payload['evidence'] : [],
+                    reportedAt: $reportedAt,
+                    stopObservation: $observation,
+                );
+            } catch (\InvalidArgumentException $exception) {
+                return $this->fail(ApiErrorCode::VALIDATION_ERROR, $exception->getMessage(), 422);
+            }
         }
 
         try {
-            $task = $this->deploy->onEvent(
-                $payload['task_no'],
-                $payload['phase'],
-                $payload['error_code'] ?? null,
-                $payload['error_msg'] ?? null,
-            );
-        } catch (IllegalTaskTransitionException $e) {
-            // 迟到事实收敛：若服务端已判定 timeout，设备最终汇报 done 或 failed，记录迟到事实而不抛 409（F08）
-            if ($e->from === 'timeout' && in_array($e->to, ['success', 'failed'], true)) {
-                $task = DeployTask::query()->where('task_no', $payload['task_no'])->first();
-                if ($task) {
-                    $tp = is_array($task->signed_payload) ? $task->signed_payload : [];
-                    $tp['late_report'] = [
-                        'phase'       => $payload['phase'],
-                        'error_code'  => $payload['error_code'] ?? null,
-                        'error_msg'   => $payload['error_msg'] ?? null,
-                        'reported_at' => now()->timestamp,
-                    ];
-                    $task->signed_payload = $tp;
-                    $task->saveQuietly();
-
-                    return $this->ok([
-                        'task_no'     => $task->task_no,
-                        'status'      => $task->status,
-                        'late_report' => true,
-                    ], '迟到汇报已记录。');
-                }
-            }
-
-            // 非法回报 —— 明确 409 + 码,而不是"200 ok 但其实没动"。
-            // Agent 是机器消费者:它要靠码判断"这条回报被接受了没有";
-            // 静默成功会让端云状态永久分叉(端侧继续等、云侧停在原地)。
-            return $this->fail(ApiErrorCode::TASK_TRANSITION_INVALID, $e->getMessage(), 409, [
-                'data' => ['task_no' => $e->taskNo, 'status' => $e->from],
+            $result = $this->inbox->processFact($payload, $fact);
+        } catch (IllegalTaskTransitionException $exception) {
+            return $this->fail(ApiErrorCode::TASK_TRANSITION_INVALID, $exception->getMessage(), 409, [
+                'data' => ['task_no' => $exception->taskNo, 'status' => $exception->from],
             ]);
+        } catch (\DomainException $exception) {
+            return $this->fail(ApiErrorCode::TASK_TRANSITION_INVALID, $exception->getMessage(), 409);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->fail(ApiErrorCode::VALIDATION_ERROR, $exception->getMessage(), 422);
         }
 
-        if (! $task) {
+        if (! empty($result['not_found'])) {
             return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
-        return $this->ok(['task_no' => $task->task_no, 'status' => $task->status], 'ok');
+        if (! empty($result['conflict'])) {
+            return $this->fail(ApiErrorCode::CONFLICT, '同一 event_id 的事实载荷不一致。', 409);
+        }
+
+        $event = $result['event'];
+        if (! empty($result['terminal_conflict'])) {
+            return $this->fail(
+                ApiErrorCode::TASK_TRANSITION_INVALID,
+                '终态冲突事实已入账，但服务端终态未回退。',
+                409,
+                ['data' => [
+                    'task_no' => $result['task']->task_no,
+                    'status' => $result['task']->status,
+                    'event_id' => $event->event_id,
+                    'ack_id' => $event->ack_id,
+                    'late_report' => true,
+                ]],
+            );
+        }
+        $updatedTask = $result['task'];
+
+        return $this->ok([
+            'task_no' => $updatedTask->task_no,
+            'status' => $updatedTask->status,
+            'event_id' => $event->event_id,
+            'ack_id' => $event->ack_id,
+            'duplicate' => (bool) ($result['duplicate'] ?? false),
+            'applied' => (bool) $event->applied,
+            'late_report' => (bool) ($result['late_report'] ?? $event->late_report),
+            'server_time' => now()->timestamp,
+        ], ! empty($result['late_report']) ? '迟到事实已入账，服务端终态未回退。' : 'ok');
     }
 
+    protected function executionStatusForPhase(string $phase): string
+    {
+        return match ($phase) {
+            'accepted' => 'ACCEPTED',
+            'running', 'downloading', 'installing' => 'RUNNING',
+            'cancel_requested' => 'CANCEL_REQUESTED',
+            'done' => 'SUCCEEDED',
+            'failed' => 'FAILED',
+            'canceled' => 'CANCELED',
+            'timeout', 'unknown' => 'UNKNOWN',
+            default => throw new \InvalidArgumentException("无法从 phase 推导执行状态: {$phase}"),
+        };
+    }
     /**
      * 拉取待执行指令(HTTP 轮询传输;指令队列即 deploy_task 本身)。
      *
@@ -356,40 +581,79 @@ class AgentController extends APIController
         // ⚠ 每设备每轮**只发一条**(P7):此前一次返回该 did 的全部待执行任务,设备可能
         //   并行起多个安装 —— 而同一台物理机的技能装/卸本就应该串行。限 1 条后,设备
         //   一轮取走一条;取走的那条带上投递标记后即退出本查询,下一轮才轮到下一条。
-        $tasksQuery = DeployTask::query()
-            ->where('did', $did)
-            ->where(function ($q) {
-                $q->where('status', 'pending_online')
-                    ->orWhere(function ($q2) {
-                        $q2->where('status', 'dispatching')->whereNull('delivered_at');
-                    });
-            });
-
-        // 协议门禁：旧 Agent 未声明支持 agent-task/v2 时，禁止下发执行与取消指令(OP 7/8)，防旧端崩溃
         $protocolVersion = (string) ($request->query('protocol_version')
             ?? $request->header('X-Agent-Protocol')
             ?? DeployTask::PROTOCOL_V1);
 
-        if ($protocolVersion !== DeployTask::PROTOCOL_V2) {
-            $tasksQuery->whereNotIn('operation', [DeployTask::OP_EXECUTE, DeployTask::OP_CANCEL_EXECUTION]);
-        }
-
-        $tasks = $tasksQuery->orderBy('id')
-            ->limit(1)
-            ->get();
-
-        $commands = [];
-        foreach ($tasks as $t) {
-            $this->deploy->transition($t, 'dispatching');
-            // 协议分流（F08）：v1 设备无 ACK 机制，拉取即标记 delivered_at；
-            // v2 设备遵循端云可靠投递契约，必须等待客户端持久化写入本地日志并发送 ack 后再标 delivered_at
-            if ($protocolVersion !== DeployTask::PROTOCOL_V2) {
-                $this->deploy->markDelivered($t);
-            }
-            $commands[] = $this->deploy->buildCommand($t);
-        }
+        $task = $this->deploy->claimNextCommand($did, $protocolVersion);
+        $commands = $task ? [$this->deploy->buildCommand($task)] : [];
 
         return $this->ok($commands);
+    }
+
+    /**
+     * A5：设备执行前查询本机是否仍持有该技能的有效授权。
+     *
+     * 为什么需要独立接口：指令里虽有 `authorization_expires_at`，但那是**下发那一刻**
+     * 的快照；设备离线数天后仍可能按旧指令执行。回收/退款/过期必须能在执行前
+     * 重新问一次平台，且不能依赖"用户主动连网"以外的任何前提。
+     *
+     * 语义：**200 + allowed=false** 是正常业务结果（Agent 按 reason 分支并缓存），
+     * 不是 HTTP 错误。只有身份不匹配/设备不存在才走 4xx。
+     */
+    public function entitlementCheck(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'did'              => ['required', 'string', 'max:64'],
+            'skill_id'         => ['required', 'integer', 'min:1'],
+            'skill_version_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
+            return $denied;
+        }
+
+        $binding = DeviceBinding::query()->where('did', $payload['did'])->first();
+
+        if (! $binding) {
+            return $this->fail(ApiErrorCode::DEVICE_NOT_REGISTERED, '设备未注册。', 404);
+        }
+
+        $binding->markSeen('agent');
+        $binding->save();
+
+        $result = app(AgentEntitlementService::class)->check(
+            $binding,
+            (int) $payload['skill_id'],
+            isset($payload['skill_version_id']) ? (int) $payload['skill_version_id'] : null,
+        );
+
+        return $this->ok($result, $result['allowed'] ? '授权有效。' : '授权不可用。');
+    }
+
+    /**
+     * A4：声明式目标状态 —— 这台设备"应该"装什么，与平台已知的实际状态差在哪。
+     *
+     * 只读：不在这里改任务、不改授权。自动收敛由服务层开关控制（默认关闭）。
+     */
+    public function desiredState(Request $request): JsonResponse
+    {
+        $payload = $request->validate(['did' => ['required', 'string', 'max:64']]);
+
+        if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
+            return $denied;
+        }
+
+        $binding = DeviceBinding::query()->where('did', $payload['did'])->first();
+
+        if (! $binding) {
+            return $this->fail(ApiErrorCode::DEVICE_NOT_REGISTERED, '设备未注册。', 404);
+        }
+
+        $binding->markSeen('agent');
+        $binding->save();
+
+        return $this->ok(app(DesiredStateService::class)->snapshot($binding), 'ok');
     }
 
     /**
@@ -413,29 +677,26 @@ class AgentController extends APIController
             return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
         }
 
-        // F08: 设备持久接收确认，正式标记已投递
-        $this->deploy->markDelivered($task);
+        $result = $this->inbox->acknowledge($payload);
 
-        $taskPayload = is_array($task->signed_payload) ? $task->signed_payload : [];
-        $acks = $taskPayload['acks'] ?? [];
-        $ackId = 'ack_'.\Illuminate\Support\Str::random(16);
-        $acks[] = [
-            'ack_id'      => $ackId,
-            'event_id'    => $payload['event_id'],
-            'stage'       => $payload['stage'],
-            'received_at' => now()->timestamp,
-        ];
-        $taskPayload['acks'] = $acks;
-        $task->signed_payload = $taskPayload;
-        $task->saveQuietly();
+        if (! empty($result['not_found'])) {
+            return $this->fail(ApiErrorCode::TASK_NOT_FOUND, '任务不存在。', 404);
+        }
+
+        if (! empty($result['conflict'])) {
+            return $this->fail(ApiErrorCode::CONFLICT, '同一 event_id 的 ACK 载荷不一致。', 409);
+        }
+
+        $event = $result['event'];
 
         return $this->ok([
             'task_no'     => $payload['task_no'],
             'did'         => $payload['did'],
             'event_id'    => $payload['event_id'],
             'stage'       => $payload['stage'],
-            'ack_id'      => $ackId,
+            'ack_id'      => $event->ack_id,
             'status'      => 'acknowledged',
+            'duplicate'   => (bool) ($result['duplicate'] ?? true),
             'server_time' => now()->timestamp,
         ], 'ACK 成功。');
     }
@@ -446,9 +707,22 @@ class AgentController extends APIController
     public function reconcile(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'did'    => ['required', 'string', 'max:64'],
+            'did' => ['required', 'string', 'max:64'],
+            'model_code' => ['required', 'string', 'max:64'],
+            'observed_generation' => ['required', 'integer', 'min:0'],
             'skills' => ['nullable', 'array'],
-            'tasks'  => ['nullable', 'array'],
+            'skills.*.skill_version_id' => ['required', 'integer', 'min:1'],
+            'skills.*.status' => ['required', 'string', 'max:32'],
+            'skills.*.version' => ['nullable', 'string', 'max:64'],
+            'skills.*.package_sha256' => ['nullable', 'string', 'size:64'],
+            'tasks' => ['nullable', 'array'],
+            'tasks.*.task_no' => ['required', 'string', 'max:40'],
+            'tasks.*.status' => ['required', 'string', 'max:32'],
+            'active_executions' => ['nullable', 'array'],
+            'active_executions.*.execution_id' => ['required', 'string', 'max:64'],
+            'active_executions.*.status' => ['required', 'string', 'max:32'],
+            'outbox_cursor' => ['nullable', 'string', 'max:128'],
+            'reported_at' => ['required', 'integer', 'min:1'],
         ]);
 
         if ($denied = $this->rejectIdentityMismatch($request, $payload['did'])) {
@@ -463,108 +737,16 @@ class AgentController extends APIController
         $binding->markSeen('agent');
         $binding->save();
 
-        // 服务端已登记的安装事实
-        $serverRecords = \Webkul\Shop\Models\InstallRecord::query()
-            ->where('did', $payload['did'])
-            ->get()
-            ->keyBy('skill_version_id');
-
-        $aligned = true;
-        $details = [];
-        $processedVersions = [];
-
-        foreach (($payload['skills'] ?? []) as $clientSkill) {
-            $verId = $clientSkill['skill_version_id'] ?? null;
-            $clientStatus = $clientSkill['status'] ?? null;
-            if ($verId !== null) {
-                $processedVersions[$verId] = true;
-                if (isset($serverRecords[$verId])) {
-                    $rec = $serverRecords[$verId];
-                    $matches = ($clientStatus === $rec->status);
-                    if (! $matches) {
-                        $aligned = false;
-                    }
-                    $details[] = [
-                        'skill_version_id' => $verId,
-                        'client_status'    => $clientStatus,
-                        'server_status'    => $rec->status,
-                        'match'            => $matches,
-                    ];
-                } else {
-                    $aligned = false;
-                    $details[] = [
-                        'skill_version_id' => $verId,
-                        'client_status'    => $clientStatus,
-                        'server_status'    => null,
-                        'match'            => false,
-                    ];
-                }
-            }
+        try {
+            $reconciliation = $this->reconciler->reconcile($binding, $payload);
+        } catch (\DomainException $exception) {
+            return $this->fail(ApiErrorCode::CONFLICT, $exception->getMessage(), 409);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->fail(ApiErrorCode::VALIDATION_ERROR, $exception->getMessage(), 422);
         }
-
-        if (isset($payload['skills']) && is_array($payload['skills'])) {
-            foreach ($serverRecords as $verId => $rec) {
-                if (! isset($processedVersions[$verId])) {
-                    $aligned = false;
-                    $details[] = [
-                        'skill_version_id' => $verId,
-                        'client_status'    => null,
-                        'server_status'    => $rec->status,
-                        'match'            => false,
-                    ];
-                }
-            }
-        }
-
-        $taskDetails = [];
-        if (! empty($payload['tasks']) && is_array($payload['tasks'])) {
-            $taskNos = collect($payload['tasks'])->pluck('task_no')->filter()->all();
-            $serverTasks = DeployTask::query()
-                ->where('did', $payload['did'])
-                ->whereIn('task_no', $taskNos)
-                ->get()
-                ->keyBy('task_no');
-
-            foreach ($payload['tasks'] as $clientTask) {
-                $taskNo = $clientTask['task_no'] ?? null;
-                $clientStatus = $clientTask['status'] ?? null;
-                if ($taskNo) {
-                    if (isset($serverTasks[$taskNo])) {
-                        $sTask = $serverTasks[$taskNo];
-                        $tMatch = ($clientStatus === $sTask->status);
-                        if (! $tMatch) {
-                            $aligned = false;
-                        }
-                        $taskDetails[] = [
-                            'task_no'       => $taskNo,
-                            'client_status' => $clientStatus,
-                            'server_status' => $sTask->status,
-                            'match'         => $tMatch,
-                        ];
-                    } else {
-                        $aligned = false;
-                        $taskDetails[] = [
-                            'task_no'       => $taskNo,
-                            'client_status' => $clientStatus,
-                            'server_status' => null,
-                            'match'         => false,
-                        ];
-                    }
-                }
-            }
-        }
-
-        $reconciliation = [
-            'did'          => $payload['did'],
-            'server_time'  => now()->timestamp,
-            'aligned'      => $aligned,
-            'details'      => $details,
-            'task_details' => $taskDetails,
-        ];
 
         return $this->ok($reconciliation, '对账完成。');
     }
-
     /**
      * per-device 身份一致性闸(§4.22 F1 / B-12)。
      *

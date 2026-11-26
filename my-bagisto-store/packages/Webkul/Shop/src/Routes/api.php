@@ -9,6 +9,7 @@ use Webkul\Shop\Http\Controllers\API\AfterSaleController;
 use Webkul\Shop\Http\Controllers\API\AgentController;
 use Webkul\Shop\Http\Controllers\API\AgentPackageController;
 use Webkul\Shop\Http\Controllers\API\DeployController;
+use Webkul\Shop\Http\Controllers\API\RobotSupportMatrixController;
 use Webkul\Shop\Http\Controllers\API\NotificationController;
 use Webkul\Shop\Http\Controllers\API\PaymentCallbackController;
 use Webkul\Shop\Http\Controllers\API\PaymentController;
@@ -568,6 +569,10 @@ Route::group(['prefix' => 'api'], function () {
         Route::get('commands', 'commands')->name('shop.api.agent.commands');
         Route::post('ack', 'ack')->name('shop.api.agent.ack');
         Route::post('reconcile', 'reconcile')->name('shop.api.agent.reconcile');
+        // A5：执行前授权回源校验（独立于指令快照）
+        Route::post('entitlement/check', 'entitlementCheck')->name('shop.api.agent.entitlement.check');
+        // A4：声明式目标状态（只读；自动收敛默认关闭）
+        Route::get('desired-state', 'desiredState')->name('shop.api.agent.desired-state');
         // §4.22 F1(B-13):Agent 自更新工件(只提供更高版本,防降级)
         Route::get('self-update', 'selfUpdate')->name('shop.api.agent.self-update');
 
@@ -757,6 +762,8 @@ Route::group(['prefix' => 'api'], function () {
 
         Route::post('register', 'register')->middleware('throttle:login')->name('shop.api.customers.register');
     });
+
+    Route::get('robot-support-matrix', [RobotSupportMatrixController::class, 'index'])->name('shop.api.robot-support-matrix');
 
     Route::group(['middleware' => ['customer'], 'prefix' => 'customer'], function () {
         Route::post('logout', [CustomerController::class, 'logout'])->name('shop.api.customers.logout');

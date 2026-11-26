@@ -1,0 +1,46 @@
+test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) ... 
+  test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) (source='SDK return (wrapped)') ... FAIL
+  test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) (source='bt-halt') ... FAIL
+  test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) (source='cloud ack') ... FAIL
+test_non_independent_observation_source_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_non_independent_observation_source_rejected) ... FAIL
+
+======================================================================
+FAIL: test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) (source='SDK return (wrapped)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\qa\ga\test_hil_evidence_validator.py", line 107, in test_all_forbidden_stop_sources_rejected
+    with self.assertRaises(ValidationError) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValidationError not raised
+
+======================================================================
+FAIL: test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) (source='bt-halt')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\qa\ga\test_hil_evidence_validator.py", line 107, in test_all_forbidden_stop_sources_rejected
+    with self.assertRaises(ValidationError) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValidationError not raised
+
+======================================================================
+FAIL: test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) (source='cloud ack')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\qa\ga\test_hil_evidence_validator.py", line 107, in test_all_forbidden_stop_sources_rejected
+    with self.assertRaises(ValidationError) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValidationError not raised
+
+======================================================================
+FAIL: test_non_independent_observation_source_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_non_independent_observation_source_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\qa\ga\test_hil_evidence_validator.py", line 114, in test_non_independent_observation_source_rejected
+    with self.assertRaises(ValidationError) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValidationError not raised
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.279s
+
+FAILED (failures=4)

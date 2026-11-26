@@ -1,0 +1,17 @@
+﻿# php -l · batch 8/9 · 2026-11-05 18:22:27
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeployMetricCounter.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/GaOperationalMetrics.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeployInboxService.php
+No syntax errors detected in packages/Webkul/Shop/src/Http/Controllers/API/AgentController.php
+No syntax errors detected in packages/Webkul/Shop/src/Http/Controllers/API/SkillSupplyController.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/SkillBuildService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/RegistrationCommand.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/SkillCompile/ToolchainFingerprint.php
+No syntax errors detected in packages/Webkul/Shop/src/Models/SkillBuildRun.php
+No syntax errors detected in packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000004_create_deploy_agent_metric_gauges.php
+No syntax errors detected in packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000005_add_toolchain_to_skill_build_runs.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/DeployMetricCounterTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/RegistrationCommandTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/ToolchainFingerprintTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/SourcePackageConcurrencyTest.php
+FILES=15 FAILURES=0

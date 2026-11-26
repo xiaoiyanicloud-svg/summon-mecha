@@ -1,0 +1,54 @@
+# 第十一批 red → green（变异验证）· 2026-11-05
+
+> 做法同前几批：临时改错 → 对应用例红 → 从 `.claude/backup/b11-0N/` 逐字节还原 →
+> `Get-FileHash` 与备份一致 → 再跑确认绿。全仓 `grep "b11 mutation"` 为 0。
+
+## ① A2 · 健康快照不落库 → A2-H-01 红
+
+文件：`Services/Deploy/DeviceHealthService.php`
+备份：`.claude/backup/b11-01/DeviceHealthService.php`（SHA256 `C891F1E9…`）
+变异：`apply()` 第一行直接 `return [];`（跳过写入）。
+
+```
+pest AgentHealthReportTest --filter="A2-H-01"
+Tests: 1 failed (2 assertions)
+```
+
+还原后哈希 `C891F1E9…`；`AgentHealthReportTest` 5 项恢复绿。
+> 注：此后 A2 的"错误计数"口径收紧为 4 个失败信号键（正常计数不再接受），
+> `DeviceHealthService.php` 又产生了一处正常改动，当前文件哈希已不等于上面的还原点。
+> 变异与还原本身仍是逐字节完成的；此处记录的是**变异当时**的还原点。
+
+## ② A5 · 去掉订单支付闸 → A5-E-04 红
+
+文件：`Services/Deploy/AgentEntitlementService.php`
+备份：`.claude/backup/b11-02/AgentEntitlementService.php`（SHA256 `ACEBF9BF…`）
+变异：`rejectReason()` 里的 `if (! $entitlement->isOrderPaid()) return NOT_PAID;` 改为空块。
+
+```
+pest AgentEntitlementCheckTest --filter="A5-E-04"
+Tests: 1 failed (2 assertions)
+```
+
+还原后哈希 `ACEBF9BF…`；8 项恢复绿。
+
+## ③ C1 · 去掉源包路径穿越校验 → C1-A-02 红
+
+文件：`Services/SkillCompile/Builders/AppCarrierBuilder.php`
+备份：`.claude/backup/b11-03/AppCarrierBuilder.php`（SHA256 `FC2CE203…`）
+变异：`unsafeName()` 直接 `return false;`。
+
+```
+pest AppCarrierBuilderTest --filter="C1-A-02"
+Tests: 1 failed (1 assertion)
+```
+
+还原后哈希 `FC2CE203…`；10 项恢复绿。
+
+## 未做变异的部分（诚实）
+
+- A1 的 11 项由现有 `test_self_update.py` 覆盖；本批未改 A1 逻辑，未重复做变异。
+- A4 的 desired/drift 与 C2 的本地后端等价性属于"首跑即绿"的契约用例：
+  没有一条"去掉某行就必然红"的单一实现点可构造（A4 是多条件过滤；C2 是并行实现比对），
+  故不编造 red。
+- 全量门禁的 49 个失败文件是环境问题，不属于本批变异范围。

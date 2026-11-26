@@ -1,0 +1,27 @@
+﻿{
+    "generated_at": "2026-11-05T00:42:52+08:00",
+    "build_key": "bk_b8_metrics",
+    "build_accepted": 0,
+    "build_started": 0,
+    "build_succeeded": 0,
+    "build_failed": 0,
+    "build_canceled": 0,
+    "build_queued": 0,
+    "build_running": 0,
+    "build_duration_ms": {
+        "samples": 0,
+        "total": 0,
+        "avg": null,
+        "max": null
+    },
+    "status_breakdown": [],
+    "result_status_breakdown": [],
+    "metric_status": {
+        "build_accepted": "instrumented: skill_build_commands",
+        "build_started": "instrumented: started_at",
+        "build_succeeded": "instrumented: status=completed",
+        "build_failed": "instrumented: status=failed",
+        "build_canceled": "instrumented: status=canceled",
+        "build_duration_ms": "instrumented: started_at/finished_at"
+    }
+}

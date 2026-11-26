@@ -1,0 +1,57 @@
+﻿
+  ..⨯...⨯.⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\LocaleTest > it should store the newly created locale           
+  Expected: {"message":"\u533a\u57df\u521b\u5efa\u6210\u529f\u3002"}
+
+  To contain: 区域创建成功。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\LocaleTest.php:51
+     47▕             UploadedFile::fake()->image('logo.png'),
+     48▕         ],
+     49▕     ])
+     50▕         ->assertOk()
+  ➜  51▕         ->assertSeeText(trans('admin::app.settings.locales.index.create-success'));
+     52▕ 
+     53▕     $this->assertModelWise([
+     54▕         Locale::class => [
+     55▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\LocaleTest > it should update the specified locale              
+  Expected: {"message":"\u533a\u57df\u66f4\u65b0\u6210\u529f\u3002"}
+
+  To contain: 区域更新成功。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\LocaleTest.php:132
+    128▕             UploadedFile::fake()->image('logo.png'),
+    129▕         ],
+    130▕     ])
+    131▕         ->assertOk()
+  ➜ 132▕         ->assertSeeText(trans('admin::app.settings.locales.index.update-success'));
+    133▕ 
+    134▕     $this->assertModelWise([
+    135▕         Locale::class => [
+    136▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\LocaleTest > it should delete the locale                        
+  Expected: {"message":"\u533a\u57df\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: 区域删除成功。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\LocaleTest.php:178
+    174▕     $this->loginAsAdmin();
+    175▕ 
+    176▕     deleteJson(route('admin.settings.locales.delete', $locale->id))
+    177▕         ->assertOk()
+  ➜ 178▕         ->assertSeeText(trans('admin::app.settings.locales.index.delete-success'));
+    179▕ 
+    180▕     $this->assertDatabaseMissing('locales', [
+    181▕         'id' => $locale->id,
+    182▕     ]);
+
+
+  Tests:    3 failed, 6 passed (32 assertions)
+  Duration: 6.20s
+

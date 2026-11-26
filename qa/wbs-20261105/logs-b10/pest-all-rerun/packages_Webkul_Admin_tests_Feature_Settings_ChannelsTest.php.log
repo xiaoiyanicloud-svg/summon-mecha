@@ -1,0 +1,120 @@
+﻿
+  .....⨯.⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest > it should fail the validation with errors whe…   
+  Failed to find a validation error in the response for key: 'en.name'
+
+Response has the following JSON validation errors:
+
+{
+    "code": [
+        "code 字段是必填的。"
+    ],
+    "zh_CN.name": [
+        "zh  c n.name 字段是必填的。"
+    ],
+    "inventory_sources": [
+        "inventory sources 字段是必填的。"
+    ],
+    "root_category_id": [
+        "root category id 字段是必填的。"
+    ],
+    "locales": [
+        "locales 字段是必填的。"
+    ],
+    "default_locale_id": [
+        "default locale id 字段是必填的。"
+    ],
+    "currencies": [
+        "currencies 字段是必填的。"
+    ],
+    "base_currency_id": [
+        "base currency id 字段是必填的。"
+    ],
+    "zh_CN.seo_title": [
+        "zh  c n.seo title 字段是必填的。"
+    ],
+    "zh_CN.seo_description": [
+        "zh  c n.seo description 字段是必填的。"
+    ],
+    "zh_CN.seo_keywords": [
+        "zh  c n.seo keywords 字段是必填的。"
+    ]
+}
+
+Failed asserting that an array has the key 'en.name'.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "code 字段是必填的。 (and 10 more errors)",
+    "errors": {
+        "code": [
+            "code 字段是必填的。"
+        ],
+        "zh_CN.name": [
+            "zh  c n.name 字段是必填的。"
+        ],
+        "inventory_sources": [
+            "inventory sources 字段是必填的。"
+        ],
+        "root_category_id": [
+            "root category id 字段是必填的。"
+        ],
+        "locales": [
+            "locales 字段是必填的。"
+        ],
+        "default_locale_id": [
+            "default locale id 字段是必填的。"
+        ],
+        "currencies": [
+            "currencies 字段是必填的。"
+        ],
+        "base_currency_id": [
+            "base currency id 字段是必填的。"
+        ],
+        "zh_CN.seo_title": [
+            "zh  c n.seo title 字段是必填的。"
+        ],
+        "zh_CN.seo_description": [
+            "zh  c n.seo description 字段是必填的。"
+        ],
+        "zh_CN.seo_keywords": [
+            "zh  c n.seo keywords 字段是必填的。"
+        ]
+    }
+}
+
+  at packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest.php:116
+    112▕     $this->loginAsAdmin();
+    113▕ 
+    114▕     putJson(route('admin.settings.channels.update', $channel->id))
+    115▕         ->assertJsonValidationErrorFor('code')
+  ➜ 116▕         ->assertJsonValidationErrorFor('en.name')
+    117▕         ->assertJsonValidationErrorFor('en.seo_title')
+    118▕         ->assertJsonValidationErrorFor('en.seo_description')
+    119▕         ->assertJsonValidationErrorFor('en.seo_keywords')
+    120▕         ->assertJsonValidationErrorFor('inventory_sources')
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest > it should delete the existing channel            
+  Expected: {"message":"\u6e20\u9053\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: 渠道删除成功。
+
+  at packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest.php:182
+    178▕     $this->loginAsAdmin();
+    179▕ 
+    180▕     deleteJson(route('admin.settings.channels.delete', $channel->id))
+    181▕         ->assertOk()
+  ➜ 182▕         ->assertSeeText(trans('admin::app.settings.channels.index.delete-success'));
+    183▕ 
+    184▕     $this->assertDatabaseMissing('channels', ['id' => $channel->id]);
+    185▕ });
+    186▕
+
+
+  Tests:    2 failed, 6 passed (31 assertions)
+  Duration: 13.67s
+

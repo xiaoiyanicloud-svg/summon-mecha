@@ -1,0 +1,7 @@
+
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\GaFiveModelContractTest
+  ✓ it P0: 未完成 HIL 前五机型不得宣称 E-Stop 已支持                                                                           0.77s  
+
+  Tests:    1 passed (25 assertions)
+  Duration: 1.15s
+

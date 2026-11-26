@@ -1,0 +1,8 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillFullChainEndToEndTest
+  ✓ it PackageInspector：app/composite 技能允许合规 .py/.sh 脚本，但拦截高危破坏指令与 motion 脚本夹带                                   0.93s  
+  ✓ it 全链路闭环：开发者上传标准 .skill → L0/L2 审核上架 → 买家下单/未付拦截/模拟支付/下载 → Agent 验签下载落盘解压与启停卸载                               3.99s  
+
+  Tests:    2 passed (75 assertions)
+  Duration: 5.20s
+

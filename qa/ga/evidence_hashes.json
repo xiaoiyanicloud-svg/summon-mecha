@@ -1,0 +1,232 @@
+[
+  {
+    "path": "docs/skill-dev-step10-five-model-ga-research-delivery.md",
+    "sha256": "1e04a24aa7d65b0ad4e4e38851b4e70c5a44ceb5da78c5432663f2044ec8f269",
+    "bytes": 44111
+  },
+  {
+    "path": "docs/skill-dev-step10-five-model-ga-p0.md",
+    "sha256": "4bad4b46976ba619dc0908c0167bd1180cda248932c9e15412ec1ce343ef0f9f",
+    "bytes": 17023
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_04_000001_create_deploy_inbox_and_outbox_leases.php",
+    "sha256": "1e694e599c94d5d517f28f85f7fa25235e641a033b9dbefe77b87e46a12aac8f",
+    "bytes": 4799
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_04_000002_add_ga_fact_evidence_and_reconcile_reports.php",
+    "sha256": "5cdb118725a9f3fa7498782f14ff916f42e73f256576f99ec6824b76d0098ea3",
+    "bytes": 3974
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/AgentController.php",
+    "sha256": "a0d4d2a2d052d26c397366ba0163533f6c23687f5069d6d0b033aa09752d34a2",
+    "bytes": 31255
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployInboxService.php",
+    "sha256": "e273f371714eb13b60cd7d688bdf137f65d8d38fb319b5cbeb694759169bc8e2",
+    "bytes": 10452
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/Contracts/ExecutionFact.php",
+    "sha256": "5f895de35611fcfe637a7824ced40cd56599bb7bfc78c99f8656fba6713d7391",
+    "bytes": 5455
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployTaskService.php",
+    "sha256": "42a9c6f2fb9e2cbe1d7933f3b5add0eb82caf2386500c0007be806e2e9e00d21",
+    "bytes": 59800
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployReconcileService.php",
+    "sha256": "211fc510a95c986d7e58b48e3093077e86c9ad8ee37cd7aabc2e7b3dd90cee92",
+    "bytes": 7464
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/SkillBuildService.php",
+    "sha256": "944ce730d1969cbaf82feab0446f3eaf9012dd11dc162b3be12b18aed3d53e1d",
+    "bytes": 7921
+  },
+  {
+    "path": "my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/CapabilityResolver.php",
+    "sha256": "3a744222954b66383a7b6c0cc2756e1e7e38de50de83cf1c7fcd6b11024698e6",
+    "bytes": 6052
+  },
+  {
+    "path": "agent/zhjj_agent/task_manager.py",
+    "sha256": "cb022bd690366b2b1daff80b61818127ae9f93c049e175d2d09294184e210023",
+    "bytes": 54057
+  },
+  {
+    "path": "agent/zhjj_agent/client.py",
+    "sha256": "b51900d88c43ce570522b8934f2cf040fa152e07dc9ac5d9f9bf93140d06ddbd",
+    "bytes": 7073
+  },
+  {
+    "path": "agent/zhjj_agent/adapters/unitree_g1.py",
+    "sha256": "46dcc341e90bcc4332a992c555420f71a7db39510b747955d0afdf5c0045441e",
+    "bytes": 17616
+  },
+  {
+    "path": "agent/zhjj_agent/adapters/vendor_plan_adapter.py",
+    "sha256": "e5fb7258e6299bd3288361b16698cae2eadc22e192ab11ed30bf09e0223cd9aa",
+    "bytes": 14948
+  },
+  {
+    "path": "agent/tests/test_five_model_adapters.py",
+    "sha256": "cc2095ac8cb09756ebcb6d53483f1a7a01df24bcfb648fde5619a7dfe9a4bc38",
+    "bytes": 10320
+  },
+  {
+    "path": "agent/tests/test_live_http_integration.py",
+    "sha256": "04f741ab659d7b1c7acfbdb81802d7db07d9b2df3366f2d42005b9c7e5d4001d",
+    "bytes": 9689
+  },
+  {
+    "path": "qa/hil-verification/EVIDENCE_STATUS.json",
+    "sha256": "b96891d0c172c79f777ff074c1ce9980990c2ee5e3ad325481c3c9128308911b",
+    "bytes": 705
+  },
+  {
+    "path": "qa/ga/final_evidence_ledger.json",
+    "sha256": "3059f6d6f9691eb4e0857d6d4355140d65cfb6a532edeadea6db46c46ec10d79",
+    "bytes": 21237
+  },
+  {
+    "path": "qa/ga/claim_audit_result.json",
+    "sha256": "845346ddea97c68f602f79d4947e54c2b6858411d14c6f732ee1f4d2ecfb08b9",
+    "bytes": 2607
+  },
+  {
+    "path": "qa/ga/blocked_items.json",
+    "sha256": "65c8125ef3be49ad5eb92bbf005c90b0abbaf5dbe51f5b2faaee4a6ef5f9b26a",
+    "bytes": 5513
+  },
+  {
+    "path": "qa/ga/final_support_matrix.json",
+    "sha256": "865b101408efc33938e737a1aeec201f7306754ec877d33d6cc00836e1c6f6d8",
+    "bytes": 6347
+  },
+  {
+    "path": "qa/ga/hil_evidence_validator.py",
+    "sha256": "2285075f5ade90b9101b2adf226d2bff28c349206cfca1baea6e8dd3200b253e",
+    "bytes": 12771
+  },
+  {
+    "path": "qa/ga/test_hil_evidence_validator.py",
+    "sha256": "02ca60ea56d4835339fda742c2f34affdc35edd06d98ba1e189aa0f5fc371a89",
+    "bytes": 6240
+  },
+  {
+    "path": "qa/ga/soak_agent.py",
+    "sha256": "86a99cfe8800ae06206f6262c5827c66a311a5e0996e88e98f12e3a385b0f07f",
+    "bytes": 14118
+  },
+  {
+    "path": "qa/ga/benchmark_control_plane_saturation.py",
+    "sha256": "d232ce6563d3e742b81db651222786e4d49b4014feba8b6ceac78ca5bbbf10ca",
+    "bytes": 4770
+  },
+  {
+    "path": "qa/ga/redteam_soak_30m_result.json",
+    "sha256": "f167219b52a543316d63a618f93c57030ff00d74d740212904a2d2be2bf0d828",
+    "bytes": 742
+  },
+  {
+    "path": "qa/ga/redteam_soak_30m_timeline.jsonl",
+    "sha256": "324d050e5cba7339b1348b32cca2d60ead98237ff4e725b4a9d66e8a1e336f0d",
+    "bytes": 21425
+  },
+  {
+    "path": "qa/ga/redteam_soak_30m_console.log",
+    "sha256": "d52427cad4d2f3d6a18ad39fbba259585189c2696bb342dd83bbbb6d2ea4bc0c",
+    "bytes": 3709114
+  },
+  {
+    "path": "qa/ga/redteam_control_plane_saturation_result.json",
+    "sha256": "fc987858ea7eff77d2ae48d3a8624602234531074708e23adf3297c0d4d71b33",
+    "bytes": 1483
+  },
+  {
+    "path": "qa/ga/benchmark_p0_result.json",
+    "sha256": "b03495d23c89d135606593dd7078e64bcaabe03c2530e554dfe8241c61abb04c",
+    "bytes": 300
+  },
+  {
+    "path": "qa/ga/claim_concurrency_result.json",
+    "sha256": "4b453fa3d9f6313e051cb6debea6bff144cb5f4e8836ba9f31cc369e285eb076",
+    "bytes": 945
+  },
+  {
+    "path": "qa/ga/stream_500mb_result.json",
+    "sha256": "325680229f9b4bef9b22e104e484d1d2ed049002576270d87ca9f0d35511707c",
+    "bytes": 323
+  },
+  {
+    "path": "qa/ga/current_deploy_tests.log",
+    "sha256": "d5e9f5d90756081e15cbc848b3378bcaeebdfbe74ba98929cd090b0489b09630",
+    "bytes": 48866
+  },
+  {
+    "path": "qa/ga/current_compiler_tests.log",
+    "sha256": "14d8e2f5e84b5dc6e53c32a394f50550319a61f8aa2705d95b23694a7dd501f4",
+    "bytes": 6197
+  },
+  {
+    "path": "qa/ga/current_agent_api_tests.log",
+    "sha256": "2f38ae6e224f7be58ed41e6ec953617cf15923e9e1caa7b5175d8d682a6d2b6c",
+    "bytes": 8624
+  },
+  {
+    "path": "qa/ga/current_agent_unittest.log",
+    "sha256": "8cdd5553b32a2c8b0c72973580a63cafdd25557d570c7c1aa65b97b9ff833876",
+    "bytes": 41543
+  },
+  {
+    "path": "qa/ga/current_hil_validator_tests.log",
+    "sha256": "038fc6d030b1871ed8d820c0626977a773133ca89b7c59e57c03ef6d8772e3ca",
+    "bytes": 1382
+  },
+  {
+    "path": "qa/ga/current_contract_check.log",
+    "sha256": "c9629d2851f453e9902dfcc291376b302e4986e9271bd27e8aca5449c4062259",
+    "bytes": 327
+  },
+  {
+    "path": "qa/ga/current_data_preflight.log",
+    "sha256": "b567e446da35461ddbe2f2fd88d5deb9704898a8f58241c38c5f2491c7a87f44",
+    "bytes": 82
+  },
+  {
+    "path": "qa/ga/current_migrate_status.log",
+    "sha256": "76b57802db272880d8273e8c59069c9083183c08c0ff8b3325ba39a0be86c89c",
+    "bytes": 33066
+  },
+  {
+    "path": "qa/ga/current_claim_audit.log",
+    "sha256": "36b81474a20195f72c67bb51789b20492484643ca4f55e7a121117d056bce998",
+    "bytes": 2615
+  },
+  {
+    "path": "qa/ga/current_php_lint.log",
+    "sha256": "c388bdc5ecc35e9a1b4d640256aaba2c987a2d5fb67ce600d91005c3d30a6aa6",
+    "bytes": 5543
+  },
+  {
+    "path": "qa/ga/current_agent_routes.log",
+    "sha256": "9c3c03b797ffefe668f10fb523e8a48f326687f821e3492de87183cb259957c3",
+    "bytes": 1228
+  },
+  {
+    "path": "qa/ga/current_support_matrix_route.log",
+    "sha256": "979d55402f52872345cda3daaaec80a395b2a8a60870aa0b69bbe24624753d80",
+    "bytes": 250
+  },
+  {
+    "path": "qa/ga/final_evidence_ledger_generation.log",
+    "sha256": "38e4491df7f5c2c562c4ac7bdc47d8b9b482b5e2cd763b3973d34019431f5ee3",
+    "bytes": 137
+  }
+]

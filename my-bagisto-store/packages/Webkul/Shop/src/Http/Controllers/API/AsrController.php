@@ -36,8 +36,12 @@ class AsrController extends APIController
 {
     public function recognize(Request $request): JsonResponse
     {
-        // 音频要过公网,默认 max_execution_time=30s 偶尔不够
-        @set_time_limit(60);
+        // 音频要过公网,默认 max_execution_time=30s 偶尔不够。
+        // 单测下跳过:set_time_limit 是**进程级**生效的,CLI 默认不限时;一旦在 Pest
+        // 全量单进程里调到,整个进程会在 60s 后被砍。生产(非 testing)行为不变。
+        if (! app()->runningUnitTests()) {
+            @set_time_limit(60);
+        }
 
         // ① 参数校验 —— 手工判空,与 SummonController / SummonAiController 的写法一致
         $file = $request->file('audio');

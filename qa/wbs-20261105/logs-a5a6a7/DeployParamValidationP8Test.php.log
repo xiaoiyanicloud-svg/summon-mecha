@@ -1,0 +1,14 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployParamValidationP8Test
+  ✓ it P8 · operation=6(回收)是合法下发:不再被参数校验挡死                                                                       1.23s  
+  ✓ it P8 · 白名单外(7)仍被拒 422                                                                                       0.30s  
+  ✓ it P8 · 校验常量本身覆盖全部 OP_*(漏一个就等于线上又少一个合法操作)                                                                    0.21s  
+  ✓ it P8 · 灰度指标 successes > installs 被拒 422(否则成功率能算出 >100%)                                                     0.30s  
+  ✓ it P8 · 灰度指标 successes == installs 照常放行(边界不误伤)                                                               0.47s  
+  ✓ it P8 · 给不存在的版本开灰度 → 422                                                                                     0.23s  
+  ✓ it P8 · 给草稿版本开灰度 → 422(草稿永不下发,灰度只会空转)                                                                        0.27s  
+  ✓ it P8 · 给已发布版本开灰度 → 201(闸门不误伤)                                                                               0.26s  
+
+  Tests:    8 passed (15 assertions)
+  Duration: 3.82s
+

@@ -5,6 +5,7 @@ namespace Webkul\Shop\Services\SkillDelivery;
 use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillBuild;
 use Webkul\Shop\Models\SkillTargetRelease;
+use Webkul\Shop\Services\SkillCompile\Portable\TargetProfileService;
 
 /**
  * 交付物唯一解析 —— 一次下发只交付一个文件，本类回答"是哪一个" (Work Package C01 / C06)。
@@ -12,6 +13,8 @@ use Webkul\Shop\Models\SkillTargetRelease;
  */
 class SkillDeliveryAssetResolver
 {
+    public function __construct(protected TargetProfileService $profiles) {}
+
     /**
      * @throws SkillAssetAmbiguousException
      */
@@ -162,15 +165,41 @@ class SkillDeliveryAssetResolver
             return true;
         }
 
-        // 成品包必须处于 approved 状态
-        if ($asset->review_status === SkillAsset::REVIEW_APPROVED) {
+        // C01/C06：目标成品只能通过独立目标发布准入，不能用资产自报 review_status 绕过。
+        if ($asset->isArtifact()) {
+            $release = SkillTargetRelease::where('skill_version_id', $versionId)
+                ->where('artifact_asset_id', $asset->id)
+                ->where('target_model_code', $asset->target_model_code)
+                ->first();
+
+            if (! $release || ! $release->isApproved()) {
+                return false;
+            }
+
+            // 发布快照必须与磁盘上这份产物完全对齐：build_key 锁“哪一次构建”，
+            // source_digest 锁“哪一份源”。任一不一致 = 旧 generation / 被替换，fail-closed。
+            if (! $release->build_key
+                || ! $asset->build_key
+                || $release->build_key !== $asset->build_key) {
+                return false;
+            }
+
+            if ($release->source_digest !== null
+                && $asset->source_digest !== null
+                && $release->source_digest !== $asset->source_digest) {
+                return false;
+            }
+
+            if (! $release->target_profile_digest
+                || ! $asset->target_model_code
+                || $release->target_profile_digest !== $this->profiles->getDigest($asset->target_model_code)) {
+                return false;
+            }
+
             return true;
         }
 
-        return SkillTargetRelease::where('skill_version_id', $versionId)
-            ->where('artifact_asset_id', $asset->id)
-            ->where('review_status', SkillTargetRelease::STATUS_APPROVED)
-            ->exists();
+        return $asset->review_status === SkillAsset::REVIEW_APPROVED;
     }
 
     /**

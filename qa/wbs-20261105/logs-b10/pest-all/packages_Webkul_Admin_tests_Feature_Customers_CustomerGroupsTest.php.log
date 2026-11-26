@@ -1,0 +1,57 @@
+﻿
+  ..猕?猕ǒ
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomerGroupsTest > it should store the newly created cust鈥?  
+  Expected: {"message":"\u5206\u7ec4\u521b\u5efa\u6210\u529f"}
+
+  To contain: 鍒嗙粍鍒涘缓鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomerGroupsTest.php:39
+     35鈻?        'code' => $code = fake()->numerify('code########'),
+     36鈻?        'name' => $name = fake()->name(),
+     37鈻?    ])
+     38鈻?        ->assertOk()
+  鉃? 39鈻?        ->assertSeeText(trans('admin::app.customers.groups.index.create.success'));
+     40鈻?
+     41鈻?    $this->assertModelWise([
+     42鈻?        CustomerGroup::class => [
+     43鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomerGroupsTest > it should update the existing customer鈥?  
+  Expected: {"message":"\u5206\u7ec4\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 鍒嗙粍鏇存柊鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomerGroupsTest.php:77
+     73鈻?        'code' => $customerGroup->code,
+     74鈻?        'id'   => $customerGroup->id,
+     75鈻?    ])
+     76鈻?        ->assertOk()
+  鉃? 77鈻?        ->assertSeeText(trans('admin::app.customers.groups.index.edit.success'));
+     78鈻?
+     79鈻?    $this->assertModelWise([
+     80鈻?        CustomerGroup::class => [
+     81鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\CustomerGroupsTest > it should delete the existing customer鈥?  
+  Expected: {"message":"\u5206\u7ec4\u5220\u9664\u6210\u529f"}
+
+  To contain: 鍒嗙粍鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Customers\CustomerGroupsTest.php:101
+     97鈻?    $this->loginAsAdmin();
+     98鈻?
+     99鈻?    deleteJson(route('admin.customers.groups.delete', $customerGroup->id))
+    100鈻?        ->assertOk()
+  鉃?101鈻?        ->assertSeeText(trans('admin::app.customers.groups.index.edit.delete-success'));
+    102鈻?
+    103鈻?    $this->assertDatabaseMissing('customer_groups', [
+    104鈻?        'id' => $customerGroup->id,
+    105鈻?    ]);
+
+
+  Tests:    3 failed, 3 passed (15 assertions)
+  Duration: 2.98s
+

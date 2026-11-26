@@ -1,0 +1,25 @@
+﻿=== tests.test_crypto ===
+Ran 4 tests in 0.177s | System.Management.Automation.RemoteException | OK
+EXIT=0
+=== tests.test_storage ===
+Ran 3 tests in 0.153s | System.Management.Automation.RemoteException | OK
+EXIT=0
+=== tests.test_five_model_adapters ===
+System.Management.Automation.RemoteException | OK | pretend success
+EXIT=0
+=== tests.test_task_manager ===
+Ran 10 tests in 1.848s | System.Management.Automation.RemoteException | OK
+EXIT=0
+=== tests.test_fact_envelope_v3 ===
+Ran 4 tests in 0.337s | System.Management.Automation.RemoteException | OK
+EXIT=0
+=== tests.test_stop_observation_time ===
+Ran 4 tests in 0.067s | System.Management.Automation.RemoteException | OK
+EXIT=0
+=== tests.test_e2e_simulator ===
+Ran 2 tests in 1.139s | System.Management.Automation.RemoteException | OK
+EXIT=0
+=== tests.test_acceptance_at01_at26 ===
+Ran 26 tests in 2.686s | System.Management.Automation.RemoteException | OK
+EXIT=0
+SUITE_EXIT=0

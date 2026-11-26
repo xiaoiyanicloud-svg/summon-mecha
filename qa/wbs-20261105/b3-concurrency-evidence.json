@@ -1,0 +1,15 @@
+﻿{
+    "wbs":  "B3",
+    "probe":  "two real PHP processes revoke the same approved target release",
+    "release_id":  655,
+    "worker_a":  "{\"worker\":\"A\",\"ok\":true,\"status\":\"revoked\"}",
+    "worker_b":  "{\"worker\":\"B\",\"ok\":false,\"error\":\"TARGET_RELEASE_NOT_APPROVED\"}",
+    "final":  {
+                  "release_id":  655,
+                  "final_status":  "revoked",
+                  "events":  [
+                                 "revoked"
+                             ],
+                  "revoked_event_count":  1
+              }
+}

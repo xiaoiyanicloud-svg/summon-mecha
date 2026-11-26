@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployTimeoutReclaimTest
+  ✓ it 24 小时前的 pending_online → 命令转 timeout（用户界面不再永远下发中）                                                         1.18s  
+  ✓ it 在途任务（dispatching）超过阈值未回报 → 转 timeout                                                                      0.23s  
+  ✓ it 未到阈值的不动：刚建 1 小时的 pending_online / 5 分钟前的 dispatching 都留着                                                  0.21s  
+  ✓ it dry-run 只报告不写入                                                                                            0.22s  
+  ✓ it 完成的（success）任务不被超时扫描误伤                                                                                    0.19s  
+
+  Tests:    5 passed (7 assertions)
+  Duration: 2.43s
+
+

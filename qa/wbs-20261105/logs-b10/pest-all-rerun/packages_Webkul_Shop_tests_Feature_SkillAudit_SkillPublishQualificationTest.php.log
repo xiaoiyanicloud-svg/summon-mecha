@@ -1,0 +1,40 @@
+﻿
+  ...⨯⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest > it 实名通过 + 协议签全 → 发…            
+  Failed asserting that an array contains 5219.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:251
+    247▕     spqPublish($version->id)->assertOk();
+    248▕ 
+    249▕     expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+    250▕         ->and(spqFlatStatus($productId))->toBe(1)
+  ➜ 251▕         ->and(spqSearchIds($sku))->toContain($productId);
+    252▕ });
+    253▕ 
+    254▕ // ───────────────────────── ③ 平台自营不受限 ─────────────────────────
+    255▕
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:251
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest > it 平台自营（seller_id 为 N…         
+  Failed asserting that an array contains 5220.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:264
+    260▕ 
+    261▕     spqPublish($version->id)->assertOk();
+    262▕ 
+    263▕     expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+  ➜ 264▕         ->and(spqSearchIds($sku))->toContain($productId);
+    265▕ });
+    266▕ 
+    267▕ // ───────────────────────── ④ 归属异常 → fail-closed ─────────────────────────
+    268▕
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:264
+
+
+  Tests:    2 failed, 4 passed (35 assertions)
+  Duration: 4.63s
+

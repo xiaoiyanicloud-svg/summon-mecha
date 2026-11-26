@@ -1,0 +1,16 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployAuditTrailP10Test
+  ✓ it P10 · 熔断记的是调用方自报身份(不再是 admin)                                                                             1.41s  
+  ✓ it P10 · 不自报身份时记 internal(而非 admin)                                                                          0.29s  
+  ✓ it P10 · 熔断同时进 operation_log,payload 带真实操作者与 IP                                                              0.29s  
+  ✓ it P10 · 不同操作者按不同技能熔断 → operation_log 各记名的真实身份                                                               0.28s  
+  ✓ it P10 · 解除熔断也留痕(否则复盘会看到一条永远生效的熔断)                                                                           0.21s  
+  ✓ it P10 · engage() 直接调用时默认记 internal,绝不退回 admin                                                               0.31s  
+  ✓ it P10 · 人工回滚:rollback_record 落操作者与 IP,并进 operation_log                                                      0.22s  
+  ✓ it P10 · 自动回滚:发起者记 system + trigger=auto(与"人按的"区分开)                                                          0.16s  
+  ✓ it P10 · 开启灰度也留痕(发起者 + 策略)                                                                                   0.23s  
+
+  Tests:    9 passed (34 assertions)
+  Duration: 3.74s
+
+

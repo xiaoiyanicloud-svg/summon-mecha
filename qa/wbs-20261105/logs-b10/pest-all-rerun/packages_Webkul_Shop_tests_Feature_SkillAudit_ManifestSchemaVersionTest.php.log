@@ -1,0 +1,24 @@
+﻿
+  .........⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\ManifestSchemaVersionTest > it 回归：Admin…      QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (5197, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+     50▕ 
+     51▕             $this->recordsHaveBeenModified();
+     52▕ 
+  ➜  53▕             $result = $statement->execute();
+     54▕ 
+     55▕             $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56▕ 
+     57▕             return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+
+  Tests:    1 failed, 9 passed (29 assertions)
+  Duration: 2.87s
+

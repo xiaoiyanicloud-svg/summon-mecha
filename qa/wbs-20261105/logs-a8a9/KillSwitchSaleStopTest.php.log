@@ -1,0 +1,22 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\KillSwitchSaleStopTest
+  ✓ it S-8 · 熔断后:市场搜索搜不到该技能(查询层排除)                                                                               3.65s  
+  ✓ it S-8 · 熔断后:详情**明确报错**(SKILL_BLOCKED),不是静默 404                                                              0.59s  
+  ✓ it S-8 · 熔断后:下单被拦(最早入口),且不产生新的 skill_entitlement                                                             0.69s  
+  ✓ it S-8 · 兜底:SkillDelivery 在创建授权处 fail-closed(下单源不止一条)                                                        0.47s  
+  ✓ it S-8 · block_new 下:已授权用户的 download **仍可**(只停新增)                                                            0.72s  
+  ✓ it S-8 · block_all 下:已授权用户的 download 被拒,assets 给出明确提示                                                        0.66s  
+  ✓ it S-8 · lift 后:市场恢复可见、下载恢复                                                                                  0.52s  
+  ✓ it S-8 · 只影响目标技能:另一个未熔断技能的市场可见性与下载不受影响                                                                       0.62s  
+  ✓ it S-8 · engage 记下该技能真实的已售/已装/已下载数,并落入 operation_log                                                         0.42s  
+  ✓ it S-8 · 熔断后:首页聚合 /api/tob-catalog 的技能段不含该技能;买/租段不受影响                                                        9.82s  
+  ✓ it S-8 · 未熔断时:首页聚合技能段仍含该技能（反向对照，防过滤写宽把技能段清空）                                                                 1.59s  
+  ✓ it S-8 · 熔断后:GET /api/products?category_id=技能分类 不含该技能;非技能分类不受影响                                              1.77s  
+  ✓ it S-8 · 熔断后:GET /api/products/{id} 打开被熔断技能 → 409 SKILL_BLOCKED（不静默 404）                                     0.91s  
+  ✓ it S-8 · 未熔断时:GET /api/products 技能分类列表与详情都正常可见（反向对照）                                                         0.82s  
+  ✓ it S-8 · 后台查询路径不受影响:不带 exclude_ids 的 getAll 仍返回被熔断技能                                                         0.72s  
+  ✓ it S-8 · 熔断后:小召 AI 的技能库(fetchCatalog)不含被熔断技能;机型库不受影响                                                         0.95s  
+
+  Tests:    16 passed (72 assertions)
+  Duration: 25.93s
+

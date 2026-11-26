@@ -49,14 +49,45 @@ function s8Customer(): Customer
     ]);
 }
 
-/** skill 分类 id(市场搜索只在该分类下搜)。缺失直接失败,不静默跳过。 */
+/** 确保测试分类存在；测试库不应依赖人工 seed。 */
+function s8EnsureCategoryId(string $slug): int
+{
+    $id = DB::table('category_translations')->where('slug', $slug)->value('category_id');
+    if ($id) {
+        return (int) $id;
+    }
+
+    $locale = DB::table('locales')->orderBy('id')->first();
+    if (! $locale) {
+        throw new RuntimeException('测试库缺少 locale 基础夹具');
+    }
+
+    $category = \Webkul\Category\Models\Category::create([
+        'position' => 0,
+        'status' => 1,
+        'display_mode' => 'products_and_description',
+        'parent_id' => null,
+    ]);
+
+    DB::table('category_translations')->insert([
+        'category_id' => $category->id,
+        'name' => $slug,
+        'slug' => $slug,
+        'url_path' => $slug,
+        'description' => null,
+        'meta_title' => null,
+        'meta_description' => null,
+        'meta_keywords' => null,
+        'locale_id' => $locale->id,
+        'locale' => $locale->code,
+    ]);
+
+    return (int) $category->id;
+}
+
 function s8SkillCategoryId(): int
 {
-    $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
-
-    expect($id)->not->toBeNull();
-
-    return (int) $id;
+    return s8EnsureCategoryId('skill');
 }
 
 /** 落一个技能商品(可搜索行)+ 一个已发布版本。返回 products.id。 */
@@ -183,7 +214,7 @@ function s8Engage(int $productId, string $action = SkillBlocklist::ACTION_BLOCK_
 function s8FactoryProductInCategory(string $slug): int
 {
     $category = \Webkul\Category\Models\Category::query()
-        ->whereHas('translations', fn ($q) => $q->where('slug', $slug))
+        ->whereKey(s8EnsureCategoryId($slug))
         ->firstOrFail();
 
     $product = (new \Webkul\Faker\Helpers\Product)

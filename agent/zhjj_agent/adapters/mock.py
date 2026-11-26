@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, Optional
 
 from zhjj_agent.adapters.base import BaseInstallAdapter
+from zhjj_agent.stop_observation import synthetic_observation
 
 
 class MockAdapter(BaseInstallAdapter):
@@ -152,8 +153,15 @@ class MockAdapter(BaseInstallAdapter):
                 exec_info["status"] = "SUCCEEDED"
                 exec_info["is_stopped"] = True
 
+        observation = None
+        if exec_info.get("is_stopped"):
+            # ⚠ synthetic-test-only：模拟适配器没有真实传感器，不得作为 HIL 证据。
+            observation = exec_info.get("observation") or synthetic_observation(execution_id)
+            exec_info["observation"] = observation
+
         return {
             "status": exec_info["status"],
             "is_stopped": exec_info["is_stopped"],
             "error_msg": exec_info.get("error_msg"),
+            "observation": observation,
         }

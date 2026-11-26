@@ -1,0 +1,15 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployAnomalyStateP11Test
+  ✓ it P11 · dry install 报 done + PKG_MISSING → success 被标成空跑,且不落安装事实                                            1.10s  
+  ✓ it P11 · 正常 done(无码)照常落 installed —— 闸门不误伤真实安装                                                               0.22s  
+  ✓ it P11 · downloading 报下载失败 → 进 download_failed 并带 DOWNLOAD_FAILED 码                                          0.26s  
+  ✓ it P11 · download_failed 可重试(device 再报 installing → 继续走)                                                     0.26s  
+  ✓ it P11 · 安装失败报 failed 仍是泛化 failed(与下载失败区分开)                                                                  0.39s  
+  ✓ it P11 · 下发给从未登记的设备 → 直接 failed + NOT_BOUND(不再空等 24 小时)                                                      0.25s  
+  ✓ it P11 · 下发给已登记但离线的设备 → pending_online + OFFLINE(仍保留等它上线)                                                    0.29s  
+  ✓ it P11 · 灰度指标把空跑排除在外(既不算成功也不算失败)                                                                             0.48s  
+  ✓ it P11 · 生成的 agent.py 用常量替换了占位符,空跑带 PKG_MISSING                                                              0.77s  
+
+  Tests:    9 passed (24 assertions)
+  Duration: 4.69s
+

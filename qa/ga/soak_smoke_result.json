@@ -1,0 +1,39 @@
+{
+  "evidence_level": "SOFTWARE_SOAK_ONLY",
+  "requested_duration_seconds": 10,
+  "actual_duration_seconds": 10.171,
+  "cycles": 10,
+  "commands": 30,
+  "errors": [],
+  "latency_ms": {
+    "p50": 648.0,
+    "p95": 718.0,
+    "max": 875.0
+  },
+  "samples": 3,
+  "memory_mb": {
+    "baseline": 34.809,
+    "final": 40.602,
+    "peak": 40.137,
+    "growth": 5.793,
+    "threshold_growth": 64
+  },
+  "handles": {
+    "baseline": 233,
+    "final": 244,
+    "peak": 248,
+    "growth": 11,
+    "threshold_growth": 128
+  },
+  "threads": {
+    "peak": 2,
+    "threshold": 32
+  },
+  "temp_files": {
+    "baseline": 2,
+    "final": 3,
+    "peak": 3,
+    "threshold_growth": 20
+  },
+  "passed": true
+}

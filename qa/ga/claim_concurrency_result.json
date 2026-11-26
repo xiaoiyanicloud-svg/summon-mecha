@@ -1,0 +1,29 @@
+{
+    "database": "summon_mecha_step10_test",
+    "workers": 2,
+    "effective_claims": 1,
+    "delivery_attempt": 1,
+    "worker_results": [
+        {
+            "exit": 0,
+            "output": {
+                "pid": 47260,
+                "claimed": false,
+                "task_no": null,
+                "delivery_attempt": null
+            },
+            "stderr": ""
+        },
+        {
+            "exit": 0,
+            "output": {
+                "pid": 22208,
+                "claimed": true,
+                "task_no": "RACE-05132f89efdb",
+                "delivery_attempt": 1
+            },
+            "stderr": "[2026-11-04 22:11:39] testing.INFO: deploy.outbox.claimed {\"service\":\"skill-deploy\",\"env\":\"testing\",\"task_id\":\"RACE-05132f89efdb\",\"did\":\"did_claim_race_05132f89efdb\",\"operation\":1,\"status\":\"dispatching\",\"attempt\":1,\"protocol\":\"agent-task/v2\"} \n"
+        }
+    ],
+    "passed": true
+}

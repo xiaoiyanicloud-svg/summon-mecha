@@ -1,0 +1,17 @@
+﻿
+   PASS  Packages\Webkul\Admin\tests\Feature\Catalog\TargetReleaseAdminTest
+  ✓ it B3 · viewer 只能看，不能 approve/reject/revoke（403）                                                             1.45s  
+  ✓ it B3 · reviewer 能 approve/reject，不能 revoke                                                                  0.35s  
+  ✓ it B3 · revoker 能撤销已通过产物，不能 approve                                                                          0.28s  
+  ✓ it B3 · super（permission_type=all）可执行全部动作                                                                    0.39s  
+  ✓ it B3 · 已撤销不能再通过（409），审计事件只追加不覆盖                                                                             0.24s  
+  ✓ it B3 · 未通过的产物不能撤销（409）                                                                                      0.20s  
+  ✓ it B3 · 驳回必须给理由（422）                                                                                         0.19s  
+  ✓ it B3 · stale profile digest → 409                                                                           0.19s  
+  ✓ it B3 · 跨 seller 作用域 → 409；同 seller 放行                                                                       0.16s  
+  ✓ it B3 · 不存在 → 404                                                                                            0.16s  
+  ✓ it B3 · 审计事件按动作只追加，历史不被覆盖                                                                                    0.20s  
+
+  Tests:    11 passed (37 assertions)
+  Duration: 4.46s
+

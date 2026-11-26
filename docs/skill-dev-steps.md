@@ -10,6 +10,12 @@
 
 2026-10-21 场景专项最新开发交付：[第 18 步：SC1/SC2 收尾](skill-dev-step18.md)。发布/依据、受理/附件、工作日历、九类勘察、设备与技能资格、实例 BOM/报价、AI 草稿已接通并做本机验证；独立 MySQL、真实三端和运营签收仍待另一端完成，不将其标为整阶段关闭。以下旧技能进度按原日期保留。
 
+> **WBS 无外部硬件依赖工作包（2026-11-05，九批）**：A1 事件体签名 / A2.4 停止观察 / B1 构建命令 / B2 run_number / B3 目标发布审核台 / B4 源包安全 + B5 构建确定性 + B6 MotionCarrier fail-closed / A3 运行指标 + A4 崩溃重启自愈 / A5 安装·回滚·卸载事务 / A6 沙箱接口 / A7 密钥生命周期 已交付；**批次 8/9 补齐 A3.1/A3.2 字面指标（12 计数器 + 1 gauge + 有界 label 契约）、A4 九个具名 failpoint 与 staging 证据归档、B1.2 登记型强类型入口、B4.4 并发源包读取、B5.5 工具链指纹**。逐批证据见 `docs/skill-dev-step10-wbs-*-batch-20261105.md` 与 `qa/wbs-20261105/`（`evidence-manifest.json`）。**WBS 84 个子项在代码/测试层面均有实现与证据；真实环境验证仍缺**：真机 HIL、生产 FPM·MySQL、KMS·HSM、OS 级沙箱隔离、独立构建镜像均 BLOCKED/NOT_RUN。⚠ `.env` 的 `DB_DATABASE` 指向 `root` 库、隔离测试库播种稀薄；**A3 的计数器断言必须按增量写**（live HTTP 测试会真实提交）。接手先读第七、八批交付文档的"环境级风险"与"未做"节。
+
+> **WBS 第十批（2026-11-05，T1–T10 · 无真机部分）**：HTTP 层多设备指标并发（6 个独立 `php -S` + `curl_multi`，A3-HTTP-01~06）/ 发布竞态 HTTP 层（3 进程并发，B3-HTTP-01~04）/ 并发密钥轮换与吊销（6 进程同步，A7-CONC-01~05）/ **真实 ACL 拒绝**（EACCES 受控失败，PROVEN）/ 沙箱接线（`ZHJJ_REQUIRE_SANDBOX` 默认关，fail-closed，WIRED 非"已隔离"）/ 构建镜像摘要代码路径（`PROBED`/`NOT_RUN`/`INVALID_DIGEST`，真实镜像 BLOCKED_ENV）/ 全量 Pest 单进程方案（方案 a 守卫消除 60/240s 进程级砍杀，探针实测 `max_execution_time=0`；字面全量单进程 1289.7s 后 `exit -1`，固化为分文件门禁 `tools/pest-all.ps1`）/ **SoftHSM2 软件 HSM 演练**（PROVEN_LOCAL：私钥不可导出、HSM 签名、销毁后签名失败）/ 生产栈 php-fpm + MySQL 8 **BLOCKED_ENV**（Docker daemon 未起）/ KMS 生产化抽象评估报告（**未接入云 KMS**，需人拍板）。**真实 ENOSPC 仍 BLOCKED_ELEVATION（本机非管理员）**。回归 PHP 44 文件 / 336 项 / 7024 断言，Python 129 项（1 skipped）。见 [第十批交付](skill-dev-step10-wbs-tenth-batch-20261105.md) 与 `qa/wbs-20261105/b10-*`。
+
+> **WBS 第十一批（2026-11-05，A1/A2/A4/A5/C1/C2 · 无外部依赖）**：设备侧自更新（A1，11 项）/ 健康度与资源上报（A2，设备 8 + 平台 5）/ 执行前授权回源（A5，平台 8 + 设备 8，开关默认关）/ 声明式目标状态（A4，平台 6 + 设备 4，自动收敛默认关且只补不删）/ 应用类载体构建器（C1，五机型确定性装配，10 项）/ KMS/HSM 抽象层（C2，仅本地后端，5 项，未知后端直接抛）。回归 **PHP 49 文件 / 370 项 / 7211 断言**，**Python 160 项（1 skipped）**，lint/契约/preflight 全过。**未做**：MQTT、三厂真机部署动作、C1 的真实 ARM64 构建/RPC/ROS2、云 KMS/硬件 HSM、首装弱口令加固。见 [第十一批交付](skill-dev-step10-wbs-eleventh-batch-20261105.md)。
+
 > 依据各步交付说明 + **代码实测核验**（迁移/表/路由/种子/Pest 均已跑过，非仅凭文档）。
 > 详见 [step2-3](./skill-dev-step2-3.md)、[step4](./skill-dev-step4.md)、[step5](./skill-dev-step5.md)、[step6](./skill-dev-step6.md)、[step7](./skill-dev-step7.md)、[step8](./skill-dev-step8.md)、[step9](./skill-dev-step9.md)、**[剩余闭环清单](./skill-remaining-closure.md)**。
 > **一句话**：**代码主体已铺到第 9 步**；真正卡住上线的是**外部审批/支付资质**与**几处未做的后台 UI 和对象存储**。

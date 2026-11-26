@@ -1,0 +1,24 @@
+﻿
+  ..猕?.
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\SkillImportConsoleB17Test > it B-17 路 瀵煎叆骞垛€?     QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (1919, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49鈻?            $this->bindValues($statement, $this->prepareBindings($bindings));
+     50鈻?
+     51鈻?            $this->recordsHaveBeenModified();
+     52鈻?
+  鉃? 53鈻?            $result = $statement->execute();
+     54鈻?
+     55鈻?            $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56鈻?
+     57鈻?            return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+
+  Tests:    1 failed, 4 passed (17 assertions)
+  Duration: 3.47s
+

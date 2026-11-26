@@ -1,0 +1,11 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\AgentHealthReportTest
+  ✓ it A2-H-01 完整健康快照落库：数值规整、错误计数只留失败键                                                                           1.83s  
+  ✓ it A2-H-02 覆盖语义：本次没报的字段不保留旧值（避免"温度看起来还正常"）                                                                   0.28s  
+  ✓ it A2-H-03 越界电量 → 422 且不落库                                                                                   0.27s  
+  ✓ it A2-H-04 错误计数键不在失败键集 → 422，且整批不落库                                                                          0.27s  
+  ✓ it A2-H-05 不带 health 的心跳不创建健康快照（未知 ≠ 0）                                                                      0.19s  
+
+  Tests:    5 passed (26 assertions)
+  Duration: 3.25s
+

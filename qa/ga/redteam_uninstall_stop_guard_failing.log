@@ -1,0 +1,15 @@
+test_uninstall_refuses_without_observed_stop (test_five_model_adapters.TestFiveModelAdapters.test_uninstall_refuses_without_observed_stop) ... ok
+test_g1_uninstall_refuses_without_observed_stop (test_five_model_adapters.TestFiveModelAdapters.test_g1_uninstall_refuses_without_observed_stop) ... FAIL
+
+======================================================================
+FAIL: test_g1_uninstall_refuses_without_observed_stop (test_five_model_adapters.TestFiveModelAdapters.test_g1_uninstall_refuses_without_observed_stop)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\main\agent\tests\test_five_model_adapters.py", line 196, in test_g1_uninstall_refuses_without_observed_stop
+    self.assertFalse(adapter.uninstall('skill-1', str(root)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.063s
+
+FAILED (failures=1)

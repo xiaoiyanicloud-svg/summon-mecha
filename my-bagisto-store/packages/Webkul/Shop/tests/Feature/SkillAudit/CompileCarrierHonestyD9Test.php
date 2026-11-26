@@ -259,7 +259,7 @@ it('全部机型 kind 不支持 → 422 + SKILL_COMPILE_NOTHING_REGISTERED，dat
 
     $res = d9Compile($vid, [
         'manifest'      => ['kind' => 'app'],   // app 当前无构建器（AppCarrierBuilder 是 P1 未实现）
-        'target_models' => ['unitree_g1', 'agibot_a2'],
+        'target_models' => ['unitree_g1', 'agibot_x2'],
     ])->assertStatus(422)->assertJsonPath('code', 'SKILL_COMPILE_NOTHING_REGISTERED');
 
     expect($res->json('message'))->toContain('没有任何机型登记成功');
@@ -274,7 +274,7 @@ it('kind=motion（motion 段齐备）→ 200 且 message 如实说「待人工/�
 
     $res = d9Compile($vid, [
         'manifest'      => ['kind' => 'motion', 'motion' => ['format' => 'bvh', 'fps' => 30]],
-        'target_models' => ['unitree_g1', 'agibot_a2'],
+        'target_models' => ['unitree_g1', 'agibot_x2'],
     ])->assertOk();
 
     $message = (string) $res->json('message');

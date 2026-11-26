@@ -1,0 +1,68 @@
+{
+  "environment": "php_builtin_server_development_like",
+  "php_version": "8.4.24",
+  "baseline": {
+    "concurrency": 1,
+    "requests": 100,
+    "p50_ms": 777.492,
+    "p95_ms": 1012.64,
+    "p99_ms": 1190.035,
+    "max_ms": 1195.747,
+    "throughput_rps": 1.259,
+    "errors": 0
+  },
+  "concurrency_levels": [
+    {
+      "concurrency": 1,
+      "requests": 20,
+      "p50_ms": 760.041,
+      "p95_ms": 922.354,
+      "p99_ms": 922.354,
+      "max_ms": 943.846,
+      "throughput_rps": 1.3,
+      "errors": 0
+    },
+    {
+      "concurrency": 2,
+      "requests": 20,
+      "p50_ms": 1644.674,
+      "p95_ms": 1879.074,
+      "p99_ms": 1879.074,
+      "max_ms": 2024.597,
+      "throughput_rps": 1.201,
+      "errors": 0
+    },
+    {
+      "concurrency": 4,
+      "requests": 20,
+      "p50_ms": 3162.694,
+      "p95_ms": 3882.075,
+      "p99_ms": 3882.075,
+      "max_ms": 4054.181,
+      "throughput_rps": 1.211,
+      "errors": 0
+    },
+    {
+      "concurrency": 8,
+      "requests": 20,
+      "p50_ms": 5764.533,
+      "p95_ms": 6032.127,
+      "p99_ms": 6032.127,
+      "max_ms": 6100.118,
+      "throughput_rps": 1.344,
+      "errors": 0
+    }
+  ],
+  "saturation_point": {
+    "concurrency": 2,
+    "requests": 20,
+    "p50_ms": 1644.674,
+    "p95_ms": 1879.074,
+    "p99_ms": 1879.074,
+    "max_ms": 2024.597,
+    "throughput_rps": 1.201,
+    "errors": 0
+  },
+  "threshold_ms": 300,
+  "passed": false
+}

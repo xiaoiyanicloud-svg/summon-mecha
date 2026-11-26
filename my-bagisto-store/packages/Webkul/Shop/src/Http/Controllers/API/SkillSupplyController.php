@@ -10,6 +10,12 @@ use Webkul\Shop\Models\SkillCompatibilityEvidence;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\SkillAudit\AuditService;
 use Webkul\Shop\Services\SkillAudit\SkillVersionState;
+use Webkul\Shop\Services\Deploy\SigningService;
+use Webkul\Shop\Services\SkillCompile\BuildCommand;
+use Webkul\Shop\Services\SkillCompile\BuildCommandConflictException;
+use Webkul\Shop\Services\SkillCompile\BuildCommandService;
+use Webkul\Shop\Services\SkillCompile\Portable\TargetProfileService;
+use Webkul\Shop\Services\SkillCompile\RegistrationCommand;
 use Webkul\Shop\Services\SkillCompile\SkillBuildService;
 use Webkul\Shop\Services\SkillImport\SkillImportService;
 use Webkul\Shop\Services\SkillPackage\PackageInspector;
@@ -94,12 +100,94 @@ class SkillSupplyController extends APIController
     public function compile(Request $request, int $versionId): JsonResponse
     {
         $payload = $request->validate([
-            'manifest'      => ['required', 'array'],
-            'target_models' => ['required', 'array', 'min:1'],
+            'manifest'        => ['required', 'array'],
+            'target_models'   => ['required', 'array', 'min:1'],
             'target_models.*' => ['string'],
+            'seller_id'       => ['nullable', 'integer', 'min:1'],
+            'idempotency_key' => ['nullable', 'string', 'max:96'],
+            'compiler_version' => ['nullable', 'string', 'max:64'],
         ]);
 
-        $results = $this->builder->compile($versionId, $payload['manifest'], $payload['target_models']);
+        // B1：便携编译（btcpp/xml4）必须有源包字节，走强类型 BuildCommand + 幂等命令表。
+        // 非便携构建（motion/app）是“登记”型，没有源包字节可摘要，保留既有登记路径（D-9 口径）。
+        $source = $this->resolveCompileSourceAsset($versionId);
+        $isPortableSource = (($payload['manifest']['runtime']['source_format'] ?? null) === 'btcpp/xml4');
+        $hasSourceBytes = $source && is_string($source->file_hash) && $source->file_hash !== '';
+
+        if ($isPortableSource && ! $hasSourceBytes) {
+            return $this->fail(
+                ApiErrorCode::SKILL_COMPILE_SOURCE_NOT_FOUND,
+                '便携编译需要可读取的源包资产（含 sha256）。',
+                422,
+            );
+        }
+
+        if (! $hasSourceBytes) {
+            // 登记型构建：没有源包字节，产物仍需外部工具/人工回填，不得读成"编译完成"。
+            // B1.2：不再裸调 `compile()` —— 统一走强类型 `RegistrationCommand`
+            //（GA 机型闭集 / manifest 摘要 / 版本存在性都在服务入口校验）。
+            $registration = RegistrationCommand::fromManifest(
+                $versionId,
+                $payload['manifest'],
+                $payload['target_models'],
+                isset($payload['seller_id']) ? (string) $payload['seller_id'] : null,
+            );
+            $results = $this->builder->registerWithCommand($registration, $payload['manifest']);
+        } else {
+            $sellerId = (int) ($payload['seller_id'] ?? BuildCommandService::PLATFORM_SELLER_ID);
+            $profiles = app(TargetProfileService::class);
+            $commandService = app(BuildCommandService::class);
+
+            $baseKey = (string) ($payload['idempotency_key'] ?? '');
+
+            if ($baseKey === '') {
+                // 未显式给 key 时按请求内容派生：重试同载荷仍命中同一条命令。
+                $baseKey = 'auto_'.substr(hash('sha256', SigningService::jcsCanonicalize([
+                    'version_id'    => $versionId,
+                    'manifest'      => $payload['manifest'],
+                    'target_models' => $payload['target_models'],
+                ])), 0, 48);
+            }
+
+            $results = [];
+
+            foreach ($payload['target_models'] as $modelCode) {
+                $modelCode = (string) $modelCode;
+
+                if (! in_array($modelCode, TargetProfileService::GA_TARGET_MODELS, true)) {
+                    $results[] = ['model' => $modelCode, 'status' => 'failed', 'error' => 'BUILD_TARGET_NOT_GA'];
+                    continue;
+                }
+
+                $command = new BuildCommand(
+                    skillVersionId: $versionId,
+                    sourceAssetId: (int) $source->id,
+                    sourceDigest: 'sha256:'.strtolower((string) $source->file_hash),
+                    targetModelCode: $modelCode,
+                    targetProfileDigest: $profiles->getDigest($modelCode),
+                    compilerVersion: (string) ($payload['compiler_version'] ?? config('skill_build.compiler_version', 'portable-v1')),
+                    idempotencyKey: substr($baseKey.':'.$modelCode, 0, 128),
+                    requestedBy: $this->internalOperator($request),
+                    sellerId: $sellerId,
+                );
+
+                try {
+                    $submitted = $commandService->submit($command, $payload['manifest']);
+                } catch (BuildCommandConflictException $exception) {
+                    return $this->fail(ApiErrorCode::BUILD_COMMAND_CONFLICT, $exception->getMessage(), 409);
+                } catch (\InvalidArgumentException $exception) {
+                    return $this->fail(ApiErrorCode::VALIDATION_ERROR, $exception->getMessage(), 422);
+                }
+
+                $result = is_array($submitted['result'] ?? null) ? $submitted['result'] : [];
+
+                $results[] = [
+                    'model'  => $modelCode,
+                    'status' => $result['status'] ?? ($submitted['status'] === 'failed' ? 'failed' : 'pending'),
+                    'error'  => $result['error'] ?? $submitted['error_message'],
+                ];
+            }
+        }
 
         $total = count($results);
         $failed = array_values(array_filter($results, fn (array $r) => $r['status'] === 'failed'));
@@ -151,6 +239,22 @@ class SkillSupplyController extends APIController
             'message' => sprintf('编译完成:%d 个机型已产出产物。', $total),
             'data' => $results,
         ]);
+    }
+
+    /**
+     * 编译入口的源包解析：必须是 file 载体、非 artifact；优先 source，兼容 legacy/null。
+     */
+    protected function resolveCompileSourceAsset(int $versionId): ?SkillAsset
+    {
+        return SkillAsset::query()
+            ->where('skill_version_id', $versionId)
+            ->where('carrier_type', 'file')
+            ->where(function ($query) {
+                $query->whereIn('asset_role', [SkillAsset::ROLE_SOURCE, SkillAsset::ROLE_LEGACY])
+                    ->orWhereNull('asset_role');
+            })
+            ->orderBy('id')
+            ->first();
     }
 
     /**

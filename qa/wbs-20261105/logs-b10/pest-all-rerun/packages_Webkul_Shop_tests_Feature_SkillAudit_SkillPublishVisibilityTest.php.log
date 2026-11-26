@@ -1,0 +1,40 @@
+﻿
+  ⨯⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest > it 发布让技能真正可售：发布前…                 
+  Failed asserting that an array contains 5222.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:137
+    133▕ 
+    134▕     expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED);
+    135▕ 
+    136▕     // 发布后：市场**能搜到** —— 这是本卡的验收核心（字段对了不代表用户看得见）
+  ➜ 137▕     expect(spvSearchIds($name))->toContain($productId);
+    138▕ 
+    139▕     // 佐证：flat 行确实被置为可售（经事件三步刷出来的，不是直写派生表）
+    140▕     $flat = DB::table('product_flat')
+    141▕         ->where('product_id', $productId)
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:137
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest > it 发布置可售不会把商品从「技…                 
+  Failed asserting that false is true.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:158
+    154▕     $skillCategoryId = (int) DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+    155▕ 
+    156▕     // 建品即挂在该分类下
+    157▕     expect(DB::table('product_categories')
+  ➜ 158▕         ->where('product_id', $productId)->where('category_id', $skillCategoryId)->exists())->toBeTrue();
+    159▕ 
+    160▕     post(route('shop.api.skill-admin.versions.publish', $version->id), [], spvHeaders())->assertOk();
+    161▕ 
+    162▕     // 发布后仍在分类里（AbstractType::update 不传 categories 会 sync 成空 —— 这里是回归锁）
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishVisibilityTest.php:158
+
+
+  Tests:    2 failed, 1 passed (11 assertions)
+  Duration: 2.27s
+

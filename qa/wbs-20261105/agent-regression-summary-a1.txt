@@ -1,0 +1,7 @@
+﻿EXIT=0 packages/Webkul/Shop/tests/Feature/API/AgentV2ExecutionTest.php
+EXIT=0 packages/Webkul/Shop/tests/Feature/API/AgentErrorContractP9Test.php
+EXIT=0 packages/Webkul/Shop/tests/Feature/API/AgentEventOwnershipTest.php
+EXIT=0 packages/Webkul/Shop/tests/Feature/API/AgentDeviceCredentialB12Test.php
+EXIT=0 packages/Webkul/Shop/tests/Feature/API/AgentDeployTest.php
+EXIT=0 packages/Webkul/Shop/tests/Feature/Deploy/SkillFullChainEndToEndTest.php
+REG_EXIT=0

@@ -1,0 +1,38 @@
+﻿
+  .....⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest > it should upda…   
+  Expected: {"message":"\u901a\u8baf\u8ba2\u9605\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 通讯订阅更新成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest.php:77
+     73▕         'id'            => $subscriber->id,
+     74▕         'is_subscribed' => $isSubscribed = rand(0, 1),
+     75▕     ])
+     76▕         ->assertOk()
+  ➜  77▕         ->assertSeeText(trans('admin::app.marketing.communications.subscribers.index.edit.success'));
+     78▕ 
+     79▕     $this->assertModelWise([
+     80▕         SubscribersList::class => [
+     81▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest > it should dele…   
+  Expected: {"message":"\u8ba2\u9605\u8005\u5220\u9664\u6210\u529f"}
+
+  To contain: 订阅者删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\NewsletterSubscriptionsTest.php:98
+     94▕     $this->loginAsAdmin();
+     95▕ 
+     96▕     deleteJson(route('admin.marketing.communications.subscribers.delete', $subscriber->id))
+     97▕         ->assertOk()
+  ➜  98▕         ->assertSeeText(trans('admin::app.marketing.communications.subscribers.delete-success'));
+     99▕ });
+    100▕
+
+
+  Tests:    2 failed, 5 passed (20 assertions)
+  Duration: 6.62s
+

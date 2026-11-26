@@ -1,0 +1,23 @@
+﻿# b10-t6-sandbox-wiring.txt · 2026-11-05 19:19:03 · DB=summon_mecha_step10_test
+python.exe : test_a6_wire_01_开关开且无runner时拒绝执行且适配器零调用不占租约 (tests.test_sandbox_wiring.TestSandboxWiring.test_a6_wire_01_开
+关开且无runner时拒绝执行且适配器零调用不占租约) ... ok
+At line:5 char:10
++   $out = & $py -m unittest $m.m -v 2>&1
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_a6_wire_01...零调用不占租约) ... ok:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+test_a6_wire_02_开关开且有runner时执行路径拿到runner且结果不是安全证据 (tests.test_sandbox_wiring.TestSandboxWiring.test_a6_wire_02_开关开且有run
+ner时执行路径拿到runner且结果不是安全证据) ... ok
+test_a6_wire_02b_capabilities如实说明只是进程边界而非OS级隔离 (tests.test_sandbox_wiring.TestSandboxWiring.test_a6_wire_02b_capabiliti
+es如实说明只是进程边界而非OS级隔离) ... ok
+test_a6_wire_03_开关默认关闭时行为与接线前完全一致 (tests.test_sandbox_wiring.TestSandboxWiring.test_a6_wire_03_开关默认关闭时行为与接线前完全一致) ... o
+k
+test_a6_wire_04_无runner时run_local_process抛明确异常而不是静默降级 (tests.test_sandbox_wiring.TestSandboxWiring.test_a6_wire_04_无run
+ner时run_local_process抛明确异常而不是静默降级) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.250s
+
+OK
+EXIT=0

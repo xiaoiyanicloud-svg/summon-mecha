@@ -1,0 +1,96 @@
+﻿
+  .⨯⨯⨯⨯⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 · 风险等级筛选只回该等级的技能                    
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22▕ function b9SkillCategoryId(): int
+     23▕ {
+     24▕     $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25▕ 
+  ➜  26▕     expect($id)->not->toBeNull();
+     27▕ 
+     28▕     return (int) $id;
+     29▕ }
+     30▕
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 · 交付通道筛选:agent 命中声明 ag…             
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22▕ function b9SkillCategoryId(): int
+     23▕ {
+     24▕     $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25▕ 
+  ➜  26▕     expect($id)->not->toBeNull();
+     27▕ 
+     28▕     return (int) $id;
+     29▕ }
+     30▕
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 · 机型筛选:取机型可用通道与技能…                  
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22▕ function b9SkillCategoryId(): int
+     23▕ {
+     24▕     $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25▕ 
+  ➜  26▕     expect($id)->not->toBeNull();
+     27▕ 
+     28▕     return (int) $id;
+     29▕ }
+     30▕
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 · 动作类型筛选:按 motion_type 标签命中         
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22▕ function b9SkillCategoryId(): int
+     23▕ {
+     24▕     $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25▕ 
+  ➜  26▕     expect($id)->not->toBeNull();
+     27▕ 
+     28▕     return (int) $id;
+     29▕ }
+     30▕
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 · 名称搜索仍生效,且与筛选叠加(AND)               
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22▕ function b9SkillCategoryId(): int
+     23▕ {
+     24▕     $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25▕ 
+  ➜  26▕     expect($id)->not->toBeNull();
+     27▕ 
+     28▕     return (int) $id;
+     29▕ }
+     30▕
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+
+  Tests:    5 failed, 2 passed (17 assertions)
+  Duration: 3.58s
+

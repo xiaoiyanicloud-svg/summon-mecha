@@ -240,6 +240,9 @@ it('全链路闭环：开发者上传标准 .skill → L0/L2 审核上架 → �
     $did = (string) $enrollRes->json('data.did');
     $deviceSecret = (string) $enrollRes->json('data.device_secret');
     $serverPubKey = (string) $enrollRes->json('data.server_public_key');
+    $devicePrivateKey = (string) $enrollRes->json('data.private_key_pem');
+    $enrollBinding = \Webkul\Shop\Models\DeviceBinding::query()->where('did', $did)->firstOrFail();
+    $factKeyId = app(\Webkul\Shop\Services\Deploy\DeviceCredentialService::class)->factKeyId($enrollBinding);
     $agentHeaders = [
         'X-Agent-Did'    => $did,
         'X-Agent-Secret' => $deviceSecret,
@@ -420,9 +423,48 @@ PY);
         ->and(is_file($installedSkillDir.DIRECTORY_SEPARATOR.'payload'.DIRECTORY_SEPARATOR.'main.py'))->toBeTrue();
 
     // Agent 回报 downloading → installing → done
-    postJson(route('shop.api.agent.event'), ['task_no' => $taskNo, 'did' => $did, 'phase' => 'downloading'], $agentHeaders)->assertOk();
-    postJson(route('shop.api.agent.event'), ['task_no' => $taskNo, 'did' => $did, 'phase' => 'installing'], $agentHeaders)->assertOk();
-    postJson(route('shop.api.agent.event'), ['task_no' => $taskNo, 'did' => $did, 'phase' => 'done'], $agentHeaders)->assertOk();
+    // 持证设备必须为事件正文提供 agent-fact/v3 签名（A1）。
+    $signEvent = function (string $eventTaskNo, string $eventId, string $phase) use ($did, $devicePrivateKey, $factKeyId): array {
+        $payload = [
+            'task_no'     => $eventTaskNo,
+            'did'         => $did,
+            'event_id'    => $eventId,
+            'phase'       => $phase,
+            'reported_at' => now()->timestamp,
+        ];
+
+        // ⚠ 规范字节必须由 AgentFactEnvelopeV3 自己算，不能在这里手搓：
+        //   契约规定 `evidence` 是 JSON **对象**，空值规范成 `{}` 而不是 `[]`。
+        //   手写一份 `'evidence' => []` 去签名，验签侧按 `{}` 重算就对不上
+        //   —— 这正是曾经出现过一次的跨语言签名漂移。
+        $envelope = \Webkul\Shop\Services\Deploy\Contracts\AgentFactEnvelopeV3::fromArray([
+            'event_id'       => $eventId,
+            'did'            => $did,
+            'task_no'        => $eventTaskNo,
+            'event_seq'      => null,
+            'phase'          => $phase,
+            'execution_fact' => null,
+            'evidence'       => [],
+            'reported_at'    => $payload['reported_at'],
+            'signature'      => 'placeholder-signature',
+            'key_id'         => $factKeyId,
+        ]);
+
+        openssl_sign(
+            $envelope->canonical(),
+            $signature,
+            openssl_pkey_get_private($devicePrivateKey),
+            OPENSSL_ALGO_SHA256,
+        );
+
+        $payload['fact_envelope'] = $envelope->signedFields() + ['signature' => base64_encode($signature), 'key_id' => $factKeyId];
+
+        return $payload;
+    };
+
+    postJson(route('shop.api.agent.event'), $signEvent($taskNo, 'evt_e2e_downloading', 'downloading'), $agentHeaders)->assertOk();
+    postJson(route('shop.api.agent.event'), $signEvent($taskNo, 'evt_e2e_installing', 'installing'), $agentHeaders)->assertOk();
+    postJson(route('shop.api.agent.event'), $signEvent($taskNo, 'evt_e2e_done', 'done'), $agentHeaders)->assertOk();
 
     // 验证任务完成、InstallRecord 落为 installed、SkillEntitlement 自动激活为 active
     expect(DeployTask::where('task_no', $taskNo)->value('status'))->toBe('success')
@@ -442,9 +484,9 @@ PY);
     $uninstallTaskNo = (string) $uninstallRes->json('data.task_no');
 
     // Agent 执行 apply_lifecycle_operation(OP_UNINSTALL) 并无错误码上报 done
-    postJson(route('shop.api.agent.event'), ['task_no' => $uninstallTaskNo, 'did' => $did, 'phase' => 'downloading'], $agentHeaders)->assertOk();
-    postJson(route('shop.api.agent.event'), ['task_no' => $uninstallTaskNo, 'did' => $did, 'phase' => 'installing'], $agentHeaders)->assertOk();
-    postJson(route('shop.api.agent.event'), ['task_no' => $uninstallTaskNo, 'did' => $did, 'phase' => 'done'], $agentHeaders)->assertOk();
+    postJson(route('shop.api.agent.event'), $signEvent($uninstallTaskNo, 'evt_e2e_uninstall_downloading', 'downloading'), $agentHeaders)->assertOk();
+    postJson(route('shop.api.agent.event'), $signEvent($uninstallTaskNo, 'evt_e2e_uninstall_installing', 'installing'), $agentHeaders)->assertOk();
+    postJson(route('shop.api.agent.event'), $signEvent($uninstallTaskNo, 'evt_e2e_uninstall_done', 'done'), $agentHeaders)->assertOk();
 
     expect(DeployTask::where('task_no', $uninstallTaskNo)->value('status'))->toBe('success')
         ->and(InstallRecord::where('did', $did)->where('skill_version_id', $version->id)->value('status'))->toBe('uninstalled');

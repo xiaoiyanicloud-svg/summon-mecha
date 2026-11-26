@@ -1,0 +1,20 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\AgentPackageDistributionTest
+  ✓ it S-1 · 安装类下发任务自动带上真实包地址与指纹（不再为空）                                                                           1.43s  
+  ✓ it S-1 · 签名 URL 拉到的字节 sha256 == 指令声明的 package_sha256                                                         0.91s  
+  ✓ it S-1 · 签名覆盖的是真实哈希：改包即让签名对不上                                                                                0.43s  
+  ✓ it S-1 · 改 package_sha256 即失签（端侧复算的靶子真的进了签名串）                                                                0.50s  
+  ✓ it S-1 · 无包（dry install）任务仍能验签通过（空哈希不让整条签名失效）                                                                0.38s  
+  ✓ it S-1 · URL 过期即失效（限时）                                                                                       0.32s  
+  ✓ it S-1 · 篡改 versionId 或去掉签名即失效（防篡改）                                                                          0.32s  
+  ✓ it S-1 · 无 Agent 凭据 → 401（URL 泄露也拿不到包）                                                                       0.56s  
+  ✓ it S-1 · 落盘字节与 file_hash 不符 → 拒绝输出（绝不发出对不上的字节）                                                               0.42s  
+  ✓ it S-1 · 文件整个不在盘上 → 明确报"文件缺失"（不是静默 200 空体）                                                                   0.50s  
+  ✓ it S-1 · 非安装类操作（卸载 / 回收）不带包地址                                                                                0.34s  
+  ✓ it S-1 · 该版本没有文件类交付物 → 不产生可下载的假地址，且如实记录无包                                                                    0.35s  
+  ✓ it S-1 · 显式 packageUrl/packageHash 覆盖仍生效（测试与平台特例的口子）                                                         0.27s  
+  ✓ it S-1 · 参考 Agent 模板带下载→复算→比对逻辑，错误码用常量替换（未真机验证）                                                              0.35s  
+
+  Tests:    14 passed (53 assertions)
+  Duration: 8.00s
+

@@ -18,6 +18,15 @@ return [
     // per-device 凭据(证书/secret)的有效期(天)
     'device_credential' => [
         'ttl_days' => (int) env('AGENT_DEVICE_CRED_TTL_DAYS', 365),
+
+        /**
+         * A7 密钥生命周期。
+         * `rotation_window_seconds`：轮换后旧密钥还能验签多久（覆盖在途事实/离线重投）。
+         *   设为 0 表示旧密钥立刻失效 —— 生产不建议，除非设备能同步换钥。
+         * `epoch_grace`：允许落后当前代次几代。0 = 只认最新一代；1 = 轮换期间认上一代。
+         */
+        'rotation_window_seconds' => (int) env('AGENT_DEVICE_KEY_ROTATION_WINDOW_SECONDS', 86400),
+        'epoch_grace'             => (int) env('AGENT_DEVICE_KEY_EPOCH_GRACE', 1),
     ],
 
     /**
@@ -55,6 +64,9 @@ return [
      */
     'package_url_ttl_minutes' => (int) env('AGENT_PACKAGE_URL_TTL_MINUTES', 10),
 
+    // Outbox 命令投递租约；ACK 丢失后到期重投，设备端 task_id 幂等。
+    'command_lease_seconds' => (int) env('AGENT_COMMAND_LEASE_SECONDS', 30),
+
     // ⚠ 过渡期共享密钥。目标是弃用:
     //   agent_auth_mode=device 后本值不再被接受;届时可整体删除本键。
     //   per-device 凭据由 DeviceCredentialService 在 enroll 时签发(每设备一份,可单独吊销)。
@@ -68,6 +80,16 @@ return [
         'url'     => env('AGENT_LATEST_URL'),
         'hash'    => env('AGENT_LATEST_HASH'),
     ],
+
+    // 声明式目标状态（A4）。auto_converge 默认关闭：只报告 drift，不自动下发。
+    // 打开后也只对"声明了 agent 通道 + 有包哈希"的缺失项建安装任务。
+    'desired_state' => [
+        'auto_converge' => env('DESIRED_STATE_AUTO_CONVERGE', false),
+    ],
+
+    // 签名/证书后端（C2）。当前只有 local（本地 PEM）；kms/hsm 未实现，
+    // 未知值会在 KeyBackendManager 里直接抛异常，不静默回落。
+    'key_backend' => env('KEY_BACKEND', 'local'),
 
     'gateways' => [
         // HTTP 轮询:设备主动拉指令(真传输,当前默认)

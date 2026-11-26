@@ -635,6 +635,32 @@ return [
         'route' => 'admin.catalog.skill-reviews.judge',
         'sort'  => 1,
     ], [
+        // 目标发布审核:每个机型的构建产物独立审核 / 撤销(B3)
+        'key'   => 'catalog.target-releases',
+        'name'  => '目标发布审核',
+        'route' => 'admin.catalog.target-releases.index',
+        'sort'  => 6,
+    ], [
+        'key'   => 'catalog.target-releases.view',
+        'name'  => 'admin::app.acl.view',
+        'route' => 'admin.catalog.target-releases.show',
+        'sort'  => 0,
+    ], [
+        'key'   => 'catalog.target-releases.approve',
+        'name'  => '通过目标发布',
+        'route' => 'admin.catalog.target-releases.approve',
+        'sort'  => 1,
+    ], [
+        'key'   => 'catalog.target-releases.reject',
+        'name'  => '驳回目标发布',
+        'route' => 'admin.catalog.target-releases.reject',
+        'sort'  => 2,
+    ], [
+        'key'   => 'catalog.target-releases.revoke',
+        'name'  => '撤销目标发布',
+        'route' => 'admin.catalog.target-releases.revoke',
+        'sort'  => 3,
+    ], [
         // 机型库:兼容性校验的输入
         'key'   => 'catalog.device-models',
         'name'  => '机型库',

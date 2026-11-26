@@ -1,0 +1,15 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SkillDeliveryRevocationTest
+  ✓ it B7 · approved + build_key/source_digest/profile 全对齐 → 返回该产物                                               0.95s  
+  ✓ it B7 · 撤销后 fail-closed（即使 build_key/profile 仍匹配）                                                            0.17s  
+  ✓ it B7 · release 的 build_key 与产物不一致 → 拒绝（旧快照 / 被替换）                                                           0.14s  
+  ✓ it B7 · release 的 source_digest 与产物不一致 → 拒绝（旧 generation）                                                    0.16s  
+  ✓ it B7 · profile 摘要过期 → 拒绝                                                                                    0.17s  
+  ✓ it B7 · source 资产绝不能作为可交付成品                                                                                  0.21s  
+  ✓ it B7 · 跨机型请求 → 拒绝                                                                                           0.19s  
+  ✓ it B7 · 无 release 的产物 → 拒绝                                                                                   0.17s  
+  ✓ it B7 · 旧 generation 仍按旧快照交付，新 generation 未审核则拒绝                                                             0.21s  
+
+  Tests:    9 passed (10 assertions)
+  Duration: 2.81s
+

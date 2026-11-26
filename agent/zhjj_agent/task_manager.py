@@ -16,9 +16,12 @@ from zhjj_agent.constants import (
     ERR_EXECUTION_FAILED,
     ERR_PKG_HASH_MISMATCH,
     ERR_PKG_MISSING,
+    ERR_RESTORE_MISMATCH,
     ERR_REVOKED,
+    ERR_ROLLBACK_BLOCKED,
     ERR_SIG_INVALID,
     ERR_TASK_EXPIRED,
+    EXEC_UNKNOWN,
     OP_CANCEL_EXECUTION,
     OP_DISABLE,
     OP_ENABLE,
@@ -46,8 +49,14 @@ from zhjj_agent.constants import (
 )
 from zhjj_agent.crypto import canonical_v1, canonical_v2, verify_signature
 from zhjj_agent.executor import SkillExecutor
+from zhjj_agent.failpoints import hit as failpoint
+from zhjj_agent.install_transaction import InstallTransaction
+from zhjj_agent.metrics import AgentMetrics
 from zhjj_agent.package_manager import PackageManager, PackageManagerError
+from zhjj_agent.sandbox import SandboxRunner
 from zhjj_agent.storage import Storage
+from zhjj_agent.stop_observation import validate_observation
+from zhjj_agent.telemetry import log_event
 
 
 class TaskManager:
@@ -57,16 +66,141 @@ class TaskManager:
         storage: Storage,
         client: AgentClient,
         adapter: BaseInstallAdapter,
-        pubkey_pem: str
+        pubkey_pem: str,
+        metrics: Optional["AgentMetrics"] = None,
+        sandbox_runner: Optional[SandboxRunner] = None,
+        entitlement_guard: Optional["EntitlementGuard"] = None,
     ):
         self.install_dir = os.path.abspath(install_dir)
         self.storage = storage
         self.client = client
         self.adapter = adapter
-        self.executor = SkillExecutor(storage, adapter)
+        # A3：设备端计数器。不传就自建一个（同一个 agent.db），
+        # 这样既不改变既有调用方，也不会出现"两个进程各算一份"的隐性分裂。
+        self.metrics = metrics if metrics is not None else AgentMetrics(storage.db_path)
+        # T6：沙箱执行器透传给执行监督器；不传时行为与接线前完全一致。
+        # A5：授权回源同样透传；只有开关打开时才在 execute() 里生效。
+        self.executor = SkillExecutor(
+            storage,
+            adapter,
+            metrics=self.metrics,
+            sandbox_runner=sandbox_runner,
+            entitlement_guard=entitlement_guard,
+        )
         self.pubkey_pem = pubkey_pem.strip()
 
     # ── 启动自愈与 Outbox 补偿 ───────────────────────────────────────────────
+
+    def mark_agent_start(self) -> Dict[str, int]:
+        """进程启动自愈（A4）：计重启次数、清理上次崩溃留下的 staging 残骸。
+
+        为什么必须在这里做：staging 目录是 `tempfile.mkdtemp(prefix=".staging_")` 建的，
+        进程被 kill -9 时没有任何机会执行 `finally: shutil.rmtree`。残骸留在技能根目录下
+        会被下一次 `os.walk` 扫进"已安装文件"，也会白占磁盘。启动即清是唯一可靠的清理点。
+        """
+        self.metrics.inc("agent_restart_total", 1)
+
+        cleaned = self._sweep_staging_orphans()
+        if cleaned > 0:
+            self.metrics.inc("staging_orphan_total", cleaned)
+
+        # A4.1：重启自愈完成后 —— 再崩一次，下一轮启动必须仍然收敛到同一状态。
+        failpoint("after_restart")
+
+        return {"staging_orphans_cleaned": cleaned}
+
+    def _sweep_staging_orphans(self) -> int:
+        """清理 `skills/*/.staging_*` 残留目录，返回清理数量。
+
+        A4.5：**先归档、再删除**。崩溃残骸是审计证据（哪个包、解到哪一步、文件是什么），
+        直接 `rmtree` 等于把现场抹掉。归档失败时**保留现场**（不删），下次启动再试。
+        """
+        skills_root = os.path.join(self.install_dir, "skills")
+        if not os.path.isdir(skills_root):
+            return 0
+
+        cleaned = 0
+        for skill_entry in os.listdir(skills_root):
+            skill_dir = os.path.join(skills_root, skill_entry)
+
+            # A5：卸载是"先 rename 到 .removed_*，再 rmtree"。进程若死在两步之间，
+            #     残骸会留在 skills 根目录下（不是某个技能目录里），启动时必须一并清掉。
+            if skill_entry.startswith(".removed_"):
+                shutil.rmtree(skill_dir, ignore_errors=True)
+                if not os.path.exists(skill_dir):
+                    cleaned += 1
+                continue
+
+            if not os.path.isdir(skill_dir):
+                continue
+            for name in os.listdir(skill_dir):
+                if not name.startswith(".staging_"):
+                    continue
+                target = os.path.join(skill_dir, name)
+                if not os.path.isdir(target):
+                    continue
+
+                try:
+                    self._archive_staging_orphan(skill_entry, name, target)
+                except OSError as archive_error:
+                    log_event(
+                        "warning",
+                        "agent.staging_orphan_archive_failed",
+                        task_id="",
+                        did=self.client.did,
+                        model_code=self.adapter.model_code,
+                        error_code="STAGING_ARCHIVE_FAILED",
+                        status=f"{target}: {archive_error}",
+                    )
+                    continue  # 归档失败不删，保留证据
+
+                shutil.rmtree(target, ignore_errors=True)
+                if not os.path.exists(target):
+                    cleaned += 1
+
+        return cleaned
+
+    def _archive_staging_orphan(self, skill_entry: str, staging_name: str, path: str) -> None:
+        """把残骸清单（相对路径 / 大小 / sha256）追加到 `state/audit/staging_orphans.jsonl`。
+
+        单条记录最多 500 个文件，超出标 `truncated` —— 启动路径不能因为某个巨大的残骸
+        扫描几分钟；但"截断"必须写在记录里，不能给人一种"全都记下来了"的错觉。
+        """
+        files = []
+        truncated = False
+        for root, _, filenames in os.walk(path):
+            for filename in sorted(filenames):
+                if len(files) >= 500:
+                    truncated = True
+                    break
+                full = os.path.join(root, filename)
+                rel = os.path.relpath(full, path).replace(os.sep, "/")
+                try:
+                    size = os.path.getsize(full)
+                    digest = hashlib.sha256()
+                    with open(full, "rb") as handle:
+                        for chunk in iter(lambda: handle.read(65536), b""):
+                            digest.update(chunk)
+                    sha = digest.hexdigest()
+                except OSError:
+                    size = -1
+                    sha = None
+                files.append({"path": rel, "size": size, "sha256": sha})
+            if truncated:
+                break
+
+        record = {
+            "archived_at": int(time.time()),
+            "skill_id": skill_entry,
+            "staging_dir": staging_name,
+            "files": files,
+            "truncated": truncated,
+        }
+
+        audit_dir = os.path.join(self.install_dir, "state", "audit")
+        os.makedirs(audit_dir, exist_ok=True)
+        with open(os.path.join(audit_dir, "staging_orphans.jsonl"), "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     def flush_outbox(self):
         """重试未收到平台 ACK 的待发事件，实现幂等回报。"""
@@ -82,11 +216,20 @@ class TaskManager:
                 task_no=task_id,
                 phase=phase,
                 error_code=payload.get("error_code"),
-                error_msg=payload.get("error_msg")
+                error_msg=payload.get("error_msg"),
+                event_id=event_id,
+                event_seq=ev.get("event_seq"),
+                extra=payload,
             )
             # 只有取得平台确认才标记已确认，严禁因 TASK_TRANSITION_INVALID / TASK_NOT_FOUND 无条件丢弃待发事件
             if ok:
+                # A4.1：补发成功、ACK 未落库 —— 崩溃后重启必须重投同一条事件（同 event_id）。
+                failpoint("after_send_before_ack")
                 self.storage.mark_event_acked(event_id, resp)
+            else:
+                # A3：补发失败要计数 —— 这是"设备在，但事实送不上去"的唯一信号，
+                # 平台侧看不到未确认的 outbox，只能靠设备自己说。
+                self.metrics.inc("outbox_flush_failed_total")
 
     def resume_recovery(self):
         """断网/重启后的崩溃恢复与事实对账。按操作类型与检查点精细化对账，严禁将旧版错报为新安装完成。"""
@@ -137,21 +280,126 @@ class TaskManager:
                     self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "未能确认卸载状态")
 
             elif op == OP_EXECUTE:
+                # A4.4：execution_id 来自**签名指令**（或本地执行表），不是 f"exec_{task_id}"。
+                #   用错 id 会让 update 落空，真正的执行永远停在 ACCEPTED —— 等于没恢复。
+                exec_id = (task.get("signed_payload") or {}).get("execution_id") or task.get("execution_id")
+                if not exec_id:
+                    rows = self.storage.get_executions_for_task(task_id)
+                    exec_id = rows[0]["execution_id"] if rows else f"exec_{task_id}"
+                exec_obs = self.executor.observe(exec_id)
+                existing = self.storage.get_execution(exec_id) or {}
+                started = bool(existing.get("started_at"))
+                if exec_obs.get("is_stopped") and exec_obs.get("status") == "SUCCEEDED":
+                    self.storage.update_execution_status(exec_id, "SUCCEEDED")
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(
+                        task_id, PHASE_DONE,
+                        execution_fact=self._execution_fact(exec_id, "SUCCEEDED", started, True),
+                    )
+                elif exec_obs.get("is_stopped"):
+                    if exec_obs.get("status") == "CANCELED":
+                        self.storage.update_execution_status(exec_id, "CANCELED")
+                        self.storage.update_task_status(task_id, STATE_COMMITTED)
+                        self.emit_event(
+                            task_id, "canceled",
+                            execution_fact=self._execution_fact(exec_id, "CANCELED", started, True),
+                        )
+                    else:
+                        self.storage.update_execution_status(exec_id, "FAILED", "EXECUTION_FAILED", exec_obs.get("error_msg"))
+                        self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_FAILED", exec_obs.get("error_msg"))
+                        self.emit_event(
+                            task_id, PHASE_FAILED, "EXECUTION_FAILED", exec_obs.get("error_msg"),
+                            execution_fact=self._execution_fact(exec_id, "FAILED", started, True, "EXECUTION_FAILED"),
+                        )
+                else:
+                    # 无法独立确认停止：平台执行事实必须是 UNKNOWN，资源租约继续锁定。
+                    self.storage.update_execution_status(exec_id, "UNKNOWN", "RECOVERY_UNKNOWN", "执行状态未知")
+                    self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_UNKNOWN", "执行状态未知")
+                    self.emit_event(
+                        task_id, "unknown", "RECOVERY_UNKNOWN", "执行状态未知",
+                        execution_fact=self._execution_fact(exec_id, "UNKNOWN", started, False, "RECOVERY_UNKNOWN"),
+                    )
+
+            elif op == OP_CANCEL_EXECUTION:
                 exec_id = task.get("execution_id") or f"exec_{task_id}"
                 exec_obs = self.executor.observe(exec_id)
+                existing = self.storage.get_execution(exec_id) or {}
+                started = bool(existing.get("started_at"))
                 if exec_obs.get("is_stopped"):
-                    if exec_obs.get("status") == "SUCCEEDED":
-                        self.storage.update_task_status(task_id, STATE_COMMITTED)
-                        self.emit_event(task_id, PHASE_DONE)
-                    else:
-                        self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_FAILED", exec_obs.get("error_msg"))
-                        self.emit_event(task_id, PHASE_FAILED, "EXECUTION_FAILED", exec_obs.get("error_msg"))
+                    self.storage.update_execution_status(exec_id, "CANCELED")
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(
+                        task_id, "canceled",
+                        execution_fact=self._execution_fact(exec_id, "CANCELED", started, True),
+                    )
                 else:
-                    self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "执行状态未知")
-                    self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "执行状态未知")
+                    self.storage.update_execution_status(exec_id, "UNKNOWN", "STOP_UNCONFIRMED", "取消后未能观察安全停止")
+                    self.storage.update_task_status(task_id, STATE_FAILED, "STOP_UNCONFIRMED", "取消后未能观察安全停止")
+                    self.emit_event(
+                        task_id, "unknown", "STOP_UNCONFIRMED", "取消后未能观察安全停止",
+                        execution_fact=self._execution_fact(exec_id, "UNKNOWN", started, False, "STOP_UNCONFIRMED"),
+                    )
             else:
                 self.storage.update_task_status(task_id, STATE_FAILED, "RECOVERY_INCOMPLETE", "未识别的在途任务操作")
                 self.emit_event(task_id, PHASE_FAILED, "RECOVERY_INCOMPLETE", "未识别的在途任务操作")
+
+        self._sync_reconcile()
+
+    def _sync_reconcile(self):
+        """把设备的安装、在途任务和执行快照按代次上报；相同事实不重复请求。"""
+        installed = []
+        for skill_id, item in self.storage.get_all_installed_skills().items():
+            manifest = item.get("manifest") or {}
+            raw_version_id = manifest.get("skill_version_id") or item.get("skill_version_id")
+            try:
+                version_id = int(raw_version_id or skill_id)
+            except (TypeError, ValueError):
+                continue
+            installed.append({
+                "skill_version_id": version_id,
+                "version": item.get("current_version"),
+                "status": "enabled" if item.get("enabled") else (item.get("status") or "installed"),
+                "package_sha256": item.get("package_sha256"),
+            })
+
+        tasks = [
+            {"task_no": task["task_id"], "status": task["status"]}
+            for task in self.storage.get_uncompleted_tasks()
+        ]
+        active_executions = [
+            {"execution_id": row["execution_id"], "status": row["status"]}
+            for row in self.storage.get_all_executions()
+            if row.get("status") in ("ACCEPTED", "RUNNING", "CANCEL_REQUESTED", "UNKNOWN")
+        ]
+        generation = self.storage.get_max_command_seq(self.client.did)
+        content = {
+            "skills": installed,
+            "tasks": tasks,
+            "active_executions": active_executions,
+            "generation": generation,
+        }
+        digest = hashlib.sha256(
+            json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+        if digest == getattr(self, "_last_reconcile_digest", None):
+            return
+        try:
+            ok, response = self.client.reconcile(
+                skills=installed,
+                tasks=tasks,
+                model_code=self.adapter.model_code,
+                observed_generation=generation,
+                active_executions=active_executions,
+                outbox_cursor=None,
+                reported_at=int(time.time()),
+            )
+        except Exception as exc:
+            log_event("error", "agent.reconcile_failed", did=self.client.did, model_code=self.adapter.model_code, error_code="RECONCILE_EXCEPTION", status=str(exc))
+            return
+        if ok:
+            self._last_reconcile_digest = digest
+        else:
+            log_event("error", "agent.reconcile_failed", did=self.client.did, model_code=self.adapter.model_code, error_code=response.get("code"), status="REJECTED")
 
     # ── 事件发射封装 ─────────────────────────────────────────────────────────
 
@@ -160,34 +408,150 @@ class TaskManager:
         task_id: str,
         phase: str,
         error_code: Optional[str] = None,
-        error_msg: Optional[str] = None
+        error_msg: Optional[str] = None,
+        execution_fact: Optional[Dict[str, Any]] = None,
     ):
-        event_id = f"evt_{task_id}_{phase}_{int(time.time()*1000)}"
-        payload = {
+        # event_id 生成一次、先持久化、后续网络重试始终复用它。不能用“当前时间”在
+        # flush_outbox 中重新造号，否则 ACK 丢失后的重投会变成第二条平台事实。
+        seed = f"{task_id}|{phase}|{time.time_ns()}|{execution_fact or ''}"
+        event_id = "evt_" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+        # A3：指令签名/信封被拒的次数。放在这里是因为**所有**验签拒绝最终都会走到
+        # emit_event(PHASE_FAILED, ERR_SIG_INVALID, ...) —— 这一个点是唯一不会漏的。
+        if error_code == ERR_SIG_INVALID:
+            self.metrics.inc("command_signature_failed_total")
+
+        payload: Dict[str, Any] = {
             "task_no": task_id,
             "did": self.client.did,
             "phase": phase,
             "error_code": error_code,
             "error_msg": error_msg,
+            "event_id": event_id,
+            "reported_at": int(time.time()),
         }
-        # 严格遵守：先持久写入 outbox，再尝试网络请求
-        self.storage.record_event_outbox(event_id, task_id, phase, payload)
+        if execution_fact:
+            payload.update(execution_fact)
 
+        # WBS A1：把正文信封一起持久化进 outbox；重投复用同一签名，
+        # 不会因为“当前时间”重新造号/重签变成第二条平台事实。
+        build_envelope = getattr(self.client, "build_fact_envelope", None)
+        if callable(build_envelope):
+            envelope = build_envelope(payload, execution_fact)
+            if envelope:
+                payload["fact_envelope"] = envelope
+
+        log_event(
+            "error" if error_code else "info",
+            "agent.execution_fact",
+            task_id=task_id,
+            did=self.client.did,
+            model_code=self.adapter.model_code,
+            operation=None,
+            status=phase,
+            error_code=error_code,
+            execution_id=payload.get("execution_id"),
+        )
+
+        # A4.1：事件落 outbox 之前 —— 此时崩溃 = 事实彻底丢失（最危险的一类）。
+        failpoint("before_outbox")
+        self.storage.record_event_outbox(event_id, task_id, phase, payload)
         ok, resp = self.client.send_event(
             task_no=task_id,
             phase=phase,
             error_code=error_code,
             error_msg=error_msg,
-            event_id=event_id
+            event_id=event_id,
+            extra=payload,
         )
         if ok:
+            # A4.1：发送成功、ACK 落库前 —— 崩溃必须让事件保持"未确认"，重启后重投。
+            failpoint("after_send_before_ack")
             self.storage.mark_event_acked(event_id, resp)
 
+    def _execution_fact(
+        self,
+        execution_id: str,
+        observed_status: str,
+        actual_started: bool,
+        actual_stopped: bool,
+        error_code: Optional[str] = None,
+        observation: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        execution = self.storage.get_execution(execution_id) or {}
+        now_ts = int(time.time())
+
+        if actual_stopped and observation is None:
+            observation = self._stop_observation(execution_id)
+
+        # 没有可验证的独立观察 → 绝不能声称已停；终态一律降级 UNKNOWN。
+        if actual_stopped and observation is None:
+            actual_stopped = False
+            if observed_status in ("SUCCEEDED", "FAILED", "CANCELED"):
+                observed_status = EXEC_UNKNOWN
+            error_code = error_code or "STOP_OBSERVATION_MISSING"
+
+        started_at = execution.get("started_at")
+        if started_at is None and actual_started:
+            started_at = now_ts
+
+        # stopped_at 只能来自观察器的 observed_at，禁止用 now() 伪造。
+        stopped_at = int(observation["observed_at"]) if (actual_stopped and observation) else None
+
+        evidence = {
+            "observer": "device_adapter_observe",
+            "model_code": self.adapter.model_code,
+            "observed_status": observed_status,
+            "hardware_verified": bool(getattr(self.adapter, "is_hardware_verified", False)),
+            "observed_at": int(observation["observed_at"]) if observation else now_ts,
+        }
+
+        if observation:
+            evidence["stop_observation"] = observation
+
+        return {
+            "execution_id": execution_id,
+            "observed_status": observed_status,
+            "actual_started": bool(actual_started),
+            "actual_stopped": bool(actual_stopped),
+            "started_at": int(started_at) if started_at else None,
+            "stopped_at": stopped_at,
+            "error_code": error_code,
+            # 平台 A2 契约读顶层 stop_observation；同时保留在 evidence 里供审计。
+            "stop_observation": observation,
+            "evidence": evidence,
+            "reported_at": now_ts,
+        }
+
+    def _stop_observation(self, execution_id: str) -> Optional[Dict[str, Any]]:
+        """从适配器取结构化停止观察；不可验证返回 None。"""
+        try:
+            obs = self.adapter.observe_execution(execution_id)
+        except Exception:
+            return None
+
+        if not isinstance(obs, dict) or obs.get("is_stopped") is not True:
+            return None
+
+        return validate_observation(obs.get("observation"))
     # ── 指令处理核心流水线 ───────────────────────────────────────────────────
 
     def process_command(self, cmd: Dict[str, Any]) -> bool:
         raw_op = cmd.get("operation")
         protocol = cmd.get("protocol_version") or cmd.get("signed", {}).get("protocol_version")
+        log_event(
+            "info",
+            "agent.command_received",
+            task_id=cmd.get("task_id"),
+            did=self.client.did,
+            model_code=self.adapter.model_code,
+            operation=raw_op,
+            status="RECEIVED",
+        )
+
+        # A3.2：收到指令即计数（无论后续验签/过期/机型是否通过）。
+        # 这是"设备到底有没有收到平台下发"的唯一设备侧证据。
+        self.metrics.inc("command_received_total")
 
         # 拒绝未知协议或缺少操作码（严禁将缺操作码默认成安装）
         if raw_op is None and (protocol != PROTOCOL_V2 or "operation" not in cmd.get("signed", {})):
@@ -256,6 +620,46 @@ class TaskManager:
                 self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "v2 签名校验失败")
                 return False
 
+            # 新 envelope v2：完整绑定设备、机型、Profile、时间和 nonce。
+            if signed.get("protocol") == PROTOCOL_V2:
+                strict_required = [
+                    "key_id", "model_code", "target_profile_digest", "nonce",
+                    "issued_at", "expires_at",
+                ]
+                missing_strict = [f for f in strict_required if signed.get(f) in (None, "")]
+                if missing_strict:
+                    self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, f"v2 envelope 缺少字段: {', '.join(missing_strict)}")
+                    return False
+
+                expected_key_id = hashlib.sha256(self.pubkey_pem.encode("utf-8")).hexdigest()
+                if str(signed.get("key_id")) != expected_key_id:
+                    self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "v2 envelope key_id 与本地信任根不匹配")
+                    return False
+
+                if str(signed.get("model_code")) != self.adapter.model_code:
+                    self.emit_event(task_id, PHASE_FAILED, "MODEL_MISMATCH", "命令机型与 Agent Adapter 不一致")
+                    return False
+
+                profile_digest = str(signed.get("target_profile_digest") or "")
+                if not profile_digest.startswith("sha256:"):
+                    self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "v2 envelope target_profile_digest 非法")
+                    return False
+
+                now_ts = int(time.time())
+                issued_at = int(signed.get("issued_at") or 0)
+                expires_at = int(signed.get("expires_at") or 0)
+                if issued_at > now_ts + 300 or now_ts - issued_at > 900:
+                    self.emit_event(task_id, PHASE_FAILED, ERR_TASK_EXPIRED, "v2 envelope issued_at 超出允许时钟窗口")
+                    return False
+                if expires_at <= now_ts:
+                    self.emit_event(task_id, PHASE_FAILED, ERR_TASK_EXPIRED, "v2 envelope 已过期")
+                    return False
+
+                nonce_state = self.storage.claim_command_nonce(str(signed.get("nonce")), str(task_id))
+                if nonce_state == "replay":
+                    self.emit_event(task_id, PHASE_FAILED, ERR_SIG_INVALID, "nonce 重放：同一 nonce 已绑定其他任务")
+                    return False
+
             # 任务期限检查（覆盖安装、启用、执行及回滚 F07）
             task_expires_at = signed.get("task_expires_at")
             if task_expires_at and int(time.time()) > int(task_expires_at):
@@ -315,6 +719,8 @@ class TaskManager:
                 self.executor.cancel(l["execution_id"])
 
         # ── 2. 先持久接收落 Journal ──────────────────────────────────────────
+        # A4.1：写意图前是可注入的崩溃点 —— 此时磁盘上不该有任何任务痕迹。
+        failpoint("before_intent")
         is_new = self.storage.record_task_durable(
             task_id=task_id,
             command_seq=command_seq,
@@ -329,6 +735,8 @@ class TaskManager:
         )
         if not is_new:
             # 重复任务到达：已持久记录，直接幂等返回，不重复安装或动作
+            # A3.2：重复投递被挡住 = 平台重试/乱序的真实信号，必须计数。
+            self.metrics.inc("command_duplicate_total")
             existing_task = self.storage.get_task(task_id)
             if existing_task and existing_task.get("status") == STATE_COMMITTED:
                 self.emit_event(task_id, PHASE_DONE)
@@ -375,78 +783,165 @@ class TaskManager:
         self.storage.update_task_status(task_id, STATE_DOWNLOADING)
         self.emit_event(task_id, PHASE_DOWNLOADING)
 
+        transaction = InstallTransaction(self.install_dir)
         pkg_mgr = PackageManager(self.install_dir)
         download_dest = os.path.join(self.install_dir, "downloads", f"{skill_id}_{version}.skill")
-        staging_dir = os.path.join(self.install_dir, "staging", f"{skill_id}_{version}_{int(time.time())}")
 
-        # F01: 传递受控设备凭据下载请求头
-        download_headers = self.client.get_download_headers(package_url)
+        staging_dir: Optional[str] = None
+        committed_dir: Optional[str] = None
+        backup_dir: Optional[str] = None
 
         try:
-            got_sha = pkg_mgr.download_and_verify(package_url, download_dest, expected_sha, headers=download_headers)
-        except PackageManagerError as e:
-            self.storage.update_task_status(task_id, STATE_FAILED, e.code, e.message)
-            self.emit_event(task_id, PHASE_DOWNLOAD_FAILED, e.code, e.message)
-            return False
+            # F01: 传递受控设备凭据下载请求头
+            download_headers = self.client.get_download_headers(package_url)
 
-        # 阶段 B: 解压与 Staging
+            try:
+                got_sha = pkg_mgr.download_and_verify(package_url, download_dest, expected_sha, headers=download_headers)
+            except PackageManagerError as e:
+                if e.code == ERR_PKG_HASH_MISMATCH:
+                    # A3：包哈希不符 = 传输损坏或被人替换，是"供应链"层面唯一的设备侧信号
+                    self.metrics.inc("package_hash_mismatch_total")
+                self.storage.update_task_status(task_id, STATE_FAILED, e.code, e.message)
+                self.emit_event(task_id, PHASE_DOWNLOAD_FAILED, e.code, e.message)
+                return False
+
+            failpoint("after_download")
+
+            # 阶段 B: 解压与 Staging（**在技能根目录内**建 staging：
+            #   与最终目录同一文件系统，rename 才是原子的；也给 A4 的启动清理留了固定扫描位置）
+            try:
+                transaction.skill_root(skill_id, create=True)
+                staging_dir = transaction.new_staging(skill_id)
+                pkg_mgr.unpack_to_staging(download_dest, staging_dir)
+                manifest = pkg_mgr.read_and_validate_manifest(staging_dir)
+            except PackageManagerError as e:
+                self.storage.update_task_status(task_id, STATE_FAILED, e.code, e.message)
+                self.emit_event(task_id, PHASE_FAILED, e.code, e.message)
+                return False
+
+            self.storage.update_task_status(task_id, STATE_STAGED)
+            failpoint("after_unpack")
+
+            # 阶段 C: 适配器 prepare 与环境检查
+            if not self.adapter.prepare(skill_id, version, staging_dir, manifest):
+                self.storage.update_task_status(task_id, STATE_FAILED, "PREPARE_REJECTED", "适配器环境或机型预检拒绝")
+                self.emit_event(task_id, PHASE_FAILED, "PREPARE_REJECTED", "适配器环境或机型预检拒绝")
+                return False
+
+            failpoint("after_verify")
+
+            # 阶段 D: 事务提交（两阶段：先把 staging 换成版本目录，旧版本留作备份）
+            self.storage.update_task_status(task_id, STATE_INSTALLING)
+            self.emit_event(task_id, PHASE_INSTALLING)
+
+            try:
+                with transaction.lock(skill_id):
+                    committed_dir, backup_dir = transaction.begin_commit(
+                        staging_dir, skill_id, version, meta={"package_sha256": got_sha}
+                    )
+                staging_dir = None  # 已被 rename 消耗
+            except PackageManagerError as e:
+                self.storage.update_task_status(task_id, STATE_FAILED, e.code, e.message)
+                self.emit_event(task_id, PHASE_FAILED, e.code, e.message)
+                return False
+
+            # 调用底层适配器正式安装
+            if not self.adapter.install(skill_id, version, committed_dir, manifest):
+                self._abort_install(transaction, task_id, skill_id, committed_dir, backup_dir)
+                self.storage.update_task_status(task_id, STATE_FAILED, "ADAPTER_INSTALL_FAILED", "底层适配器安装失败")
+                self.emit_event(task_id, PHASE_FAILED, "ADAPTER_INSTALL_FAILED", "底层适配器安装失败")
+                return False
+
+            # 阶段 E: 健康探针核验
+            self.storage.update_task_status(task_id, STATE_HEALTH_CHECKING)
+            obs = self.adapter.observe(skill_id)
+            if not obs.get("installed"):
+                self._abort_install(transaction, task_id, skill_id, committed_dir, backup_dir)
+                self.storage.update_task_status(task_id, STATE_FAILED, "OBSERVE_FAILED", "安装后健康观测未通过")
+                self.emit_event(task_id, PHASE_FAILED, "OBSERVE_FAILED", "安装后健康观测未通过")
+                return False
+
+            # 阶段 F: **原子激活**（最后一步，且只写激活指针）
+            #   指针之前的一切都可能失败并被回退；指针一旦落下，设备就"生效"了。
+            meta = transaction.read_install_meta(committed_dir) or {}
+            with transaction.lock(skill_id):
+                transaction.activate(
+                    skill_id,
+                    version,
+                    package_sha256=got_sha,
+                    tree_sha256=meta.get("tree_sha256"),
+                )
+                transaction.finish_commit(backup_dir)
+            backup_dir = None
+
+            # A4.1：激活之后、安装事实落库之前 —— 典型的"文件已生效、记录还没写"窗口。
+            failpoint("after_activate")
+
+            # 更新本地安装事实表与 state/installed.json
+            prev = self.storage.get_installed_skill(skill_id)
+            prev_ver = prev["current_version"] if prev and prev["current_version"] != version else None
+            status_str = "updated" if prev_ver else "installed"
+
+            files = meta.get("files") or []
+            if not files:
+                files = [
+                    os.path.relpath(os.path.join(root, fn), committed_dir)
+                    for root, _, filenames in os.walk(committed_dir)
+                    for fn in filenames
+                    if fn not in (".install-meta.json", ".active.json")
+                ]
+
+            self.storage.save_installed_skill(
+                skill_id=skill_id,
+                current_version=version,
+                previous_version=prev_ver,
+                status=status_str,
+                enabled=True,
+                install_path=committed_dir,
+                package_sha256=got_sha,
+                manifest=manifest,
+                files=files
+            )
+            self.storage.update_task_status(task_id, STATE_COMMITTED)
+
+            # 上报完成
+            self.emit_event(task_id, PHASE_DONE)
+            return True
+        finally:
+            for cleanup_path in (download_dest, staging_dir):
+                if not cleanup_path:
+                    continue
+                try:
+                    if os.path.isdir(cleanup_path):
+                        shutil.rmtree(cleanup_path, ignore_errors=False)
+                    elif os.path.exists(cleanup_path):
+                        os.remove(cleanup_path)
+                except OSError as cleanup_error:
+                    log_event(
+                        "warning",
+                        "agent.staging_cleanup_failed",
+                        task_id=task_id,
+                        did=self.client.did,
+                        model_code=self.adapter.model_code,
+                        error_code="STAGING_CLEANUP_FAILED",
+                        status=str(cleanup_error),
+                    )
+
+    def _abort_install(self, transaction: InstallTransaction, task_id: str, skill_id: str, committed_dir: str, backup_dir: Optional[str]) -> None:
+        """安装失败回退：删半成品、把旧版本目录放回去（A5.5 首装失败不留残骸）。"""
         try:
-            pkg_mgr.unpack_to_staging(download_dest, staging_dir)
-            manifest = pkg_mgr.read_and_validate_manifest(staging_dir)
-        except PackageManagerError as e:
-            self.storage.update_task_status(task_id, STATE_FAILED, e.code, e.message)
-            self.emit_event(task_id, PHASE_FAILED, e.code, e.message)
-            return False
-
-        self.storage.update_task_status(task_id, STATE_STAGED)
-
-        # 阶段 C: 适配器 prepare 与环境检查
-        if not self.adapter.prepare(skill_id, version, staging_dir, manifest):
-            self.storage.update_task_status(task_id, STATE_FAILED, "PREPARE_REJECTED", "适配器环境或机型预检拒绝")
-            self.emit_event(task_id, PHASE_FAILED, "PREPARE_REJECTED", "适配器环境或机型预检拒绝")
-            return False
-
-        # 阶段 D: 事务原子提交与激活
-        self.storage.update_task_status(task_id, STATE_INSTALLING)
-        self.emit_event(task_id, PHASE_INSTALLING)
-
-        final_dir, files = pkg_mgr.commit_staging_to_final(staging_dir, skill_id, version)
-
-        # 调用底层适配器正式安装
-        if not self.adapter.install(skill_id, version, final_dir, manifest):
-            self.storage.update_task_status(task_id, STATE_FAILED, "ADAPTER_INSTALL_FAILED", "底层适配器安装失败")
-            self.emit_event(task_id, PHASE_FAILED, "ADAPTER_INSTALL_FAILED", "底层适配器安装失败")
-            return False
-
-        # 阶段 E: 健康探针核验
-        self.storage.update_task_status(task_id, STATE_HEALTH_CHECKING)
-        obs = self.adapter.observe(skill_id)
-        if not obs.get("installed"):
-            self.storage.update_task_status(task_id, STATE_FAILED, "OBSERVE_FAILED", "安装后健康观测未通过")
-            self.emit_event(task_id, PHASE_FAILED, "OBSERVE_FAILED", "安装后健康观测未通过")
-            return False
-
-        # 更新本地安装事实表与 state/installed.json
-        prev = self.storage.get_installed_skill(skill_id)
-        prev_ver = prev["current_version"] if prev and prev["current_version"] != version else None
-        status_str = "updated" if prev_ver else "installed"
-
-        self.storage.save_installed_skill(
-            skill_id=skill_id,
-            current_version=version,
-            previous_version=prev_ver,
-            status=status_str,
-            enabled=True,
-            install_path=final_dir,
-            package_sha256=got_sha,
-            manifest=manifest,
-            files=files
-        )
-        self.storage.update_task_status(task_id, STATE_COMMITTED)
-
-        # 上报完成
-        self.emit_event(task_id, PHASE_DONE)
-        return True
+            with transaction.lock(skill_id):
+                transaction.abort_commit(committed_dir, backup_dir)
+        except PackageManagerError as error:
+            log_event(
+                "error",
+                "agent.install_abort_failed",
+                task_id=task_id,
+                did=self.client.did,
+                model_code=self.adapter.model_code,
+                error_code=error.code,
+                status=error.message,
+            )
 
     def _handle_rollback(self, task_id: str, skill_id: str, target_version: str, cmd: Dict[str, Any]) -> bool:
         """显式回滚：严格核验恢复目标内容哈希与过期期限（F07）。首装无旧版时安全停用，不报假恢复。"""
@@ -481,35 +976,122 @@ class TaskManager:
             self.emit_event(task_id, PHASE_DONE, "NO_PREVIOUS_VERSION", "首装无良好旧版，已按规则安全停用")
             return True
 
-        restore_dir = os.path.join(self.install_dir, "skills", str(skill_id), "v" + str(restore_ver))
-        if not os.path.isdir(restore_dir):
-            self.emit_event(task_id, PHASE_FAILED, "RESTORE_TARGET_MISSING", f"回滚目标版本 {restore_ver} 本地文件不存在")
-            self.storage.update_task_status(task_id, STATE_FAILED, "RESTORE_TARGET_MISSING", f"回滚目标版本 {restore_ver} 本地文件不存在")
+        # ── A5.3：活动执行未确认停止 ⇒ 拒绝回滚 ────────────────────────────────
+        #   回滚会把"当前生效版本"换掉；若此时还有执行在跑，等于在动作执行途中抽掉它的代码。
+        #   先请求取消，并**独立观测**是否真的停了；观测不到停止就失败退出，绝不"先回滚再说"。
+        for lease in self.storage.get_active_leases_for_skill(skill_id):
+            eid = lease["execution_id"]
+            self.adapter.cancel_execution(eid)
+            obs = self.adapter.observe_execution(eid)
+            if not obs.get("is_stopped"):
+                message = f"执行 {eid} 未能确认安全停止，拒绝回滚"
+                self.storage.update_task_status(task_id, STATE_FAILED, ERR_ROLLBACK_BLOCKED, message)
+                self.emit_event(task_id, PHASE_FAILED, ERR_ROLLBACK_BLOCKED, message)
+                return False
+            self.storage.release_execution_lease(eid)
+
+        # ── A5.4：恢复目标必须匹配 entitlement ─────────────────────────────────
+        #   授权过期/已被撤销的技能不允许通过"回滚"重新变成可执行状态。
+        auth_expires_at = signed.get("authorization_expires_at")
+        if auth_expires_at and int(time.time()) > int(auth_expires_at):
+            message = "技能授权已过期，拒绝回滚到可执行状态"
+            self.storage.update_task_status(task_id, STATE_FAILED, ERR_REVOKED, message)
+            self.emit_event(task_id, PHASE_FAILED, ERR_REVOKED, message)
             return False
 
-        # 核验恢复目标内容哈希（F07）
-        restore_sha256 = signed.get("restore_sha256")
-        if restore_sha256:
-            candidate_files = [os.path.join(restore_dir, "payload"), os.path.join(restore_dir, "package.skill")]
-            target_file = next((f for f in candidate_files if os.path.isfile(f)), None)
-            if target_file:
-                with open(target_file, "rb") as f:
-                    actual_sha = hashlib.sha256(f.read()).hexdigest().lower()
-                if actual_sha != restore_sha256.lower():
-                    self.storage.update_task_status(task_id, STATE_FAILED, ERR_PKG_HASH_MISMATCH, "回滚恢复目标内容哈希与签名 restore_sha256 不符")
-                    self.emit_event(task_id, PHASE_FAILED, ERR_PKG_HASH_MISMATCH, "回滚恢复目标内容哈希与签名 restore_sha256 不符")
+        revocation_epoch = int(signed.get("revocation_epoch") or 0)
+        known_epoch = self.storage.get_revocation_epoch(f"skill:{skill_id}")
+        if revocation_epoch and revocation_epoch < known_epoch:
+            message = "该技能已被更高代次撤销，拒绝回滚到可执行状态"
+            self.storage.update_task_status(task_id, STATE_FAILED, ERR_REVOKED, message)
+            self.emit_event(task_id, PHASE_FAILED, ERR_REVOKED, message)
+            return False
+
+        transaction = InstallTransaction(self.install_dir)
+        restore_sha256 = (signed.get("restore_sha256") or "").lower() or None
+
+        try:
+            with transaction.lock(skill_id):
+                restore_dir = transaction.version_dir(skill_id, restore_ver)
+                if not os.path.isdir(restore_dir) or os.path.islink(restore_dir):
+                    message = f"回滚目标版本 {restore_ver} 本地文件不存在"
+                    self.storage.update_task_status(task_id, STATE_FAILED, "RESTORE_TARGET_MISSING", message)
+                    self.emit_event(task_id, PHASE_FAILED, "RESTORE_TARGET_MISSING", message)
                     return False
-            else:
-                inst = self.storage.get_installed_skill(skill_id)
-                if inst and inst.get("package_sha256") and inst["package_sha256"].lower() != restore_sha256.lower():
-                    self.storage.update_task_status(task_id, STATE_FAILED, ERR_PKG_HASH_MISMATCH, "回滚恢复目标元数据哈希与签名 restore_sha256 不符")
-                    self.emit_event(task_id, PHASE_FAILED, ERR_PKG_HASH_MISMATCH, "回滚恢复目标元数据哈希与签名 restore_sha256 不符")
+
+                meta = transaction.read_install_meta(restore_dir) or {}
+
+                # ① 版本匹配：restore_sha256 比对的是**恢复目标版本**记录的包哈希，
+                #    不是"当前已安装版本"的记录 —— 后者恰好会让回滚通过一个错误的证明。
+                if restore_sha256:
+                    recorded_sha = (meta.get("package_sha256") or "").lower()
+                    if recorded_sha:
+                        if recorded_sha != restore_sha256:
+                            message = f"回滚目标版本 {restore_ver} 记录的包哈希与签名 restore_sha256 不符"
+                            self.storage.update_task_status(task_id, STATE_FAILED, ERR_RESTORE_MISMATCH, message)
+                            self.emit_event(task_id, PHASE_FAILED, ERR_RESTORE_MISMATCH, message)
+                            return False
+                    else:
+                        # 旧安装没有版本元数据：只能在存在裸载体文件时直接对磁盘字节核验，
+                        # 否则无法证明"磁盘内容 = 签名哈希"，按 fail-closed 拒绝。
+                        payload = next(
+                            (p for p in (os.path.join(restore_dir, "payload"), os.path.join(restore_dir, "package.skill")) if os.path.isfile(p)),
+                            None,
+                        )
+                        if payload is None:
+                            message = f"回滚目标版本 {restore_ver} 缺少版本元数据，无法核对 restore_sha256"
+                            self.storage.update_task_status(task_id, STATE_FAILED, ERR_RESTORE_MISMATCH, message)
+                            self.emit_event(task_id, PHASE_FAILED, ERR_RESTORE_MISMATCH, message)
+                            return False
+                        digest = hashlib.sha256()
+                        with open(payload, "rb") as handle:
+                            for chunk in iter(lambda: handle.read(65536), b""):
+                                digest.update(chunk)
+                        if digest.hexdigest().lower() != restore_sha256:
+                            message = "回滚恢复目标内容哈希与签名 restore_sha256 不符"
+                            self.storage.update_task_status(task_id, STATE_FAILED, ERR_RESTORE_MISMATCH, message)
+                            self.emit_event(task_id, PHASE_FAILED, ERR_RESTORE_MISMATCH, message)
+                            return False
+
+                # ② 磁盘内容匹配：重算目录摘要并与安装时记录比对（文件损坏/被替换都会露出来）
+                try:
+                    actual_tree = transaction.verify_tree(restore_dir, meta.get("tree_sha256"))
+                except PackageManagerError as error:
+                    self.storage.update_task_status(task_id, STATE_FAILED, ERR_RESTORE_MISMATCH, error.message)
+                    self.emit_event(task_id, PHASE_FAILED, ERR_RESTORE_MISMATCH, error.message)
                     return False
+
+                # ③ 原子激活：先记下当前指针，适配器回滚失败时放回去
+                previous_active = transaction.read_active(skill_id) or {}
+                transaction.activate(
+                    skill_id,
+                    restore_ver,
+                    package_sha256=meta.get("package_sha256"),
+                    tree_sha256=actual_tree,
+                    reason="rollback",
+                )
+        except PackageManagerError as error:
+            self.storage.update_task_status(task_id, STATE_FAILED, error.code, error.message)
+            self.emit_event(task_id, PHASE_FAILED, error.code, error.message)
+            return False
 
         ok = self.adapter.rollback(skill_id, restore_ver, restore_dir)
         if not ok:
-            self.emit_event(task_id, PHASE_FAILED, "ROLLBACK_FAILED", "底层适配器回滚执行失败")
+            # 适配器失败 ⇒ 激活指针必须回到回滚前的版本，否则"文件没换、指针已换"。
+            with transaction.lock(skill_id):
+                if previous_active.get("version"):
+                    transaction.activate(
+                        skill_id,
+                        str(previous_active["version"]),
+                        package_sha256=previous_active.get("package_sha256"),
+                        tree_sha256=previous_active.get("tree_sha256"),
+                        reason="rollback_failed_restore",
+                    )
+                else:
+                    # 之前没有激活指针（旧安装）：不能留下"指向回滚目标"的新指针。
+                    transaction.deactivate(skill_id)
             self.storage.update_task_status(task_id, STATE_FAILED, "ROLLBACK_FAILED", "底层适配器回滚执行失败")
+            self.emit_event(task_id, PHASE_FAILED, "ROLLBACK_FAILED", "底层适配器回滚执行失败")
             return False
 
         self.storage.save_installed_skill(
@@ -518,7 +1100,8 @@ class TaskManager:
             previous_version=current.get("current_version") if current else None,
             status="rolled_back",
             enabled=True,
-            install_path=restore_dir
+            install_path=restore_dir,
+            package_sha256=meta.get("package_sha256") or (current or {}).get("package_sha256")
         )
         self.storage.update_task_status(task_id, STATE_COMMITTED)
         self.emit_event(task_id, PHASE_DONE)
@@ -587,7 +1170,13 @@ class TaskManager:
                 return False
 
         # 2. 只有在执行确认停止后，才调用适配器卸载
-        skill_dir = os.path.join(self.install_dir, "skills", str(skill_id))
+        transaction = InstallTransaction(self.install_dir)
+        try:
+            skill_dir = transaction.skill_root(skill_id)
+        except PackageManagerError as error:
+            self.storage.update_task_status(task_id, STATE_FAILED, error.code, error.message)
+            self.emit_event(task_id, PHASE_FAILED, error.code, error.message)
+            return False
         uninstalled = self.adapter.uninstall(skill_id, skill_dir)
         if not uninstalled:
             self.emit_event(task_id, PHASE_FAILED, "UNINSTALL_FAILED", "底层适配器卸载失败")
@@ -598,8 +1187,14 @@ class TaskManager:
         for lease in active_leases:
             self.storage.release_execution_lease(lease["execution_id"])
 
-        if os.path.isdir(skill_dir):
-            shutil.rmtree(skill_dir, ignore_errors=True)
+        # 原子卸载：先整体 rename 走（对外瞬间消失），再删除；并发安装会被同一把锁挡住。
+        try:
+            with transaction.lock(skill_id):
+                transaction.uninstall(skill_id)
+        except PackageManagerError as error:
+            self.storage.update_task_status(task_id, STATE_FAILED, error.code, error.message)
+            self.emit_event(task_id, PHASE_FAILED, error.code, error.message)
+            return False
 
         status_val = "expired" if operation == OP_RECLAIM else "uninstalled"
         current = self.storage.get_installed_skill(skill_id)
@@ -620,39 +1215,61 @@ class TaskManager:
     def _handle_execute(self, task_id: str, skill_id: str, cmd: Dict[str, Any]) -> bool:
         signed = cmd.get("signed", {})
         execution_id = signed.get("execution_id") or cmd.get("execution_id") or f"exec_{task_id}"
-        # 严格使用已签名的参数（F05）
         params = signed.get("execution_params", {})
         plan_digest = signed.get("plan_digest")
         version = signed.get("version") or cmd.get("version") or "1.0.0"
 
-        self.emit_event(task_id, PHASE_INSTALLING)
-
-        # 检查持久化执行事实表，保证跨重启幂等，外部启动至多一次（F03）
+        # 跨重启幂等：execution_id 一旦存在，绝不再次调用外部启动接口。
         existing_exec = self.storage.get_execution(execution_id)
         if existing_exec:
             st = existing_exec.get("status")
+            started = bool(existing_exec.get("started_at"))
             if st in ("SUCCEEDED", "COMPLETED"):
                 self.storage.update_task_status(task_id, STATE_COMMITTED)
-                self.emit_event(task_id, PHASE_DONE)
+                self.emit_event(
+                    task_id, PHASE_DONE,
+                    execution_fact=self._execution_fact(execution_id, "SUCCEEDED", True, True),
+                )
                 return True
-            elif st in ("ACCEPTED", "RUNNING"):
+            if st == "UNKNOWN":
+                self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_UNKNOWN", existing_exec.get("error_msg"))
+                self.emit_event(
+                    task_id, "unknown", "EXECUTION_UNKNOWN", existing_exec.get("error_msg"),
+                    execution_fact=self._execution_fact(execution_id, "UNKNOWN", started, False, "EXECUTION_UNKNOWN"),
+                )
+                return True
+            if st in ("ACCEPTED", "RUNNING", "CANCEL_REQUESTED"):
                 obs = self.executor.observe(execution_id)
-                if obs.get("status") == "SUCCEEDED":
+                if obs.get("is_stopped") and obs.get("status") == "SUCCEEDED":
+                    self.storage.update_execution_status(execution_id, "SUCCEEDED")
                     self.storage.update_task_status(task_id, STATE_COMMITTED)
-                    self.emit_event(task_id, PHASE_DONE)
-                    return True
+                    self.emit_event(
+                        task_id, PHASE_DONE,
+                        execution_fact=self._execution_fact(execution_id, "SUCCEEDED", True, True),
+                    )
+                elif obs.get("is_stopped") and obs.get("status") == "CANCELED":
+                    self.storage.update_execution_status(execution_id, "CANCELED")
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(
+                        task_id, "canceled",
+                        execution_fact=self._execution_fact(execution_id, "CANCELED", started, True),
+                    )
                 elif obs.get("is_stopped"):
-                    if obs.get("status") == "FAILED":
-                        self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_FAILED", obs.get("error_msg"))
-                        self.emit_event(task_id, PHASE_FAILED, "EXECUTION_FAILED", obs.get("error_msg"))
-                        return False
+                    self.storage.update_execution_status(execution_id, "FAILED", "EXECUTION_FAILED", obs.get("error_msg"))
+                    self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_FAILED", obs.get("error_msg"))
+                    self.emit_event(
+                        task_id, PHASE_FAILED, "EXECUTION_FAILED", obs.get("error_msg"),
+                        execution_fact=self._execution_fact(execution_id, "FAILED", started, True, "EXECUTION_FAILED"),
+                    )
                 return True
-            elif st == "FAILED":
+            if st == "FAILED":
                 self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_FAILED", existing_exec.get("error_msg"))
-                self.emit_event(task_id, PHASE_FAILED, "EXECUTION_FAILED", existing_exec.get("error_msg"))
+                self.emit_event(
+                    task_id, PHASE_FAILED, "EXECUTION_FAILED", existing_exec.get("error_msg"),
+                    execution_fact=self._execution_fact(execution_id, "FAILED", started, True, "EXECUTION_FAILED"),
+                )
                 return False
 
-        # 记录执行意图（F03）
         self.storage.record_execution(
             execution_id=execution_id,
             task_id=task_id,
@@ -660,31 +1277,53 @@ class TaskManager:
             version=version,
             params=params,
             status="ACCEPTED",
-            plan_digest=plan_digest
+            plan_digest=plan_digest,
+        )
+        self.emit_event(
+            task_id, "accepted",
+            execution_fact=self._execution_fact(execution_id, "ACCEPTED", False, False),
         )
 
         ok, status, err = self.executor.execute(
             execution_id=execution_id,
             skill_id=skill_id,
             plan_digest=plan_digest,
-            params=params
+            params=params,
         )
+        if ok:
+            # A4.1：执行已启动、事实尚未落库 —— 重启后不得再次启动物理动作。
+            failpoint("after_execution_start")
+
         if not ok:
-            self.storage.update_execution_status(execution_id, "FAILED", ERR_EXECUTION_FAILED, err or "启动执行失败")
-            self.storage.update_task_status(task_id, STATE_FAILED, ERR_EXECUTION_FAILED, err or "启动执行失败")
-            self.emit_event(task_id, PHASE_FAILED, ERR_EXECUTION_FAILED, err or "启动执行失败")
+            if status == EXEC_UNKNOWN:
+                self.storage.update_execution_status(execution_id, "UNKNOWN", "EXECUTION_UNKNOWN", err or "执行副作用状态未知")
+                self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_UNKNOWN", err or "执行副作用状态未知")
+                self.emit_event(
+                    task_id, "unknown", "EXECUTION_UNKNOWN", err or "执行副作用状态未知",
+                    execution_fact=self._execution_fact(execution_id, "UNKNOWN", False, False, "EXECUTION_UNKNOWN"),
+                )
+            else:
+                self.storage.update_execution_status(execution_id, "FAILED", ERR_EXECUTION_FAILED, err or "启动执行失败")
+                self.storage.update_task_status(task_id, STATE_FAILED, ERR_EXECUTION_FAILED, err or "启动执行失败")
+                self.emit_event(
+                    task_id, PHASE_FAILED, ERR_EXECUTION_FAILED, err or "启动执行失败",
+                    execution_fact=self._execution_fact(execution_id, "FAILED", False, True, ERR_EXECUTION_FAILED),
+                )
             return False
 
         self.storage.update_execution_status(execution_id, "RUNNING")
+        # RUNNING 是“已观察到外部启动”，不是“动作成功”。
+        self.emit_event(
+            task_id, "running",
+            execution_fact=self._execution_fact(execution_id, "RUNNING", True, False),
+        )
 
-        # 观测执行直到完成或停止
         start_t = time.time()
         raw_deadline = signed.get("execution_deadline")
         if raw_deadline and float(raw_deadline) > 1e9:
             timeout = max(0.5, float(raw_deadline) - time.time())
         else:
             timeout = float(raw_deadline or 30)
-
         timeout = min(timeout, 30.0)
 
         while time.time() - start_t < timeout:
@@ -693,23 +1332,48 @@ class TaskManager:
                 if obs.get("status") == "SUCCEEDED":
                     self.storage.update_execution_status(execution_id, "SUCCEEDED")
                     self.storage.update_task_status(task_id, STATE_COMMITTED)
-                    self.emit_event(task_id, PHASE_DONE)
+                    self.emit_event(
+                        task_id, PHASE_DONE,
+                        execution_fact=self._execution_fact(execution_id, "SUCCEEDED", True, True),
+                    )
                     return True
-                else:
-                    err_msg = obs.get("error_msg") or "执行失败"
-                    self.storage.update_execution_status(execution_id, "FAILED", ERR_EXECUTION_FAILED, err_msg)
-                    self.storage.update_task_status(task_id, STATE_FAILED, ERR_EXECUTION_FAILED, err_msg)
-                    self.emit_event(task_id, PHASE_FAILED, ERR_EXECUTION_FAILED, err_msg)
-                    return False
+                if obs.get("status") == "CANCELED":
+                    self.storage.update_execution_status(execution_id, "CANCELED")
+                    self.storage.update_task_status(task_id, STATE_COMMITTED)
+                    self.emit_event(
+                        task_id, "canceled",
+                        execution_fact=self._execution_fact(execution_id, "CANCELED", True, True),
+                    )
+                    return True
+                err_msg = obs.get("error_msg") or "执行失败"
+                self.storage.update_execution_status(execution_id, "FAILED", ERR_EXECUTION_FAILED, err_msg)
+                self.storage.update_task_status(task_id, STATE_FAILED, ERR_EXECUTION_FAILED, err_msg)
+                self.emit_event(
+                    task_id, PHASE_FAILED, ERR_EXECUTION_FAILED, err_msg,
+                    execution_fact=self._execution_fact(execution_id, "FAILED", True, True, ERR_EXECUTION_FAILED),
+                )
+                return False
             time.sleep(0.01)
 
-        # 超时
-        self.executor.cancel(execution_id)
-        self.storage.update_execution_status(execution_id, "FAILED", "TIMEOUT", "技能执行超时未确认完成")
-        self.storage.update_task_status(task_id, STATE_FAILED, "TIMEOUT", "技能执行超时未确认完成")
-        self.emit_event(task_id, PHASE_FAILED, "TIMEOUT", "技能执行超时未确认完成")
+        # 超时先发取消，再以独立 observe 判定。未确认停止时只能是 UNKNOWN，
+        # 绝不能因墙钟到期把执行写成 FAILED 并释放资源租约。
+        cancel_ok, cancel_status, cancel_err = self.executor.cancel(execution_id)
+        if cancel_ok:
+            self.storage.update_execution_status(execution_id, "FAILED", "TIMEOUT", "技能执行超时且已确认安全停止")
+            self.storage.update_task_status(task_id, STATE_FAILED, "TIMEOUT", "技能执行超时且已确认安全停止")
+            self.emit_event(
+                task_id, PHASE_FAILED, "TIMEOUT", "技能执行超时且已确认安全停止",
+                execution_fact=self._execution_fact(execution_id, "FAILED", True, True, "TIMEOUT"),
+            )
+        else:
+            message = cancel_err or "技能执行超时且未能确认安全停止"
+            self.storage.update_execution_status(execution_id, "UNKNOWN", "EXECUTION_UNKNOWN", message)
+            self.storage.update_task_status(task_id, STATE_FAILED, "EXECUTION_UNKNOWN", message)
+            self.emit_event(
+                task_id, "unknown", "EXECUTION_UNKNOWN", message,
+                execution_fact=self._execution_fact(execution_id, "UNKNOWN", True, False, "EXECUTION_UNKNOWN"),
+            )
         return False
-
     def _handle_cancel_execution(self, task_id: str, cmd: Dict[str, Any]) -> bool:
         signed = cmd.get("signed", {})
         execution_id = signed.get("execution_id") or cmd.get("execution_id")
@@ -717,16 +1381,32 @@ class TaskManager:
             self.emit_event(task_id, PHASE_FAILED, "EXECUTION_ID_MISSING", "取消任务缺少 execution_id")
             return False
 
+        existing = self.storage.get_execution(execution_id) or {}
+        started = bool(existing.get("started_at"))
+        self.storage.update_execution_status(execution_id, "CANCEL_REQUESTED")
+        self.emit_event(
+            task_id, "cancel_requested",
+            execution_fact=self._execution_fact(execution_id, "CANCEL_REQUESTED", started, False),
+        )
+
         ok, status, err = self.executor.cancel(execution_id)
         if ok:
             self.storage.update_execution_status(execution_id, "CANCELED")
             self.storage.update_task_status(task_id, STATE_COMMITTED)
-            self.emit_event(task_id, PHASE_DONE)
+            self.emit_event(
+                task_id, "canceled",
+                execution_fact=self._execution_fact(execution_id, "CANCELED", started, True),
+            )
             return True
-        else:
-            self.emit_event(task_id, PHASE_FAILED, "CANCEL_FAILED", err or "取消执行未能在时限内确认安全停止")
-            return False
 
+        message = err or "取消执行未能在时限内确认安全停止"
+        self.storage.update_execution_status(execution_id, "UNKNOWN", "STOP_UNCONFIRMED", message)
+        self.storage.update_task_status(task_id, STATE_FAILED, "STOP_UNCONFIRMED", message)
+        self.emit_event(
+            task_id, "unknown", "STOP_UNCONFIRMED", message,
+            execution_fact=self._execution_fact(execution_id, "UNKNOWN", started, False, "STOP_UNCONFIRMED"),
+        )
+        return False
     def poll_once(self) -> int:
         """单次轮询：自愈恢复、冲刷积压、拉取指令并处理。返回成功处理的指令数（F04）。"""
         self.resume_recovery()

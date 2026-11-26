@@ -1,0 +1,46 @@
+﻿
+  ..................................猕?.猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CartTest > it should check including tax rate when add a prod鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'楼18.49'
++'楼0.00'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CartTest.php:2555
+    2551鈻?    ]);
+    2552鈻?
+    2553鈻?    $response->assertOk()
+    2554鈻?        ->assertJsonPath('data.cart.id', $cart->id)
+  鉃?2555鈻?        ->assertJsonPath('data.cart.formatted_tax_total', core()->formatPrice($inclTax))
+    2556鈻?        ->assertJsonPath('data.cart.formatted_sub_total_incl_tax', core()->formatPrice($product->price))
+    2557鈻?        ->assertJsonPath('data.cart.formatted_grand_total', core()->formatPrice($product->price))
+    2558鈻?        ->assertJsonPath('data.cart.formatted_sub_total', core()->formatPrice($product->price - $inclTax))
+    2559鈻?        ->assertJsonPath('data.cart.items.0.id', $cart->items->first()->id)
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Checkout\CartTest > it should check excluding tax rate when add a prod鈥?  
+  Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'楼10.99'
++'楼0.00'
+
+  at packages\Webkul\Shop\tests\Feature\Checkout\CartTest.php:2863
+    2859鈻?        'postcode' => '123456',
+    2860鈻?    ])
+    2861鈻?        ->assertOk()
+    2862鈻?        ->assertJsonPath('data.cart.id', $cart->id)
+  鉃?2863鈻?        ->assertJsonPath('data.cart.formatted_tax_total', core()->formatPrice($exclTax))
+    2864鈻?        ->assertJsonPath('data.cart.formatted_sub_total_incl_tax', core()->formatPrice($product->price + $exclTax))
+    2865鈻?        ->assertJsonPath('data.cart.formatted_grand_total', core()->formatPrice($product->price + $exclTax))
+    2866鈻?        ->assertJsonPath('data.cart.formatted_sub_total', core()->formatPrice($product->price))
+    2867鈻?        ->assertJsonPath('data.cart.items.0.id', $cart->items->first()->id)
+
+
+  Tests:    2 failed, 36 passed (462 assertions)
+  Duration: 50.91s
+

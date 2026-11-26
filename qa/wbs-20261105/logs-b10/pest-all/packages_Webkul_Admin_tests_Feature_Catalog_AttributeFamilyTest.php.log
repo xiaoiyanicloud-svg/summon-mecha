@@ -1,0 +1,40 @@
+﻿
+  ........猕ǒ
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest > it should delete the existing attribute鈥?  
+  Expected: {"message":"\u6210\u529f\u5220\u9664\u5bb6\u65cf\u3002"}
+
+  To contain: 鎴愬姛鍒犻櫎瀹舵棌銆?
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest.php:141
+    137鈻?    $this->loginAsAdmin();
+    138鈻?
+    139鈻?    deleteJson(route('admin.catalog.families.delete', $attributeFamily->id))
+    140鈻?        ->assertOk()
+  鉃?141鈻?        ->assertSeeText(trans('admin::app.catalog.families.delete-success'));
+    142鈻?
+    143鈻?    $this->assertDatabaseMissing('attribute_families', [
+    144鈻?        'id' => $attributeFamily->id,
+    145鈻?    ]);
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest > it should not be able to delete the att鈥?  
+  Expected: {"message":"\u81f3\u5c11\u9700\u8981\u4e00\u4e2a\u5bb6\u65cf\u3002"}
+
+  To contain: 鑷冲皯闇€瑕佷竴涓鏃忋€?
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeFamilyTest.php:154
+    150鈻?    $this->loginAsAdmin();
+    151鈻?
+    152鈻?    deleteJson(route('admin.catalog.families.delete', $attributeFamilyId = 1))
+    153鈻?        ->assertBadRequest()
+  鉃?154鈻?        ->assertSeeText(trans('admin::app.catalog.families.last-delete-error'));
+    155鈻?
+    156鈻?    $this->assertModelWise([
+    157鈻?        AttributeFamilyModel::class => [
+    158鈻?            [
+
+
+  Tests:    2 failed, 8 passed (29 assertions)
+  Duration: 5.18s
+

@@ -1,0 +1,23 @@
+﻿
+  .⨯.....
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\PackageIntegrityTest > it 换包后重新提审 → 新指纹落进 L0/L2 → 发布成功         
+  Failed asserting that an array contains 5199.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\PackageIntegrityTest.php:333
+    329▕     expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+    330▕         ->and($res->json('data.status'))->toBe(SkillVersion::STATUS_PUBLISHED);
+    331▕ 
+    332▕     // 发布 = 真上架：市场搜得到
+  ➜ 333▕     expect(pkgSearchIds($name))->toContain($productId);
+    334▕ });
+    335▕ 
+    336▕ // ==================== 3 · 已发布版本不许换包 ====================
+    337▕
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\PackageIntegrityTest.php:333
+
+
+  Tests:    1 failed, 6 passed (66 assertions)
+  Duration: 6.55s
+

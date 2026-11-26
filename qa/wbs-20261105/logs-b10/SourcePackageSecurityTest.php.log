@@ -1,0 +1,22 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\SourcePackageSecurityTest
+  ✓ it B4-01 合法源包照常编译成功，产物资产登记且盘上存在                                                                              0.84s  
+  ✓ it B4-02 源包含 ../ 穿越条目 → 拒绝，码 SOURCE_PACKAGE_UNSAFE_ENTRY                                                     0.20s  
+  ✓ it B4-03 源包含绝对路径条目 → 拒绝                                                                                      0.21s  
+  ✓ it B4-04 源包含反斜杠条目 → 拒绝（Windows 路径语义穿越）                                                                       0.19s  
+  ✓ it B4-05 源包含盘符条目 → 拒绝                                                                                        0.20s  
+  ✓ it B4-06 源包含 a/./b 与双斜杠条目 → 拒绝（非规范路径）                                                                        0.27s  
+  ✓ it B4-07 源包含 Unix 符号链接条目 → 拒绝，码 SOURCE_PACKAGE_SYMLINK_ENTRY                                                 0.22s  
+  ✓ it B4-08 源包自带 artifact.json（想顶替产物元数据）→ 拒绝，码 SOURCE_PACKAGE_RESERVED_ENTRY                                    0.17s  
+  ✓ it B4-09 源素材与生成文件同名（action.py）→ 打包阶段拒绝，不登记任何产物资产                                                             0.24s  
+  ✓ it B4-10 条目数超预算 → 拒绝                                                                                         0.22s  
+  ✓ it B4-11 解压总大小超预算 → 拒绝                                                                                       0.24s  
+  ✓ it B4-12 高压缩比条目（压缩炸弹）→ 拒绝，码 SOURCE_PACKAGE_BOMB                                                              0.22s  
+  ✓ it B4-13 压缩包本体超预算 → 打开之前就拒绝                                                                                  0.23s  
+  ✓ it B4-14 缺少入口 XML → 拒绝，码 SOURCE_PACKAGE_ENTRYPOINT_MISSING                                                   0.18s  
+  ✓ it B4-15 清单声明非法入口路径（../）→ 拒绝，码 SOURCE_PACKAGE_ENTRYPOINT_INVALID                                             0.20s  
+  ✓ it B4-16 SkillBuildService 把源包拒绝如实记为 failed，且不存在任何产物资产                                                       0.21s  
+
+  Tests:    16 passed (41 assertions)
+  Duration: 4.28s
+

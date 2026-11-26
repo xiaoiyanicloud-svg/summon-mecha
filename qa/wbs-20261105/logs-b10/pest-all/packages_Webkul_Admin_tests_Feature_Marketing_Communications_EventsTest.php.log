@@ -1,0 +1,55 @@
+﻿
+  ..猕?.猕ǒ
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest > it should store the newly creat鈥?  
+  Expected: {"message":"\u4e8b\u4ef6\u521b\u5efa\u6210\u529f"}
+
+  To contain: 浜嬩欢鍒涘缓鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest.php:41
+     37鈻?        'description' => substr(fake()->paragraph(), 0, 50),
+     38鈻?        'date'        => fake()->date(),
+     39鈻?    ]))
+     40鈻?        ->assertOk()
+  鉃? 41鈻?        ->assertSeeText(trans('admin::app.marketing.communications.events.index.create.success'));
+     42鈻?
+     43鈻?    $this->assertModelWise([
+     44鈻?        Event::class => [
+     45鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest > it should update the existing t鈥?  
+  Expected: {"message":"\u4e8b\u4ef6\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 浜嬩欢鏇存柊鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest.php:94
+     90鈻?        'description' => $description = substr(fake()->paragraph(), 0, 50),
+     91鈻?        'date'        => $date = fake()->date(),
+     92鈻?    ])
+     93鈻?        ->assertOk()
+  鉃? 94鈻?        ->assertSeeText(trans('admin::app.marketing.communications.events.index.edit.success'));
+     95鈻?
+     96鈻?    $this->assertModelWise([
+     97鈻?        Event::class => [
+     98鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest > it should delete the specified鈥?   
+  Expected: {"message":"\u4e8b\u4ef6\u5220\u9664\u6210\u529f"}
+
+  To contain: 浜嬩欢鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Communications\EventsTest.php:117
+    113鈻?    $this->loginAsAdmin();
+    114鈻?
+    115鈻?    deleteJson(route('admin.marketing.communications.events.delete', $event->id))
+    116鈻?        ->assertOk()
+  鉃?117鈻?        ->assertSeeText(trans('admin::app.marketing.communications.events.delete-success'));
+    118鈻?});
+    119鈻?
+
+
+  Tests:    3 failed, 4 passed (24 assertions)
+  Duration: 4.44s
+

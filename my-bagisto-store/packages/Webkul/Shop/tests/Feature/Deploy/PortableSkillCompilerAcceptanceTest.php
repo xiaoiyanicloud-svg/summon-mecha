@@ -8,6 +8,7 @@ use Webkul\Shop\Models\SkillBuildRun;
 use Webkul\Shop\Models\SkillTargetRelease;
 use Webkul\Shop\Models\SkillVersion;
 use Webkul\Shop\Services\Deploy\SigningService;
+use Webkul\Shop\Services\SkillCompile\BuildCommand;
 use Webkul\Shop\Services\SkillCompile\Builders\PortableSkillBuilder;
 use Webkul\Shop\Services\SkillCompile\Portable\CapabilityResolver;
 use Webkul\Shop\Services\SkillCompile\Portable\MotionTranscoder;
@@ -17,6 +18,7 @@ use Webkul\Shop\Services\SkillCompile\Portable\SourceParser;
 use Webkul\Shop\Services\SkillCompile\Portable\TargetAppBuilder;
 use Webkul\Shop\Services\SkillCompile\Portable\TargetProfileService;
 use Webkul\Shop\Services\SkillCompile\SkillBuildService;
+use Webkul\Shop\Services\SkillCompile\SkillTargetReleaseService;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryAssetResolver;
 
 /**
@@ -62,6 +64,19 @@ function testSampleXml(): string
     <Sequence name="greeting_sequence">
       <Action ID="SM_GestureWave" name="wave_right_3" hand="right" cycles="3" timeout_ms="12000"/>
       <Action ID="SM_AudioPlay" name="welcome_audio" asset="assets/welcome.wav" wait="true" timeout_ms="6000"/>
+    </Sequence>
+  </BehaviorTree>
+</root>
+XML;
+}
+
+function testWaitXml(): string
+{
+    return <<<'XML'
+<root BTCPP_format="4" main_tree_to_execute="WaitOnly">
+  <BehaviorTree ID="WaitOnly">
+    <Sequence name="wait_sequence">
+      <Action ID="SM_Wait" name="bounded_wait" duration_ms="1000" timeout_ms="1500"/>
     </Sequence>
   </BehaviorTree>
 </root>
@@ -126,12 +141,33 @@ function testRunPythonScript(string $pyCode, string $workDir): array
 {
     $scriptFile = $workDir . DIRECTORY_SEPARATOR . 'test_runner_' . uniqid() . '.py';
     file_put_contents($scriptFile, $pyCode);
-    $cmd = 'py ' . escapeshellarg($scriptFile);
-    $output = [];
-    $code = 0;
-    exec($cmd, $output, $code);
+
+    $python = getenv('ZHJJ_PYTHON_BIN') ?: null;
+    if (! $python || ! is_file($python)) {
+        @unlink($scriptFile);
+        throw new RuntimeException('ZHJJ_PYTHON_BIN must point to the approved Python 3.12 interpreter');
+    }
+
+    $pipes = [];
+    $process = proc_open(
+        [$python, $scriptFile],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $pipes,
+        $workDir,
+    );
+    if (! is_resource($process)) {
+        @unlink($scriptFile);
+        throw new RuntimeException('Unable to start the approved Python interpreter');
+    }
+
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $code = proc_close($process);
     @unlink($scriptFile);
-    return [$code, implode("\n", $output)];
+
+    return [$code, trim($stdout . "\n" . $stderr)];
 }
 
 // ── C-T01 ~ C-T24 逐项验收 ──────────────────────────────────────────────────
@@ -307,11 +343,30 @@ it('C-T09: 编译完整源，解压归档并实际运行入口 -> 无 modelCode 
 
     $traceFile = $tmpDir . DIRECTORY_SEPARATOR . 'trace.jsonl';
     $py = <<<PY
-import os, sys
-os.environ['ZHJJ_BROKER_LOG_PATH'] = r"{$traceFile}"
+import json, sys, threading
 sys.path.insert(0, r"{$tmpDir}")
 import action
-res = action.run()
+
+class Stub:
+    def execute_gesture(self, hand, cycles, timeout_ms, context):
+        with open(r"{$traceFile}", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"event": "gesture_wave", "hand": hand, "cycles": cycles}) + chr(10))
+        return {"status": "SUCCEEDED", "stopped": True, "hand": hand, "cycles": cycles}
+
+    def play_audio(self, asset, wait, timeout_ms, context):
+        with open(r"{$traceFile}", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"event": "audio_play", "asset": asset}) + chr(10))
+        return {"status": "SUCCEEDED", "stopped": True, "asset": asset}
+
+class Ctx:
+    stub = Stub()
+    execution_id = "ct09"
+    execution_params = {}
+    cancel_event = threading.Event()
+    def is_canceled(self):
+        return self.cancel_event.is_set()
+
+res = action.run(context=Ctx())
 print(res['status'])
 PY;
 
@@ -366,19 +421,19 @@ it('C-T11: 两个品牌 binding 使用相同完整源 -> source_digest 一致但
     testAssertDatabase();
     $version = testMakeVersion();
     $manifest = testSampleManifest();
-    testCreateSourceAsset($version->id, $manifest, testSampleXml(), [
+    testCreateSourceAsset($version->id, $manifest, testWaitXml(), [
         'assets/welcome.wav' => 'AUDIO_FOR_BOTH_TARGETS',
     ]);
 
     $builder = app(PortableSkillBuilder::class);
     $resG1 = $builder->build($version->id, $manifest, 'unitree_g1');
-    $resA2 = $builder->build($version->id, $manifest, 'agibot_a2');
+    $resX2 = $builder->build($version->id, $manifest, 'agibot_x2');
 
     expect($resG1->status)->toBe('success');
-    expect($resA2->status)->toBe('success');
+    expect($resX2->status)->toBe('success');
 
-    expect($resG1->retargetConf['source_digest'])->toBe($resA2->retargetConf['source_digest']);
-    expect($resG1->retargetConf['artifact_sha256'])->not->toBe($resA2->retargetConf['artifact_sha256']);
+    expect($resG1->retargetConf['source_digest'])->toBe($resX2->retargetConf['source_digest']);
+    expect($resG1->retargetConf['artifact_sha256'])->not->toBe($resX2->retargetConf['artifact_sha256']);
 });
 
 it('C-T12: 长节点取消 -> 确认终态才释放资源', function () {
@@ -416,7 +471,7 @@ PY;
     expect($output)->toContain('CANCELED');
 });
 
-it('C-T13: 只有 G1 成品，请求 A2 或显式其他目标 asset_id -> 拒绝', function () {
+it('C-T13: 只有 G1 成品，请求 X2 或显式其他目标 asset_id -> 拒绝', function () {
     testAssertDatabase();
     $version = testMakeVersion();
     $manifest = testSampleManifest();
@@ -435,11 +490,11 @@ it('C-T13: 只有 G1 成品，请求 A2 或显式其他目标 asset_id -> 拒绝
 
     $resolver = app(SkillDeliveryAssetResolver::class);
 
-    // 1. 请求未构建的 agibot_a2 -> 必须为 null
-    expect($resolver->resolveForVersion($version->id, modelCode: 'agibot_a2'))->toBeNull();
+    // 1. 请求未构建的 agibot_x2 -> 必须为 null
+    expect($resolver->resolveForVersion($version->id, modelCode: 'agibot_x2'))->toBeNull();
 
-    // 2. 试图通过显式传 G1 的 asset_id 请求 A2 交付 -> 必须拒绝 (null)
-    expect($resolver->resolveForVersion($version->id, modelCode: 'agibot_a2', assetId: $assetG1->id))->toBeNull();
+    // 2. 试图通过显式传 G1 的 asset_id 请求 X2 交付 -> 必须拒绝 (null)
+    expect($resolver->resolveForVersion($version->id, modelCode: 'agibot_x2', assetId: $assetG1->id))->toBeNull();
 });
 
 it('C-T14: 未审目标成品 / 已撤销目标 -> 不可交付，历史构建事实保留', function () {
@@ -473,7 +528,7 @@ it('C-T15: 补新目标须独立审核，旧审核与旧成品身份不变', fun
     testAssertDatabase();
     $version = testMakeVersion();
     $manifest = testSampleManifest();
-    testCreateSourceAsset($version->id, $manifest, testSampleXml(), [
+    testCreateSourceAsset($version->id, $manifest, testWaitXml(), [
         'assets/welcome.wav' => 'AUDIO_BYTES',
     ]);
 
@@ -484,14 +539,14 @@ it('C-T15: 补新目标须独立审核，旧审核与旧成品身份不变', fun
         ->first();
     $releaseG1->update(['review_status' => SkillTargetRelease::STATUS_APPROVED]);
 
-    // 为该版本新增 agibot_a2 目标
-    $resA2 = $builder->build($version->id, $manifest, 'agibot_a2');
-    $releaseA2 = SkillTargetRelease::where('skill_version_id', $version->id)
-        ->where('target_model_code', 'agibot_a2')
+    // 为该版本新增 agibot_x2 目标
+    $resX2 = $builder->build($version->id, $manifest, 'agibot_x2');
+    $releaseX2 = SkillTargetRelease::where('skill_version_id', $version->id)
+        ->where('target_model_code', 'agibot_x2')
         ->first();
 
-    // A2 独立处于 pending，不影响 G1 的 approved 状态
-    expect($releaseA2->review_status)->toBe(SkillTargetRelease::STATUS_PENDING);
+    // X2 独立处于 pending，不影响 G1 的 approved 状态
+    expect($releaseX2->review_status)->toBe(SkillTargetRelease::STATUS_PENDING);
     expect($releaseG1->fresh()->review_status)->toBe(SkillTargetRelease::STATUS_APPROVED);
 });
 
@@ -535,7 +590,26 @@ it('C-T17: 固定输入在两个干净环境无缓存重建 -> 最终字节 SHA-
     sleep(1); // 间隔一秒确保若存在动态时间戳必能检测出差异
     $res2 = $builder->build($version2->id, $manifest, 'unitree_g1');
 
-    expect($res1->retargetConf['artifact_sha256'])->toBe($res2->retargetConf['artifact_sha256']);
+    $hash1 = (string) $res1->retargetConf['artifact_sha256'];
+    $hash2 = (string) $res2->retargetConf['artifact_sha256'];
+    expect($hash1)->toBe($hash2);
+
+    $evidenceDir = dirname(base_path()) . DIRECTORY_SEPARATOR . 'qa' . DIRECTORY_SEPARATOR . 'ga';
+    if (! is_dir($evidenceDir)) {
+        mkdir($evidenceDir, 0777, true);
+    }
+    file_put_contents(
+        $evidenceDir . DIRECTORY_SEPARATOR . 'ct17_deterministic_build_result.json',
+        json_encode([
+            'evidence_level' => 'SOFTWARE_BUILD_DETERMINISM',
+            'php_version' => PHP_VERSION,
+            'artifact_sha256_run_1' => $hash1,
+            'artifact_sha256_run_2' => $hash2,
+            'byte_identical' => $hash1 === $hash2,
+            'run_1_build_key' => $res1->buildKey,
+            'run_2_build_key' => $res2->buildKey,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL
+    );
 });
 
 it('C-T18: 修改源素材内容 -> 对应构建身份与哈希改变', function () {
@@ -687,4 +761,149 @@ it('C-T24: 关闭新构建/新安装时，取消与事实补报依然可达', fu
     // 验证状态隔离：即便无可用构建或无可用产物，取消请求与状态对账依然能够正常响应
     $resolver = app(SkillDeliveryAssetResolver::class);
     expect($resolver->resolveForVersion(999999, modelCode: 'unitree_g1'))->toBeNull();
+});
+
+it('C-T25: 同一标准源分别构建五个 GA 目标，A2 不再是默认目标', function () {
+    testAssertDatabase();
+    $version = testMakeVersion();
+    $manifest = testSampleManifest();
+    testCreateSourceAsset($version->id, $manifest, testWaitXml(), [
+        'assets/welcome.wav' => 'FIVE_TARGET_AUDIO',
+    ]);
+
+    $builder = app(PortableSkillBuilder::class);
+    $models = ['unitree_g1', 'unitree_r1', 'agibot_x2', 'agibot_a3', 'engineai_t800'];
+    $hashes = [];
+
+    foreach ($models as $modelCode) {
+        $result = $builder->build($version->id, $manifest, $modelCode);
+        expect($result->status)->toBe('success');
+        expect($result->targetModelCode)->toBe($modelCode);
+        expect($result->targetProfileDigest)->toStartWith('sha256:');
+        expect($result->buildKey)->toStartWith('bk_');
+        $hashes[$modelCode] = $result->packageSha256;
+    }
+
+    expect(array_values(array_unique($hashes)))->toHaveCount(5);
+    expect(app(TargetProfileService::class)->getProfile('agibot_a2'))->toBeNull();
+    expect($builder->build($version->id, $manifest, 'agibot_a2')->status)->toBe('failed');
+});
+
+it('C-T26: 目标审核服务校验产物快照与 Profile 摘要，并留不可变审计事件', function () {
+    testAssertDatabase();
+    $version = testMakeVersion();
+    $manifest = testSampleManifest();
+    testCreateSourceAsset($version->id, $manifest, testSampleXml(), [
+        'assets/welcome.wav' => 'RELEASE_AUDIT_AUDIO',
+    ]);
+
+    $builder = app(PortableSkillBuilder::class);
+    $result = $builder->build($version->id, $manifest, 'unitree_g1');
+    $release = SkillTargetRelease::where('skill_version_id', $version->id)
+        ->where('target_model_code', 'unitree_g1')
+        ->firstOrFail();
+
+    $service = app(SkillTargetReleaseService::class);
+    $approved = $service->approve($release->id, 42);
+
+    expect($approved->review_status)->toBe(SkillTargetRelease::STATUS_APPROVED);
+    expect($approved->target_profile_digest)->toBe($result->targetProfileDigest);
+    expect(DB::table('skill_target_release_events')
+        ->where('target_model_code', 'unitree_g1')
+        ->where('event_type', 'approved')
+        ->where('actor_id', 42)
+        ->exists())->toBeTrue();
+
+    $release->target_profile_digest = 'sha256:'.str_repeat('f', 64);
+    $release->save();
+
+    expect(fn () => $service->approve($release->id, 43))
+        ->toThrow(DomainException::class, 'TARGET_PROFILE_DIGEST_STALE');
+
+    $revoked = $service->revoke($release->fresh()->id, 44, 'HIL evidence withdrawn');
+    expect($revoked->review_status)->toBe(SkillTargetRelease::STATUS_REVOKED);
+});
+it('C-T27: 运动型技能在未知厂商物理限值下 fail-closed，仅 G1 ground-truth 可构建', function () {
+    testAssertDatabase();
+    $version = testMakeVersion();
+    $manifest = testSampleManifest();
+    testCreateSourceAsset($version->id, $manifest, testSampleXml(), [
+        'assets/welcome.wav' => 'MOTION_LIMIT_AUDIO',
+    ]);
+
+    $builder = app(PortableSkillBuilder::class);
+    $g1 = $builder->build($version->id, $manifest, 'unitree_g1');
+    expect($g1->status)->toBe('success');
+
+    foreach (['unitree_r1', 'agibot_x2', 'agibot_a3', 'engineai_t800'] as $modelCode) {
+        $result = $builder->build($version->id, $manifest, $modelCode);
+        expect($result->status)->toBe('failed');
+        expect((string) $result->error)->toContain('PHYSICAL_LIMITS_UNRESOLVED');
+    }
+});
+it('C-T28: 强类型 BuildCommand 入口核对源/Profile 摘要，陈旧输入不进入 builder', function () {
+    testAssertDatabase();
+    $version = testMakeVersion();
+    $manifest = testSampleManifest(['permissions' => []]);
+    $source = testCreateSourceAsset($version->id, $manifest, testWaitXml());
+
+    $command = new BuildCommand(
+        skillVersionId: $version->id,
+        sourceAssetId: $source->id,
+        sourceDigest: 'sha256:'.$source->file_hash,
+        targetModelCode: 'unitree_g1',
+        targetProfileDigest: app(TargetProfileService::class)->getDigest('unitree_g1'),
+        compilerVersion: 'portable-compiler/v1',
+        idempotencyKey: 'build-command-1',
+        requestedBy: 'qa',
+        sellerId: 7,
+    );
+
+    $result = app(SkillBuildService::class)->compileWithCommand($command, $manifest);
+    expect($result->status)->toBe('success');
+    expect($result->targetModelCode)->toBe('unitree_g1');
+
+    $stale = new BuildCommand(
+        skillVersionId: $version->id,
+        sourceAssetId: $source->id,
+        sourceDigest: 'sha256:'.str_repeat('0', 64),
+        targetModelCode: 'unitree_g1',
+        targetProfileDigest: app(TargetProfileService::class)->getDigest('unitree_g1'),
+        compilerVersion: 'portable-compiler/v1',
+        idempotencyKey: 'build-command-2',
+        requestedBy: 'qa',
+        sellerId: 7,
+    );
+
+    $failed = app(SkillBuildService::class)->compileWithCommand($stale, $manifest);
+    expect($failed->status)->toBe('failed');
+    expect($failed->errorCode)->toBe('BUILD_SOURCE_DIGEST_STALE');
+
+    $profileStale = new BuildCommand(
+        skillVersionId: $version->id,
+        sourceAssetId: $source->id,
+        sourceDigest: 'sha256:'.$source->file_hash,
+        targetModelCode: 'unitree_g1',
+        targetProfileDigest: 'sha256:'.str_repeat('1', 64),
+        compilerVersion: 'portable-compiler/v1',
+        idempotencyKey: 'build-command-3',
+        requestedBy: 'qa',
+        sellerId: 7,
+    );
+    expect(app(SkillBuildService::class)->compileWithCommand($profileStale, $manifest)->errorCode)
+        ->toBe('BUILD_PROFILE_DIGEST_STALE');
+
+    $a2 = new BuildCommand(
+        skillVersionId: $version->id,
+        sourceAssetId: $source->id,
+        sourceDigest: 'sha256:'.$source->file_hash,
+        targetModelCode: 'agibot_a2',
+        targetProfileDigest: 'sha256:'.str_repeat('2', 64),
+        compilerVersion: 'portable-compiler/v1',
+        idempotencyKey: 'build-command-4',
+        requestedBy: 'qa',
+        sellerId: 7,
+    );
+    expect(app(SkillBuildService::class)->compileWithCommand($a2, $manifest)->errorCode)
+        ->toBe('BUILD_TARGET_NOT_GA');
 });

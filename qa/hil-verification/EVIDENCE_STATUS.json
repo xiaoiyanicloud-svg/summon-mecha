@@ -1,0 +1,15 @@
+{
+  "evidence_status": "INVALID_NON_HIL",
+  "report_path": "qa/hil-verification/hil_safety_report.json",
+  "report_sha256": "0f3e64d2f68e4b86d974b8b15ca10dbead15790a23b4ae7018541c2b6dc6eeda",
+  "source_path": "qa/hil-verification/verify_hil_safety_interlock.py",
+  "source_sha256": "0d004bd621ddfe5d7c5177ba42586cdca6888d8b749eddbe41416cc0c4f3c7ae",
+  "reason": "Implementation is MockHardwareSafetyInterlock with hard-coded 12.5ms; no independent sensor log, hardware serial, firmware, operator, or replayable physical observation.",
+  "must_not_be_used_for": [
+    "HIL",
+    "L1",
+    "Production Ready",
+    "five-model GA"
+  ],
+  "superseding_audit": "qa/ga/claim_audit_result.json"
+}

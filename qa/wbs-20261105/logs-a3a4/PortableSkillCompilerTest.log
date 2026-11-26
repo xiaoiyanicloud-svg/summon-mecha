@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\PortableSkillCompilerTest
+  ✓ it TargetProfileService 能够加载各机型 Profile 并计算规范化 JCS 摘要                                                        1.22s  
+  ✓ it PortableSourceValidator 严格校验清单格式与行为树 XML 白名单及安全边界                                                         0.21s  
+  ✓ it SourceParser 正确将 BehaviorTree XML4 转换为结构化 IR 与不可变摘要                                                       0.16s  
+  ✓ it MotionTranscoder 为 Unitree G1 生成平滑且在物理限位内的关节轨迹                                                            0.23s  
+  ✓ it PortableSkillBuilder 成功编译标准源为 Unitree G1 目标成品并打通交付解析                                                      0.41s  
+
+  Tests:    5 passed (5116 assertions)
+  Duration: 2.59s
+
+

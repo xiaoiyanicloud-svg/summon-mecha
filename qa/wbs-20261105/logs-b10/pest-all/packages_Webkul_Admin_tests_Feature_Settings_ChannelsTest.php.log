@@ -1,0 +1,120 @@
+﻿
+  .....猕?猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest > it should fail the validation with errors whe鈥?  
+  Failed to find a validation error in the response for key: 'en.name'
+
+Response has the following JSON validation errors:
+
+{
+    "code": [
+        "code 瀛楁鏄繀濉殑銆?
+    ],
+    "zh_CN.name": [
+        "zh  c n.name 瀛楁鏄繀濉殑銆?
+    ],
+    "inventory_sources": [
+        "inventory sources 瀛楁鏄繀濉殑銆?
+    ],
+    "root_category_id": [
+        "root category id 瀛楁鏄繀濉殑銆?
+    ],
+    "locales": [
+        "locales 瀛楁鏄繀濉殑銆?
+    ],
+    "default_locale_id": [
+        "default locale id 瀛楁鏄繀濉殑銆?
+    ],
+    "currencies": [
+        "currencies 瀛楁鏄繀濉殑銆?
+    ],
+    "base_currency_id": [
+        "base currency id 瀛楁鏄繀濉殑銆?
+    ],
+    "zh_CN.seo_title": [
+        "zh  c n.seo title 瀛楁鏄繀濉殑銆?
+    ],
+    "zh_CN.seo_description": [
+        "zh  c n.seo description 瀛楁鏄繀濉殑銆?
+    ],
+    "zh_CN.seo_keywords": [
+        "zh  c n.seo keywords 瀛楁鏄繀濉殑銆?
+    ]
+}
+
+Failed asserting that an array has the key 'en.name'.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "code 瀛楁鏄繀濉殑銆?(and 10 more errors)",
+    "errors": {
+        "code": [
+            "code 瀛楁鏄繀濉殑銆?
+        ],
+        "zh_CN.name": [
+            "zh  c n.name 瀛楁鏄繀濉殑銆?
+        ],
+        "inventory_sources": [
+            "inventory sources 瀛楁鏄繀濉殑銆?
+        ],
+        "root_category_id": [
+            "root category id 瀛楁鏄繀濉殑銆?
+        ],
+        "locales": [
+            "locales 瀛楁鏄繀濉殑銆?
+        ],
+        "default_locale_id": [
+            "default locale id 瀛楁鏄繀濉殑銆?
+        ],
+        "currencies": [
+            "currencies 瀛楁鏄繀濉殑銆?
+        ],
+        "base_currency_id": [
+            "base currency id 瀛楁鏄繀濉殑銆?
+        ],
+        "zh_CN.seo_title": [
+            "zh  c n.seo title 瀛楁鏄繀濉殑銆?
+        ],
+        "zh_CN.seo_description": [
+            "zh  c n.seo description 瀛楁鏄繀濉殑銆?
+        ],
+        "zh_CN.seo_keywords": [
+            "zh  c n.seo keywords 瀛楁鏄繀濉殑銆?
+        ]
+    }
+}
+
+  at packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest.php:116
+    112鈻?    $this->loginAsAdmin();
+    113鈻?
+    114鈻?    putJson(route('admin.settings.channels.update', $channel->id))
+    115鈻?        ->assertJsonValidationErrorFor('code')
+  鉃?116鈻?        ->assertJsonValidationErrorFor('en.name')
+    117鈻?        ->assertJsonValidationErrorFor('en.seo_title')
+    118鈻?        ->assertJsonValidationErrorFor('en.seo_description')
+    119鈻?        ->assertJsonValidationErrorFor('en.seo_keywords')
+    120鈻?        ->assertJsonValidationErrorFor('inventory_sources')
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest > it should delete the existing channel            
+  Expected: {"message":"\u6e20\u9053\u5220\u9664\u6210\u529f\u3002"}
+
+  To contain: 娓犻亾鍒犻櫎鎴愬姛銆?
+
+  at packages\Webkul\Admin\tests\Feature\Settings\ChannelsTest.php:182
+    178鈻?    $this->loginAsAdmin();
+    179鈻?
+    180鈻?    deleteJson(route('admin.settings.channels.delete', $channel->id))
+    181鈻?        ->assertOk()
+  鉃?182鈻?        ->assertSeeText(trans('admin::app.settings.channels.index.delete-success'));
+    183鈻?
+    184鈻?    $this->assertDatabaseMissing('channels', ['id' => $channel->id]);
+    185鈻?});
+    186鈻?
+
+
+  Tests:    2 failed, 6 passed (31 assertions)
+  Duration: 4.08s
+

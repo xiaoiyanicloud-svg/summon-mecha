@@ -1,0 +1,15 @@
+﻿python.exe : ..{"timestamp":"2026-11-05T04:23:23Z","level":"INFO","service":"zhjj-agent","env":"production","event":"ag
+ent.execution_fact","correlation_id":"T_OUTBOX","task_id":"T_OUTBOX","execution_id":"exec_outbox","build_key":null,"did
+":"did_v3_outbox","vendor":null,"model_code":"mock","operation":null,"status":"done","attempt":null,"duration_ms":null,
+"error_code":null}
+At line:4 char:1
++ & $py -m unittest tests.test_fact_envelope_v3 tests.test_crypto *>&1  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (..{"timestamp":...ror_code":null}:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+......
+----------------------------------------------------------------------
+Ran 8 tests in 0.424s
+
+OK

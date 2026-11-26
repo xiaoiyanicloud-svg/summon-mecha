@@ -1,0 +1,3776 @@
+﻿
+  ....猕?....猕?..
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\HomePageTest > it should returns the home page of the store               
+  Expected: \n
+\n
+\n
+\n
+\n
+\n
+    \n
+\n
+        \n
+\n
+        婕旂ず鍟嗗簵\n
+\n
+        \n
+\n
+        \n
+        \n
+\n
+        \n
+        \n
+        \n
+        \n
+\n
+            \n
+\n
+    \n
+\n
+    \n
+\n
+        \n
+\n
+        \n
+        \n
+\n
+        \n
+\n
+        \n
+\n
+        \n
+\n
+                                \n
+                            .home-offer h1 {display: block;font-weight: 500;text-align: center;font-size: 22px;font-family: DM Serif Display;background-color: #E8EDFE;padding-top: 20px;padding-bottom: 20px;}@media (max-width:768px){.home-offer h1 {font-size:18px;padding-top: 10px;padding-bottom: 10px;}@media (max-width:525px) {.home-offer h1 {font-size:14px;padding-top: 6px;padding-bottom: 6px;}}\n
+                        \n
+                                            \n
+                            .top-collection-container {overflow: hidden;}.top-collection-header {padding-left: 15px;padding-right: 15px;text-align: center;font-size: 70px;line-height: 90px;color: #060C3B;margin-top: 80px;}.top-collection-header h2 {max-width: 595px;margin-left: auto;margin-right: auto;font-family: DM Serif Display;}.top-collection-grid {display: flex;flex-wrap: wrap;gap: 32px;justify-content: center;margin-top: 60px;width: 100%;margin-right: auto;margin-left: auto;padding-right: 90px;padding-left: 90px;}.top-collection-card {position: relative;background: #f9fafb;overflow:hidden;border-radius:20px;}.top-collection-card img {border-radius: 16px;max-width: 100%;text-indent:-9999px;transition: transform 300ms ease;transform: scale(1);}.top-collection-card:hover img {transform: scale(1.05);transition: all 300ms ease;}.top-collection-card h3 {color: #060C3B;font-size: 30px;font-family: DM Serif Display;transform: translateX(-50%);width: max-content;left: 50%;bottom: 30px;position: absolute;margin: 0;font-weight: inherit;}@media not all and (min-width: 525px) {.top-collection-header {margin-top: 28px;font-size: 20px;line-height: 1.5;}.top-collection-grid {gap: 10px}}@media not all and (min-width: 768px) {.top-collection-header {margin-top: 30px;font-size: 28px;line-height: 3;}.top-collection-header h2 {line-height:2; margin-bottom:20px;} .top-collection-grid {gap: 14px}} @media not all and (min-width: 1024px) {.top-collection-grid {padding-left: 30px;padding-right: 30px;}}@media (max-width: 768px) {.top-collection-grid { row-gap:15px; column-gap:0px;justify-content: space-between;margin-top: 0px;} .top-collection-card{width:48%} .top-collection-card img {width:100%;} .top-collection-card h3 {font-size:24px; bottom: 16px;}}@media (max-width:520px) { .top-collection-grid{padding-left: 15px;padding-right: 15px;} .top-collection-card h3 {font-size:18px; bottom: 10px;}}\n
+                        \n
+                                            \n
+                            .section-gap{margin-top:80px}.direction-ltr{direction:ltr}.direction-rtl{direction:rtl}.inline-col-wrapper{display:grid;grid-template-columns:auto 1fr;grid-gap:60px;align-items:center}.inline-col-wrapper .inline-col-image-wrapper{overflow:hidden}.inline-col-wrapper .inline-col-image-wrapper img{max-width:100%;height:auto;border-radius:16px;text-indent:-9999px}.inline-col-wrapper .inline-col-content-wrapper{display:flex;flex-wrap:wrap;gap:20px;max-width:464px}.inline-col-wrapper .inline-col-content-wrapper .inline-col-title{max-width:442px;font-size:60px;font-weight:400;color:#060c3b;line-height:70px;font-family:DM Serif Display;margin:0}.inline-col-wrapper .inline-col-content-wrapper .inline-col-description{margin:0;font-size:18px;color:#6e6e6e;font-family:Poppins}@media (max-width:991px){.inline-col-wrapper{grid-template-columns:1fr;grid-gap:16px}.inline-col-wrapper .inline-col-content-wrapper{gap:10px}} @media (max-width:768px){.inline-col-wrapper .inline-col-image-wrapper img {width:100%;} .inline-col-wrapper .inline-col-content-wrapper .inline-col-title{font-size:28px !important;line-height:normal !important}} @media (max-width:525px){.inline-col-wrapper .inline-col-content-wrapper .inline-col-title{font-size:20px !important;} .inline-col-description{font-size:16px} .inline-col-wrapper{grid-gap:10px}}\n
+                        \n
+                                            \n
+                            .section-game {overflow: hidden;}.section-title,.section-title h2{font-weight:400;font-family:DM Serif Display}.section-title{margin-top:80px;padding-left:15px;padding-right:15px;text-align:center;line-height:90px}.section-title h2{font-size:70px;color:#060c3b;max-width:595px;margin:auto}.collection-card-wrapper{display:flex;flex-wrap:wrap;justify-content:center;gap:30px}.collection-card-wrapper .single-collection-card{position:relative}.collection-card-wrapper .single-collection-card img{border-radius:16px;background-color:#f5f5f5;max-width:100%;height:auto;text-indent:-9999px}.collection-card-wrapper .single-collection-card .overlay-text{font-size:50px;font-weight:400;max-width:234px;font-style:italic;color:#060c3b;font-family:DM Serif Display;position:absolute;bottom:30px;left:30px;margin:0}@media (max-width:1024px){.section-title{padding:0 30px}}@media (max-width:991px){.collection-card-wrapper{flex-wrap:wrap}}@media (max-width:768px) {.collection-card-wrapper .single-collection-card .overlay-text{font-size:32px; bottom:20px}.section-title{margin-top:32px}.section-title h2{font-size:28px;line-height:normal}} @media (max-width:525px){.collection-card-wrapper .single-collection-card .overlay-text{font-size:18px; bottom:10px} .section-title{margin-top:28px}.section-title h2{font-size:20px;} .collection-card-wrapper{gap:10px; 15px; row-gap:15px; column-gap:0px;justify-content: space-between;margin-top: 15px;} .collection-card-wrapper .single-collection-card {width:48%;}}\n
+                        \n
+                                            \n
+                            .section-gap{margin-top:80px}.direction-ltr{direction:ltr}.direction-rtl{direction:rtl}.inline-col-wrapper{display:grid;grid-template-columns:auto 1fr;grid-gap:60px;align-items:center}.inline-col-wrapper .inline-col-image-wrapper{overflow:hidden}.inline-col-wrapper .inline-col-image-wrapper img{max-width:100%;height:auto;border-radius:16px;text-indent:-9999px}.inline-col-wrapper .inline-col-content-wrapper{display:flex;flex-wrap:wrap;gap:20px;max-width:464px}.inline-col-wrapper .inline-col-content-wrapper .inline-col-title{max-width:442px;font-size:60px;font-weight:400;color:#060c3b;line-height:70px;font-family:DM Serif Display;margin:0}.inline-col-wrapper .inline-col-content-wrapper .inline-col-description{margin:0;font-size:18px;color:#6e6e6e;font-family:Poppins}@media (max-width:991px){.inline-col-wrapper{grid-template-columns:1fr;grid-gap:16px}.inline-col-wrapper .inline-col-content-wrapper{gap:10px}}@media (max-width:768px) {.inline-col-wrapper .inline-col-image-wrapper img {max-width:100%;}.inline-col-wrapper .inline-col-content-wrapper{max-width:100%;justify-content:center; text-align:center} .section-gap{padding:0 30px; gap:20px;margin-top:24px} .bold-collections{margin-top:32px;}} @media (max-width:525px){.inline-col-wrapper .inline-col-content-wrapper{gap:10px} .inline-col-wrapper .inline-col-content-wrapper .inline-col-title{font-size:20px;line-height:normal} .section-gap{padding:0 15px; gap:15px;margin-top:10px} .bold-collections{margin-top:28px;}  .inline-col-description{font-size:16px !important} .inline-col-wrapper{grid-gap:15px}\n
+                        \n
+                    \n
+        \n
+            \n
+        \n
+\n
+                    \n
+                {"prerender":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"account"}},{"not":{"href_matches":"checkout"}},{"not":{"href_matches":"onepage"}},{"not":{"href_matches":"cart"}}]},"eagerness":"moderate"}]}            \n
+        \n
+        \n
+\n
+    \n
+\n
+    \n
+        \n
+\n
+        \n
+            Skip to main content\n
+        \n
+\n
+        \n
+        \n
+            \n
+            \n
+\n
+\n
+            \n
+            \n
+\n
+\n
+            \n
+                            \n
+    \n
+        \n
+        \n
+            \n
+                \n
+                \n
+                    \n
+                    \n
+                    \n
+\n
+                    \n
+                    \n
+                        \n
+                        \n
+\n
+                        \n
+                        \n
+\n
+                        \n
+                        \n
+                    \n
+                \n
+\n
+                \n
+                \n
+                    \n
+                    \n
+                        \n
+                        \n
+                    \n
+\n
+                    \n
+                    \n
+                        \n
+                        \n
+                        \n
+\n
+                        \n
+                        \n
+                        \n
+\n
+                        \n
+                        \n
+                        \n
+                    \n
+                \n
+            \n
+        \n
+\n
+        \n
+        \n
+            \n
+                \n
+                \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                \n
+\n
+                \n
+                \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                    \n
+                \n
+            \n
+\n
+            \n
+            \n
+                \n
+                    \n
+                    \n
+                \n
+            \n
+        \n
+    \n
+\n
+\n
+\n
+\n
+            \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+     \n
+    \n
+            \n
+        \n
+                        \n
+                \n
+    \n
+        \n
+    \n
+\n
+\n
+\n
+                            \n
+        \n
+                        \n
+                                                    \n
+                \n
+                                    绗竴浠借鍗曞彲浜彈楂樿揪 40% 鐨勬姌鎵?鐜板湪璐拱\n
+                \n
+                            \n
+        \n
+                        \n
+                \n
+    \n
+    \n
+        \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                    \n
+\n
+        \n
+\n
+        \n
+    \n
+\n
+\n
+\n
+\n
+                            \n
+        \n
+                        \n
+                \n
+    \n
+    \n
+        \n
+\n
+        \n
+            \n
+\n
+            \n
+        \n
+\n
+        \n
+    \n
+\n
+    \n
+        \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+\n
+            \n
+    \n
+\n
+\n
+\n
+                            \n
+        \n
+                        \n
+                                                    \n
+                \n
+                                    娓告垙鏂板浜嗘垜浠殑鏂板唴瀹癸紒鎴戜滑鐨勭郴鍒楁垜浠殑绯诲垪鎴戜滑鐨勭郴鍒楁垜浠殑绯诲垪鎴戜滑鐨勭郴鍒楁垜浠殑绯诲垪\n
+                \n
+                            \n
+        \n
+                        \n
+                                                    \n
+                \n
+                                           鍑嗗濂借繋鎺ユ垜浠叏鏂扮殑澶ц儐绯诲垪鍚э紒  闅嗛噸鎺ㄥ嚭鎴戜滑澶ц儐鐨勬柊绯诲垪锛侀€氳繃澶ц儐鐨勮璁″拰鍏呮弧娲诲姏鐨勫瑷€鎻愬崌鎮ㄧ殑椋庢牸銆傛帰绱㈠紩浜烘敞鐩殑鍥炬鍜屽ぇ鑳嗙殑鑹插僵锛岄噸鏂板畾涔夋偍鐨勮。鏌溿€傚噯澶囧ソ鎷ユ姳闈炲嚒鍚э紒 鏌ョ湅鏀惰棌   \n
+                \n
+                            \n
+        \n
+                        \n
+                \n
+    \n
+    \n
+        \n
+\n
+        \n
+            \n
+\n
+            \n
+        \n
+\n
+        \n
+    \n
+\n
+    \n
+        \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+\n
+            \n
+    \n
+\n
+\n
+\n
+                            \n
+        \n
+                        \n
+                                                    \n
+                \n
+                                     娓告垙鏂板浜嗘垜浠殑鏂板唴瀹癸紒      鎴戜滑鐨勭郴鍒?    鎴戜滑鐨勭郴鍒?    \n
+                \n
+                            \n
+        \n
+                        \n
+                \n
+    \n
+    \n
+        \n
+\n
+        \n
+            \n
+\n
+            \n
+        \n
+\n
+        \n
+    \n
+\n
+    \n
+        \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+\n
+            \n
+    \n
+\n
+\n
+\n
+                            \n
+        \n
+                        \n
+                                                    \n
+                \n
+                                           鍑嗗濂借繋鎺ユ垜浠叏鏂扮殑澶ц儐绯诲垪鍚э紒  闅嗛噸鎺ㄥ嚭鎴戜滑澶ц儐鐨勬柊绯诲垪锛侀€氳繃澶ц儐鐨勮璁″拰鍏呮弧娲诲姏鐨勫瑷€鎻愬崌鎮ㄧ殑椋庢牸銆傛帰绱㈠紩浜烘敞鐩殑鍥炬鍜屽ぇ鑳嗙殑鑹插僵锛岄噸鏂板畾涔夋偍鐨勮。鏌溿€傚噯澶囧ソ鎷ユ姳闈炲嚒鍚э紒 鏌ョ湅鏀惰棌   \n
+                \n
+                            \n
+        \n
+                    \n
+        \n
+            \n
+\n
+            \n
+\n
+\n
+            \n
+                            \n
+\n
+\n
+\n
+    \n
+        \n
+                            \n
+                    \n
+\n
+                    \n
+                        \n
+                        鍏嶈垂閫佽揣\n
+\n
+                        \n
+                        \n
+                            鎵€鏈夎鍗曞潎鍙韩鍙楀厤璐归€佽揣\n
+                        \n
+                    \n
+                \n
+                            \n
+                    \n
+\n
+                    \n
+                        \n
+                        浜у搧鏇存崲\n
+\n
+                        \n
+                        \n
+                            鍙交鏉炬洿鎹骇鍝侊紒\n
+                        \n
+                    \n
+                \n
+                            \n
+                    \n
+\n
+                    \n
+                        \n
+                        EMI 鍙敤\n
+\n
+                        \n
+                        \n
+                            鎵€鏈変富瑕佷俊鐢ㄥ崱鍧囧彲鍏嶈垂浣跨敤 EMI\n
+                        \n
+                    \n
+                \n
+                            \n
+                    \n
+\n
+                    \n
+                        \n
+                        24/7 鏀寔\n
+\n
+                        \n
+                        \n
+                            涓撻棬鐨?24/7 鏀寔锛岄€氳繃鑱婂ぉ鍜岀數瀛愰偖浠舵彁渚沑n
+                        \n
+                    \n
+                \n
+                    \n
+    \n
+\n
+            \n
+            \n
+                            \n
+\n
+\n
+\n
+\n
+    \n
+        \n
+        \n
+                                                \n
+                        \n
+                                                    \n
+                                \n
+                                    鍏充簬鎴戜滑\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    鑱旂郴鎴戜滑\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    瀹㈡埛鏈嶅姟\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    浠€涔堟槸鏂扮殑\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    浣跨敤鏉℃\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    鏉℃鍙婃潯浠禱n
+                                \n
+                            \n
+                                            \n
+                                    \n
+                        \n
+                                                    \n
+                                \n
+                                    闅愮鏀跨瓥\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    浠樻鏀跨瓥\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    杩愯緭鏀跨瓥\n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    閫€娆炬斂绛朶n
+                                \n
+                            \n
+                                                    \n
+                                \n
+                                    閫€璐ф斂绛朶n
+                                \n
+                            \n
+                                            \n
+                                    \n
+\n
+        \n
+        \n
+    \n
+                    \n
+                \n
+                    椤佃剼鍐呭\n
+\n
+                    \n
+                \n
+            \n
+        \n
+                    \n
+                \n
+                    \n
+                            \n
+                                                            \n
+                                    \n
+                                        鍏充簬鎴戜滑\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        鑱旂郴鎴戜滑\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        瀹㈡埛鏈嶅姟\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        浠€涔堟槸鏂扮殑\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        浣跨敤鏉℃\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        鏉℃鍙婃潯浠禱n
+                                    \n
+                                \n
+                                                    \n
+                                            \n
+                            \n
+                                                            \n
+                                    \n
+                                        闅愮鏀跨瓥\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        浠樻鏀跨瓥\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        杩愯緭鏀跨瓥\n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        閫€娆炬斂绛朶n
+                                    \n
+                                \n
+                                                            \n
+                                    \n
+                                        閫€璐ф斂绛朶n
+                                    \n
+                                \n
+                                                    \n
+                \n
+            \n
+            \n
+\n
+\n
+\n
+        \n
+\n
+        \n
+                    \n
+                \n
+                    鍑嗗濂芥垜浠湁瓒ｇ殑鏂伴椈閫氳锛?               \n
+\n
+                \n
+                    璁㈤槄浠ヤ繚鎸佽仈绯汇€?               \n
+\n
+                \n
+                    \n
+    \n
+    \n
+    \n
+                            \n
+        \n
+        \n
+                            \n
+            \n
+        \n
+            \n
+                            \n
+    \n
+    \n
+\n
+    \n
+                            \n
+                                璁㈤槄                            \n
+                        \n
+    \n
+                \n
+            \n
+        \n
+        \n
+    \n
+\n
+    \n
+        \n
+\n
+        \n
+            漏 鐗堟潈鎵€鏈?2010 - 2026锛學ebkul Software锛堝嵃搴︽敞鍐岋級銆備繚鐣欐墍鏈夋潈鍒┿€?       \n
+\n
+        \n
+    \n
+\n
+\n
+\n
+                    \n
+\n
+        \n
+    .path-hint {\n
+        border: solid 1px transparent;\n
+        padding: 1px;\n
+    }\n
+\n
+    .path-hint:hover {\n
+        border: 1px solid red;\n
+    }\n
+\n
+    .path-hint-tooltip {\n
+        padding: 0px 10px;\n
+        position: absolute;\n
+        background: #000000;\n
+        z-index: 10000;\n
+        color: #fff;\n
+        font-size: 10px;\n
+    }\n
+\n
+    .path-hint-tooltip h4 {\n
+        margin-top: 5px;\n
+        margin-bottom: 3px;\n
+        color: #fff;\n
+        font-size: 12px;\n
+    }\n
+\n
+    .path-hint-tooltip ul li {\n
+        margin-bottom: 3px;\n
+    }\n
+\n
+    .main-container-wrapper .product-card .product-image img {\n
+        max-width: 100%;\n
+        height: 260px;\n
+        object-fit: cover;\n
+    }\n
+\n
+\n
+\n
+            \n
+        localStorage.setItem('categories', JSON.stringify([]));\n
+    \n
+    \n
+        \n
+        \n
+\n
+        \n
+\n
+        \n
+    \n
+\n
+    \n
+        app.component('v-shimmer-image', {\n
+            template: '#v-shimmer-image-template',\n
+\n
+            props: {\n
+                lazy: {\n
+                    type: Boolean,\n
+                    default: true,\n
+                },\n
+\n
+                src: {\n
+                    type: String,\n
+                    default: '',\n
+                },\n
+            },\n
+\n
+            data() {\n
+                return {\n
+                    isLoading: true,\n
+                };\n
+            },\n
+\n
+            mounted() {\n
+                let self = this;\n
+\n
+                if (! this.lazy) {\n
+                    return;\n
+                }\n
+\n
+                let lazyImageObserver = new IntersectionObserver(function(entries, observer) {\n
+                    entries.forEach(function(entry) {\n
+                        if (entry.isIntersecting) {\n
+                            let lazyImage = document.getElementById('image-' + self.$.uid);\n
+\n
+                            lazyImage.src = lazyImage.dataset.src;\n
+\n
+                            lazyImageObserver.unobserve(lazyImage);\n
+                        }\n
+                    });\n
+                });\n
+\n
+                lazyImageObserver.observe(document.getElementById('image-shimmer-' + this.$.uid));\n
+            },\n
+\n
+            methods: {\n
+                onLoad() {\n
+                    this.isLoading = false;\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+        \n
+            \n
+                \n
+\n
+                \n
+                \n
+                    \n
+    \n
+\n
+\n
+                \n
+\n
+                \n
+\n
+                \n
+                \n
+\n
+                                    \n
+\n
+\n
+                \n
+                \n
+\n
+                \n
+                    \n
+                    \n
+                        鐗瑰崠                    \n
+\n
+                    \n
+                    \n
+                        鏂板搧                    \n
+\n
+                    \n
+\n
+                        \n
+\n
+                                                    \n
+                            \n
+                        \n
+                        \n
+\n
+                        \n
+\n
+                                                    \n
+                            \n
+                        \n
+                        \n
+\n
+                    \n
+                \n
+            \n
+\n
+            \n
+            \n
+\n
+                \n
+\n
+                \n
+                    {{ product.name }}\n
+                \n
+\n
+                \n
+\n
+                \n
+                \n
+\n
+                \n
+                \n
+\n
+                \n
+\n
+                \n
+                \n
+                                            \n
+\n
+                        \n
+                            娣诲姞鍒拌喘鐗╄溅                        \n
+\n
+                        \n
+                    \n
+                    \n
+\n
+                                            \n
+                        \n
+                    \n
+                    \n
+\n
+                    \n
+\n
+                                            \n
+                        \n
+                    \n
+                    \n
+                \n
+            \n
+        \n
+\n
+        \n
+        \n
+            \n
+\n
+                \n
+\n
+                \n
+                    \n
+    \n
+\n
+\n
+                \n
+\n
+                \n
+\n
+                \n
+                    \n
+                        鐗瑰崠                    \n
+\n
+                    \n
+                        鏂板搧                    \n
+\n
+                    \n
+\n
+                        \n
+\n
+                                                    \n
+                            \n
+                        \n
+                        \n
+\n
+                        \n
+\n
+                                                    \n
+                            \n
+                        \n
+                        \n
+                    \n
+                \n
+            \n
+\n
+            \n
+\n
+                \n
+\n
+                \n
+                    {{ product.name }}\n
+                \n
+\n
+                \n
+\n
+                \n
+\n
+                \n
+                \n
+\n
+                \n
+\n
+                \n
+                \n
+                    \n
+                    \n
+\n
+                    \n
+                    \n
+                \n
+\n
+                \n
+\n
+                \n
+                    \n
+                        \n
+                            鎴愪负绗竴涓瘎浠疯繖涓骇鍝佺殑浜?                       \n
+                    \n
+\n
+                    \n
+                                                    \n
+\n
+\n
+                                            \n
+                \n
+\n
+                \n
+\n
+                \n
+                    \n
+\n
+                    \n
+\n
+\n
+                    \n
+\n
+                            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-product-card', {\n
+            template: '#v-product-card-template',\n
+\n
+            props: ['mode', 'product'],\n
+\n
+            data() {\n
+                return {\n
+                    isCustomer: '',\n
+\n
+                    isAddingToCart: false,\n
+                }\n
+            },\n
+\n
+            methods: {\n
+                addToWishlist() {\n
+                    if (this.isCustomer) {\n
+                        this.$axios.post(`http://localhost/api/customer/wishlist`, {\n
+                                product_id: this.product.id\n
+                            })\n
+                            .then(response => {\n
+                                this.product.is_wishlist = ! this.product.is_wishlist;\n
+\n
+                                this.$emitter.emit('add-flash', { type: 'success', message: response.data.data.message });\n
+                            })\n
+                            .catch(error => {});\n
+                        } else {\n
+                            window.location.href = "http://localhost/customer/login";\n
+                        }\n
+                },\n
+\n
+                addToCompare(productId) {\n
+                    /**\n
+                     * This will handle for customers.\n
+                     */\n
+                    if (this.isCustomer) {\n
+                        this.$axios.post('http://localhost/api/compare-items', {\n
+                                'product_id': productId\n
+                            })\n
+                            .then(response => {\n
+                                this.$emitter.emit('add-flash', { type: 'success', message: response.data.data.message });\n
+                            })\n
+                            .catch(error => {\n
+                                if ([400, 422].includes(error.response.status)) {\n
+                                    this.$emitter.emit('add-flash', { type: 'warning', message: error.response.data.data.message });\n
+\n
+                                    return;\n
+                                }\n
+\n
+                                this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message});\n
+                            });\n
+\n
+                        return;\n
+                    }\n
+\n
+                    /**\n
+                     * This will handle for guests.\n
+                     */\n
+                    let items = this.getStorageValue() ?? [];\n
+\n
+                    if (items.length) {\n
+                        if (! items.includes(productId)) {\n
+                            items.push(productId);\n
+\n
+                            localStorage.setItem('compare_items', JSON.stringify(items));\n
+\n
+                            this.$emitter.emit('add-flash', { type: 'success', message: "鍟嗗搧宸叉垚鍔熸坊鍔犲埌姣旇緝鍒楄〃銆? });\n
+                        } else {\n
+                            this.$emitter.emit('add-flash', { type: 'warning', message: "鍟嗗搧宸茬粡鍦ㄦ瘮杈冨垪琛ㄤ腑銆? });\n
+                        }\n
+                    } else {\n
+                        localStorage.setItem('compare_items', JSON.stringify([productId]));\n
+\n
+                        this.$emitter.emit('add-flash', { type: 'success', message: "鍟嗗搧宸叉垚鍔熸坊鍔犲埌姣旇緝鍒楄〃銆? });\n
+\n
+                    }\n
+                },\n
+\n
+                getStorageValue(key) {\n
+                    let value = localStorage.getItem('compare_items');\n
+\n
+                    if (! value) {\n
+                        return [];\n
+                    }\n
+\n
+                    return JSON.parse(value);\n
+                },\n
+\n
+                addToCart() {\n
+                    this.isAddingToCart = true;\n
+\n
+                    this.$axios.post('http://localhost/api/checkout/cart', {\n
+                            'quantity': 1,\n
+                            'product_id': this.product.id,\n
+                        })\n
+                        .then(response => {\n
+                            if (response.data.message) {\n
+                                this.$emitter.emit('update-mini-cart', response.data.data );\n
+\n
+                                this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });\n
+                            } else {\n
+                                this.$emitter.emit('add-flash', { type: 'warning', message: response.data.data.message });\n
+                            }\n
+\n
+                            this.isAddingToCart = false;\n
+                        })\n
+                        .catch(error => {\n
+                            this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });\n
+\n
+                            if (error.response.data.redirect_uri) {\n
+                                window.location.href = error.response.data.redirect_uri;\n
+                            }\n
+\n
+                            this.isAddingToCart = false;\n
+                        });\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+    \n
+        \n
+            \n
+\n
+        \n
+\n
+        \n
+            \n
+\n
+        \n
+    \n
+\n
+    \n
+        app.component('v-flash-group', {\n
+            template: '#v-flash-group-template',\n
+\n
+            data() {\n
+                return {\n
+                    uid: 0,\n
+\n
+                    flashes: []\n
+                }\n
+            },\n
+\n
+            created() {\n
+                this.loadInitialFlashes();\n
+\n
+                this.registerGlobalEvents();\n
+            },\n
+\n
+            methods: {\n
+                loadInitialFlashes() {\n
+                                            let flashes = [];\n
+                    \n
+                    if (typeof(flashes) === 'string') {\n
+                        return;\n
+                    }\n
+                    \n
+                    flashes.forEach(flash => {\n
+                        flash.uid = this.uid++;\n
+\n
+                        this.flashes.push(flash);\n
+                    });\n
+                },\n
+\n
+                add(flash) {\n
+                    flash.uid = this.uid++;\n
+\n
+                    this.flashes.push(flash);\n
+                },\n
+\n
+                remove(flash) {\n
+                    let index = this.flashes.indexOf(flash);\n
+\n
+                    this.flashes.splice(index, 1);\n
+                },\n
+\n
+                registerGlobalEvents() {\n
+                    this.$emitter.on('add-flash', this.add);\n
+                },\n
+            }\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+                \n
+            \n
+\n
+            \n
+                \n
+                    \n
+                        \n
+                            \n
+                                \n
+                                    \n
+                                        \n
+                                    \n
+                                \n
+\n
+                                \n
+                                    \n
+                                        {{ title }}\n
+                                    \n
+\n
+                                    \n
+                                        {{ message }}\n
+                                    \n
+\n
+                                    \n
+                                        \n
+                                            {{ options.btnDisagree }}\n
+                                        \n
+\n
+                                        \n
+                                            {{ options.btnAgree }} \n
+                                        \n
+                                    \n
+                                \n
+                            \n
+                        \n
+                    \n
+                \n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-modal-confirm', {\n
+            template: '#v-modal-confirm-template',\n
+\n
+            data() {\n
+                return {\n
+                    isOpen: false,\n
+\n
+                    title: '',\n
+\n
+                    message: '',\n
+\n
+                    options: {\n
+                        btnDisagree: '',\n
+                        btnAgree: '',\n
+                    },\n
+\n
+                    agreeCallback: null,\n
+\n
+                    disagreeCallback: null,\n
+                };\n
+            },\n
+\n
+            created() {\n
+                this.registerGlobalEvents();\n
+            },\n
+\n
+            methods: {\n
+                open({\n
+                    title = "鎮ㄧ‘瀹氬悧锛?,\n
+                    message = "鎮ㄧ‘瀹氳鎵ц姝ゆ搷浣滃悧锛?,\n
+                    options = {\n
+                        btnDisagree: "涓嶅悓鎰?,\n
+                        btnAgree: "鍚屾剰",\n
+                    },\n
+                    agree = () => {},\n
+                    disagree = () => {},\n
+                }) {\n
+                    this.isOpen = true;\n
+\n
+                    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;\n
+\n
+                    document.body.style.overflow = 'hidden';\n
+\n
+                    document.body.style.paddingRight = `${scrollbarWidth}px`;\n
+\n
+                    this.title = title;\n
+\n
+                    this.message = message;\n
+\n
+                    this.options = options;\n
+\n
+                    this.agreeCallback = agree;\n
+\n
+                    this.disagreeCallback = disagree;\n
+                },\n
+\n
+                disagree() {\n
+                    this.isOpen = false;\n
+\n
+                    document.body.style.overflow = 'auto';\n
+\n
+                    document.body.style.paddingRight = '';\n
+\n
+                    this.disagreeCallback();\n
+                },\n
+\n
+                agree() {\n
+                    this.isOpen = false;\n
+\n
+                    document.body.style.overflow = 'auto';\n
+\n
+                    document.body.style.paddingRight = '';\n
+\n
+                    this.agreeCallback();\n
+                },\n
+\n
+                registerGlobalEvents() {\n
+                    this.$emitter.on('open-confirm-modal', this.open);\n
+                },\n
+            }\n
+        });\n
+    \n
+    \n
+        \n
+        \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-header-switcher', {\n
+            template: '#v-header-switcher-template',\n
+\n
+            data() {\n
+                return {\n
+                    isDesktop: window.innerWidth >= 1024\n
+                }\n
+            },\n
+\n
+            mounted() {\n
+                this.media = window.matchMedia('(min-width: 1024px)');\n
+\n
+                this.media.addEventListener('change', this.handleMedia);\n
+            },\n
+\n
+            beforeUnmount() {\n
+                this.media.removeEventListener('change', this.handleMedia);\n
+            },\n
+\n
+            methods: {\n
+                handleMedia(e) {\n
+                    this.isDesktop = e.matches;\n
+                }\n
+            }\n
+        });\n
+\n
+        app.component('v-desktop-header', {\n
+            template: '#v-desktop-header-template'\n
+        });\n
+\n
+        app.component('v-mobile-header', {\n
+            template: '#v-mobile-header-template'\n
+        });\n
+    \n
+\n
+    \n
+        \n
+    \n
+    \n
+    \n
+    \n
+        \n
+\n
+        \n
+            \n
+        \n
+\n
+        \n
+\n
+        \n
+\n
+        \n
+            \n
+                \n
+\n
+                \n
+\n
+                \n
+            \n
+        \n
+\n
+        \n
+    \n
+\n
+    \n
+    \n
+\n
+        \n
+\n
+        \n
+        \n
+            \n
+                \n
+                    鎼滅储                \n
+\n
+                \n
+\n
+                \n
+\n
+                \n
+                \n
+\n
+                                    \n
+    \n
+    \n
+\n
+\n
+                            \n
+        \n
+\n
+        \n
+\n
+        \n
+        \n
+\n
+            \n
+\n
+            \n
+                            \n
+                    \n
+                \n
+            \n
+            \n
+\n
+            \n
+\n
+            \n
+                            \n
+\n
+    \n
+\n
+\n
+            \n
+            \n
+\n
+            \n
+\n
+            \n
+            \n
+            \n
+\n
+        \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                            \n
+                                娆㈣繋璁块棶鑰?                           \n
+\n
+                            \n
+                                绠＄悊璐墿杞︺€佽鍗曞拰鎰挎湜娓呭崟                            \n
+                        \n
+\n
+                        \n
+\n
+                        \n
+\n
+                        \n
+                            \n
+\n
+                            \n
+                                鐧诲綍                            \n
+\n
+                            \n
+                                娉ㄥ唽                            \n
+\n
+                            \n
+                        \n
+            \n
+        \n
+    \n
+    \n
+\n
+\n
+            \n
+        \n
+    \n
+\n
+\n
+\n
+\n
+    \n
+\n
+    \n
+        \n
+\n
+\n
+    \n
+        \n
+        \n
+            \n
+\n
+            \n
+            \n
+\n
+            \n
+\n
+            \n
+\n
+            \n
+                \n
+            \n
+\n
+            \n
+        \n
+\n
+        \n
+        \n
+            \n
+                \n
+\n
+                                    \n
+                        \n
+                    \n
+                \n
+                \n
+\n
+                \n
+\n
+                                    \n
+\n
+    \n
+\n
+\n
+                \n
+                \n
+\n
+                \n
+                \n
+                    \n
+            \n
+\n
+        \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                                    \n
+                                        娆㈣繋璁块棶鑰?                                   \n
+\n
+                                    \n
+                                        绠＄悊璐墿杞︺€佽鍗曞拰鎰挎湜娓呭崟                                    \n
+                                \n
+\n
+                                \n
+\n
+                                \n
+\n
+                                \n
+                                    \n
+\n
+                                    \n
+                                        鐧诲綍                                    \n
+\n
+                                    \n
+                                        娉ㄥ唽                                    \n
+\n
+                                    \n
+                                \n
+            \n
+        \n
+    \n
+    \n
+\n
+                \n
+\n
+                \n
+                \n
+                                            \n
+                            \n
+                        \n
+                    \n
+                    \n
+                                    \n
+            \n
+        \n
+    \n
+\n
+    \n
+\n
+    \n
+    \n
+        \n
+            鎼滅储        \n
+\n
+        \n
+            \n
+\n
+            \n
+\n
+                            \n
+    \n
+    \n
+\n
+\n
+                    \n
+    \n
+\n
+    \n
+\n
+\n
+    \n
+    \n
+        \n
+            \n
+            \n
+                \n
+                    \n
+    \n
+\n
+\n
+                \n
+            \n
+\n
+            \n
+            \n
+            \n
+\n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component("v-carousel", {\n
+            template: '#v-carousel-template',\n
+\n
+            props: ['images'],\n
+\n
+            data() {\n
+                return {\n
+                    isDragging: false,\n
+                    startPos: 0,\n
+                    currentTranslate: 0,\n
+                    prevTranslate: 0,\n
+                    animationID: 0,\n
+                    currentIndex: 0,\n
+                    slider: '',\n
+                    slides: [],\n
+                    autoPlayInterval: null,\n
+                    direction: 'ltr',\n
+                    startFrom: 1,\n
+                };\n
+            },\n
+\n
+            mounted() {\n
+                this.slider = this.$refs.sliderContainer;\n
+\n
+                if (\n
+                    this.$refs.slide\n
+                    && typeof this.$refs.slide[Symbol.iterator] === 'function'\n
+                ) {\n
+                    this.slides = Array.from(this.$refs.slide);\n
+                }\n
+\n
+                // Use requestIdleCallback for non-critical initialization\n
+                if ('requestIdleCallback' in window) {\n
+                    requestIdleCallback(() => {\n
+                        this.init();\n
+                        setTimeout(() => {\n
+                            this.play();\n
+                        }, 4000);\n
+                    });\n
+                } else {\n
+                    setTimeout(() => {\n
+                        this.init();\n
+                        setTimeout(() => {\n
+                            this.play();\n
+                        }, 4000);\n
+                    });\n
+                }\n
+            },\n
+\n
+            beforeUnmount() {\n
+                this.cleanup();\n
+            },\n
+\n
+            methods: {\n
+                init() {\n
+                    this.direction = document.dir;\n
+\n
+                    if (this.direction == 'rtl') {\n
+                        this.startFrom = -1;\n
+                    }\n
+\n
+                    this.slides.forEach((slide, index) => {\n
+                        slide.querySelector('img')?.addEventListener('dragstart', (e) => e.preventDefault());\n
+\n
+                        slide.addEventListener('mousedown', this.handleDragStart);\n
+\n
+                        slide.addEventListener('touchstart', this.handleDragStart, { passive: true });\n
+\n
+                        slide.addEventListener('mouseup', this.handleDragEnd);\n
+\n
+                        slide.addEventListener('mouseleave', this.handleDragEnd);\n
+\n
+                        slide.addEventListener('touchend', this.handleDragEnd, { passive: true });\n
+\n
+                        slide.addEventListener('mousemove', this.handleDrag);\n
+\n
+                        slide.addEventListener('touchmove', this.handleDrag, { passive: true });\n
+                    });\n
+\n
+                    window.addEventListener('resize', this.setPositionByIndex);\n
+                },\n
+\n
+                handleDragStart(event) {\n
+                    this.startPos = event.type === 'mousedown' ? event.clientX : event.touches[0].clientX;\n
+\n
+                    this.isDragging = true;\n
+\n
+                    this.animationID = requestAnimationFrame(this.animation);\n
+                },\n
+\n
+                handleDrag(event) {\n
+                    if (! this.isDragging) {\n
+                        return;\n
+                    }\n
+\n
+                    const currentPosition = event.type === 'mousemove' ? event.clientX : event.touches[0].clientX;\n
+\n
+                    this.currentTranslate = this.prevTranslate + currentPosition - this.startPos;\n
+                },\n
+\n
+                handleDragEnd(event) {\n
+                    clearInterval(this.autoPlayInterval);\n
+\n
+                    cancelAnimationFrame(this.animationID);\n
+\n
+                    this.isDragging = false;\n
+\n
+                    const movedBy = this.currentTranslate - this.prevTranslate;\n
+\n
+                    if (this.direction == 'ltr') {\n
+                        if (\n
+                            movedBy < -100\n
+                            && this.currentIndex < this.slides.length - 1\n
+                        ) {\n
+                            this.currentIndex += 1;\n
+                        }\n
+\n
+                        if (\n
+                            movedBy > 100\n
+                            && this.currentIndex > 0\n
+                        ) {\n
+                            this.currentIndex -= 1;\n
+                        }\n
+                    } else {\n
+                        if (\n
+                            movedBy > 100\n
+                            && this.currentIndex < this.slides.length - 1\n
+                        ) {\n
+                            if (Math.abs(this.currentIndex) != this.slides.length - 1) {\n
+                                this.currentIndex -= 1;\n
+                            }\n
+                        }\n
+\n
+                        if (\n
+                            movedBy < -100\n
+                            && this.currentIndex < 0\n
+                        ) {\n
+                            this.currentIndex += 1;\n
+                        }\n
+                    }\n
+\n
+                    this.setPositionByIndex();\n
+\n
+                    this.play();\n
+                },\n
+\n
+                animation() {\n
+                    this.setSliderPosition();\n
+\n
+                    if (this.isDragging) {\n
+                        requestAnimationFrame(this.animation);\n
+                    }\n
+                },\n
+\n
+                setPositionByIndex() {\n
+                    this.currentTranslate = this.currentIndex * -window.innerWidth;\n
+\n
+                    this.prevTranslate = this.currentTranslate;\n
+\n
+                    this.setSliderPosition();\n
+                },\n
+\n
+                setSliderPosition() {\n
+                    if (this.slider) {\n
+                        this.slider.style.transform = `translateX(${this.currentTranslate}px)`;\n
+                    }\n
+                },\n
+\n
+                visitLink(image) {\n
+                    if (image.link) {\n
+                        window.location.href = image.link;\n
+                    }\n
+                },\n
+\n
+                navigate(type) {\n
+                    clearInterval(this.autoPlayInterval);\n
+\n
+                    if (this.direction === 'rtl') {\n
+                        type === 'next' ? this.prev() : this.next();\n
+                    } else {\n
+                        type === 'next' ? this.next() : this.prev();\n
+                    }\n
+\n
+                    this.setPositionByIndex();\n
+\n
+                    this.play();\n
+                },\n
+\n
+                next() {\n
+                    this.currentIndex = (this.currentIndex + this.startFrom) % this.images.length;\n
+                },\n
+\n
+                prev() {\n
+                    this.currentIndex = this.direction == 'ltr'\n
+                        ? this.currentIndex > 0 ? this.currentIndex - 1 : 0\n
+                        : this.currentIndex < 0 ? this.currentIndex + 1 : 0;\n
+                },\n
+\n
+                navigateByPagination(index) {\n
+                    this.direction == 'rtl' ? index = -index : '';\n
+\n
+                    clearInterval(this.autoPlayInterval);\n
+\n
+                    this.currentIndex = index;\n
+\n
+                    this.setPositionByIndex();\n
+\n
+                    this.play();\n
+                },\n
+\n
+                play() {\n
+                    clearInterval(this.autoPlayInterval);\n
+\n
+                    this.autoPlayInterval = setInterval(() => {\n
+                        this.currentIndex = (this.currentIndex + this.startFrom) % this.images.length;\n
+\n
+                        this.setPositionByIndex();\n
+                    }, 5000);\n
+                },\n
+\n
+                cleanup() {\n
+                    // Clear intervals and animation frames\n
+                    clearInterval(this.autoPlayInterval);\n
+                    cancelAnimationFrame(this.animationID);\n
+\n
+                    // Remove event listeners\n
+                    if (this.slides) {\n
+                        this.slides.forEach(slide => {\n
+                            slide.removeEventListener('mousedown', this.handleDragStart);\n
+                            slide.removeEventListener('touchstart', this.handleDragStart);\n
+                            slide.removeEventListener('mouseup', this.handleDragEnd);\n
+                            slide.removeEventListener('mouseleave', this.handleDragEnd);\n
+                            slide.removeEventListener('touchend', this.handleDragEnd);\n
+                            slide.removeEventListener('mousemove', this.handleDrag);\n
+                            slide.removeEventListener('touchmove', this.handleDrag);\n
+                        });\n
+                    }\n
+\n
+                    window.removeEventListener('resize', this.setPositionByIndex);\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+                \n
+                    \n
+                        \n
+                            \n
+    \n
+\n
+\n
+                        \n
+\n
+                        \n
+                            \n
+                            \n
+                        \n
+                    \n
+                \n
+\n
+                \n
+                \n
+\n
+                \n
+                \n
+            \n
+        \n
+\n
+        \n
+        \n
+            \n
+    \n
+        \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                            \n
+                    \n
+                        \n
+                    \n
+\n
+                    \n
+                \n
+                    \n
+\n
+        \n
+\n
+        \n
+    \n
+\n
+        \n
+    \n
+\n
+    \n
+        app.component('v-categories-carousel', {\n
+            template: '#v-categories-carousel-template',\n
+\n
+            props: [\n
+                'src',\n
+                'title',\n
+                'navigationLink',\n
+            ],\n
+\n
+            data() {\n
+                return {\n
+                    isLoading: true,\n
+\n
+                    categories: [],\n
+\n
+                    offset: 323,\n
+\n
+                    fallback: "http://localhost/themes/shop/default/build/assets/small-product-placeholder-CMT26fOX.webp"\n
+                };\n
+            },\n
+\n
+            mounted() {\n
+                this.getCategories();\n
+            },\n
+\n
+            methods: {\n
+                getCategories() {\n
+                    this.$axios.get(this.src)\n
+                        .then(response => {\n
+                            this.isLoading = false;\n
+\n
+                            this.categories = response.data.data;\n
+                        }).catch(error => {\n
+                            console.log(error);\n
+                        });\n
+                },\n
+\n
+                swipeLeft() {\n
+                    const container = this.$refs.swiperContainer;\n
+\n
+                    container.scrollLeft -= this.offset;\n
+                },\n
+\n
+                swipeRight() {\n
+                    const container = this.$refs.swiperContainer;\n
+\n
+                    container.scrollLeft += this.offset;\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+                \n
+                    {{ title }}\n
+                \n
+\n
+                \n
+                    \n
+                        \n
+                            鏌ョ湅鍏ㄩ儴\n
+                            \n
+                        \n
+                    \n
+\n
+                    \n
+                        \n
+                        \n
+\n
+                        \n
+                        \n
+                    \n
+                \n
+            \n
+\n
+            \n
+                \n
+\n
+\n
+            \n
+\n
+            \n
+                鏌ョ湅鍏ㄩ儴            \n
+        \n
+\n
+        \n
+        \n
+            \n
+    \n
+        \n
+\n
+        \n
+            \n
+\n
+            \n
+        \n
+\n
+        \n
+    \n
+\n
+    \n
+        \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+        \n
+            \n
+        \n
+\n
+        \n
+            \n
+            \n
+\n
+            \n
+            \n
+                \n
+                \n
+            \n
+        \n
+    \n
+    \n
+\n
+            \n
+    \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-products-carousel', {\n
+            template: '#v-products-carousel-template',\n
+\n
+            props: [\n
+                'src',\n
+                'title',\n
+                'navigationLink',\n
+            ],\n
+\n
+            data() {\n
+                return {\n
+                    isLoading: true,\n
+\n
+                    products: [],\n
+\n
+                    offset: 323,\n
+\n
+                    isScreenMax2xl: window.innerWidth  {\n
+                            this.isLoading = false;\n
+\n
+                            this.products = response.data.data;\n
+                        }).catch(error => {\n
+                            console.log(error);\n
+                        });\n
+                },\n
+\n
+                updateScreenSize() {\n
+                    this.isScreenMax2xl = window.innerWidth = container.scrollWidth) {\n
+                        // Reset scroll to the beginning\n
+                        container.scrollLeft = 0;\n
+                    } else {\n
+                        // Scroll to the right\n
+                        container.scrollLeft += this.offset;\n
+                    }\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+                {{ average }}\n
+            \n
+        \n
+            \n
+            \n
+            \n
+            \n
+                {{ abbreviatedTotal }}\n
+\n
+                璇勫垎\n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component("v-product-ratings", {\n
+            template: "#v-product-ratings-template",\n
+\n
+            props: {\n
+                average: {\n
+                    type: String,\n
+                    required: true,\n
+                },\n
+\n
+                total: {\n
+                    type: String,\n
+                    required: true,\n
+                },\n
+\n
+                rating: {\n
+                    type: Boolean,\n
+                    required: false,\n
+                },\n
+            },\n
+\n
+            computed: {\n
+                starColorClasses() {\n
+                    return {\n
+                        'text-emerald-600': this.average > 4,\n
+                        'text-emerald-500': this.average >= 4 && this.average < 5,\n
+                        'text-emerald-400': this.average >= 3 && this.average < 4,\n
+                        'text-amber-500': this.average >= 2 && this.average < 3,\n
+                        'text-red-500': this.average >= 1 && this.average < 2,\n
+                        'text-gray-400': this.average = 1000) {\n
+                        return `${(this.total / 1000).toFixed(1)}k`;\n
+                    }\n
+\n
+                    return this.total;\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            {{ title }}\n
+        \n
+\n
+        \n
+            \n
+            \n
+                \n
+                \n
+\n
+                \n
+                \n
+            \n
+\n
+            \n
+                {{ title }}\n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-button', {\n
+            template: '#v-button-template',\n
+\n
+            props: {\n
+                loading: Boolean,\n
+                buttonType: String,\n
+                title: String,\n
+                buttonClass: String,\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+                \n
+\n
+                {{ flash.message }}\n
+            \n
+\n
+			\n
+        \n
+    \n
+\n
+    \n
+        app.component('v-flash-item', {\n
+            template: '#v-flash-item-template',\n
+\n
+            props: ['flash'],\n
+\n
+            data() {\n
+                return {\n
+                    iconClasses: {\n
+                        success: 'icon-toast-done',\n
+\n
+                        error: 'icon-toast-error',\n
+\n
+                        warning: 'icon-toast-exclamation-mark',\n
+\n
+                        info: 'icon-toast-info',\n
+                    },\n
+\n
+                    typeStyles: {\n
+                        success: {\n
+                            container: 'background: #D4EDDA',\n
+\n
+                            message: 'color: #155721',\n
+\n
+                            icon: 'color: #155721'\n
+                        },\n
+\n
+                        error: {\n
+                            container: 'background: #F8D7DA',\n
+\n
+                            message: 'color: #721C24',\n
+\n
+                            icon: 'color: #721C24'\n
+                        },\n
+\n
+                        warning: {\n
+                            container: 'background: #FFF3CD',\n
+\n
+                            message: 'color: #856404',\n
+\n
+                            icon: 'color: #856404'\n
+                        },\n
+\n
+                        info: {\n
+                            container: 'background: #E2E3E5',\n
+\n
+                            message: 'color: #383D41',\n
+\n
+                            icon: 'color: #383D41'\n
+                        },\n
+                    },\n
+                };\n
+            },\n
+\n
+            created() {\n
+                var self = this;\n
+\n
+                setTimeout(function() {\n
+                    self.remove()\n
+                }, 5000)\n
+            },\n
+\n
+            methods: {\n
+                remove() {\n
+                    this.$emit('onRemove', this.flash)\n
+                }\n
+            }\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                    \n
+                        \n
+                    \n
+                \n
+\n
+                \n
+                    \n
+                    \n
+                \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                \n
+                    \n
+                        \n
+                            \n
+                        \n
+\n
+                                                    \n
+                                娉ㄥ唽鎴栫櫥褰昞n
+                                \n
+                            \n
+                        \n
+                                            \n
+                \n
+\n
+                \n
+\n
+                \n
+                \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+            \n
+        \n
+    \n
+\n
+    \n
+\n
+    \n
+        \n
+        \n
+            \n
+            \n
+                \n
+                \n
+                    \n
+                        \n
+                            \n
+                                \n
+                                    {{ category.name }}\n
+                                \n
+                            \n
+\n
+                            \n
+                            \n
+                                \n
+                                    \n
+                                        \n
+                                            {{ secondLevelCategory.name }}\n
+                                        \n
+\n
+                                        \n
+                                    \n
+                                \n
+                            \n
+                        \n
+                    \n
+                \n
+\n
+                \n
+                \n
+                    \n
+                        \n
+                            \n
+                            \n
+                                杩斿洖涓昏彍鍗?                           \n
+                        \n
+                    \n
+\n
+                    \n
+                    \n
+                        \n
+                            \n
+                                {{ thirdLevelCategory.name }}\n
+                            \n
+                        \n
+                    \n
+                \n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-mobile-category', {\n
+            template: '#v-mobile-category-template',\n
+\n
+            data() {\n
+                return  {\n
+                    categories: [],\n
+                    currentViewLevel: 'main',\n
+                    currentSecondLevelCategory: null,\n
+                    currentParentCategory: null\n
+                }\n
+            },\n
+\n
+            mounted() {\n
+                this.initCategories();\n
+            },\n
+\n
+            computed: {\n
+                getCurrentScreenHeight() {\n
+                    return window.innerHeight - (window.innerWidth < 920 ? 61 : 0) + 'px';\n
+                },\n
+            },\n
+\n
+            methods: {\n
+                initCategories() {\n
+                    try {\n
+                        const stored = localStorage.getItem('categories');\n
+\n
+                        if (stored) {\n
+                            this.categories = JSON.parse(stored);\n
+                            this.isLoading = false;\n
+                            return;\n
+                        }\n
+\n
+                    } catch (e) {}\n
+\n
+                    this.getCategories();\n
+                },\n
+                getCategories() {\n
+                    this.$axios.get("http://localhost/api/categories/tree")\n
+                        .then(response => {\n
+                            this.categories = response.data.data;\n
+                            localStorage.setItem('categories', JSON.stringify(this.categories));\n
+                        })\n
+                        .catch(error => {\n
+                            console.log(error);\n
+                        });\n
+                },\n
+\n
+                showThirdLevel(secondLevelCategory, parentCategory, event) {\n
+                    if (secondLevelCategory.children && secondLevelCategory.children.length) {\n
+                        this.currentSecondLevelCategory = secondLevelCategory;\n
+                        this.currentParentCategory = parentCategory;\n
+                        this.currentViewLevel = 'third';\n
+\n
+                        if (event) {\n
+                            event.preventDefault();\n
+                            event.stopPropagation();\n
+                        }\n
+                    }\n
+                },\n
+\n
+                goBackToMainView() {\n
+                    this.currentViewLevel = 'main';\n
+                }\n
+            },\n
+        });\n
+\n
+        app.component('v-mobile-drawer', {\n
+            template: '#v-mobile-drawer-template',\n
+\n
+            methods: {\n
+                onDrawerClose() {\n
+                    this.$refs.mobileCategory.currentViewLevel = 'main';\n
+                }\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+                admin::app.components.accordion.default-content            \n
+\n
+            \n
+                admin::app.components.accordion.default-content            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-accordion', {\n
+            template: '#v-accordion-template',\n
+\n
+            props: [\n
+                'isActive',\n
+            ],\n
+\n
+            data() {\n
+                return {\n
+                    isOpen: this.isActive,\n
+                };\n
+            },\n
+\n
+            methods: {\n
+                toggle() {\n
+                    this.isOpen = ! this.isOpen;\n
+\n
+                    this.$emit('toggle', { isActive: this.isOpen });\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+            \n
+\n
+            \n
+                \n
+                \n
+                    \n
+                    \n
+\n
+                    \n
+                    \n
+                \n
+            \n
+\n
+            \n
+\n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-image-search', {\n
+            template: '#v-image-search-template',\n
+\n
+            data() {\n
+                return {\n
+                    uploadedImageUrl: '',\n
+\n
+                    isSearching: false,\n
+                };\n
+            },\n
+\n
+            methods: {\n
+                /**\n
+                 * This method will dynamically load the scripts. Because image search library\n
+                 * only used when someone clicks or interact with the image button. This will\n
+                 * reduce some data usage for mobile user.\n
+                 * \n
+                 * @return {void}\n
+                 */\n
+                loadLibrary() {\n
+                    this.$shop.loadDynamicScript(\n
+                        'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js', () => {\n
+                            this.$shop.loadDynamicScript(\n
+                                'https://cdn.jsdelivr.net/npm/tensorflow-models-mobilenet-patch@2.1.1/dist/mobilenet.min.js', () => {\n
+                                    this.analyzeImage();\n
+                                }\n
+                            );\n
+                        }\n
+                    );\n
+                },\n
+\n
+                /**\n
+                 * This method will analyze the image and load the sets on the bases of trained model.\n
+                 * \n
+                 * @return {void}\n
+                 */\n
+                analyzeImage() {\n
+                    this.isSearching = true;\n
+\n
+                    let imageInput = this.$refs.imageSearchInput;\n
+\n
+                    if (imageInput.files && imageInput.files[0]) {\n
+                        if (imageInput.files[0].type.includes('image/')) {\n
+                            if (imageInput.files[0].size  {\n
+                                        let net;\n
+\n
+                                        let self = this;\n
+\n
+                                        this.uploadedImageUrl = response.data;\n
+\n
+                                        async function app() {\n
+                                            let analysedResult = [];\n
+\n
+                                            let queryString = '';\n
+\n
+                                            net = await mobilenet.load();\n
+\n
+                                            try {\n
+                                                const result = await net.classify(document.getElementById('uploaded-image-url'));\n
+\n
+                                                result.forEach(function(value) {\n
+                                                    queryString = value.className.split(',');\n
+\n
+                                                    if (queryString.length > 1) {\n
+                                                        analysedResult = analysedResult.concat(queryString);\n
+                                                    } else {\n
+                                                        analysedResult.push(queryString[0]);\n
+                                                    }\n
+                                                });\n
+                                            } catch (error) {\n
+                                                this.$emitter.emit('add-flash', { type: 'error', message: "鍑轰簡鐐归棶棰橈紝璇风◢鍚庨噸璇曘€?});\n
+                                            }\n
+\n
+                                            localStorage.searchedImageUrl = self.uploadedImageUrl;\n
+\n
+                                            queryString = localStorage.searchedTerms = analysedResult.join('_');\n
+\n
+                                            queryString = localStorage.searchedTerms.split('_').map(term => {\n
+                                                return term.split(' ').join('+');\n
+                                            });\n
+\n
+                                            window.location.href = `${'http://localhost/search'}?query=${queryString[0]}&image-search=1`;\n
+                                        }\n
+\n
+                                        app();\n
+                                    })\n
+                                    .catch((error) => {\n
+                                        this.$emitter.emit('add-flash', { type: 'error', message: "鍑轰簡鐐归棶棰橈紝璇风◢鍚庨噸璇曘€?});\n
+\n
+                                        this.isSearching = false;\n
+                                    });\n
+                            } else {\n
+                                imageInput.value = '';\n
+\n
+                                this.$emitter.emit('add-flash', { type: 'error', message: '澶у皬闄愬埗閿欒'});\n
+\n
+                                this.isSearching = false;\n
+                            }\n
+                        } else {\n
+                            imageInput.value = '';\n
+\n
+                            this.$emitter.emit('add-flash', { type: 'error', message: '鍙厑璁稿浘鍍忥紙.jpeg锛?jpg锛?png锛?.锛夈€?});\n
+\n
+                            this.isSearching = false;\n
+                        }\n
+                    }\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+\n
+                    \n
+            \n
+            \n
+                        \n
+\n
+                                                    \n
+                                {{ cart.items_count }}\n
+                            \n
+                                            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                        \n
+                            璐墿杞?                       \n
+                    \n
+\n
+                    \n
+                        Get Up To 30% OFF on your 1st order\n
+                    \n
+\n
+                \n
+                    \n
+                    \n
+                \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                    \n
+                        \n
+                            \n
+                            \n
+\n
+                            \n
+                                \n
+                                    \n
+                                \n
+                            \n
+\n
+                            \n
+\n
+                        \n
+                        \n
+                            \n
+\n
+                                    \n
+\n
+                                    \n
+                                        \n
+                                            {{ item.name }}\n
+                                        \n
+                                    \n
+\n
+                                    \n
+\n
+                                    \n
+\n
+                                    \n
+                                        \n
+                                            {{ item.formatted_price_incl_tax }}\n
+                                        \n
+                                    \n
+\n
+                                    \n
+                                        \n
+                                            {{ item.formatted_price_incl_tax }}\n
+\n
+                                            \n
+                                                涓嶅惈绋庯細\n
+                                                {{ item.formatted_price }}\n
+                                            \n
+                                        \n
+                                    \n
+\n
+                                    \n
+                                        \n
+                                            {{ item.formatted_price }}\n
+                                        \n
+                                    \n
+\n
+                                    \n
+                                \n
+\n
+                                \n
+                                \n
+\n
+                                    \n
+\n
+                                    \n
+                                    \n
+                                        \n
+                                            鏌ョ湅璇︽儏\n
+                                            \n
+                                        \n
+                                    \n
+\n
+                                    \n
+                                    \n
+                                        \n
+                                            \n
+                                                \n
+                                                    {{ attribute.attribute_name + ':' }}\n
+                                                \n
+\n
+                                                \n
+                                                    \n
+                                                        \n
+                                                            {{ attribute.file_name }}\n
+                                                        \n
+                                                    \n
+\n
+                                                    \n
+                                                        {{ attribute.option_label }}\n
+                                                    \n
+                                                \n
+                                            \n
+                                        \n
+                                    \n
+\n
+                                    \n
+                                \n
+\n
+                                \n
+                                    \n
+\n
+                                \n
+                                \n
+\n
+\n
+\n
+                                    \n
+\n
+                                \n
+\n
+                                \n
+                                \n
+                                    鍒犻櫎                                \n
+\n
+                                    \n
+                                \n
+                            \n
+                        \n
+                    \n
+\n
+                    \n
+                    \n
+                        \n
+                            \n
+\n
+                            \n
+                                鎮ㄧ殑璐墿杞︽槸绌虹殑                            \n
+                        \n
+                    \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                    \n
+                        \n
+\n
+                        \n
+                            \n
+                                灏忚                            \n
+\n
+                        \n
+                            \n
+                                {{ cart.formatted_sub_total_incl_tax }}\n
+                            \n
+                        \n
+\n
+                        \n
+                            \n
+                                {{ cart.formatted_sub_total_incl_tax }}\n
+\n
+                                \n
+                                    涓嶅惈绋庯細\n
+                                    {{ cart.formatted_sub_total }}\n
+                                \n
+                            \n
+                        \n
+\n
+                        \n
+                            \n
+                                {{ cart.formatted_sub_total }}\n
+                            \n
+                        \n
+                    \n
+\n
+                        \n
+                            \n
+                            \n
+                                \n
+\n
+                                \n
+                            \n
+                        \n
+\n
+                            \n
+                        \n
+\n
+                        \n
+\n
+                        \n
+                        \n
+                            \n
+\n
+                        \n
+                            缁х画缁撳笎                        \n
+\n
+                            \n
+\n
+                            \n
+                                \n
+                                    鏌ョ湅璐墿杞?                               \n
+                            \n
+                        \n
+\n
+                        \n
+                    \n
+            \n
+        \n
+    \n
+\n
+\n
+        \n
+        \n
+    \n
+\n
+    \n
+        app.component("v-mini-cart", {\n
+            template: '#v-mini-cart-template',\n
+\n
+            data() {\n
+                return  {\n
+                    cart: null,\n
+\n
+                    isLoading:false,\n
+\n
+                    displayTax: {\n
+                        prices: "excluding_tax",\n
+                        subtotal: "excluding_tax",\n
+                    },\n
+                }\n
+            },\n
+\n
+            mounted() {\n
+                if (!this.cart) {\n
+                    this.getCart();\n
+                }\n
+\n
+                /**\n
+                 * Action.\n
+                 */\n
+                this.$emitter.on('update-mini-cart', (cart) => {\n
+                    this.cart = cart;\n
+                });\n
+            },\n
+\n
+            methods: {\n
+                getCart() {\n
+                    this.$axios.get('http://localhost/api/checkout/cart')\n
+                        .then(response => {\n
+                            this.cart = response.data.data;\n
+                        })\n
+                        .catch(error => {});\n
+                },\n
+\n
+                updateItem(quantity, item) {\n
+                    this.isLoading = true;\n
+\n
+                    let qty = {};\n
+\n
+                    qty[item.id] = quantity;\n
+\n
+                    this.$axios.put('http://localhost/api/checkout/cart', { qty })\n
+                        .then(response => {\n
+                            if (response.data.message) {\n
+                                this.cart = response.data.data;\n
+                            } else {\n
+                                this.$emitter.emit('add-flash', { type: 'warning', message: response.data.data.message });\n
+                            }\n
+\n
+                            this.isLoading = false;\n
+                        }).catch(error => this.isLoading = false);\n
+                },\n
+\n
+                removeItem(itemId) {\n
+                    this.$emitter.emit('open-confirm-modal', {\n
+                        agree: () => {\n
+                            this.isLoading = true;\n
+\n
+                            this.$axios.post('http://localhost/api/checkout/cart', {\n
+                                '_method': 'DELETE',\n
+                                'cart_item_id': itemId,\n
+                            })\n
+                            .then(response => {\n
+                                this.cart = response.data.data;\n
+\n
+                                this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });\n
+\n
+                                this.isLoading = false;\n
+                            })\n
+                            .catch(error => {\n
+                                this.$emitter.emit('add-flash', { type: 'error', message: response.data.message });\n
+\n
+                                this.isLoading = false;\n
+                            });\n
+                        }\n
+                    });\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+                Toggle\n
+            \n
+\n
+            \n
+                \n
+                    \n
+\n
+                    \n
+                \n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-dropdown', {\n
+            template: '#v-dropdown-template',\n
+\n
+            props: {\n
+                position: String,\n
+\n
+                closeOnClick: {\n
+                    type: Boolean,\n
+                    required: false,\n
+                    default: true\n
+                },\n
+            },\n
+\n
+            data() {\n
+                return {\n
+                    toggleBlockWidth: 0,\n
+\n
+                    toggleBlockHeight: 0,\n
+\n
+                    isActive: false,\n
+                };\n
+            },\n
+\n
+            created() {\n
+                window.addEventListener('click', this.handleFocusOut);\n
+            },\n
+\n
+            mounted() {\n
+                this.toggleBlockWidth = this.$refs.toggleBlock.clientWidth;\n
+\n
+                this.toggleBlockHeight = this.$refs.toggleBlock.clientHeight;\n
+            },\n
+\n
+            beforeDestroy() {\n
+                window.removeEventListener('click', this.handleFocusOut);\n
+            },\n
+\n
+            computed: {\n
+                positionStyles() {\n
+                    switch (this.position) {\n
+                        case 'bottom-left':\n
+                            return [\n
+                                `min-width: ${this.toggleBlockWidth}px`,\n
+                                `top: ${this.toggleBlockHeight}px`,\n
+                                'left: 0',\n
+                            ];\n
+\n
+                        case 'bottom-right':\n
+                            return [\n
+                                `min-width: ${this.toggleBlockWidth}px`,\n
+                                `top: ${this.toggleBlockHeight}px`,\n
+                                'right: 0',\n
+                            ];\n
+\n
+                        case 'top-left':\n
+                            return [\n
+                                `min-width: ${this.toggleBlockWidth}px`,\n
+                                `bottom: ${this.toggleBlockHeight}px`,\n
+                                'left: 0',\n
+                            ];\n
+\n
+                        case 'top-right':\n
+                            return [\n
+                                `min-width: ${this.toggleBlockWidth}px`,\n
+                                `bottom: ${this.toggleBlockHeight}px`,\n
+                                'right: 0',\n
+                            ];\n
+\n
+                        default:\n
+                            return [\n
+                                `min-width: ${this.toggleBlockWidth}px`,\n
+                                `top: ${this.toggleBlockHeight}px`,\n
+                                'left: 0',\n
+                            ];\n
+                    }\n
+                },\n
+            },\n
+\n
+            methods: {\n
+                toggle() {\n
+                    /**\n
+                     * If still somehow width is zero then this will check for width one more time.\n
+                     */\n
+                    if (this.toggleBlockWidth === 0) {\n
+                        this.toggleBlockWidth = this.$refs.toggleBlock.clientWidth;\n
+                    }\n
+\n
+                    /**\n
+                     * If still somehow height is zero then this will check for height one more time.\n
+                     */\n
+                    if (this.toggleBlockHeight === 0) {\n
+                        this.toggleBlockHeight = this.$refs.toggleBlock.clientHeight;\n
+                    }\n
+\n
+                    this.isActive = ! this.isActive;\n
+                },\n
+\n
+                handleFocusOut(e) {\n
+                    if (! this.$el.contains(e.target) || (this.closeOnClick && this.$el.children[1].contains(e.target))) {\n
+                        this.isActive = false;\n
+                    }\n
+                },\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+            \n
+\n
+            \n
+                {{ quantity }}\n
+            \n
+            \n
+            \n
+            \n
+\n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component("v-quantity-changer", {\n
+            template: '#v-quantity-changer-template',\n
+\n
+            props:['name', 'value', 'minValue'],\n
+\n
+            data() {\n
+                return  {\n
+                    quantity: this.value,\n
+                }\n
+            },\n
+\n
+            watch: {\n
+                value() {\n
+                    this.quantity = this.value;\n
+                },\n
+            },\n
+\n
+            methods: {\n
+                increase() {\n
+                    this.$emit('change', ++this.quantity);\n
+                },\n
+\n
+                decrease() {\n
+                    if (this.quantity > this.minValue) {\n
+                        this.quantity -= 1;\n
+\n
+                        this.$emit('change', this.quantity);\n
+                    }\n
+                },\n
+            }\n
+        });\n
+    \n
+    \n
+        \n
+            \n
+            \n
+                \n
+            \n
+\n
+            \n
+            \n
+                \n
+            \n
+\n
+            \n
+            \n
+                \n
+                    \n
+                        \n
+                            \n
+                                \n
+                                    \n
+                                        Default Header\n
+                                    \n
+\n
+                                    \n
+                                    \n
+\n
+                                    \n
+                                    \n
+                                \n
+                            \n
+                        \n
+                    \n
+                \n
+            \n
+        \n
+    \n
+\n
+    \n
+        app.component('v-drawer', {\n
+            template: '#v-drawer-template',\n
+\n
+            props: [\n
+                'isActive',\n
+                'position',\n
+                'width'\n
+            ],\n
+\n
+            data() {\n
+                return {\n
+                    isOpen: this.isActive,\n
+                };\n
+            },\n
+\n
+            watch: {\n
+                isActive: function(newVal, oldVal) {\n
+                    this.isOpen = newVal;\n
+                }\n
+            },\n
+\n
+            computed: {\n
+                enterFromLeaveToClasses() {\n
+                    if (this.position == 'top') {\n
+                        return '-translate-y-full';\n
+                    } else if (this.position == 'bottom') {\n
+                        return 'translate-y-full';\n
+                    } else if (this.position == 'left') {\n
+                        return 'ltr:-translate-x-full rtl:translate-x-full';\n
+                    } else if (this.position == 'right') {\n
+                        return 'ltr:translate-x-full rtl:-translate-x-full';\n
+                    }\n
+                }\n
+            },\n
+\n
+            methods: {\n
+                toggle() {\n
+                    this.isOpen = ! this.isOpen;\n
+\n
+                    if (this.isOpen) {\n
+                        document.body.style.overflow = 'hidden';\n
+                    } else {\n
+                        document.body.style.overflow ='auto';\n
+                    }\n
+\n
+                    document.body.style.paddingRight = '';\n
+\n
+                    this.$emit('toggle', { isActive: this.isOpen });\n
+                },\n
+\n
+                open() {\n
+                    this.isOpen = true;\n
+\n
+                    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;\n
+\n
+                    document.body.style.overflow = 'hidden';\n
+\n
+                    document.body.style.paddingRight = `${scrollbarWidth}px`;\n
+\n
+                    this.$emit('open', { isActive: this.isOpen });\n
+                },\n
+\n
+                close() {\n
+                    this.isOpen = false;\n
+\n
+                    document.body.style.overflow = 'auto';\n
+\n
+                    document.body.style.paddingRight = '';\n
+\n
+                    this.$emit('close', { isActive: this.isOpen });\n
+                }\n
+            },\n
+        });\n
+    \n
+    \n
+        \n
+        \n
+            \n
+\n
+            \n
+\n
+            \n
+        \n
+\n
+        \n
+        \n
+            \n
+                \n
+                    \n
+                        {{ category.name }}\n
+                    \n
+                \n
+\n
+                \n
+                    \n
+                        \n
+                            \n
+                                \n
+                                    \n
+                                        {{ secondLevelCategory.name }}\n
+                                    \n
+                                \n
+\n
+                                \n
+                                    \n
+                                        \n
+                                            {{ thirdLevelCategory.name }}\n
+                                        \n
+                                    \n
+                                \n
+                            \n
+                        \n
+                    \n
+                \n
+            \n
+        \n
+\n
+        \n
+        \n
+            \n
+            \n
+                \n
+                \n
+                    \n
+                        \n
+\n
+                        鍏ㄩ儴                    \n
+                \n
+\n
+                \n
+                \n
+                    \n
+                        \n
+                            {{ category.name }}\n
+                        \n
+                    \n
+\n
+                    \n
+                    \n
+                        \n
+                            \n
+                                \n
+                                    \n
+                                        \n
+                                            {{ secondLevelCategory.name }}\n
+                                        \n
+                                    \n
+\n
+                                    \n
+                                        \n
+                                            \n
+                                                {{ thirdLevelCategory.name }}\n
+                                            \n
+                                        \n
+                                    \n
+                                \n
+                            \n
+                        \n
+                    \n
+                \n
+            \n
+\n
+            \n
+            \n
+            \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                        \n
+                            鍒嗙被                        \n
+                    \n
+\n
+                \n
+                    \n
+                    \n
+                \n
+            \n
+        \n
+    \n
+            \n
+            \n
+                \n
+                    \n
+                        \n
+                        \n
+                            \n
+                            \n
+                                \n
+                                    \n
+                                        \n
+                                            \n
+                                                {{ category.name }}\n
+                                            \n
+                                        \n
+\n
+                                        \n
+                                        \n
+                                            \n
+                                                \n
+                                                    \n
+                                                        {{ secondLevelCategory.name }}\n
+                                                    \n
+\n
+                                                    \n
+                                                \n
+                                            \n
+                                        \n
+                                    \n
+                                \n
+                            \n
+\n
+                            \n
+                            \n
+                                \n
+                                    \n
+                                        \n
+\n
+                                        \n
+                                            杩斿洖涓昏彍鍗?                                       \n
+                                    \n
+                                \n
+\n
+                                \n
+                                \n
+                                    \n
+                                        \n
+                                            {{ thirdLevelCategory.name }}\n
+                                        \n
+                                    \n
+                                \n
+                            \n
+                        \n
+                    \n
+            \n
+        \n
+    \n
+    \n
+\n
+        \n
+    \n
+\n
+    \n
+        app.component('v-desktop-category', {\n
+            template: '#v-desktop-category-template',\n
+\n
+            data() {\n
+                return {\n
+                    isLoading: true,\n
+                    categories: [],\n
+                    isDrawerActive: false,\n
+                    currentViewLevel: 'main',\n
+                    currentSecondLevelCategory: null,\n
+                    currentParentCategory: null\n
+                }\n
+            },\n
+\n
+            mounted() {\n
+                this.initCategories();\n
+            },\n
+\n
+            methods: {\n
+                initCategories() {\n
+                    try {\n
+                        const stored = localStorage.getItem('categories');\n
+\n
+                        if (stored) {\n
+                            this.categories = JSON.parse(stored);\n
+                            this.isLoading = false;\n
+\n
+                            return;\n
+                        }\n
+\n
+                    } catch (e) {}\n
+\n
+                    this.getCategories();\n
+                },\n
+\n
+                getCategories() {\n
+                    this.$axios.get("http://localhost/api/categories/tree")\n
+                        .then(response => {\n
+                            this.isLoading = false;\n
+                            this.categories = response.data.data;\n
+                            localStorage.setItem('categories', JSON.stringify(this.categories));\n
+                        })\n
+                        .catch(error => {\n
+                            console.log(error);\n
+                        });\n
+                },\n
+\n
+                pairCategoryChildren(category) {\n
+                    if (! category.children) return [];\n
+\n
+                    return category.children.reduce((result, value, index, array) => {\n
+                        if (index % 2 === 0) {\n
+                            result.push(array.slice(index, index + 2));\n
+                        }\n
+                        return result;\n
+                    }, []);\n
+                },\n
+\n
+                toggleCategoryDrawer() {\n
+                    this.isDrawerActive = !this.isDrawerActive;\n
+                    if (this.isDrawerActive) {\n
+                        this.currentViewLevel = 'main';\n
+                    }\n
+                },\n
+\n
+                onDrawerToggle(event) {\n
+                    this.isDrawerActive = event.isActive;\n
+                },\n
+\n
+                onDrawerClose(event) {\n
+                    this.isDrawerActive = false;\n
+                },\n
+\n
+                showThirdLevel(secondLevelCategory, parentCategory, event) {\n
+                    if (secondLevelCategory.children && secondLevelCategory.children.length) {\n
+                        this.currentSecondLevelCategory = secondLevelCategory;\n
+                        this.currentParentCategory = parentCategory;\n
+                        this.currentViewLevel = 'third';\n
+\n
+                        if (event) {\n
+                            event.preventDefault();\n
+                            event.stopPropagation();\n
+                        }\n
+                    }\n
+                },\n
+\n
+                goBackToMainView() {\n
+                    this.currentViewLevel = 'main';\n
+                }\n
+            },\n
+        });\n
+    \n
+\n
+        \n
+        \n
+            /**\n
+             * Load event, the purpose of using the event is to mount the application\n
+             * after all of our `Vue` components which is present in blade file have\n
+             * been registered in the app. No matter what `app.mount()` should be\n
+             * called in the last.\n
+             */\n
+            window.addEventListener("load", function (event) {\n
+                app.mount("#app");\n
+            });\n
+        \n
+\n
+        \n
+\n
+        \n
+            \n
+        \n
+    \n
+\n
+
+
+  To contain: The game with our new additions!
+
+  at packages\Webkul\Shop\tests\Feature\HomePageTest.php:85
+     81鈻?
+     82鈻?it('should returns the home page of the store', function () {
+     83鈻?    get(route('shop.home.index'))
+     84鈻?        ->assertOk()
+  鉃? 85鈻?        ->assertSeeText('The game with our new additions!')
+     86鈻?        ->assertSeeText('Our Collections')
+     87鈻?        ->assertSeeText('Get Ready for our new Bold Collections!')
+     88鈻?        ->assertSeeText('Get UPTO 40% OFF on your 1st order SHOP NOW');
+     89鈻?});
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\HomePageTest > it should store the products to the compare list           
+  Expected: {"data":{"message":"\u4ea7\u54c1\u6210\u529f\u6dfb\u52a0\u5230\u6bd4\u8f83\u5217\u8868\u3002"}}
+
+  To contain: 浜у搧鎴愬姛娣诲姞鍒版瘮杈冨垪琛ㄣ€?
+
+  at packages\Webkul\Shop\tests\Feature\HomePageTest.php:219
+    215鈻?    postJson(route('shop.api.compare.store'), [
+    216鈻?        'product_id' => $product->id,
+    217鈻?    ])
+    218鈻?        ->assertOk()
+  鉃?219鈻?        ->assertSeeText(trans('shop::app.compare.item-add-success'));
+    220鈻?});
+    221鈻?
+    222鈻?it('should fails the validation error when not provided product id when move the compare list item', function () {
+    223鈻?    // Act and Assert.
+
+
+  Tests:    2 failed, 12 passed (35 assertions)
+  Duration: 7.63s
+

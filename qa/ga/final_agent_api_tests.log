@@ -1,0 +1,32 @@
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 Agent 轮询时过滤掉 OP_EXECUTE(7) 与 OP_CANCEL_EXECUTION(8)                                                     1.11s  
+  ✓ it OP_EXECUTE 执行成功仅更新 SkillExecution 状态，绝不污染 InstallRecord                                                   0.21s  
+  ✓ it POST api/agent/evt 对执行事实幂等入账，并拒绝同键异载荷                                                                     0.38s  
+  ✓ it POST api/agent/evt 拒绝没有停止证据的执行成功                                                                          0.27s  
+  ✓ it 取消请求不是物理停止，UNKNOWN 终态不被迟到成功静默改写                                                                           0.34s  
+  ✓ it POST api/agent/ack 支持端云双向事件确认                                                                             0.20s  
+  ✓ it POST api/agent/reconcile 端侧安装事实与云端记录准确对账                                                                  0.22s  
+  ✓ it 旧 event_seq 不得覆盖新 event_seq                                                                               0.27s  
+  ✓ it 客户侧能够发起技能执行与取消，流转为 OP 7/8 任务                                                                              0.33s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentEventOwnershipTest
+  ✓ it event：用 B 的 did 报 A 的任务 → 被拒（404），且 A 的状态未被推进                                                             0.30s  
+  ✓ it event：did 与任务一致时正常推进                                                                                      0.27s  
+  ✓ it event：缺 did 直接 422（契约要求必带 did）                                                                            0.23s  
+  ✓ it commands：未注册的 did 无法拉指令（当前可兑现的归属边界）                                                                       0.18s  
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentErrorContractP9Test
+  ✓ it P9 · 对已 success 的任务报 failed → 409 + TASK_TRANSITION_INVALID,状态不动                                          0.25s  
+  ✓ it P9 · 重复报 done(已是 success)是幂等短路,不报错                                                                        0.25s  
+  ✓ it P9 · 乱序回报(downloading 晚于 installing 到达)也被拒,不静默吞掉                                                          0.27s  
+  ✓ it P9 · event 成功体是信封(success:true + data.status)                                                             0.22s  
+  ✓ it P9 · commands 是信封(data 为数组,含 success 键)                                                                   0.21s  
+  ✓ it P9 · heartbeat 是信封                                                                                        0.24s  
+  ✓ it P9 · register 是信封且维持 201                                                                                  0.22s  
+  ✓ it P9 · 失败体一律带 code(未注册设备 → 404 + DEVICE_NOT_REGISTERED)                                                     0.24s  
+  ✓ it P9 · 任务不存在 → 404 + TASK_NOT_FOUND(不再返回裸 message)                                                          0.16s  
+
+  Tests:    22 passed (112 assertions)
+  Duration: 6.91s
+

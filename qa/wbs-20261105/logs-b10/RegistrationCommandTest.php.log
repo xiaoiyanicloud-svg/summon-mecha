@@ -1,0 +1,10 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\RegistrationCommandTest
+  ✓ it B1-2 · 登记型构建拒绝非 GA 机型（BUILD_TARGET_NOT_GA），且不落任何构建                                                        0.93s  
+  ✓ it B1-2 · manifest 摘要与命令不一致 → BUILD_MANIFEST_DIGEST_MISMATCH                                                 0.15s  
+  ✓ it B1-2 · 无匹配构建器 → BUILD_BUILDER_NOT_FOUND（不静默登记）                                                            0.14s  
+  ✓ it B1-2 · 命令的稳定键只由版本/摘要/目标构成，不含自由文本                                                                          0.13s  
+
+  Tests:    4 passed (10 assertions)
+  Duration: 1.72s
+

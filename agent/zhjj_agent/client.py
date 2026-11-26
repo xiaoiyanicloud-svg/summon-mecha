@@ -5,9 +5,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from typing import Any, Dict, Optional, Tuple
 
-from zhjj_agent.constants import PROTOCOL_V2
+from zhjj_agent.constants import PROTOCOL_V2, PROTOCOL_FACT_V3
 
 
 class AgentClient:
@@ -26,6 +27,44 @@ class AgentClient:
         self.private_key_pem = private_key_pem
         self.agent_key = agent_key
         self.timeout = timeout
+
+        # 事件正文 v3 签名（WBS A1）：设备私钥 → 公钥指纹 key_id。
+        self.fact_key_id: Optional[str] = None
+        if self.private_key_pem:
+            from zhjj_agent.crypto import fact_key_id
+
+            self.fact_key_id = fact_key_id(self.private_key_pem)
+
+    def build_fact_envelope(
+        self,
+        payload: Dict[str, Any],
+        execution_fact: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """构造并签名 agent-fact/v3 信封；无设备私钥时返回 None（历史共享密钥模式）。
+
+        签名域固定为 event_id/did/task_no/event_seq/phase/execution_fact/evidence/reported_at，
+        覆盖的是事件正文本身，而不是只签 method/path/timestamp。
+        """
+        if not self.private_key_pem or not self.fact_key_id:
+            return None
+
+        from zhjj_agent.crypto import canonical_fact_v3, sign_data
+
+        signed = {
+            "protocol": PROTOCOL_FACT_V3,
+            "event_id": payload.get("event_id"),
+            "did": payload.get("did"),
+            "task_no": payload.get("task_no"),
+            "event_seq": payload.get("event_seq"),
+            "phase": payload.get("phase"),
+            "execution_fact": execution_fact,
+            "evidence": payload.get("evidence") or {},
+            "reported_at": payload.get("reported_at"),
+        }
+
+        signature = sign_data(canonical_fact_v3(signed), self.private_key_pem)
+
+        return {**signed, "signature": signature, "key_id": self.fact_key_id}
 
     def _build_auth_headers(self, method: str, path: str) -> Dict[str, str]:
         headers = {
@@ -114,18 +153,48 @@ class AgentClient:
 
     # ── 平台各端点快捷方法 ───────────────────────────────────────────────────
 
-    def heartbeat(self, agent_version: str, capability_snapshot: Optional[Dict[str, Any]] = None) -> Tuple[bool, Dict[str, Any]]:
+    def heartbeat(
+        self,
+        agent_version: str,
+        capability_snapshot: Optional[Dict[str, Any]] = None,
+        metrics: Optional[Dict[str, Dict[str, int]]] = None,
+        health: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[bool, Dict[str, Any]]:
         payload = {
             "did": self.did,
             "agent_version": agent_version,
             "capability_snapshot": capability_snapshot or {},
         }
+        # A3：增量计数随心跳上报。批次由 AgentMetrics 生成并持久化，
+        # 失败重发用同一个 batch_id（平台按 (did,batch_id) 去重，不会重复累加）。
+        if metrics:
+            payload["metrics"] = metrics
+        # A2：健康快照是**瞬时值**（覆盖语义），采不到就不带 —— 不编造 0。
+        if health:
+            payload["health"] = health
         return self.request("POST", "api/agent/heartbeat", payload=payload)
 
     def fetch_commands(self) -> Tuple[bool, Dict[str, Any]]:
         return self.request("GET", "api/agent/commands", params={"did": self.did, "protocol_version": PROTOCOL_V2})
 
     pull_commands = fetch_commands
+
+    def check_entitlement(
+        self,
+        skill_id: Any,
+        skill_version_id: Optional[int] = None,
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """A5：执行前向平台回源确认本机对该技能仍持有有效授权。"""
+        payload: Dict[str, Any] = {"did": self.did, "skill_id": int(skill_id)}
+
+        if skill_version_id is not None:
+            payload["skill_version_id"] = int(skill_version_id)
+
+        return self.request("POST", "api/agent/entitlement/check", payload=payload)
+
+    def fetch_desired_state(self) -> Tuple[bool, Dict[str, Any]]:
+        """A4：拉取平台声明的期望技能集合与实际 drift。"""
+        return self.request("GET", "api/agent/desired-state", params={"did": self.did})
 
     def send_event(
         self,
@@ -134,7 +203,8 @@ class AgentClient:
         error_code: Optional[str] = None,
         error_msg: Optional[str] = None,
         event_id: Optional[str] = None,
-        event_seq: Optional[int] = None
+        event_seq: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> Tuple[bool, Dict[str, Any]]:
         payload = {
             "task_no": task_no,
@@ -142,11 +212,24 @@ class AgentClient:
             "phase": phase,
             "error_code": error_code,
             "error_msg": error_msg,
+            # 单次调用也必须可幂等；持久 Outbox 调用方应传入稳定 event_id。
+            "event_id": event_id or f"evt_{uuid.uuid4().hex}",
         }
-        if event_id is not None:
-            payload["event_id"] = event_id
         if event_seq is not None:
             payload["event_seq"] = event_seq
+        if extra:
+            payload.update(extra)
+
+        # A1/B 修补：手握设备私钥时，`send_event` 也必须自带 agent-fact/v3 信封。
+        # 否则"直接调用 send_event"的通道（联调脚本、端到端测试）会被平台按
+        # AGENT_FACT_SIGNATURE_REQUIRED 拒掉 —— 那是**对的**（平台不该为某条客户端路径开后门），
+        # 所以这里统一在发出去之前签，而不是让调用方各签各的。
+        if "fact_envelope" not in payload and self.private_key_pem:
+            payload["reported_at"] = int(time.time())
+            envelope = self.build_fact_envelope(payload, payload.get("execution_fact"))
+            if envelope:
+                payload["fact_envelope"] = envelope
+
         return self.request("POST", "api/agent/evt", payload=payload)
 
     def send_ack(self, task_no: str, event_id: str, stage: str) -> Tuple[bool, Dict[str, Any]]:
@@ -158,10 +241,26 @@ class AgentClient:
         }
         return self.request("POST", "api/agent/ack", payload=payload)
 
-    def reconcile(self, skills: list, tasks: Optional[list] = None) -> Tuple[bool, Dict[str, Any]]:
+    def reconcile(
+        self,
+        skills: list,
+        tasks: Optional[list] = None,
+        model_code: Optional[str] = None,
+        observed_generation: int = 0,
+        active_executions: Optional[list] = None,
+        outbox_cursor: Optional[str] = None,
+        reported_at: Optional[int] = None,
+    ) -> Tuple[bool, Dict[str, Any]]:
+        if not model_code:
+            raise ValueError("reconcile 必须提供 model_code，禁止用隐式默认机型")
         payload = {
             "did": self.did,
+            "model_code": model_code,
+            "observed_generation": int(observed_generation),
             "skills": skills,
             "tasks": tasks or [],
+            "active_executions": active_executions or [],
+            "outbox_cursor": outbox_cursor,
+            "reported_at": int(reported_at or time.time()),
         }
         return self.request("POST", "api/agent/reconcile", payload=payload)

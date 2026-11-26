@@ -1,0 +1,23 @@
+
+   FAIL  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ⨯ it 旧 event_seq 不得覆盖新 event_seq                                                                               2.14s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest > it 旧 event_seq 不得覆盖新 event_seq                 
+  Expected response status code [409] but received 200.
+Failed asserting that 200 is identical to 409.
+
+  at packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest.php:552
+    548▕         'started_at' => $now,
+    549▕         'evidence' => ['observer' => 'device_adapter_observe', 'stage' => 'stale'],
+    550▕         'reported_at' => $now + 1,
+    551▕     ], $headers);
+  ➜ 552▕     $stale->assertStatus(409)->assertJsonPath('code', 'TASK_TRANSITION_INVALID');
+    553▕ 
+    554▕     $execution = SkillExecution::where('execution_id', $execId)->firstOrFail();
+    555▕     expect($execution->last_event_seq)->toBe(2)
+    556▕         ->and($execution->status)->toBe(SkillExecution::STATUS_RUNNING);
+
+
+  Tests:    1 failed (2 assertions)
+  Duration: 2.98s
+

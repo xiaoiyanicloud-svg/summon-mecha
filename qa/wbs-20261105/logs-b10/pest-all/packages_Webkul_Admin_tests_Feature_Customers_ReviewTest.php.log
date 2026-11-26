@@ -1,0 +1,57 @@
+﻿
+  ....猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\ReviewTest > it should delete the review                       
+  Expected: {"message":"\u8bc4\u8bba\u5220\u9664\u6210\u529f"}
+
+  To contain: 璇勮鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Customers\ReviewTest.php:273
+    269鈻?    $this->loginAsAdmin();
+    270鈻?
+    271鈻?    deleteJson(route('admin.customers.customers.review.delete', $productReview->id))
+    272鈻?        ->assertOk()
+  鉃?273鈻?        ->assertSeeText(trans('admin::app.customers.reviews.index.datagrid.delete-success'));
+    274鈻?
+    275鈻?    $this->assertDatabaseMissing('product_reviews', [
+    276鈻?        'id' => $productReview->id,
+    277鈻?    ]);
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\ReviewTest > it should mass delete the product review          
+  Expected: {"message":"\u6240\u9009\u8bc4\u8bba\u5220\u9664\u6210\u529f"}
+
+  To contain: 鎵€閫夎瘎璁哄垹闄ゆ垚鍔?
+
+  at packages\Webkul\Admin\tests\Feature\Customers\ReviewTest.php:332
+    328鈻?    postJson(route('admin.customers.customers.review.mass_delete', [
+    329鈻?        'indices' => $productReviews->pluck('id')->toArray(),
+    330鈻?    ]))
+    331鈻?        ->assertOk()
+  鉃?332鈻?        ->assertSeeText(trans('admin::app.customers.reviews.index.datagrid.mass-delete-success'));
+    333鈻?
+    334鈻?    foreach ($productReviews as $productReview) {
+    335鈻?        $this->assertDatabaseMissing('product_reviews', [
+    336鈻?            'id' => $productReview->id,
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\ReviewTest > it should mass update the product review          
+  Expected: {"message":"\u6240\u9009\u8bc4\u8bba\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 鎵€閫夎瘎璁烘洿鏂版垚鍔?
+
+  at packages\Webkul\Admin\tests\Feature\Customers\ReviewTest.php:380
+    376鈻?        'indices' => $productReviews->pluck('id')->toArray(),
+    377鈻?        'value'   => $status,
+    378鈻?    ]))
+    379鈻?        ->assertOk()
+  鉃?380鈻?        ->assertSeeText(trans('admin::app.customers.reviews.index.datagrid.mass-update-success'));
+    381鈻?
+    382鈻?    foreach ($productReviews as $productReview) {
+    383鈻?        $this->assertModelWise([
+    384鈻?            ProductReview::class => [
+
+
+  Tests:    3 failed, 4 passed (25 assertions)
+  Duration: 6.52s
+

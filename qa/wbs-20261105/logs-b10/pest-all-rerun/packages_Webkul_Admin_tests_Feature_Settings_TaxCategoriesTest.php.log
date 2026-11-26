@@ -1,0 +1,23 @@
+﻿
+  ..⨯....
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\TaxCategoriesTest > it should store the tax category            
+  Expected: {"message":"\u65b0\u7a0e\u6536\u5206\u7c7b\u5df2\u521b\u5efa"}
+
+  To contain: 新税收分类已创建
+
+  at packages\Webkul\Admin\tests\Feature\Settings\TaxCategoriesTest.php:45
+     41▕         'description' => fake()->sentence(10),
+     42▕         'taxrates'    => TaxRate::factory()->count(2)->create()->pluck('id')->toArray(),
+     43▕     ])
+     44▕         ->assertOk()
+  ➜  45▕         ->assertSeeText(trans('admin::app.settings.taxes.categories.index.create-success'));
+     46▕ 
+     47▕     $this->assertModelWise([
+     48▕         TaxCategory::class => [
+     49▕             [
+
+
+  Tests:    1 failed, 6 passed (25 assertions)
+  Duration: 4.13s
+

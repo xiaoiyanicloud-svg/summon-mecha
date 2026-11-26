@@ -1,0 +1,40 @@
+﻿
+  ..猕?..猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\ExchangeRatesTest > it should store the newly created exchan鈥?  
+  Expected: {"message":"\u6c47\u7387\u521b\u5efa\u6210\u529f"}
+
+  To contain: 姹囩巼鍒涘缓鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Settings\ExchangeRatesTest.php:44
+     40鈻?        'rate'            => $rate = rand(1, 100),
+     41鈻?        'target_currency' => $currency->id,
+     42鈻?    ])
+     43鈻?        ->assertOk()
+  鉃? 44鈻?        ->assertSeeText(trans('admin::app.settings.exchange-rates.index.create-success'));
+     45鈻?
+     46鈻?    $this->assertModelWise([
+     47鈻?        CurrencyExchangeRate::class => [
+     48鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Settings\ExchangeRatesTest > it should delete the exchange rate          
+  Expected: {"message":"\u6c47\u7387\u5220\u9664\u6210\u529f"}
+
+  To contain: 姹囩巼鍒犻櫎鎴愬姛
+
+  at packages\Webkul\Admin\tests\Feature\Settings\ExchangeRatesTest.php:126
+    122鈻?    $this->loginAsAdmin();
+    123鈻?
+    124鈻?    deleteJson(route('admin.settings.exchange_rates.delete', $currencyExchangeRate->id))
+    125鈻?        ->assertOk()
+  鉃?126鈻?        ->assertSeeText(trans('admin::app.settings.exchange-rates.index.delete-success'));
+    127鈻?
+    128鈻?    $this->assertDatabaseMissing('locales', [
+    129鈻?        'id' => $currencyExchangeRate->id,
+    130鈻?    ]);
+
+
+  Tests:    2 failed, 5 passed (20 assertions)
+  Duration: 2.52s
+

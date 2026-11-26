@@ -1,0 +1,21 @@
+﻿
+  .......⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CatalogRuleTest > it should delete a specific ca…   
+  Expected: {"message":"\u76ee\u5f55\u89c4\u5219\u5220\u9664\u6210\u529f"}
+
+  To contain: 目录规则删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\Promotions\CatalogRuleTest.php:173
+    169▕     $this->loginAsAdmin();
+    170▕ 
+    171▕     deleteJson(route('admin.marketing.promotions.catalog_rules.delete', $catalogRule->id))
+    172▕         ->assertOk()
+  ➜ 173▕         ->assertSeeText(trans('admin::app.marketing.promotions.catalog-rules.delete-success'));
+    174▕ });
+    175▕
+
+
+  Tests:    1 failed, 7 passed (30 assertions)
+  Duration: 9.72s
+

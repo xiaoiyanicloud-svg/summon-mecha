@@ -1,0 +1,8 @@
+[Wed Nov  4 22:54:12 2026] PHP 8.4.24 Development Server (http://127.0.0.1:51777) started
+[Wed Nov  4 22:54:12 2026] 127.0.0.1:57031 Accepted
+[Wed Nov  4 22:54:13 2026] 127.0.0.1:57031 [401]: GET /api/agent/commands
+[Wed Nov  4 22:54:13 2026] 127.0.0.1:57031 Closing
+[Wed Nov  4 22:54:13 2026] 127.0.0.1:54577 Accepted
+[Wed Nov  4 22:54:14 2026] 127.0.0.1:54577 [401]: GET /api/agent/commands
+[Wed Nov  4 22:54:14 2026] 127.0.0.1:54577 Closing
+[Wed Nov  4 22:54:14 2026] 127.0.0.1:51356 Accepted

@@ -1,0 +1,38 @@
+﻿
+  .⨯.⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest > it 技能详情接口返回 permissions…            
+  Expected response status code [200] but received 409.
+Failed asserting that 409 is identical to 200.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest.php:200
+    196▕ it('技能详情接口返回 permissions 原始值 + 人话标签（只加键）', function () {
+    197▕     $productId = permSeedProduct();
+    198▕     permSeedVersion($productId, ['permissions' => json_encode(['motion_control', 'camera'])]);
+    199▕ 
+  ➜ 200▕     $row = collect(getJson(route('shop.api.skill-catalog.versions', $productId))->assertOk()->json('data'))->first();
+    201▕ 
+    202▕     expect($row['permissions'])->toBe(['motion_control', 'camera'])
+    203▕         ->and($row['permission_labels'])->toBe(['运动控制', '摄像头'])
+    204▕         // 既有键未被这次改动碰坏（术语纪律：发布通道 stable/beta）
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest > it 未声明权限的版本 → 详情接口与风险告知都不出现权限段      
+  Expected response status code [200] but received 409.
+Failed asserting that 409 is identical to 200.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\PermissionVisibilityTest.php:239
+    235▕ it('未声明权限的版本 → 详情接口与风险告知都不出现权限段', function () {
+    236▕     $productId = permSeedProduct();
+    237▕     permSeedVersion($productId, ['risk_level' => 'low']);
+    238▕ 
+  ➜ 239▕     $row = collect(getJson(route('shop.api.skill-catalog.versions', $productId))->assertOk()->json('data'))->first();
+    240▕ 
+    241▕     expect($row['permissions'])->toBe([])
+    242▕         ->and($row['permission_labels'])->toBe([]);
+    243▕
+
+
+  Tests:    2 failed, 3 passed (33 assertions)
+  Duration: 2.51s
+

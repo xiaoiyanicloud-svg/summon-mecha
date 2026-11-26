@@ -1,0 +1,10 @@
+﻿No syntax errors detected in packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000003_create_deploy_metric_counters.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeployMetricCounter.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeployInboxService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/DeployReconcileService.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/GaOperationalMetrics.php
+No syntax errors detected in packages/Webkul/Shop/src/Services/Deploy/Contracts/AgentFactEnvelopeV3.php
+No syntax errors detected in packages/Webkul/Shop/src/Http/Controllers/API/AgentController.php
+No syntax errors detected in packages/Webkul/Shop/src/Providers/ShopServiceProvider.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/DeployMetricCounterTest.php
+No syntax errors detected in packages/Webkul/Shop/tests/Feature/Deploy/SkillFullChainEndToEndTest.php

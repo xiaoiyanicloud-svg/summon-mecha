@@ -1,0 +1,192 @@
+﻿ M agent/tests/test_acceptance_at01_at26.py
+ M agent/tests/test_e2e_simulator.py
+ M agent/tests/test_live_http_integration.py
+ M agent/tests/test_task_manager.py
+ M agent/zhjj_agent/adapters/base.py
+ M agent/zhjj_agent/adapters/mock.py
+ M agent/zhjj_agent/adapters/unitree_g1.py
+ M agent/zhjj_agent/client.py
+ M agent/zhjj_agent/constants.py
+ M agent/zhjj_agent/crypto.py
+ M agent/zhjj_agent/executor.py
+ M agent/zhjj_agent/main.py
+ M agent/zhjj_agent/package_manager.py
+ M agent/zhjj_agent/storage.py
+ M agent/zhjj_agent/task_manager.py
+ M docs/skill-dev-steps.md
+ M my-bagisto-store/config/deploy_gateways.php
+ M my-bagisto-store/database/seeders/DeviceModelSeeder.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Config/acl.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Config/menu.php
+ M my-bagisto-store/packages/Webkul/Admin/src/Routes/catalog-routes.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/AgentController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/ApiErrorCode.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/AsrController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SkillSupplyController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/SummonAiController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/TtsController.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Models/DeployTask.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Models/SkillBuildRun.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Models/SkillExecution.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Models/SkillTargetRelease.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Providers/ShopServiceProvider.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Routes/api.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployTaskService.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeviceCredentialService.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/BuildResult.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Builders/MotionCarrierBuilder.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Builders/PortableSkillBuilder.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/CapabilityResolver.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/SemanticLowerer.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/TargetAppBuilder.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/TargetProfileService.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/SkillBuildService.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillDelivery/SkillDeliveryAssetResolver.php
+ M my-bagisto-store/packages/Webkul/Shop/src/Services/SkillPackage/SkillPackageBuilder.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/API/AgentErrorContractP9Test.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/API/AgentEventOwnershipTest.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/API/AgentV2ExecutionTest.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/KillSwitchSaleStopTest.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/PortableSkillCompilerAcceptanceTest.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/SkillFullChainEndToEndTest.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/TaskNoCollisionRetryTest.php
+ M my-bagisto-store/packages/Webkul/Shop/tests/Feature/SkillAudit/CompileCarrierHonestyD9Test.php
+ M my-bagisto-store/packages/Webkul/User/src/Http/Middleware/Bouncer.php
+ D my-bagisto-store/resources/skill-target-profiles/agibot_a2.json
+ M my-bagisto-store/resources/skill-target-profiles/unitree_g1.json
+?? .claude/product-actions-driver.mjs
+?? .claude/tmp-ai-human-click.png
+?? .claude/verify-cart-removed.mjs
+?? .claude/verify-catalog-images.mjs
+?? .claude/verify-insurance-banner.mjs
+?? .claude/verify-product-actions-cart.mjs
+?? .idea/
+?? .tmp-b10/
+?? _delete_result.json
+?? _execute_recycle_delete.ps1
+?? _preflight_delete_list.json
+?? agent/tests/failpoint_child.py
+?? agent/tests/test_crash_restart.py
+?? agent/tests/test_fact_envelope_v3.py
+?? agent/tests/test_failpoints.py
+?? agent/tests/test_five_model_adapters.py
+?? agent/tests/test_install_transaction.py
+?? agent/tests/test_metrics.py
+?? agent/tests/test_real_os_failures.py
+?? agent/tests/test_sandbox.py
+?? agent/tests/test_sandbox_wiring.py
+?? agent/tests/test_stop_observation_time.py
+?? agent/zhjj_agent/adapters/agibot_a3.py
+?? agent/zhjj_agent/adapters/agibot_x2.py
+?? agent/zhjj_agent/adapters/engineai_t800.py
+?? agent/zhjj_agent/adapters/registry.py
+?? agent/zhjj_agent/adapters/unitree_r1.py
+?? agent/zhjj_agent/adapters/vendor_plan_adapter.py
+?? agent/zhjj_agent/failpoints.py
+?? agent/zhjj_agent/install_transaction.py
+?? agent/zhjj_agent/metrics.py
+?? agent/zhjj_agent/sandbox.py
+?? agent/zhjj_agent/stop_observation.py
+?? agent/zhjj_agent/telemetry.py
+?? cleanup_candidate_data.json
+?? docs/ecosystem/admin-g3-screenshots/
+?? docs/ecosystem/e2e-screenshots/
+?? docs/ecosystem/q04-screenshots/
+?? docs/ecosystem/screenshots/e2e-01-event-detail.png
+?? docs/ecosystem/screenshots/e2e-02-login.png
+?? docs/ecosystem/screenshots/e2e-03-form.png
+?? docs/ecosystem/screenshots/e2e-04-receipt.png
+?? docs/ecosystem/screenshots/e2e-05-my-registrations.png
+?? docs/ecosystem/screenshots/e2e-06-credential.png
+?? docs/ecosystem/screenshots/e2e-admin-01-registrations.png
+?? docs/ecosystem/screenshots/e2e-admin-02-checkin-form.png
+?? docs/ecosystem/screenshots/e2e-admin-03-checkin-success.png
+?? docs/ecosystem/screenshots/e2e-admin-04-checked-in-list.png
+?? docs/skill-dev-step10-five-model-ga-p0.md
+?? docs/skill-dev-step10-five-model-ga-research-delivery.md
+?? docs/skill-dev-step10-wbs-eighth-batch-20261105.md
+?? docs/skill-dev-step10-wbs-fifth-batch-20261105.md
+?? docs/skill-dev-step10-wbs-first-batch-20261105.md
+?? docs/skill-dev-step10-wbs-fourth-batch-20261105.md
+?? docs/skill-dev-step10-wbs-second-batch-20261105.md
+?? docs/skill-dev-step10-wbs-seventh-batch-20261105.md
+?? docs/skill-dev-step10-wbs-sixth-batch-20261105.md
+?? docs/skill-dev-step10-wbs-t10-kms-evaluation-20261105.md
+?? docs/skill-dev-step10-wbs-tenth-batch-20261105.md
+?? docs/skill-dev-step10-wbs-tenth-batch-prompt.md
+?? docs/skill-dev-step10-wbs-third-batch-20261105.md
+?? my-bagisto-store/config/agent_fact_signature.php
+?? my-bagisto-store/config/skill_build.php
+?? my-bagisto-store/config/skill_ga.php
+?? my-bagisto-store/config/stop_observation.php
+?? my-bagisto-store/docker/
+?? my-bagisto-store/packages/Webkul/Admin/src/Http/Controllers/Catalog/TargetReleaseController.php
+?? my-bagisto-store/packages/Webkul/Admin/src/Resources/views/catalog/target-releases/
+?? my-bagisto-store/packages/Webkul/Admin/tests/Feature/Catalog/TargetReleaseAdminTest.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/GaOperationalMetricsCommand.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/SkillBuildMetrics.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Console/Commands/SkillBuildWorker.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_04_000001_create_deploy_inbox_and_outbox_leases.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_04_000002_add_ga_fact_evidence_and_reconcile_reports.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000001_create_skill_build_sequences.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000002_create_skill_build_commands.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000003_create_deploy_metric_counters.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000004_create_deploy_agent_metric_gauges.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Database/Migrations/2026_11_05_000005_add_toolchain_to_skill_build_runs.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Http/Controllers/API/RobotSupportMatrixController.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Models/DeployInboxEvent.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Models/DeviceReconcileReport.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Models/SkillBuildCommand.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Models/SkillTargetReleaseEvent.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/AgentFactSignatureVerifier.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/Contracts/
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployInboxService.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployMetricCounter.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeployReconcileService.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/DeviceKeyProvider.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/Deploy/GaOperationalMetrics.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/BuildCommand.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/BuildCommandConflictException.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/BuildCommandService.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/BuildMetricsService.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/GaSupportMatrixService.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/SourcePackageReader.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/SourcePackageRejected.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/Portable/TargetProfile.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/RegistrationCommand.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/RunNumberAllocator.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/SkillTargetReleaseService.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/TargetReleaseEvent.php
+?? my-bagisto-store/packages/Webkul/Shop/src/Services/SkillCompile/ToolchainFingerprint.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/API/AgentFactSignatureV3Test.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/API/StopObservationContractTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/BuildCommandIdempotencyTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/BuildCommandRouteTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/BuildDeterminismTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/BuildMetricsTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/DeployMetricCounterTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/DeployMetricHttpConcurrencyTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/DeviceCredentialConcurrencyTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/GaFiveModelContractTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/KeyLifecycleTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/MotionCarrierFailClosedTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/RegistrationCommandTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/SkillBuildRunNumberTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/SkillDeliveryRevocationTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/SkillPublishHttpConcurrencyTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/SourcePackageConcurrencyTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/SourcePackageSecurityTest.php
+?? my-bagisto-store/packages/Webkul/Shop/tests/Feature/Deploy/ToolchainFingerprintTest.php
+?? my-bagisto-store/resources/skill-target-profiles/agibot_a3.json
+?? my-bagisto-store/resources/skill-target-profiles/agibot_x2.json
+?? my-bagisto-store/resources/skill-target-profiles/engineai_t800.json
+?? my-bagisto-store/resources/skill-target-profiles/unitree_r1.json
+?? my-bagisto-store/tools/
+?? qa/ga/
+?? qa/hil-verification/EVIDENCE_STATUS.json
+?? qa/wbs-20261105/
+?? static/baoxian.jpg
+?? static/shouye3.png
+?? tools/fix-codex-sandbox.bat
+?? tools/fix-codex-sandbox.ps1
+?? tools/pest-all.ps1

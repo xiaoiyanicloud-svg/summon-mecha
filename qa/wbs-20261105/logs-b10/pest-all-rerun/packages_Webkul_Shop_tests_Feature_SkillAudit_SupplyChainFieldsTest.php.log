@@ -1,0 +1,23 @@
+﻿
+  .......⨯.
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SupplyChainFieldsTest > it 只有非文件类交付物（cloud_config…             
+  Failed asserting that an array contains 5253.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SupplyChainFieldsTest.php:456
+    452▕     scfPublish($version->id)->assertOk();
+    453▕ 
+    454▕     expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+    455▕         ->and(scfFlatStatus($productId))->toBe(1)
+  ➜ 456▕         ->and(scfSearchIds($name))->toContain($productId);
+    457▕ });
+    458▕ 
+    459▕ // ==================== ⑦ 运营后台通道：同一闸门、显式映射（不落 default 兜底）====================
+    460▕
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SupplyChainFieldsTest.php:456
+
+
+  Tests:    1 failed, 8 passed (87 assertions)
+  Duration: 6.97s
+

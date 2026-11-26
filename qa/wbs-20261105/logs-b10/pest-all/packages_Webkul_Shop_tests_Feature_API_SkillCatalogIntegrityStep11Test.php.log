@@ -1,0 +1,186 @@
+﻿
+  猕ǒ猕ǒ猕ǒ猕ǒ猕ǒ.....
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 鍒嗙被缂哄け鏃舵妧鑳藉競鍦鸿繑鍥炵┖璐ф灦锛屼笉鑳芥妸鍏ㄥ晢鍩庡綋浣滄妧鑳戒緵缁?     
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:54
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 鎶€鑳藉垎绫诲瓨鍦ㄦ椂浠嶉殧绂诲叾瀹冨垎绫荤殑宸插彂甯冨晢鍝?            
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:64
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 鏃犵瓫閫夌殑甯傚満涔熶笉灞曠ず娌℃湁鍙戝竷鐗堟湰鎴栧彧鏈夎崏绋跨殑鎶€鑳?        
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:73
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 鏃у彂甯冪増鏈殑閫氶亾鍜岄闄╀笉鑳戒娇涓嶆弧瓒虫潯浠剁殑褰撳墠鐗堟湰缁х画鍛戒腑     
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:83
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 鍙戝竷鏃堕棿姣斿垱寤洪『搴忎紭鍏堬紝鍥炲～鐨勬棫鐗堟湰涓嶈兘鏇夸唬褰撳墠鍙戝竷       
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:93
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 鍙戝竷鏃堕棿鐩稿悓浠ヨ緝澶х殑鐗堟湰璁板綍 id 纭畾褰撳墠鐗堟湰         
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:102
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 涓や釜鍙戝竷鏃堕棿閮戒负绌虹殑鍘嗗彶鐗堟湰浠嶆寜 id 纭畾褰撳墠鐗堟湰       
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:111
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 鏈夊彂甯冩椂闂寸殑鐗堟湰浼樺厛浜庡悗鎻掑叆鐨勬棤鏃ユ湡鍘嗗彶鐗堟湰           
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:120
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 杈冩柊鐨勮崏绋夸笌褰掓。涓嶉伄钄戒粛鍦ㄥ彂甯冪殑鐗堟湰               
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:129
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test > it 绌洪€氶亾鏁扮粍涓庡吋瀹规€ф鏌ヤ繚鎸佺己鐪佷汉宸ラ€氶亾鐨勫悓涓€鍙ｅ緞         
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+     20鈻?        'attribute_family_id' => $family, 'created_at' => now(), 'updated_at' => now(),
+     21鈻?    ]);
+     22鈻?    if ($inSkillCategory) {
+     23鈻?        $category = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+  鉃? 24鈻?        expect($category)->not->toBeNull();
+     25鈻?        DB::table('product_categories')->insert(['product_id' => $product, 'category_id' => $category]);
+     26鈻?    }
+     27鈻?
+     28鈻?    return $product;
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:24
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogIntegrityStep11Test.php:139
+
+
+  Tests:    10 failed, 5 passed (45 assertions)
+  Duration: 3.67s
+

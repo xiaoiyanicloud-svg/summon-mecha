@@ -1,0 +1,34 @@
+﻿
+  .⨯...
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\Products\ProductTest > it should copy the existing product       
+  Failed asserting that a row in the table [product_flat] matches the attributes {
+    "id": 3540
+}.
+
+Found: [
+    {
+        "id": 2195
+    },
+    {
+        "id": 2196
+    }
+].
+
+  at packages\Webkul\Core\tests\Concerns\CoreAssertions.php:28
+     24▕     public function assertModelWise(array $modelWiseAssertions): void
+     25▕     {
+     26▕         foreach ($modelWiseAssertions as $modelClassName => $modelAssertions) {
+     27▕             foreach ($modelAssertions as $assertion) {
+  ➜  28▕                 $this->assertDatabaseHas(app($modelClassName)->getTable(), $assertion);
+     29▕             }
+     30▕         }
+     31▕     }
+     32▕
+
+  1   packages\Webkul\Admin\tests\Feature\Catalog\Products\ProductTest.php:30
+
+
+  Tests:    1 failed, 4 passed (16 assertions)
+  Duration: 5.52s
+

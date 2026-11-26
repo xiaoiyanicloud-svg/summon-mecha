@@ -17,18 +17,10 @@
 
     <!-- ===== 搜索框(租售 / 场景) ===== -->
     <view class="search-bar" v-show="currentTab === 'tob'">
-      <view class="search-row">
-        <view class="search-glass"><view class="search-glass-circle"></view><view class="search-glass-handle"></view></view>
-        <input class="search-input" v-model="searchQ" placeholder="搜索机型 / 品牌 / SKU / 形态" confirm-type="search" />
-        <text class="search-clear" v-if="searchQ" @tap="searchQ = ''">✕</text>
-      </view>
+      <SearchInput v-model="searchQ" placeholder="搜索机型 / 品牌 / SKU / 形态" />
     </view>
     <view class="search-bar" v-show="currentTab === 'scene'">
-      <view class="search-row">
-        <view class="search-glass"><view class="search-glass-circle"></view><view class="search-glass-handle"></view></view>
-        <input class="search-input" v-model="sceneSearchQ" placeholder="搜索场景名称 / 描述 / 标签" confirm-type="search" />
-        <text class="search-clear" v-if="sceneSearchQ" @tap="sceneSearchQ = ''">✕</text>
-      </view>
+      <SearchInput v-model="sceneSearchQ" placeholder="搜索场景名称 / 描述 / 标签" />
     </view>
 
     <!-- ===== 主体 ===== -->
@@ -609,6 +601,7 @@
 import Jineng from '@/components/jiqi/jineng.vue'
 import { skillDetailUrl } from '@/utils/skill-market'
 import Peijian from '@/components/jiqi/peijian.vue'
+import SearchInput from '@/components/SearchInput.vue'
 import StateView from '@/components/StateView.vue'
 import { productApi, categoryApi, brandApi, catalogApi, accessoryCatalogApi, wishlistApi } from '@/utils/api'
 import { openSceneRequest, sceneDraftPayload } from '@/utils/scene-request'
@@ -757,7 +750,7 @@ let _accessoryDetailSeq = 0
 const DETAIL_IMG_DEFAULT_HEIGHT = 777.6
 
 export default {
-  components: { Jineng, Peijian, StateView, SmIcon },
+  components: { Jineng, Peijian, SearchInput, StateView, SmIcon },
   data() {
     return {
       currentTab: 'tob',
@@ -2128,64 +2121,8 @@ export default {
 </script>
 
 <style scoped>
-/* ===== 搜索框(租/购/场景) ===== */
-.search-bar {
-  padding: 12rpx 20rpx 10rpx;
-  background: #ffffff;
-  border-bottom: 1rpx solid #F1F5F9;
-  flex-shrink: 0;
-}
-.search-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  height: 68rpx;
-  background: #F4F7FB;
-  border: 1rpx solid #E5ECF6;
-  border-radius: 999rpx;
-  padding: 0 22rpx;
-  box-sizing: border-box;
-}
-.search-glass {
-  position: relative;
-  width: 26rpx;
-  height: 26rpx;
-  flex-shrink: 0;
-}
-.search-glass-circle {
-  width: 18rpx;
-  height: 18rpx;
-  border: 3rpx solid #94A3B8;
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-.search-glass-handle {
-  position: absolute;
-  right: 1rpx;
-  bottom: 2rpx;
-  width: 9rpx;
-  height: 3rpx;
-  background: #94A3B8;
-  border-radius: 2rpx;
-  transform: rotate(45deg);
-}
-.search-input {
-  flex: 1;
-  min-width: 0;
-  height: 64rpx;
-  background: transparent;
-  border: none;
-  outline: none;
-  padding: 0;
-  font-size: 25rpx;
-  color: #1E293B;
-}
-.search-clear {
-  font-size: 22rpx;
-  color: #94A3B8;
-  padding: 6rpx 8rpx;
-  flex-shrink: 0;
-}
+/* ===== 搜索框(租售 TOB / 场景) ===== */
+.search-bar { padding: 8rpx 20rpx 12rpx; background: #ffffff; flex-shrink: 0; }
 
 /* ===== 基础布局 ===== */
 page {

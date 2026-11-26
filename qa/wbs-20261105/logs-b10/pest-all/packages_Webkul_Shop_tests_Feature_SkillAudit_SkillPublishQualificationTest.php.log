@@ -1,0 +1,40 @@
+﻿
+  ...猕ǒ.
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest > it 瀹炲悕閫氳繃 + 鍗忚绛惧叏 鈫?鍙戔€?           
+  Failed asserting that an array contains 3478.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:251
+    247鈻?    spqPublish($version->id)->assertOk();
+    248鈻?
+    249鈻?    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+    250鈻?        ->and(spqFlatStatus($productId))->toBe(1)
+  鉃?251鈻?        ->and(spqSearchIds($sku))->toContain($productId);
+    252鈻?});
+    253鈻?
+    254鈻?// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鈶?骞冲彴鑷惀涓嶅彈闄?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    255鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:251
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest > it 骞冲彴鑷惀锛坰eller_id 涓?N鈥?        
+  Failed asserting that an array contains 3479.
+
+  at packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:264
+    260鈻?
+    261鈻?    spqPublish($version->id)->assertOk();
+    262鈻?
+    263鈻?    expect($version->fresh()->status)->toBe(SkillVersion::STATUS_PUBLISHED)
+  鉃?264鈻?        ->and(spqSearchIds($sku))->toContain($productId);
+    265鈻?});
+    266鈻?
+    267鈻?// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鈶?褰掑睘寮傚父 鈫?fail-closed 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    268鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\SkillAudit\SkillPublishQualificationTest.php:264
+
+
+  Tests:    2 failed, 4 passed (35 assertions)
+  Duration: 4.56s
+

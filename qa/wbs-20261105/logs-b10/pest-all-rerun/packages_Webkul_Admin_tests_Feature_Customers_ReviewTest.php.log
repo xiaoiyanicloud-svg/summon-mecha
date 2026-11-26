@@ -1,0 +1,57 @@
+﻿
+  ....⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\ReviewTest > it should delete the review                       
+  Expected: {"message":"\u8bc4\u8bba\u5220\u9664\u6210\u529f"}
+
+  To contain: 评论删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Customers\ReviewTest.php:273
+    269▕     $this->loginAsAdmin();
+    270▕ 
+    271▕     deleteJson(route('admin.customers.customers.review.delete', $productReview->id))
+    272▕         ->assertOk()
+  ➜ 273▕         ->assertSeeText(trans('admin::app.customers.reviews.index.datagrid.delete-success'));
+    274▕ 
+    275▕     $this->assertDatabaseMissing('product_reviews', [
+    276▕         'id' => $productReview->id,
+    277▕     ]);
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\ReviewTest > it should mass delete the product review          
+  Expected: {"message":"\u6240\u9009\u8bc4\u8bba\u5220\u9664\u6210\u529f"}
+
+  To contain: 所选评论删除成功
+
+  at packages\Webkul\Admin\tests\Feature\Customers\ReviewTest.php:332
+    328▕     postJson(route('admin.customers.customers.review.mass_delete', [
+    329▕         'indices' => $productReviews->pluck('id')->toArray(),
+    330▕     ]))
+    331▕         ->assertOk()
+  ➜ 332▕         ->assertSeeText(trans('admin::app.customers.reviews.index.datagrid.mass-delete-success'));
+    333▕ 
+    334▕     foreach ($productReviews as $productReview) {
+    335▕         $this->assertDatabaseMissing('product_reviews', [
+    336▕             'id' => $productReview->id,
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Customers\ReviewTest > it should mass update the product review          
+  Expected: {"message":"\u6240\u9009\u8bc4\u8bba\u66f4\u65b0\u6210\u529f"}
+
+  To contain: 所选评论更新成功
+
+  at packages\Webkul\Admin\tests\Feature\Customers\ReviewTest.php:380
+    376▕         'indices' => $productReviews->pluck('id')->toArray(),
+    377▕         'value'   => $status,
+    378▕     ]))
+    379▕         ->assertOk()
+  ➜ 380▕         ->assertSeeText(trans('admin::app.customers.reviews.index.datagrid.mass-update-success'));
+    381▕ 
+    382▕     foreach ($productReviews as $productReview) {
+    383▕         $this->assertModelWise([
+    384▕             ProductReview::class => [
+
+
+  Tests:    3 failed, 4 passed (25 assertions)
+  Duration: 8.27s
+

@@ -1,0 +1,12 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\TaskNoCollisionRetryTest
+  ✓ it S-10 · 撞号能自愈:造号器先给一个已存在的号、再给新号 → create() 成功返回新号任务                                                        1.01s  
+  ✓ it S-10 · 试满上限仍撞 → 抛出(不静默返回 null / 半条记录),且库里不留脏数据                                                            0.17s  
+  ✓ it S-10 · 非「本表撞号」的 QueryException 照常抛,且不重试(不允许被 catch 吞掉)                                                    0.15s  
+  ✓ it S-10 · 判重只认本表 uk_deploy_task_no:别的键冲突 / 非唯一键错误都不算「撞号」                                                     0.12s  
+  ✓ it S-10 · 回归:新号仍是 DT + ymdHis 时间戳(运维可按时间检索),同秒多条不再撞                                                          0.15s  
+
+  Tests:    5 passed (23 assertions)
+  Duration: 1.96s
+
+

@@ -1,0 +1,57 @@
+﻿
+  .........猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest > it should destroy an attribute                   
+  Expected: {"message":"\u5c5e\u6027\u5220\u9664\u6210\u529f"}
+
+  To contain: 灞炴€у垹闄ゆ垚鍔?
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest.php:146
+    142鈻?    $this->loginAsAdmin();
+    143鈻?
+    144鈻?    deleteJson(route('admin.catalog.attributes.delete', $attribute->id))
+    145鈻?        ->assertOk()
+  鉃?146鈻?        ->assertSeeText(trans('admin::app.catalog.attributes.delete-success'));
+    147鈻?
+    148鈻?    $this->assertDatabaseMissing('attributes', [
+    149鈻?        'id' => $attribute->id,
+    150鈻?    ]);
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest > it should not destroy an attribute if it is n鈥?  
+  Expected: {"message":"\u65e0\u6cd5\u5220\u9664\u7cfb\u7edf\u5c5e\u6027"}
+
+  To contain: 鏃犳硶鍒犻櫎绯荤粺灞炴€?
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest.php:164
+    160鈻?    $this->loginAsAdmin();
+    161鈻?
+    162鈻?    deleteJson(route('admin.catalog.attributes.delete', $attribute->id))
+    163鈻?        ->assertBadRequest()
+  鉃?164鈻?        ->assertSeeText(trans('admin::app.catalog.attributes.user-define-error'));
+    165鈻?
+    166鈻?    $this->assertModelWise([
+    167鈻?        Attribute::class => [
+    168鈻?            [
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest > it should mass delete attributes                 
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664\u6240\u9009\u5c5e\u6027"}
+
+  To contain: 宸叉垚鍔熷垹闄ゆ墍閫夊睘鎬?
+
+  at packages\Webkul\Admin\tests\Feature\Catalog\AttributeTest.php:186
+    182鈻?    postJson(route('admin.catalog.attributes.mass_delete', [
+    183鈻?        'indices' => $attributes->pluck('id')->toArray(),
+    184鈻?    ]))
+    185鈻?        ->assertOk()
+  鉃?186鈻?        ->assertSeeText(trans('admin::app.catalog.attributes.index.datagrid.mass-delete-success'));
+    187鈻?
+    188鈻?    foreach ($attributes as $attribute) {
+    189鈻?        $this->assertDatabaseMissing('attributes', [
+    190鈻?            'id' => $attribute->id,
+
+
+  Tests:    3 failed, 9 passed (35 assertions)
+  Duration: 5.98s
+

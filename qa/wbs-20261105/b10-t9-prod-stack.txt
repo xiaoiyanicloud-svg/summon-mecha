@@ -1,0 +1,36 @@
+﻿# b10-t9 • 生产栈演练（php-fpm + MySQL 8）• 2026-11-05 20:08:10
+# 结论: BLOCKED_ENV（Docker daemon 不可用；本机无管理员权限，无法启动 Docker Desktop 服务）
+
+## raw: docker --version
+Docker version 29.6.1, build 8900f1d
+
+## raw: docker info --format '{{.ServerVersion}}'  (期望 exit 0；实测 exit 1)
+docker : failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct
+ and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+At line:1 char:722
++ ... xit 1)"; $di = docker info --format '{{.ServerVersion}}' 2>&1 | Out-S ...
++                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (failed to conne...file specified.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+docker_info_exit=1
+
+## raw: Get-Service com.docker.service
+Name                Status StartType
+----                ------ ---------
+com.docker.service Stopped    Manual
+
+## raw: Start-Service com.docker.service
+START_FAIL: Service 'Docker Desktop Service (com.docker.service)' cannot be started due to the following error: Cannot open com.docker.service service on computer '.'.
+
+## 六字段
+BLOCKED_ITEM=生产栈演练（php-fpm 8.3 + MySQL 8）
+REASON=Docker daemon 未运行；本机进程非管理员，com.docker.service 启动被拒
+BLOCKING_SOURCE=本机 Docker Desktop 未启动（com.docker.service Stopped/Manual，Start-Service 权限不足）
+WHAT_WAS_NOT_RUN=Linux 容器内 php:8.3-fpm + mysql:8 的迁移/种子/关键 API 冒烟/本批用例复跑（STACK-01/02/03）
+MINIMUM_UNBLOCK_ACTION=以管理员启动 Docker Desktop 后：docker run mysql:8 与 php:8.3-fpm 挂载 my-bagisto-store，依次跑 migrate/seed/冒烟/本批用例
+CURRENT_EVIDENCE_LEVEL=NOT_RUN
+
+## STACK-02/03 口径
+STACK-01（MySQL8 迁移）= NOT_RUN
+STACK-02（php-fpm 路由 200）= NOT_RUN
+STACK-03（MySQL 5.7 vs 8 差异清单）= 未实测，仅列待测项：排序规则(utf8mb4_0900_ai_ci)、严格模式默认开启、JSON 类型/函数、ON DUPLICATE KEY 语义、保留字

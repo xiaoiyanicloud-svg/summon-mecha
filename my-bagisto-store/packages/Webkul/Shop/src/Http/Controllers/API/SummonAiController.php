@@ -58,7 +58,11 @@ class SummonAiController extends APIController
     {
         // ⚠ 必须放宽 PHP 执行时限:默认 max_execution_time=30s,
         // 而 Coze 是异步的,需要轮询等待,实测端到端约 10~30s。
-        @set_time_limit(240);
+        // 单测下跳过:set_time_limit 是**进程级**生效的,CLI 默认不限时;一旦在 Pest
+        // 全量单进程里调到,整个进程会在 240s 后被砍。生产(非 testing)行为不变。
+        if (! app()->runningUnitTests()) {
+            @set_time_limit(240);
+        }
 
         $q = trim((string) $request->input('q', ''));
 
@@ -135,7 +139,10 @@ class SummonAiController extends APIController
      */
     public function summonStream(Request $request)
     {
-        @set_time_limit(240);
+        // 单测下跳过进程级时限(理由同 summon());生产仍放宽到 240s。
+        if (! app()->runningUnitTests()) {
+            @set_time_limit(240);
+        }
 
         $q = trim((string) $request->input('q', ''));
 

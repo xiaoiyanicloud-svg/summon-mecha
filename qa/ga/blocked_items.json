@@ -1,0 +1,86 @@
+{
+  "schema": "summon-mecha/blocked-items/v1",
+  "generated_on": "2026-11-04",
+  "blocked_items": [
+    {
+      "blocked_item": "Five-model physical HIL",
+      "reason": "No real robots, no vendor field window, no independent physical stop observations.",
+      "blocking_source": "qa/hil-verification/EVIDENCE_STATUS.json",
+      "what_was_not_run": "E-Stop, brake, power isolation, contact/current/encoder stop, real install/execute/cancel/rollback on five models",
+      "minimum_unblock_action": "Execute per-model HIL bundle with independent sensors, hardware/firmware/SDK/artifact identifiers, raw logs, replay scripts, operator/facility, and validator exit 0.",
+      "current_evidence_level": "HARDWARE_UNVERIFIED"
+    },
+    {
+      "blocked_item": "R1/X2/A3/T800 approved physical limits and real SDK bridges",
+      "reason": "Approved vendor joint/velocity/torque/temperature limits, firmware matrix, and on-device SDK/bridge semantics are not available.",
+      "blocking_source": "resources/skill-target-profiles/{unitree_r1,agibot_x2,agibot_a3,engineai_t800}.json",
+      "what_was_not_run": "Real vendor action bridges, stop observation, resource arbitration, and rollback.",
+      "minimum_unblock_action": "Obtain approved vendor originals and execute version-locked SIL/HIL on each model.",
+      "current_evidence_level": "PARTIAL_CONTRACT_ONLY"
+    },
+    {
+      "blocked_item": "G1 current MuJoCo/Pinocchio replay",
+      "reason": "The fixed Python 3.12 runtime has no mujoco or pinocchio package; no installation was approved.",
+      "blocking_source": "qa/ga/redteam_mujoco_sil.log + qa/ga/redteam_actuator_dynamics.log",
+      "what_was_not_run": "Current MuJoCo 1000Hz replay and full Pinocchio/RNEA inverse dynamics.",
+      "minimum_unblock_action": "Provide approved pinned simulation environment or wheels and rerun against hash-locked MJCF/URDF/SRDF.",
+      "current_evidence_level": "HISTORICAL_ARTIFACT_ONLY"
+    },
+    {
+      "blocked_item": "PHP 8.3 target runtime validation",
+      "reason": "Only PHP 8.4.24 is installed; php8.3/php83 paths are absent.",
+      "blocking_source": "qa/ga/final_host_probe.log",
+      "what_was_not_run": "Target PHP 8.3 compatibility suite and production FPM behavior.",
+      "minimum_unblock_action": "Provide an approved PHP 8.3 runtime and rerun lint, tests, migration status, contract-check and data-preflight.",
+      "current_evidence_level": "PHP_8_4_COMPATIBILITY_ONLY"
+    },
+    {
+      "blocked_item": "Production trust root",
+      "reason": "No KMS/HSM, multi-key rotation, revocation drill, or trusted time service is available.",
+      "blocking_source": "ADR-0001 P-06",
+      "what_was_not_run": "Production signing, key rotation/revocation, compromise recovery and audit drill.",
+      "minimum_unblock_action": "Approve and provision KMS/HSM-backed signing with rotation/revocation and recovery evidence.",
+      "current_evidence_level": "UNKNOWN"
+    },
+    {
+      "blocked_item": "Production SLO",
+      "reason": "Control-plane baseline p95 exceeds 300ms and only a PHP built-in development server was measured.",
+      "blocking_source": "qa/ga/redteam_control_plane_saturation_result.json",
+      "what_was_not_run": "Production FPM/MySQL/OPcache/network/object-storage SLO and saturation testing.",
+      "minimum_unblock_action": "Deploy to a production-like isolated environment and rerun load, soak, failover, and latency tests.",
+      "current_evidence_level": "FAIL_DEVELOPMENT_LIKE"
+    },
+    {
+      "blocked_item": "Dependency vulnerability clearance",
+      "reason": "Composer audit reports 76 unique advisories including 3 critical and 24 high.",
+      "blocking_source": "qa/ga/composer_audit_summary.json",
+      "what_was_not_run": "Dependency upgrades, exploitability review, and regression after remediation.",
+      "minimum_unblock_action": "Approve a dependency remediation plan, upgrade, rerun composer audit and full regression.",
+      "current_evidence_level": "HIGH_CONFIDENCE_FACT"
+    },
+    {
+      "blocked_item": "Full secret-history scan",
+      "reason": "gitleaks, trivy, trufflehog, pip-audit and safety are not installed.",
+      "blocking_source": "qa/ga/final_host_probe.log + qa/ga/secret_scan_result.json",
+      "what_was_not_run": "Full git-history secret scan and Python CVE audit.",
+      "minimum_unblock_action": "Provide approved scanners and run against repository and history.",
+      "current_evidence_level": "HIGH_SIGNAL_REGEX_SCAN_ONLY"
+    },
+    {
+      "blocked_item": "Live DDS interoperability",
+      "reason": "No CycloneDDS/FastDDS/rclpy participant, vendor IDL compiler, QoS harness, or DDS Security plugin is available.",
+      "blocking_source": "qa/ga/claim_audit_result.json",
+      "what_was_not_run": "Real DDS discovery, wire interoperability, QoS, authentication, and adverse-network tests.",
+      "minimum_unblock_action": "Provide an approved DDS stack and vendor IDL toolchain, then run loopback and cross-process conformance.",
+      "current_evidence_level": "WIRE_LAYOUT_ARITHMETIC_ONLY"
+    },
+    {
+      "blocked_item": "JavaScript dependency audit",
+      "reason": "No package-lock.json exists; npm audit exits ENOLOCK.",
+      "blocking_source": "qa/ga/npm_audit.log",
+      "what_was_not_run": "npm vulnerability audit for frontend/admin packages.",
+      "minimum_unblock_action": "Approve lockfile generation and dependency audit without changing production versions.",
+      "current_evidence_level": "NOT_RUN"
+    }
+  ]
+}

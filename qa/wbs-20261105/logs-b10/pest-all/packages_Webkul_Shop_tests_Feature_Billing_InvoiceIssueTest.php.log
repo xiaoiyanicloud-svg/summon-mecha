@@ -1,0 +1,78 @@
+﻿
+  猕ǒ猕?猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 路 鏀粯鎴愬姛鍚庣敓鎴愪竴鏉♀€?           QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (2267, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49鈻?            $this->bindValues($statement, $this->prepareBindings($bindings));
+     50鈻?
+     51鈻?            $this->recordsHaveBeenModified();
+     52鈻?
+  鉃? 53鈻?            $result = $statement->execute();
+     54鈻?
+     55鈻?            $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56鈻?
+     57鈻?            return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 路 鍚屼竴绗斿洖璋冮噸鏀?3 娆♀€?         QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (2268, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49鈻?            $this->bindValues($statement, $this->prepareBindings($bindings));
+     50鈻?
+     51鈻?            $this->recordsHaveBeenModified();
+     52鈻?
+  鉃? 53鈻?            $result = $statement->execute();
+     54鈻?
+     55鈻?            $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56鈻?
+     57鈻?            return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 路 娓稿鍗曚笉鍙戝彂绁紙娌♀€?           QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (2269, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49鈻?            $this->bindValues($statement, $this->prepareBindings($bindings));
+     50鈻?
+     51鈻?            $this->recordsHaveBeenModified();
+     52鈻?
+  鉃? 53鈻?            $result = $statement->execute();
+     54鈻?
+     55鈻?            $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56鈻?
+     57鈻?            return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Billing\InvoiceIssueTest > it M9 路 寮€绁ㄥ啓涓嶈繘鍘?鈫?鏁寸瑪鈥?         QueryException   
+  SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'category_id' cannot be null (Connection: mysql, SQL: insert into `product_categories` (`product_id`, `category_id`) values (2270, ?))
+
+  at vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+     49鈻?            $this->bindValues($statement, $this->prepareBindings($bindings));
+     50鈻?
+     51鈻?            $this->recordsHaveBeenModified();
+     52鈻?
+  鉃? 53鈻?            $result = $statement->execute();
+     54鈻?
+     55鈻?            $this->lastInsertId = $this->getPdo()->lastInsertId($sequence);
+     56鈻?
+     57鈻?            return $result;
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:812
+
+
+  Tests:    4 failed, 1 passed (2 assertions)
+  Duration: 2.75s
+

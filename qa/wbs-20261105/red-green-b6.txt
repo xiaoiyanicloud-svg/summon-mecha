@@ -1,0 +1,44 @@
+
+  [39;41;1m FAIL [39;49;22m[39m Packages\Webkul\Shop\tests\Feature\Deploy\MotionCarrierFailClosedTest[39m
+  [31;1m⨯[39;22m[90m [39m[90mit B6-09 目标机型 agibot_a2（已废止，非 GA）→ failed BUILD_TARGET_NOT_GA[39m[90m                                               [39m [90m0.71s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit B6-10 目标机型拼写错误（unitree_g9）→ failed BUILD_TARGET_NOT_GA[39m[90m                                                   [39m [90m0.22s[39m  
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\MotionCarrierFailClosedTest[22m [90m>[39m it B6-0… [41;1m InvalidArgumentException [49;22m  
+[39;1m  未找到机型 agibot_a2 的 TargetProfile[39;22m
+
+  at [32mpackages\Webkul\Shop\src\Services\SkillCompile\Portable\TargetProfileService.php[39m:[32m91[39m
+     87▕     public function getDigest(string $modelCode): string
+     88▕     {
+     89▕         $profile = $this->getProfile($modelCode);
+     90▕         if (! $profile) {
+  ➜  91▕             throw new InvalidArgumentException("未找到机型 {$modelCode} 的 TargetProfile");
+     92▕         }
+     93▕ 
+     94▕         return $this->digestRawProfile($profile);
+     95▕     }
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\src\Services\SkillCompile\Portable\TargetProfileService.php[39;22m:[39;1m91[39;22m
+  [33m2   [39m[39;1mpackages\Webkul\Shop\src\Services\SkillCompile\Builders\MotionCarrierBuilder.php[39;22m:[39;1m137[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mPackages\Webkul\Shop\tests\Feature\Deploy\MotionCarrierFailClosedTest[22m [90m>[39m it B6-1… [41;1m InvalidArgumentException [49;22m  
+[39;1m  未找到机型 unitree_g9 的 TargetProfile[39;22m
+
+  at [32mpackages\Webkul\Shop\src\Services\SkillCompile\Portable\TargetProfileService.php[39m:[32m91[39m
+     87▕     public function getDigest(string $modelCode): string
+     88▕     {
+     89▕         $profile = $this->getProfile($modelCode);
+     90▕         if (! $profile) {
+  ➜  91▕             throw new InvalidArgumentException("未找到机型 {$modelCode} 的 TargetProfile");
+     92▕         }
+     93▕ 
+     94▕         return $this->digestRawProfile($profile);
+     95▕     }
+
+  [33m1   [39m[39;1mpackages\Webkul\Shop\src\Services\SkillCompile\Portable\TargetProfileService.php[39;22m:[39;1m91[39;22m
+  [33m2   [39m[39;1mpackages\Webkul\Shop\src\Services\SkillCompile\Builders\MotionCarrierBuilder.php[39;22m:[39;1m137[39;22m
+
+
+  [90mTests:[39m    [31;1m2 failed[39;22m[90m (0 assertions)[39m
+  [90mDuration:[39m [39m1.20s[39m
+

@@ -169,6 +169,15 @@ final class ApiErrorCode
     public const AGENT_IDENTITY_MISMATCH = 'AGENT_IDENTITY_MISMATCH';
     /** 拒绝降级:目标版本低于本机已装(§4.22 F1 版本单调 / B-13)。 */
     public const AGENT_DOWNGRADE_REJECTED = 'AGENT_DOWNGRADE_REJECTED';
+
+    /** 持证设备的事件正文缺少 agent-fact/v3 签名（A1）。 */
+    public const AGENT_FACT_SIGNATURE_REQUIRED = 'AGENT_FACT_SIGNATURE_REQUIRED';
+    /** agent-fact/v3 签名校验失败或时间窗非法（A1）。 */
+    public const AGENT_FACT_SIGNATURE_INVALID = 'AGENT_FACT_SIGNATURE_INVALID';
+    /** key_id 未知或与设备登记证书不匹配（A1）。 */
+    public const AGENT_FACT_KEY_UNKNOWN = 'AGENT_FACT_KEY_UNKNOWN';
+    /** 签名内层与外层字段不一致 —— 正文被替换（A1）。 */
+    public const AGENT_FACT_BODY_MISMATCH = 'AGENT_FACT_BODY_MISMATCH';
     public const GRAY_RELEASE_NOT_FOUND = 'GRAY_RELEASE_NOT_FOUND';
     public const KILL_SWITCH_NOT_ENGAGED = 'KILL_SWITCH_NOT_ENGAGED';
 
@@ -451,6 +460,12 @@ final class ApiErrorCode
      * 全失败时改用 422 + 本码（与 `SKILL_PACKAGE_INVALID` 同一处置逻辑）。
      */
     public const SKILL_COMPILE_NOTHING_REGISTERED = 'SKILL_COMPILE_NOTHING_REGISTERED';
+
+    /** 该版本没有可编译的源包资产（或源包缺 sha256），无法进入强类型构建入口。 */
+    public const SKILL_COMPILE_SOURCE_NOT_FOUND = 'SKILL_COMPILE_SOURCE_NOT_FOUND';
+
+    /** 同一 seller 作用域内，同 idempotency_key 对应不同构建载荷（B1）。 */
+    public const BUILD_COMMAND_CONFLICT = 'BUILD_COMMAND_CONFLICT';
 
     /** 版本当前状态不允许提审 —— 只有「草稿」/「被驳回」可提（堵重复提审已发布版本）。 */
     public const VERSION_NOT_SUBMITTABLE = 'VERSION_NOT_SUBMITTABLE';

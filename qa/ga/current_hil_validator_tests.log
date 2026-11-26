@@ -1,0 +1,14 @@
+test_a2_and_ga_without_limits_are_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_a2_and_ga_without_limits_are_rejected) ... ok
+test_all_forbidden_stop_sources_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_all_forbidden_stop_sources_rejected) ... ok
+test_clopper_pearson_nonzero_failure_bound (test_hil_evidence_validator.HILEvidenceValidatorTest.test_clopper_pearson_nonzero_failure_bound) ... ok
+test_clopper_pearson_zero_failure_bound (test_hil_evidence_validator.HILEvidenceValidatorTest.test_clopper_pearson_zero_failure_bound) ... ok
+test_evidence_hash_mismatch_fails (test_hil_evidence_validator.HILEvidenceValidatorTest.test_evidence_hash_mismatch_fails) ... ok
+test_missing_required_scenario_fails (test_hil_evidence_validator.HILEvidenceValidatorTest.test_missing_required_scenario_fails) ... ok
+test_non_independent_observation_source_rejected (test_hil_evidence_validator.HILEvidenceValidatorTest.test_non_independent_observation_source_rejected) ... ok
+test_sdk_return_cannot_be_stop_observer (test_hil_evidence_validator.HILEvidenceValidatorTest.test_sdk_return_cannot_be_stop_observer) ... ok
+test_valid_hil_bundle_passes (test_hil_evidence_validator.HILEvidenceValidatorTest.test_valid_hil_bundle_passes) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.587s
+
+OK

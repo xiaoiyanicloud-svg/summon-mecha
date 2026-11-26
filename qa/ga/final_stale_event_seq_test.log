@@ -1,0 +1,7 @@
+
+   PASS  Packages\Webkul\Shop\tests\Feature\API\AgentV2ExecutionTest
+  ✓ it 旧 event_seq 不得覆盖新 event_seq                                                                               1.60s  
+
+  Tests:    1 passed (5 assertions)
+  Duration: 2.19s
+

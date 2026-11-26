@@ -1,0 +1,7 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\TestUniqueNoGuardS9Test
+  ✓ it S-9 · 放大压力:同秒连造上千条,老写法必撞、testUniqueNo 全唯一且真能落库                                                            2.57s  
+
+  Tests:    1 passed (3 assertions)
+  Duration: 3.68s
+

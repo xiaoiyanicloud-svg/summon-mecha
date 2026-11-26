@@ -1,0 +1,96 @@
+﻿
+  .猕ǒ猕ǒ猕?
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 路 椋庨櫓绛夌骇绛涢€夊彧鍥炶绛夌骇鐨勬妧鑳?                   
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22鈻?function b9SkillCategoryId(): int
+     23鈻?{
+     24鈻?    $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25鈻?
+  鉃? 26鈻?    expect($id)->not->toBeNull();
+     27鈻?
+     28鈻?    return (int) $id;
+     29鈻?}
+     30鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 路 浜や粯閫氶亾绛涢€?agent 鍛戒腑澹版槑 ag鈥?            
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22鈻?function b9SkillCategoryId(): int
+     23鈻?{
+     24鈻?    $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25鈻?
+  鉃? 26鈻?    expect($id)->not->toBeNull();
+     27鈻?
+     28鈻?    return (int) $id;
+     29鈻?}
+     30鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 路 鏈哄瀷绛涢€?鍙栨満鍨嬪彲鐢ㄩ€氶亾涓庢妧鑳解€?                 
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22鈻?function b9SkillCategoryId(): int
+     23鈻?{
+     24鈻?    $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25鈻?
+  鉃? 26鈻?    expect($id)->not->toBeNull();
+     27鈻?
+     28鈻?    return (int) $id;
+     29鈻?}
+     30鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 路 鍔ㄤ綔绫诲瀷绛涢€?鎸?motion_type 鏍囩鍛戒腑         
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22鈻?function b9SkillCategoryId(): int
+     23鈻?{
+     24鈻?    $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25鈻?
+  鉃? 26鈻?    expect($id)->not->toBeNull();
+     27鈻?
+     28鈻?    return (int) $id;
+     29鈻?}
+     30鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test > it B-9 路 鍚嶇О鎼滅储浠嶇敓鏁?涓斾笌绛涢€夊彔鍔?AND)               
+  Expecting null not to be null .
+
+  at packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+     22鈻?function b9SkillCategoryId(): int
+     23鈻?{
+     24鈻?    $id = DB::table('category_translations')->where('slug', 'skill')->value('category_id');
+     25鈻?
+  鉃? 26鈻?    expect($id)->not->toBeNull();
+     27鈻?
+     28鈻?    return (int) $id;
+     29鈻?}
+     30鈻?
+
+  1   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:26
+  2   packages\Webkul\Shop\tests\Feature\API\SkillCatalogFilterB9Test.php:38
+
+
+  Tests:    5 failed, 2 passed (17 assertions)
+  Duration: 2.56s
+

@@ -1,0 +1,164 @@
+﻿
+  ..........⨯..⨯......
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Customers\AccountTest > it should fails the validation error when cert…   
+  Failed to find a validation error in the response for key: 'email'
+
+Response has the following JSON validation errors:
+
+{
+    "first_name": [
+        "first name 字段是必填的。"
+    ],
+    "last_name": [
+        "last name 字段是必填的。"
+    ],
+    "address": [
+        "address 字段是必填的。"
+    ],
+    "country": [
+        "country 字段是必填的。"
+    ],
+    "state": [
+        "state 字段是必填的。"
+    ],
+    "city": [
+        "city 字段是必填的。"
+    ],
+    "postcode": [
+        "postcode 字段是必填的。"
+    ],
+    "phone": [
+        "phone 字段是必填的。"
+    ]
+}
+
+Failed asserting that an array has the key 'email'.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "first name 字段是必填的。 (and 7 more errors)",
+    "errors": {
+        "first_name": [
+            "first name 字段是必填的。"
+        ],
+        "last_name": [
+            "last name 字段是必填的。"
+        ],
+        "address": [
+            "address 字段是必填的。"
+        ],
+        "country": [
+            "country 字段是必填的。"
+        ],
+        "state": [
+            "state 字段是必填的。"
+        ],
+        "city": [
+            "city 字段是必填的。"
+        ],
+        "postcode": [
+            "postcode 字段是必填的。"
+        ],
+        "phone": [
+            "phone 字段是必填的。"
+        ]
+    }
+}
+
+  at packages\Webkul\Shop\tests\Feature\Customers\AccountTest.php:261
+    257▕         ->assertJsonValidationErrorFor('address')
+    258▕         ->assertJsonValidationErrorFor('postcode')
+    259▕         ->assertJsonValidationErrorFor('last_name')
+    260▕         ->assertJsonValidationErrorFor('first_name')
+  ➜ 261▕         ->assertJsonValidationErrorFor('email')
+    262▕         ->assertUnprocessable();
+    263▕ });
+    264▕ 
+    265▕ it('should store the customer address', function () {
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Shop\tests\Feature\Customers\AccountTest > it should fails the validation error when cert…   
+  Failed to find a validation error in the response for key: 'email'
+
+Response has the following JSON validation errors:
+
+{
+    "first_name": [
+        "first name 字段是必填的。"
+    ],
+    "last_name": [
+        "last name 字段是必填的。"
+    ],
+    "address": [
+        "address 字段是必填的。"
+    ],
+    "country": [
+        "country 字段是必填的。"
+    ],
+    "state": [
+        "state 字段是必填的。"
+    ],
+    "city": [
+        "city 字段是必填的。"
+    ],
+    "postcode": [
+        "postcode 字段是必填的。"
+    ],
+    "phone": [
+        "phone 字段是必填的。"
+    ]
+}
+
+Failed asserting that an array has the key 'email'.
+
+The following errors occurred during the last request:
+
+{
+    "code": "VALIDATION_ERROR",
+    "message": "first name 字段是必填的。 (and 7 more errors)",
+    "errors": {
+        "first_name": [
+            "first name 字段是必填的。"
+        ],
+        "last_name": [
+            "last name 字段是必填的。"
+        ],
+        "address": [
+            "address 字段是必填的。"
+        ],
+        "country": [
+            "country 字段是必填的。"
+        ],
+        "state": [
+            "state 字段是必填的。"
+        ],
+        "city": [
+            "city 字段是必填的。"
+        ],
+        "postcode": [
+            "postcode 字段是必填的。"
+        ],
+        "phone": [
+            "phone 字段是必填的。"
+        ]
+    }
+}
+
+  at packages\Webkul\Shop\tests\Feature\Customers\AccountTest.php:342
+    338▕         ->assertJsonValidationErrorFor('address')
+    339▕         ->assertJsonValidationErrorFor('postcode')
+    340▕         ->assertJsonValidationErrorFor('last_name')
+    341▕         ->assertJsonValidationErrorFor('first_name')
+  ➜ 342▕         ->assertJsonValidationErrorFor('email')
+    343▕         ->assertUnprocessable();
+    344▕ });
+    345▕ 
+    346▕ it('should update the customer address', function () {
+
+
+  Tests:    2 failed, 18 passed (90 assertions)
+  Duration: 8.12s
+

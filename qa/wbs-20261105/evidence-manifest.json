@@ -1,0 +1,597 @@
+[
+    {
+        "name": "AUDIT-and-approval.md",
+        "sha256": "229AAF4C4060DFA69DBEDFC1E86BB521ED6F9259428F5E77106231F8F8DAA4C7",
+        "size": 8130
+    },
+    {
+        "name": "a1-python.txt",
+        "sha256": "C7604D9B3EA64864D1EE21BB6A78AD9D824FC0A4D387ED6DEF825EF7A72CA6DA",
+        "size": 823
+    },
+    {
+        "name": "a1-restart-evidence.json",
+        "sha256": "DF4EC019859234798E4F66855C2480E7E5B776ECEE938258EF72873EB52A9F42",
+        "size": 1385
+    },
+    {
+        "name": "a1-v3.txt",
+        "sha256": "122DAF7480F3EC89D18CFC984749E3A6ACB4DDD97479FC97444FF0505AA35F76",
+        "size": 1703
+    },
+    {
+        "name": "a2-agent-unittests.txt",
+        "sha256": "D7EB424045F3DA014E34E49E7DBC9EB200C8CD0D8F11540354FB7AA3F458884D",
+        "size": 943
+    },
+    {
+        "name": "a2-stop-observation-after-a1.txt",
+        "sha256": "43D952A865832CC591870D2980282CEE9D1E59631D971BA5EDA6DEE206E49386",
+        "size": 1611
+    },
+    {
+        "name": "a2-stop-observation.txt",
+        "sha256": "1A065571C646F090144F825796546448E24F419DD2BEC7195BA6224FB887BD3E",
+        "size": 1611
+    },
+    {
+        "name": "a3-metrics-snapshot-v2.json",
+        "sha256": "2434170A51F6034AD669344D7F14F013E0AA72A031F28A99AD21515FC81F2031",
+        "size": 5090
+    },
+    {
+        "name": "a3-metrics-snapshot.json",
+        "sha256": "7C20DB5D2FE7EE1311C15FDA329F45A1D820AA691DB896001C51372DBBF96847",
+        "size": 2831
+    },
+    {
+        "name": "a3-metrics-tests-v2.txt",
+        "sha256": "F4BD7E0652BA163607B52911DA423AD58A1F00911A2BB3691A798B9F2BE44461",
+        "size": 1284
+    },
+    {
+        "name": "a3a4-php-regression.txt",
+        "sha256": "F331679B4154FFFA526B2A24CDAAF3A1CC2C2B475CBA0BBA5FD3C60AB63CBA57",
+        "size": 3534
+    },
+    {
+        "name": "a3a4-python-regression.txt",
+        "sha256": "39CD450462877584E1C7222B908B21B6AB607BAABC216EF035B679AECC6828E3",
+        "size": 58111
+    },
+    {
+        "name": "a4-crash-restart.txt",
+        "sha256": "742FF1A04C8E973E09F9428BFB8370FF676C47FFF5C1951725614C07CE90C9BB",
+        "size": 2990
+    },
+    {
+        "name": "a4-failpoints-tests.txt",
+        "sha256": "873CC756003E17BDBFAD238FD7DD01D7ED3C37E8A9B5091492CAA23329B627B9",
+        "size": 481
+    },
+    {
+        "name": "a5-install-tests.txt",
+        "sha256": "655F17F2B3B64986D00558E9510F5807AD34C8BC6A7E1A0E8FDFA14E50DE93AF",
+        "size": 3633
+    },
+    {
+        "name": "a5a6a7-php-regression.txt",
+        "sha256": "B6D976D559FD5B16461C9742400CD605094717F193CB4AD5A2EF5E03FA97A8ED",
+        "size": 3697
+    },
+    {
+        "name": "a5a6a7-python-regression.txt",
+        "sha256": "AA9987A15EE4303826EA9031C7E514746EFF8F3CC75A42B8F4BD21FB78937974",
+        "size": 15141
+    },
+    {
+        "name": "a6-sandbox-tests.txt",
+        "sha256": "EDD8F1B5BA628C70C01DC346CC15DD5F6CD7E77592E0E45CF605D6B200F0FCAC",
+        "size": 497
+    },
+    {
+        "name": "a7-key-lifecycle-probe.json",
+        "sha256": "033AC20A10A2AD677B9DD9E433460D1F97562BFBB9DBE736ADF9DF4A4D2D124D",
+        "size": 1039
+    },
+    {
+        "name": "a8a9-php-regression.txt",
+        "sha256": "213BB477FE50125E52D766EEDC2CC00F4BB564D9259DEDB620BEC47FD3980933",
+        "size": 3980
+    },
+    {
+        "name": "a8a9-python-regression.txt",
+        "sha256": "AC1FC580431A8171AAB1F38A9808E1D63E9C47E296FF3A7CD0AD96014B7A8F06",
+        "size": 15876
+    },
+    {
+        "name": "agent-error-p9.txt",
+        "sha256": "B47DBD5FB77BACF41A9029EA0748A0540645503D6D83A0ECC75D90EE2F2C8BDA",
+        "size": 1437
+    },
+    {
+        "name": "agent-ownership.txt",
+        "sha256": "F4760108E3B6343EC0F2F4AC4663E33357CFBE3E9A90DF55DC52A3DEB8148147",
+        "size": 766
+    },
+    {
+        "name": "agent-regression-a1.txt",
+        "sha256": "295E62A6BE81C4318E586D861704B8BF2249EA674CBE81505995AAAE80DDF5FE",
+        "size": 6707
+    },
+    {
+        "name": "agent-regression-summary-a1.txt",
+        "sha256": "C11DCCE24EABC3A1954D1E1DA22ED7079417EE1B13FD3959DC7B52AFDEB0F690",
+        "size": 466
+    },
+    {
+        "name": "agent-v2-regression.txt",
+        "sha256": "3B7752B04D2034313C5AEF7F12D45CEDD305CDB7FCE793BCA3F140A8E9638EBB",
+        "size": 1506
+    },
+    {
+        "name": "b-batch9-tests.txt",
+        "sha256": "3797BB6D6ABCF8345E8B948CCF4B4A7DBA3C1EA14E44F32B309A5A1C1174B512",
+        "size": 1930
+    },
+    {
+        "name": "b1-claim-evidence.json",
+        "sha256": "C9FE50D69ED0DEB98728C5634FE9B815ECC30509D09F0D3A660012F992E257EB",
+        "size": 572
+    },
+    {
+        "name": "b1-idempotency.txt",
+        "sha256": "A054A466D7F45911F5C4C4B081EE41B95A1FBC075C9AA79976F49A82B89C1912",
+        "size": 1515
+    },
+    {
+        "name": "b1-route.txt",
+        "sha256": "680115E18B2AF791723C3431D6A0D4E9F48B242669668CF971B88426C66DD5AD",
+        "size": 440
+    },
+    {
+        "name": "b10-concurrency-evidence.json",
+        "sha256": "9A2FBECE7DE8FF6B711B6E446B6C5F99CD8B5731189A59AC41CD7C3F2EE41928",
+        "size": 2482
+    },
+    {
+        "name": "b10-contract-check-rerun.txt",
+        "sha256": "C20FB58DE39FB8CE018668DA7B961430A5D1E27A6E494B0382754E37E74D26A5",
+        "size": 330
+    },
+    {
+        "name": "b10-contract-check.txt",
+        "sha256": "CE1D39E24DA235B439A5264467AD53911CADB923FD07A164B13DC1DE493226D1",
+        "size": 347
+    },
+    {
+        "name": "b10-data-preflight-rerun.txt",
+        "sha256": "776CA42D009E469E561588160D01A6280ADDFFEA482FD79001D878FECDE4D8DB",
+        "size": 85
+    },
+    {
+        "name": "b10-data-preflight.txt",
+        "sha256": "7ACC15D04FD258A35D9A4E560CEBEE3ADB3F0A7CB26BA5AE15F1683F8C7EDD87",
+        "size": 103
+    },
+    {
+        "name": "b10-git-status-after-final.txt",
+        "sha256": "5B79F8DC381AF0A0A385DD0AADFB4341D99039C8EB4A644AF890EC2D855863EC",
+        "size": 12731
+    },
+    {
+        "name": "b10-git-status-after.txt",
+        "sha256": "FED10565A2D0D399911AA2A5651CDCC50BE9D1AEA1B6686F6AC5901CB12A75B7",
+        "size": 12373
+    },
+    {
+        "name": "b10-git-status-before.txt",
+        "sha256": "EA8A031DE76984B61822FB057B5FF413CC724D507DB875002CB147123D1CB14A",
+        "size": 11885
+    },
+    {
+        "name": "b10-manifest-regen.txt",
+        "sha256": "3C7E969F467FA4AC6F9E9F43906AADD5C0D7761199C8B9A54572631EAD2A2E60",
+        "size": 97
+    },
+    {
+        "name": "b10-php-lint.txt",
+        "sha256": "9C590F72F9504FD8B14EC179590DF1FE24C67A7A0D9821C6A6B310D3344476D0",
+        "size": 872
+    },
+    {
+        "name": "b10-php-regression-baseline.txt",
+        "sha256": "59661DA6481F05D88814C09641881725C516EDD6A0CFF9C9499558ED886780B4",
+        "size": 4108
+    },
+    {
+        "name": "b10-php-regression.txt",
+        "sha256": "0F0F1AF66D66A1B89C6C23E08FC5C9FCDA0E0ECE59BF1AD709FA00F0C5016910",
+        "size": 4872
+    },
+    {
+        "name": "b10-python-regression.txt",
+        "sha256": "3D61705754F44A33A604FB9C11B9F3782787099AC7F449D45EF8182CAE3EB7D9",
+        "size": 72774
+    },
+    {
+        "name": "b10-six-servers-probe.txt",
+        "sha256": "2A7E17021BB85DD4B8684ECD39787C1681D7BF61999D4B78477A5F4617334484",
+        "size": 470
+    },
+    {
+        "name": "b10-t1-http-concurrency.txt",
+        "sha256": "7029CED709E24ED98D40B0BD2C0CC0D17E0E2F8B95B4C8F723FD6DA8A662348B",
+        "size": 1185
+    },
+    {
+        "name": "b10-t2-publish-concurrency.txt",
+        "sha256": "C73A72A49550FF3A3FC67CE90BE9DEF104AA0113EF7BF732E24140E9ED940602",
+        "size": 920
+    },
+    {
+        "name": "b10-t3-credential-concurrency.txt",
+        "sha256": "42643D82D55BA4E4A73F66567A704C3E6D34F06AE0346EC948B9D2D4DCC1A728",
+        "size": 1076
+    },
+    {
+        "name": "b10-t4-real-os-failures.txt",
+        "sha256": "65796B8C61DBAAD8CDE8AE78990AFA07687A42F569C42E059C8B700B8422C6FC",
+        "size": 1049
+    },
+    {
+        "name": "b10-t5-toolchain.txt",
+        "sha256": "80EAE9F04320099B5BA7D62FB864C92826AA1BB00E2B442D67002A8077042A82",
+        "size": 1042
+    },
+    {
+        "name": "b10-t6-sandbox-wiring.txt",
+        "sha256": "B0728245DE7D585F179EBE1F15C2319AE489D3D43EA0EC5D34073F12F6EA963B",
+        "size": 1580
+    },
+    {
+        "name": "b10-t7-db-seed-state.txt",
+        "sha256": "2A761EE9D07D2F4099C78C3FAE17DD9DCD3006A1E0430A3BD8AA7E8BFAF091B3",
+        "size": 499
+    },
+    {
+        "name": "b10-t7-pest-full.txt",
+        "sha256": "BE6B2CC6899C8D40C268FBEEF932BB3D979B14DA697994F6B3B791CB23993C09",
+        "size": 2598
+    },
+    {
+        "name": "b10-t8-softhsm.json",
+        "sha256": "285FB6F45CE031FC47C3658E9F9A6CB6370C53B5266494CB7FE0E3D20D51DF0C",
+        "size": 1241
+    },
+    {
+        "name": "b10-t8-softhsm.txt",
+        "sha256": "A5F548B1BBA21B883F649148471A748E90E9B5B3610BAF19E4B3840293FC9BEC",
+        "size": 764
+    },
+    {
+        "name": "b10-t9-prod-stack.txt",
+        "sha256": "9DED82FCB673623B60BD4CC3107CA340CE956855122480946F3CA6DCA9D0895C",
+        "size": 2212
+    },
+    {
+        "name": "b11-contract-check.txt",
+        "sha256": "2313972262C1F1A48DE10038BC2848B5561E2706717D1F5BB9269AAC45F415B4",
+        "size": 338
+    },
+    {
+        "name": "b11-data-preflight.txt",
+        "sha256": "DE3718AAD0D188941C00C565466BCEA5BA3847AF3E6580669E60612E44BDFCE9",
+        "size": 93
+    },
+    {
+        "name": "b11-php-lint.txt",
+        "sha256": "E856BF4F0CBB2767C8C5C2B4ED3199DFDEFEDBC1BFAFE8FDB7980B9B392A003B",
+        "size": 1862
+    },
+    {
+        "name": "b11-python-regression.txt",
+        "sha256": "F5589DF3CEDB1D77E4AB85F6A57C06E08794A84A70B5AE63E8DA5F9979169ACA",
+        "size": 87350
+    },
+    {
+        "name": "b11-route-list-agent.txt",
+        "sha256": "C225E49E4D3AA738ED4216FCD3728939DB4E8F69FA648C5CA90C875858B55795",
+        "size": 2097
+    },
+    {
+        "name": "b2-concurrency-evidence.json",
+        "sha256": "8843FC0DA46FECA90D719CD01E37A88D0596DCE175481B72AE13D64E9E4A83AB",
+        "size": 2204
+    },
+    {
+        "name": "b2-run-number.txt",
+        "sha256": "9F7FD90CACD3D0C1B1E9F52C9F5E7EBB6C9CCF85111EDA4742AB47C2225C75B5",
+        "size": 1068
+    },
+    {
+        "name": "b3-admin-regression-summary.txt",
+        "sha256": "EC617B4ACCC00F4CCB653865C0F8945305E1478EA5DA787EDA5D139BC324AB9E",
+        "size": 340
+    },
+    {
+        "name": "b3-admin-regression.txt",
+        "sha256": "4745608B5782A42DDED56F62C726FFE991B3B783CE5E7F78EFC644D52BF65842",
+        "size": 4431
+    },
+    {
+        "name": "b3-admin.txt",
+        "sha256": "A4BE788163E1A529DE6CB0C86BE534F8C256E9C2E9BE6E6B514958D6472744FB",
+        "size": 1729
+    },
+    {
+        "name": "b3-concurrency-evidence.json",
+        "sha256": "D9528A28EB2249DD26C18D4B257260F20937DE719EE4BD34B34B86E473E922A7",
+        "size": 578
+    },
+    {
+        "name": "b4b5b6-deploy-regression.txt",
+        "sha256": "A73C206EAAB0181E2304B019BDA57BFE40C323A8CA0A99FB6C84BECABCAAAEDE",
+        "size": 2791
+    },
+    {
+        "name": "b4b5b6-final.txt",
+        "sha256": "F169F492B06D660CB9D464DD7606A8AD2F6132066EC92EFCA46F871AF993CF3D",
+        "size": 383
+    },
+    {
+        "name": "b4b5b6-gates.txt",
+        "sha256": "7E5CF08392FBB56AE0E76E108E1EEF6F315C0315F2FA6FB0ABDE47A3D1EACFC5",
+        "size": 1524
+    },
+    {
+        "name": "b5-determinism-evidence.json",
+        "sha256": "C9303E9F680AE75F20588505001D98A36C99156FD3AB89F9C5389DC302AC0A13",
+        "size": 3804
+    },
+    {
+        "name": "b7-delivery.txt",
+        "sha256": "031ED29D1A1F9C1C00374D254F54D8B707BCC6C75F6E86BBE7D3846D935B1372",
+        "size": 1471
+    },
+    {
+        "name": "b8-metrics-snapshot.json",
+        "sha256": "45FB22576E92D3CA11754A49E254A8DFF727C9E22F8DEAB700CE959B0135B9DB",
+        "size": 856
+    },
+    {
+        "name": "b8-metrics.txt",
+        "sha256": "2824553E6DBDAC0528C9057648AD2F1B553568457F5D26745BE42FD284ED5D3D",
+        "size": 568
+    },
+    {
+        "name": "build-metrics.txt",
+        "sha256": "B70994EF65CB1DBDE397D50F41923CDF95ED2A09DEEF4C2D86C91556BC9DD2C3",
+        "size": 845
+    },
+    {
+        "name": "build-worker-once.txt",
+        "sha256": "9906CA31F83E9D1C4F0EE5D6C68EC1DAB9FB128F34C6BF77F18F8A47248DD938",
+        "size": 156
+    },
+    {
+        "name": "compiler-acceptance.txt",
+        "sha256": "229CE6AD8E015ACBFE9E7F85E33AE01B5EAB66C5C8DA991A09DB5B88A4A92A36",
+        "size": 4732
+    },
+    {
+        "name": "contract-check-a1.txt",
+        "sha256": "C20FB58DE39FB8CE018668DA7B961430A5D1E27A6E494B0382754E37E74D26A5",
+        "size": 330
+    },
+    {
+        "name": "contract-check-a3a4.txt",
+        "sha256": "B5DFE11EFB33E635664E3F9251F84A2893013FC44904A53C2228575D68A96035",
+        "size": 610
+    },
+    {
+        "name": "contract-check-a5a7.txt",
+        "sha256": "3EAB94526766534A3A3C938057BA5481C26AF647B0FB217AB6458DAF4B040284",
+        "size": 470
+    },
+    {
+        "name": "contract-check-a8a9.txt",
+        "sha256": "1EBF70E21F3D62C40441BB579F5ACB786CAFE744AF19A46032DC8E937C2A469C",
+        "size": 471
+    },
+    {
+        "name": "contract-check-b3.txt",
+        "sha256": "C20FB58DE39FB8CE018668DA7B961430A5D1E27A6E494B0382754E37E74D26A5",
+        "size": 330
+    },
+    {
+        "name": "contract-check.txt",
+        "sha256": "C20FB58DE39FB8CE018668DA7B961430A5D1E27A6E494B0382754E37E74D26A5",
+        "size": 330
+    },
+    {
+        "name": "d9-compile-honesty.txt",
+        "sha256": "3555D4505796A1A93F082A203D16F72D2B4A9E258FA10368EFFAF54D0AC2C9BC",
+        "size": 1508
+    },
+    {
+        "name": "data-preflight-a1.txt",
+        "sha256": "776CA42D009E469E561588160D01A6280ADDFFEA482FD79001D878FECDE4D8DB",
+        "size": 85
+    },
+    {
+        "name": "data-preflight-b3.txt",
+        "sha256": "776CA42D009E469E561588160D01A6280ADDFFEA482FD79001D878FECDE4D8DB",
+        "size": 85
+    },
+    {
+        "name": "data-preflight.txt",
+        "sha256": "776CA42D009E469E561588160D01A6280ADDFFEA482FD79001D878FECDE4D8DB",
+        "size": 85
+    },
+    {
+        "name": "db_probe.php",
+        "sha256": "F3935A28E04EC546C27AB030B47DA91634A0A47BB384EA070A59AB5210983103",
+        "size": 950
+    },
+    {
+        "name": "full-chain.txt",
+        "sha256": "E56C6A784AE10EE667194A02D88FB6DD3BF7D22DB711AB53FF2E645F11DAFAF1",
+        "size": 535
+    },
+    {
+        "name": "ga-five-model.txt",
+        "sha256": "62564AF9EFE15F646AF8021E8A7BF14960CBAF7DB7C924E83EA2C092FDAC3DD6",
+        "size": 1849
+    },
+    {
+        "name": "jcs-vectors.json",
+        "sha256": "09CFF61C8358FB7B4E75E8A4EBBAC3E21728C0DF2A49817463722F9820C54E68",
+        "size": 3798
+    },
+    {
+        "name": "migrate-status-a8a9.txt",
+        "sha256": "5916B8FD8BFFFC4DEF069B45FCA54E459DF72F870BC17BD4A9AF43CA987C89F8",
+        "size": 528
+    },
+    {
+        "name": "migrate-status.txt",
+        "sha256": "76E9242AC75CA05FF524D22B77C9FDA51C3FF80F477B49B1841DE61459FE7E6F",
+        "size": 33313
+    },
+    {
+        "name": "php-lint-a1.txt",
+        "sha256": "7C39F96AB73791CE2FA24DA0B756AA2CD7F912BD4A4B4A97BB3019A1CF08C608",
+        "size": 269
+    },
+    {
+        "name": "php-lint-a3a4.txt",
+        "sha256": "780AC8AC0B1B240C056A21511FBB1EECF45A2109CA4149B090F2036D5579E7F7",
+        "size": 1006
+    },
+    {
+        "name": "php-lint-a5a7.txt",
+        "sha256": "BD57818AD841388BE3D4C397C0289C65B428AE5E12F404388BDDFCB73E362DCD",
+        "size": 790
+    },
+    {
+        "name": "php-lint-a8a9.txt",
+        "sha256": "0C7473765BDC9EEDFA8A44A5D99C02866FF0C6B0251D8589522E81B2EF1CDC72",
+        "size": 1603
+    },
+    {
+        "name": "php-lint-b3.txt",
+        "sha256": "335C9B8E5430684D8E16B885556074974332D44957B1BCC8DAC76DF8CE2ADFA6",
+        "size": 155
+    },
+    {
+        "name": "php-lint-round1.txt",
+        "sha256": "B50B97E2A11A26F33C3690CBB981FF11BF2E7887545835E62A66F2E44A0EE892",
+        "size": 1018
+    },
+    {
+        "name": "php-lint.txt",
+        "sha256": "8101964A2D4C0D3EC1D142815D9CB2ECFDFB6D0F966FA7847B6A501ACC57A35C",
+        "size": 1191
+    },
+    {
+        "name": "portable-compiler-unit.txt",
+        "sha256": "B739CAE7CD4A45B5AA40B5F7F760A5546B13DFBF954C6279ACD8EC7B357B894E",
+        "size": 938
+    },
+    {
+        "name": "python-baseline.txt",
+        "sha256": "5D057A15DD2FBFCFFCA505C330AFFC4C4F2457AB103B3E7DC1BB14B66C9E21E1",
+        "size": 839
+    },
+    {
+        "name": "red-green-a3a4.txt",
+        "sha256": "4407FC75A915E0C933EDEADFC0A8307F90CBA9FE800D5BD7D723C4DC22788E05",
+        "size": 5672
+    },
+    {
+        "name": "red-green-a5a6a7.txt",
+        "sha256": "74260D03544DCB2DDEEE8A8EA833CF20FD8B0115AF91386F795F1811B075783A",
+        "size": 3093
+    },
+    {
+        "name": "red-green-a8a9.txt",
+        "sha256": "3DAEA71E6C24BFCECED07A66F7DB334C71FBC494A4BAE98F256053C45DB266C1",
+        "size": 2488
+    },
+    {
+        "name": "red-green-b10.txt",
+        "sha256": "1FB939837EDCD91422949BD71F6CBD75BD33C0B8579C165CB4D1B8A12533366D",
+        "size": 4950
+    },
+    {
+        "name": "red-green-b11.txt",
+        "sha256": "2B1BA2CD124D1DD669F07D4807EA677BC0370ECA6942BEF201131376C7379431",
+        "size": 2298
+    },
+    {
+        "name": "red-green-b4-green.txt",
+        "sha256": "E8B644266444430794609B358E7F38B6E8B8E383D9AB8BA635C6A799467BF35E",
+        "size": 1305
+    },
+    {
+        "name": "red-green-b4-reserved.txt",
+        "sha256": "7596A537A7E16B47B890AE1A865AC5935515CED94D5696EFDC20CDE9B71B744A",
+        "size": 3722
+    },
+    {
+        "name": "red-green-b4.txt",
+        "sha256": "7E22D0E322FFC64E9A72993020354DCC0A667C26DFF44A202017B8747646117D",
+        "size": 8237
+    },
+    {
+        "name": "red-green-b5-green.txt",
+        "sha256": "A9E7765A5A1E68C9915AD0D36FBF692405F563582DAA3C3529A13F1DCA492D07",
+        "size": 1149
+    },
+    {
+        "name": "red-green-b5.txt",
+        "sha256": "558A9DB36AA96D25FDC680502823A4234E060DCF4E1D33666284078E2005D0B0",
+        "size": 3673
+    },
+    {
+        "name": "red-green-b6.txt",
+        "sha256": "4369380F200B0A41681572772A8CC5CEDD33C9F4009499919B6FBBF9942C7167",
+        "size": 3416
+    },
+    {
+        "name": "route-list-skill-supply.txt",
+        "sha256": "12D86F0219207E89F9E31F275FA2A3F023AD12596CCC6ED0243201704BF92C25",
+        "size": 1861
+    },
+    {
+        "name": "route-list-target-releases.txt",
+        "sha256": "8F5E3966D1FBA0308745892B024DEC661AD8531DC4AB10AB0FCACEC330818905",
+        "size": 749
+    },
+    {
+        "name": "run-a5a6a7-regression.ps1",
+        "sha256": "B1A41A0319825CDDA21784DCCBED9BC6CA5668171F2C360AA322081DE7FD98AC",
+        "size": 1982
+    },
+    {
+        "name": "run-a8a9-regression.ps1",
+        "sha256": "DE15C8CFC12DCFEEBDAC65801E32C05D7AF7530A0E07B0B3187145C502E1FA07",
+        "size": 2010
+    },
+    {
+        "name": "run-b10-regression.ps1",
+        "sha256": "F21EC6A2481286A4694B3960AF5AF0D6991CE7B5921131E5EC55B3DBD57BB757",
+        "size": 2204
+    },
+    {
+        "name": "wbs-a5a7-source.txt",
+        "sha256": "079762CD330108EA67C3DE1382CC513E00FFD07CACDEA7292CF3640CA5E7E713",
+        "size": 7295
+    },
+    {
+        "name": "wbs-full-source.txt",
+        "sha256": "6428DD0A240D42156ABAB3A04D0A1552527F8D08124E61D357D6F952FA267C35",
+        "size": 14534
+    }
+]

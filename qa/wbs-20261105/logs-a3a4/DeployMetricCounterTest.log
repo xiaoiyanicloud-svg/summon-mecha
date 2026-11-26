@@ -1,0 +1,19 @@
+﻿
+   PASS  Packages\Webkul\Shop\tests\Feature\Deploy\DeployMetricCounterTest
+  ✓ it A3-01 指标键恰好 9 个，且设备侧 6 个 / 平台侧 3 个不重不漏                                                                    0.87s  
+  ✓ it A3-02 写闭合键集之外的键 → InvalidArgumentException（不允许动态键）                                                        0.17s  
+  ✓ it A3-03 增量必须为正（计数器只增不减）                                                                                     0.13s  
+  ✓ it A3-04 累加正确；所有键读出整数（0 表示确实是 0，null 表示没埋点）                                                                  0.17s  
+  ✓ it A3-05 同一 (did,batch_id) 只生效一次：重复上报不刷高计数                                                                   0.17s  
+  ✓ it A3-06 设备端不得上报平台侧键；负增量一律拒绝                                                                                 0.15s  
+  ✓ it A3-07 心跳带 metrics 增量 → 平台计数生效                                                                             0.39s  
+  ✓ it A3-08 心跳上报未注册的键 → 422（让 Agent 停止重试并丢弃该批）                                                                  0.16s  
+  ✓ it A3-09 重复事件命中 Inbox 幂等 → idempotency_hit_total 每次 +1                                                       0.34s  
+  ✓ it A3-10 事实验签被拒 → fact_auth_rejected_total +1，且请求本身仍被拒                                                       0.24s  
+  ✓ it A3-11 快照里 9 个键全部是整数（不再有 null/non_instrumented），键数恒为 9                                                     0.25s  
+  ✓ it A3-12 重启告警按"累计启动次数 > 上报设备数"判定：首次启动不算重启                                                                    0.25s  
+
+  Tests:    12 passed (66 assertions)
+  Duration: 3.67s
+
+

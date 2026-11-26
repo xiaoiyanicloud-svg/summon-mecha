@@ -1,5 +1,5 @@
 {
-  "profile_schema": "zhaohuan.target-profile/v1",
+  "profile_schema": "zhaohuan.target-profile/v2",
   "model_code": "unitree_g1",
   "vendor": "unitree",
   "display_name": "Unitree G1 EDU (23/29 DOF)",
@@ -24,17 +24,34 @@
     "actions": {
       "SM_GestureWave": {
         "description": "Arm wave gesture (single or dual arm smooth swing)",
-        "supported_hands": ["left", "right", "both"],
+        "supported_hands": [
+          "left",
+          "right",
+          "both"
+        ],
         "max_cycles": 10,
         "default_timeout_ms": 12000,
-        "required_permissions": ["motion_control"],
+        "required_permissions": [
+          "motion_control"
+        ],
         "evidence_status": "sdk_available"
       },
       "SM_AudioPlay": {
         "description": "Onboard speaker audio playback",
-        "supported_formats": ["wav", "mp3", "pcm"],
-        "sample_rates": [16000, 24000, 44100, 48000],
-        "required_permissions": ["audio_play"],
+        "supported_formats": [
+          "wav",
+          "mp3",
+          "pcm"
+        ],
+        "sample_rates": [
+          16000,
+          24000,
+          44100,
+          48000
+        ],
+        "required_permissions": [
+          "audio_play"
+        ],
         "evidence_status": "sdk_available"
       },
       "SM_Wait": {
@@ -49,22 +66,92 @@
   "dof": 23,
   "joints": {
     "left_arm": {
-      "L_SHOULDER_PITCH": {"index": 12, "min_rad": -3.0892, "max_rad": 2.6704, "rest_rad": 0.0},
-      "L_SHOULDER_ROLL":  {"index": 13, "min_rad": -1.5882, "max_rad": 2.2515, "rest_rad": 0.2},
-      "L_SHOULDER_YAW":   {"index": 14, "min_rad": -2.6180, "max_rad": 2.6180, "rest_rad": 0.0},
-      "L_ELBOW":          {"index": 15, "min_rad": -1.0472, "max_rad": 2.0944, "rest_rad": 0.5},
-      "L_WRIST_ROLL":     {"index": 16, "min_rad": -1.9722, "max_rad": 1.9722, "rest_rad": 0.0},
-      "L_WRIST_PITCH":    {"index": 17, "min_rad": -1.6144, "max_rad": 1.6144, "rest_rad": 0.0},
-      "L_WRIST_YAW":      {"index": 18, "min_rad": -1.6144, "max_rad": 1.6144, "rest_rad": 0.0}
+      "L_SHOULDER_PITCH": {
+        "index": 12,
+        "min_rad": -3.0892,
+        "max_rad": 2.6704,
+        "rest_rad": 0.0
+      },
+      "L_SHOULDER_ROLL": {
+        "index": 13,
+        "min_rad": -1.5882,
+        "max_rad": 2.2515,
+        "rest_rad": 0.2
+      },
+      "L_SHOULDER_YAW": {
+        "index": 14,
+        "min_rad": -2.618,
+        "max_rad": 2.618,
+        "rest_rad": 0.0
+      },
+      "L_ELBOW": {
+        "index": 15,
+        "min_rad": -1.0472,
+        "max_rad": 2.0944,
+        "rest_rad": 0.5
+      },
+      "L_WRIST_ROLL": {
+        "index": 16,
+        "min_rad": -1.9722,
+        "max_rad": 1.9722,
+        "rest_rad": 0.0
+      },
+      "L_WRIST_PITCH": {
+        "index": 17,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      },
+      "L_WRIST_YAW": {
+        "index": 18,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      }
     },
     "right_arm": {
-      "R_SHOULDER_PITCH": {"index": 19, "min_rad": -3.0892, "max_rad": 2.6704, "rest_rad": 0.0},
-      "R_SHOULDER_ROLL":  {"index": 20, "min_rad": -2.2515, "max_rad": 1.5882, "rest_rad": -0.2},
-      "R_SHOULDER_YAW":   {"index": 21, "min_rad": -2.6180, "max_rad": 2.6180, "rest_rad": 0.0},
-      "R_ELBOW":          {"index": 22, "min_rad": -1.0472, "max_rad": 2.0944, "rest_rad": 0.5},
-      "R_WRIST_ROLL":     {"index": 23, "min_rad": -1.9722, "max_rad": 1.9722, "rest_rad": 0.0},
-      "R_WRIST_PITCH":    {"index": 24, "min_rad": -1.6144, "max_rad": 1.6144, "rest_rad": 0.0},
-      "R_WRIST_YAW":      {"index": 25, "min_rad": -1.6144, "max_rad": 1.6144, "rest_rad": 0.0}
+      "R_SHOULDER_PITCH": {
+        "index": 19,
+        "min_rad": -3.0892,
+        "max_rad": 2.6704,
+        "rest_rad": 0.0
+      },
+      "R_SHOULDER_ROLL": {
+        "index": 20,
+        "min_rad": -2.2515,
+        "max_rad": 1.5882,
+        "rest_rad": -0.2
+      },
+      "R_SHOULDER_YAW": {
+        "index": 21,
+        "min_rad": -2.618,
+        "max_rad": 2.618,
+        "rest_rad": 0.0
+      },
+      "R_ELBOW": {
+        "index": 22,
+        "min_rad": -1.0472,
+        "max_rad": 2.0944,
+        "rest_rad": 0.5
+      },
+      "R_WRIST_ROLL": {
+        "index": 23,
+        "min_rad": -1.9722,
+        "max_rad": 1.9722,
+        "rest_rad": 0.0
+      },
+      "R_WRIST_PITCH": {
+        "index": 24,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      },
+      "R_WRIST_YAW": {
+        "index": 25,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      }
     }
   },
   "safety_envelope": {
@@ -73,7 +160,8 @@
     "max_jerk_rad_s3": 60.0,
     "max_torque_nm": 30.0,
     "min_collision_clearance_mm": 15.0,
-    "estop_supported": true,
+    "estop_supported": null,
+    "estop_evidence_status": "HARDWARE_UNVERIFIED",
     "default_timeout_s": 30
   },
   "ground_truth_models": {
@@ -83,13 +171,139 @@
     "idl": "resources/robot-models/unitree_g1/idl/unitree_sdk2_arm.idl"
   },
   "safe_stop_procedure": {
-    "method": "smooth_decelerate_to_rest",
+    "method": null,
+    "status": "HARDWARE_UNVERIFIED",
     "timeout_s": 2.0,
     "observe_verification": "joint_velocity_near_zero"
   },
   "verification_status": {
     "software_driver": "PASS",
-    "sdk_contract": "PASS",
-    "hardware_execution": "HARDWARE_UNVERIFIED"
-  }
+    "sdk_contract": "PARTIAL",
+    "hardware_execution": "HARDWARE_UNVERIFIED",
+    "sil": "NOT_RUN",
+    "sil_artifact_status": "PASS_ARTIFACT_ONLY",
+    "hil": "HARDWARE_UNVERIFIED"
+  },
+  "profile_revision": 1,
+  "model_name": "Unitree G1 EDU",
+  "sdk_name": "unitree_sdk2py",
+  "sdk_version_range": ">=1.1.0 <3.0.0",
+  "firmware_range": "vendor-confirmation-required; captured per device at enrollment",
+  "compatibility_level": "L2",
+  "artifact_abi": "zhaohuan.skill-target/v1;python-3.12;linux-aarch64",
+  "joint_limits": {
+    "status": "GROUND_TRUTH_PARTIAL",
+    "left_arm": {
+      "L_SHOULDER_PITCH": {
+        "index": 12,
+        "min_rad": -3.0892,
+        "max_rad": 2.6704,
+        "rest_rad": 0.0
+      },
+      "L_SHOULDER_ROLL": {
+        "index": 13,
+        "min_rad": -1.5882,
+        "max_rad": 2.2515,
+        "rest_rad": 0.2
+      },
+      "L_SHOULDER_YAW": {
+        "index": 14,
+        "min_rad": -2.618,
+        "max_rad": 2.618,
+        "rest_rad": 0.0
+      },
+      "L_ELBOW": {
+        "index": 15,
+        "min_rad": -1.0472,
+        "max_rad": 2.0944,
+        "rest_rad": 0.5
+      },
+      "L_WRIST_ROLL": {
+        "index": 16,
+        "min_rad": -1.9722,
+        "max_rad": 1.9722,
+        "rest_rad": 0.0
+      },
+      "L_WRIST_PITCH": {
+        "index": 17,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      },
+      "L_WRIST_YAW": {
+        "index": 18,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      }
+    },
+    "right_arm": {
+      "R_SHOULDER_PITCH": {
+        "index": 19,
+        "min_rad": -3.0892,
+        "max_rad": 2.6704,
+        "rest_rad": 0.0
+      },
+      "R_SHOULDER_ROLL": {
+        "index": 20,
+        "min_rad": -2.2515,
+        "max_rad": 1.5882,
+        "rest_rad": -0.2
+      },
+      "R_SHOULDER_YAW": {
+        "index": 21,
+        "min_rad": -2.618,
+        "max_rad": 2.618,
+        "rest_rad": 0.0
+      },
+      "R_ELBOW": {
+        "index": 22,
+        "min_rad": -1.0472,
+        "max_rad": 2.0944,
+        "rest_rad": 0.5
+      },
+      "R_WRIST_ROLL": {
+        "index": 23,
+        "min_rad": -1.9722,
+        "max_rad": 1.9722,
+        "rest_rad": 0.0
+      },
+      "R_WRIST_PITCH": {
+        "index": 24,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      },
+      "R_WRIST_YAW": {
+        "index": 25,
+        "min_rad": -1.6144,
+        "max_rad": 1.6144,
+        "rest_rad": 0.0
+      }
+    }
+  },
+  "velocity_limits": {
+    "max_rad_s": 3.14,
+    "source": "unitree_g1_ground_truth"
+  },
+  "torque_limits": {
+    "max_nm": 30.0,
+    "source": "unitree_g1_ground_truth"
+  },
+  "temperature_limits": {
+    "max_c": 95.0,
+    "source": "industrial_verification_envelope"
+  },
+  "rollback_strategy": {
+    "mode": "previous_verified_version",
+    "requires_sha256": true,
+    "requires_entitlement": true,
+    "offline_behavior": "defer_until_online"
+  },
+  "release": {
+    "default_enabled": false,
+    "requires_target_review": true,
+    "requires_profile_digest_match": true
+  },
+  "hardware_verification_status": "HARDWARE_UNVERIFIED"
 }

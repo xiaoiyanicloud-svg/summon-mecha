@@ -1,0 +1,74 @@
+﻿
+  ..⨯.⨯⨯⨯
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should store the newly cr…   
+  Expected: {"message":"\u5df2\u6210\u529f\u521b\u5efa URL \u91cd\u5199\u3002"}
+
+  To contain: 已成功创建 URL 重写。
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:45
+     41▕         'redirect_type' => $redirectType = fake()->randomElement([302, 301]),
+     42▕         'locale'        => $localeCode = core()->getCurrentLocale()->code,
+     43▕     ])
+     44▕         ->assertOk()
+  ➜  45▕         ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.create.success'));
+     46▕ 
+     47▕     $this->assertModelWise([
+     48▕         URLRewrite::class => [
+     49▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should update the existin…   
+  Expected: {"message":"\u5df2\u6210\u529f\u66f4\u65b0 URL \u91cd\u5199\u3002"}
+
+  To contain: 已成功更新 URL 重写。
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:92
+     88▕         'redirect_type' => $redirectType = fake()->randomElement([302, 301]),
+     89▕         'locale'        => $localeCode = core()->getCurrentLocale()->code,
+     90▕     ])
+     91▕         ->assertOk()
+  ➜  92▕         ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.edit.success'));
+     93▕ 
+     94▕     $this->assertModelWise([
+     95▕         URLRewrite::class => [
+     96▕             [
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should delete the existin…   
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664 URL \u91cd\u5199\u3002"}
+
+  To contain: 已成功删除 URL 重写。
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:117
+    113▕     $this->loginAsAdmin();
+    114▕ 
+    115▕     deleteJson(route('admin.marketing.search_seo.url_rewrites.delete', $urlRewrite->id))
+    116▕         ->assertOk()
+  ➜ 117▕         ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.edit.delete-success'));
+    118▕ 
+    119▕     $this->assertDatabaseMissing('url_rewrites', [
+    120▕         'id' => $urlRewrite->id,
+    121▕     ]);
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest > it should mass delete the ex…   
+  Expected: {"message":"\u5df2\u6210\u529f\u5220\u9664\u9009\u5b9a\u7684 URL \u91cd\u5199\u3002"}
+
+  To contain: 已成功删除选定的 URL 重写。
+
+  at packages\Webkul\Admin\tests\Feature\Marketing\SearchAndSeo\UrlRewritesTest.php:135
+    131▕     postJson(route('admin.marketing.search_seo.url_rewrites.mass_delete'), [
+    132▕         'indices' => $urlRewrites->pluck('id')->toArray(),
+    133▕     ])
+    134▕         ->assertOk()
+  ➜ 135▕         ->assertSeeText(trans('admin::app.marketing.search-seo.url-rewrites.index.datagrid.mass-delete-success'));
+    136▕ 
+    137▕     foreach ($urlRewrites as $urlRewrite) {
+    138▕         $this->assertDatabaseMissing('url_rewrites', [
+    139▕             'id' => $urlRewrite->id,
+
+
+  Tests:    4 failed, 3 passed (23 assertions)
+  Duration: 4.43s
+

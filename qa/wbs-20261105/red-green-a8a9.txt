@@ -1,0 +1,92 @@
+# 批次 8/9 red → green（变异验证）· 2026-11-05
+
+> 目的与做法同前几批：把实现临时改成错误版本，确认对应用例变红，再还原确认变绿。
+> 所有变异已还原（`cmp` 与备份逐字节一致，仓库内无 `MUTATION` 残留）。
+
+---
+
+## ① A3 · gauge 按计数语义累加 → A3-13 红
+
+变异（`DeployMetricCounter::applyAgentGauges`）：把覆盖写改成 `existing + value`。
+
+```
+pest DeployMetricCounterTest --filter="A3-13"
+Tests:  1 failed (3 assertions)
+```
+
+还原后：
+
+```
+Tests:  1 passed (3 assertions)
+```
+
+结论：A3-13 断言的是**覆盖语义**（120 再报 45 必须存 45），不是"写进去了"。
+
+---
+
+## ② A4.5 · 清理前不归档 → failpoint 用例红
+
+变异（`task_manager._sweep_staging_orphans`）：跳过 `_archive_staging_orphan` 直接删。
+
+```
+python -m unittest tests.test_failpoints
+AssertionError: False is not true : A4.5：清理前必须归档残骸清单
+Ran 2 tests ... FAILED (failures=2)
+```
+
+还原后：
+
+```
+Ran 2 tests in 9.860s
+OK
+```
+
+结论：用例真的要求"先归档、再删除"，而不是只看目录没了。
+
+---
+
+## ③ B1.2 · 跳过 manifest 摘要校验 → B1-2 红
+
+变异（`SkillBuildService::registerWithCommand`）：`if (false && ! hash_equals(...))`。
+
+```
+pest RegistrationCommandTest --filter="摘要"
+Tests:  1 failed, 1 passed (3 assertions)
+```
+
+还原后：
+
+```
+Tests:  4 passed (10 assertions)
+```
+
+补充说明（诚实）：`BUILD_TARGET_NOT_GA` 有**两层**守卫 —— 服务入口 + `MotionCarrierBuilder` 自身的
+fail-closed。单独关掉服务层守卫时，builder 仍会拒绝非 GA 机型，因此这支用例观察不到该层；
+本文件不为"无法单独观察的一层"伪造 red。
+
+---
+
+## ④ B5.5 · 不记录工具链 → B5-5 红
+
+变异（`SkillBuildService::persist`）：删掉 `toolchain_json` 写入。
+
+```
+pest ToolchainFingerprintTest
+Tests:  1 failed, 1 passed (8 assertions)
+```
+
+还原后：
+
+```
+Tests:  2 passed (11 assertions)
+```
+
+结论：用例真的在读**落库后的 Run 行**，不是只测 `ToolchainFingerprint::current()` 的返回值。
+
+---
+
+## 未做变异的部分
+
+- A4.1 的九个 failpoint 本身是**可注入点**：没有实现时进程根本不会以 86 退出，用例在第一断言就红；
+  这里没有额外的"反向变异"可做（把 failpoint 关掉 = 恢复未实现状态）。
+- B4.4 并发读取：正常态与坏包隔离均已实测；无单次 red 记录。

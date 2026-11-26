@@ -1,0 +1,34 @@
+﻿
+  .猕?..
+  鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€  
+   FAILED  Packages\Webkul\Admin\tests\Feature\Catalog\Products\ProductTest > it should copy the existing product       
+  Failed asserting that a row in the table [product_flat] matches the attributes {
+    "id": 1799
+}.
+
+Found: [
+    {
+        "id": 737
+    },
+    {
+        "id": 738
+    }
+].
+
+  at packages\Webkul\Core\tests\Concerns\CoreAssertions.php:28
+     24鈻?    public function assertModelWise(array $modelWiseAssertions): void
+     25鈻?    {
+     26鈻?        foreach ($modelWiseAssertions as $modelClassName => $modelAssertions) {
+     27鈻?            foreach ($modelAssertions as $assertion) {
+  鉃? 28鈻?                $this->assertDatabaseHas(app($modelClassName)->getTable(), $assertion);
+     29鈻?            }
+     30鈻?        }
+     31鈻?    }
+     32鈻?
+
+  1   packages\Webkul\Admin\tests\Feature\Catalog\Products\ProductTest.php:30
+
+
+  Tests:    1 failed, 4 passed (16 assertions)
+  Duration: 13.95s
+
