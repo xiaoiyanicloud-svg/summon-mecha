@@ -302,8 +302,9 @@
             <image
               v-if="actionType === 'rent' || actionType === 'buy'"
               class="service-cover-img"
-              src="/static/baoxian.png"
+              src="/static/baoxian.webp"
               mode="widthFix"
+              webp
               aria-label="全程护航保障"
             ></image>
             <template v-else>

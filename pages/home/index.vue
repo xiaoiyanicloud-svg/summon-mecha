@@ -17,7 +17,7 @@
 
 				<!-- AI 召唤 -->
 				<view class="ai-center">
-							<image class="ai-center-bg" src="/static/zhaohuan.png" mode="scaleToFill" style="position:absolute;top:0;left:0;width:100%;height:80%;z-index:0;"></image>
+							<image class="ai-center-bg" src="/static/zhaohuan.webp" mode="scaleToFill" webp style="position:absolute;top:0;left:0;width:100%;height:80%;z-index:0;"></image>
 					<view class="ai-content-wrap">
 						<view class="ai-header">
 							<text class="ai-title"><text class="ai-mark">AI</text><text class="ai-rest">召唤</text></text>
