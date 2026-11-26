@@ -523,6 +523,7 @@ DB::table('merchant_rental_plans')->insert([
 $service->attachCatalogMeta(collect([$m1]));
 $meta1 = $m1->getAttribute('resolved_raas_meta');
 assertTrue(($meta1['min_rent_days'] ?? 0) === 5, '存在启用租期方案时最低起租天数应取 ext 与方案最大值(5)');
+assertTrue(($meta1['max_rent_days'] ?? 0) === 90, '存在启用租期方案时应输出 max_rent_days(90)');
 assertTrue(($meta1['compatible_model_names'] ?? []) === ['Unitree G1'], 'compatible_model_names 应匹配商家指定的兼容机型');
 assertTrue(count($meta1['param_specs'] ?? []) === 1 && ($meta1['param_specs'][0]['name'] ?? '') === '续航时间', 'param_specs 应过滤空值并结构化返回');
 assertTrue(count($meta1['rental_plans'] ?? []) === 1 && ($meta1['rental_plans'][0]['base_price_yuan'] ?? '') === '2600.00', 'rental_plans 应输出有效租期摘要');
@@ -604,4 +605,39 @@ $underMinResp = $storeTx->invoke($tobOrderCtrl, $underMinReq);
 assertTrue($underMinResp->getStatusCode() === 422, '租用天数低于 min_rent_days(5) 必须被后端拒绝返回 422');
 assertTrue(($underMinResp->getData(true)['code'] ?? '') === 'ORDER_VALIDATION_FAILED', '错误码必须为标准契约 ORDER_VALIDATION_FAILED');
 
-echo "RAAS_CATALOG_BRAND_PHP_PASS (8 suites, all assertions green)\n";
+// 9. 超出 max_rent_days(90)、畸形 startDate、endDate 与 rent_days 不一致、超库存均需 422 拦截
+$overMaxReq = Request::create('/api/tob-order', 'POST', [
+    'product_id' => $pUnitreeId, 'qty' => 1, 'type' => 'rent', 'rent_days' => 95,
+    'name' => '测试买家', 'phone' => '13800000000', 'city' => '上海', 'address' => '浦东新区',
+]);
+$overMaxResp = $storeTx->invoke($tobOrderCtrl, $overMaxReq);
+assertTrue($overMaxResp->getStatusCode() === 422, '租用天数超过 max_rent_days(90) 必须被拒绝返回 422');
+
+$badDateReq = Request::create('/api/tob-order', 'POST', [
+    'product_id' => $pUnitreeId, 'qty' => 1, 'type' => 'rent', 'rent_days' => 5, 'startDate' => 'not-a-date',
+    'name' => '测试买家', 'phone' => '13800000000', 'city' => '上海', 'address' => '浦东新区',
+]);
+$badDateResp = $storeTx->invoke($tobOrderCtrl, $badDateReq);
+assertTrue($badDateResp->getStatusCode() === 422, '畸形 startDate 必须返回 422 而非 500');
+
+$mismatchDateReq = Request::create('/api/tob-order', 'POST', [
+    'product_id' => $pUnitreeId, 'qty' => 1, 'type' => 'rent', 'rent_days' => 5,
+    'startDate' => '2026-12-01', 'endDate' => '2026-12-30',
+    'name' => '测试买家', 'phone' => '13800000000', 'city' => '上海', 'address' => '浦东新区',
+]);
+$mismatchDateResp = $storeTx->invoke($tobOrderCtrl, $mismatchDateReq);
+assertTrue($mismatchDateResp->getStatusCode() === 422, '篡改 endDate 与 rent_days 不一致必须被拒绝返回 422');
+
+DB::table('merchant_product_exts')->where('product_id', $pUnitreeId)->update(['rentable_stock' => 2]);
+$overStockReq = Request::create('/api/tob-order', 'POST', [
+    'type' => 'rent', 'rent_days' => 5,
+    'name' => '测试买家', 'phone' => '13800000000', 'city' => '上海', 'address' => '浦东新区',
+    'items' => [
+        ['product_id' => $pUnitreeId, 'qty' => 2, 'rent_days' => 5],
+        ['product_id' => $pUnitreeId, 'qty' => 1, 'rent_days' => 5], // 重复同商品合并后 qty=3 > 可租库存 2
+    ],
+]);
+$overStockResp = $storeTx->invoke($tobOrderCtrl, $overStockReq);
+assertTrue($overStockResp->getStatusCode() === 422, 'items[] 重复商品数量合并超出可租库存(2)必须被拒绝返回 422');
+
+echo "RAAS_CATALOG_BRAND_PHP_PASS (9 suites, all assertions green)\n";

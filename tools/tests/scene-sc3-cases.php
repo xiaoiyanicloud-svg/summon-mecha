@@ -516,6 +516,8 @@ test('场景租用直下订单经由真实仓储与交易守卫：服务端锁�
         });
     }
     $prevCore = Webkul\Core\Facades\Core::getFacadeRoot();
+    $hadRequest = app()->bound('request');
+    $prevRequest = $hadRequest ? app('request') : null;
     $coreStub = new class($prevCore) {
         public function __construct(private $inner) {}
         public function getGuestCustomerGroup() { return (object) ['id' => 1]; }
@@ -614,8 +616,100 @@ test('场景租用直下订单经由真实仓储与交易守卫：服务端锁�
             same(409, $blocked->getStatusCode());
             same('SCENE_QUOTE_REQUIRED', json_decode($blocked->getContent(), true)['code']);
         }
+
+        // 3) 商户库存联动闭环 + 登录前 X-Guest-Key 订单在登录后仍可看详情/取消 + 发货状态同步与发货后拦截买家自取消
+        if ($schema->hasTable('merchant_product_exts') && $schema->hasTable('merchant_orders')) {
+            $shopId = DB::table('merchant_shops')->insertGetId([
+                'seller_id' => 1,
+                'name' => '直营商户',
+                'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('merchant_product_exts')->insert([
+                'product_id' => 11,
+                'seller_id' => 1,
+                'shop_id' => $shopId,
+                'fulfillment_type' => 'rent',
+                'daily_rent_cents' => 280000,
+                'deposit_cents' => 500000,
+                'min_rent_days' => 3,
+                'rentable_stock' => 4,
+                'locked_stock' => 0,
+                'shelf_status' => 'on_shelf',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 3a) 登录前以 X-Guest-Key 下单
+            $GLOBALS['sc3AuthenticatedCustomer'] = null;
+            $guestKey = 'guest-bridge-key-001';
+            $gReq = Illuminate\Http\Request::create('/api/tob-order', 'POST', [
+                'type' => 'rent',
+                'product_id' => 11,
+                'qty' => 2,
+                'rent_days' => 3,
+                'startDate' => '2026-12-10',
+                'name' => '赵六',
+                'phone' => '13900002222',
+                'city' => '杭州',
+                'address' => '滨江区',
+            ], [], [], ['HTTP_X_GUEST_KEY' => $guestKey]);
+            $gResp = $ctrl->store($gReq);
+            same(200, $gResp->getStatusCode());
+            $gBody = json_decode($gResp->getContent(), true);
+            $gOrderId = (int) $gBody['order_id'];
+
+            // 锁定商户库存（4->2，locked 0->2）并生成关联 merchant_orders
+            $extAfterOrder = DB::table('merchant_product_exts')->where('product_id', 11)->first();
+            same(2, (int) $extAfterOrder->rentable_stock);
+            same(2, (int) $extAfterOrder->locked_stock);
+            $mOrder = DB::table('merchant_orders')->where('bagisto_order_id', $gOrderId)->first();
+            same(true, $mOrder !== null);
+            same('pending_shipment', $mOrder->status);
+
+            // 3b) 登录后凭同个 X-Guest-Key 可在 OrderController::show / guestIndex 查到该游客单含履约详情
+            $GLOBALS['sc3AuthenticatedCustomer'] = 1;
+            app()->instance('request', Illuminate\Http\Request::create('/api/customer/orders/'.$gOrderId, 'GET', [], [], [], ['HTTP_X_GUEST_KEY' => $guestKey]));
+            $showAuthGuest = app(Webkul\Shop\Http\Controllers\API\OrderController::class)->show($gOrderId);
+            same(200, $showAuthGuest->response()->getStatusCode());
+            $guestListResp = app(Webkul\Shop\Http\Controllers\API\OrderController::class)->guestIndex(
+                Illuminate\Http\Request::create('/api/guest-orders?id='.$gOrderId, 'GET', ['id' => $gOrderId], [], [], ['HTTP_X_GUEST_KEY' => $guestKey])
+            );
+            $guestListData = json_decode($guestListResp->getContent(), true);
+            same('pending_shipment', $guestListData['detail']['fulfillment']['status'] ?? null);
+
+            // 3c) 未发货时买家取消 -> 关联商户单同步取消且库存释放（2->4, locked 2->0）
+            $cancelReq = Illuminate\Http\Request::create('/api/customer/orders/'.$gOrderId.'/cancel', 'POST', [], [], [], ['HTTP_X_GUEST_KEY' => $guestKey]);
+            $cancelResp = app(Webkul\Shop\Http\Controllers\API\OrderController::class)->cancel($cancelReq, $gOrderId);
+            same(200, $cancelResp->getStatusCode());
+            same('canceled', DB::table('orders')->find($gOrderId)->status);
+            same('cancelled', DB::table('merchant_orders')->find($mOrder->id)->status);
+            $extAfterCancel = DB::table('merchant_product_exts')->where('product_id', 11)->first();
+            same(4, (int) $extAfterCancel->rentable_stock);
+            same(0, (int) $extAfterCancel->locked_stock);
+
+            // 3d) 再次下单并在商户发货后 -> 同步 Bagisto 为 processing 且禁止买家自取消
+            $gResp2 = $ctrl->store($gReq);
+            same(200, $gResp2->getStatusCode());
+            $gOrderId2 = (int) json_decode($gResp2->getContent(), true)['order_id'];
+            $mOrder2 = DB::table('merchant_orders')->where('bagisto_order_id', $gOrderId2)->first();
+            app(Webkul\Shop\Services\Merchant\MerchantTenantService::class)->shipOrder(1, (int) $mOrder2->id, [
+                'carrier' => '顺丰重货',
+                'tracking_no' => 'SF123456',
+                'device_sn' => 'SN-G1-009',
+            ]);
+            same('processing', DB::table('orders')->find($gOrderId2)->status);
+            $cancelBlocked = app(Webkul\Shop\Http\Controllers\API\OrderController::class)->cancel($cancelReq, $gOrderId2);
+            same('ORDER_NOT_CANCELABLE', json_decode($cancelBlocked->getContent(), true)['code']);
+        }
     } finally {
         Webkul\Core\Facades\Core::swap($prevCore);
+        if ($hadRequest) {
+            app()->instance('request', $prevRequest);
+        } elseif (app()->bound('request')) {
+            app()->forgetInstance('request');
+        }
         if ($createdPriceIdx) {
             $schema->dropIfExists('product_price_indices');
         }

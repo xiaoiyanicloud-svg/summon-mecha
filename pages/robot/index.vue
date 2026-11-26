@@ -883,12 +883,24 @@ export default {
       if (this.actionType !== 'rent' || !this.selectedProduct) return 1
       return Math.max(1, Number((this.selectedProduct.raasMeta && this.selectedProduct.raasMeta.min_rent_days) || 1))
     },
+    selectedProductMaxDays() {
+      if (this.actionType !== 'rent' || !this.selectedProduct) return 0
+      const maxD = Number((this.selectedProduct.raasMeta && this.selectedProduct.raasMeta.max_rent_days) || 0)
+      return maxD > 0 ? Math.max(this.selectedProductMinDays, maxD) : 0
+    },
     planMinDaysRequired() {
       if (!Array.isArray(this.selectedPlanItems) || !this.selectedPlanItems.length) return 1
       return this.selectedPlanItems.reduce((mx, item) => {
         const d = Number((item && item.raasMeta && item.raasMeta.min_rent_days) || 1)
         return Math.max(mx, Number.isFinite(d) && d > 0 ? d : 1)
       }, 1)
+    },
+    planMaxDaysAllowed() {
+      if (!Array.isArray(this.selectedPlanItems) || !this.selectedPlanItems.length) return 3650
+      const caps = this.selectedPlanItems
+        .map(item => Number((item && item.raasMeta && item.raasMeta.max_rent_days) || 0))
+        .filter(d => Number.isFinite(d) && d > 0)
+      return caps.length ? Math.min(...caps) : 3650
     },
     siblingTobProduct() {
       const p = this.selectedProduct
@@ -1007,6 +1019,9 @@ export default {
       }
       if (rm && rm.min_rent_days && p.catalogKind === 'rent') {
         raasSpecs.push({ name: '最低起租天数', value: rm.min_rent_days + ' 天' })
+      }
+      if (rm && Number(rm.max_rent_days) > 0 && p.catalogKind === 'rent') {
+        raasSpecs.push({ name: '最长租期上限', value: rm.max_rent_days + ' 天' })
       }
       if (rm && rm.deposit_yuan && p.catalogKind === 'rent') {
         raasSpecs.push({ name: '参考押金', value: '¥' + rm.deposit_yuan })
@@ -1177,14 +1192,23 @@ export default {
       const n = Number(String(v == null ? '' : v).replace(/[^\d.]/g, ''))
       return isNaN(n) ? 0 : n
     },
-    // 点击「分类」在下方就地展开 / 收起（原为弹窗）
-    openTypePicker() { this.showTypePicker = !this.showTypePicker },
-    selectBrand(brand) { this.currentBrand = brand },
+    // 点击「分类」在下方就地展开 / 收起（与排序菜单互斥）
+    openTypePicker() {
+      this.showTypePicker = !this.showTypePicker
+      this.showSortPanel = false
+    },
+    selectBrand(brand) {
+      this.currentBrand = brand
+      this.showTypePicker = false
+      this.showSortPanel = false
+    },
     resetTobFilters() {
       this.currentBrand = 'all'
       this.currentType = 'all'
       this.searchQ = ''
       this.currentSort = 'default'
+      this.showTypePicker = false
+      this.showSortPanel = false
     },
     switchToSiblingTobProduct() {
       const sibling = this.siblingTobProduct
@@ -1236,7 +1260,10 @@ export default {
     },
     calcPlanDays() {
       if (this.planStartDate && this.planEndDate) {
-        const s = new Date(this.planStartDate), en = new Date(this.planEndDate)
+        const [sy, sm, sd] = String(this.planStartDate).split('-').map(Number)
+        const [ey, em, ed] = String(this.planEndDate).split('-').map(Number)
+        const s = new Date(sy, (sm || 1) - 1, sd || 1)
+        const en = new Date(ey, (em || 1) - 1, ed || 1)
         const diff = Math.round((en - s) / 86400000)
         if (diff > 0) this.planDays = diff
       }
@@ -1277,9 +1304,27 @@ export default {
         }
         this.selectedPlanItems = current
         const minPlanDays = current.reduce((mx, m) => Math.max(mx, Number((m.raasMeta && m.raasMeta.min_rent_days) || 1)), 1)
+        const maxPlanCaps = current
+          .map(m => Number((m.raasMeta && m.raasMeta.max_rent_days) || 0))
+          .filter(d => Number.isFinite(d) && d > 0)
+        const maxPlanDays = maxPlanCaps.length ? Math.min(...maxPlanCaps) : 3650
+        if (minPlanDays > maxPlanDays) {
+          uni.showToast({ title: `所选机型租期区间冲突（最低${minPlanDays}天 / 最长${maxPlanDays}天），请分开下单`, icon: 'none' })
+          return
+        }
+        const outOfStock = current.find(m => m.rentableStock !== null && m.rentableStock !== undefined && m.rentableStock <= 0)
+        if (outOfStock) {
+          uni.showToast({ title: `「${outOfStock.name}」当前暂无可租库存`, icon: 'none' })
+          return
+        }
         if (this.planDays < minPlanDays) {
           this.planDays = minPlanDays
           uni.showToast({ title: '所选机型最低起租 ' + minPlanDays + ' 天，已自动调整租期', icon: 'none' })
+          return
+        }
+        if (this.planDays > maxPlanDays) {
+          this.planDays = maxPlanDays
+          uni.showToast({ title: '所选机型最长可租 ' + maxPlanDays + ' 天，已自动调整租期', icon: 'none' })
           return
         }
         this.showCustomPlanModal = false
@@ -1289,6 +1334,10 @@ export default {
           product_id: m.bagistoId || m.id,
           name: m.name,
           price: m.price,
+          min_rent_days: Math.max(1, Number((m.raasMeta && m.raasMeta.min_rent_days) || 1)),
+          max_rent_days: Number((m.raasMeta && m.raasMeta.max_rent_days) || 0) || 0,
+          rentable_stock: m.rentableStock !== undefined ? m.rentableStock : null,
+          deposit_yuan: (m.raasMeta && m.raasMeta.deposit_yuan) || '',
           scene: m.scene || '机器租用',
           icon: m.icon || '🤖',
           bg: m.bg || '#F0F4FA',
@@ -1643,6 +1692,13 @@ export default {
       if (opts.productType) url += `&productType=${encodeURIComponent(opts.productType)}`
       if (opts.rentPeriod) url += `&rentPeriod=${encodeURIComponent(opts.rentPeriod)}`
       if (opts.startDate) url += `&startDate=${encodeURIComponent(opts.startDate)}`
+      const rm = product && product.raasMeta
+      if (rm && rm.min_rent_days > 1) url += `&minRentDays=${encodeURIComponent(String(rm.min_rent_days))}`
+      if (rm && Number(rm.max_rent_days) > 0) url += `&maxRentDays=${encodeURIComponent(String(rm.max_rent_days))}`
+      if (rm && rm.deposit_yuan) url += `&depositYuan=${encodeURIComponent(String(rm.deposit_yuan))}`
+      if (product && product.rentableStock !== null && product.rentableStock !== undefined && type === 'rent') {
+        url += `&rentableStock=${encodeURIComponent(String(product.rentableStock))}`
+      }
       uni.navigateTo({ url })
     },
 
@@ -1653,8 +1709,12 @@ export default {
       const idx = this.rentTypeOptions.findIndex(o => o.code === code)
       this.rentForm.productTypeIndex = idx >= 0 ? idx : 0
       const minDays = this.selectedProductMinDays
-      const matchedDayIdx = this.rentPeriodOptions.findIndex(op => parseInt(op) >= minDays)
-      this.rentForm.daysIndex = matchedDayIdx >= 0 ? matchedDayIdx : (this.rentPeriodOptions.length - 1)
+      const maxDays = this.selectedProductMaxDays
+      const matchedDayIdx = this.rentPeriodOptions.findIndex(op => {
+        const d = parseInt(op)
+        return d >= minDays && (maxDays <= 0 || d <= maxDays)
+      })
+      this.rentForm.daysIndex = matchedDayIdx >= 0 ? matchedDayIdx : Math.max(0, this.rentPeriodOptions.findIndex(op => parseInt(op) >= minDays))
       this.rentForm.qty = 1
       const now = new Date()
       const y = now.getFullYear()
@@ -1670,7 +1730,8 @@ export default {
     },
     addDays(dateStr, days) {
       if (!dateStr) return ''
-      const d = new Date(dateStr)
+      const [yy, mm, dd] = String(dateStr).split('-').map(Number)
+      const d = new Date(yy, (mm || 1) - 1, dd || 1)
       d.setDate(d.getDate() + (days || 0))
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     },
@@ -1682,8 +1743,15 @@ export default {
       return (p * this.rentForm.qty * this.rentDays()).toLocaleString('en-US')
     },
     onRentQtyChange(delta) {
+      const sp = this.selectedProduct
+      const cap = (sp && sp.rentableStock !== null && sp.rentableStock !== undefined) ? Math.min(99, sp.rentableStock) : 99
       const v = this.rentForm.qty + delta
-      this.rentForm.qty = v >= 1 && v <= 99 ? v : this.rentForm.qty
+      if (v < 1) return
+      if (v > cap) {
+        uni.showToast({ title: cap <= 0 ? '当前暂无可租库存' : `当前最多可租 ${cap} 台`, icon: 'none' })
+        return
+      }
+      this.rentForm.qty = v
     },
     // ===== 日期三列选择（picker-view） =====
     monthColumn() { return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
@@ -1710,12 +1778,25 @@ export default {
         uni.showToast({ title: '该设备最低起租 ' + this.selectedProductMinDays + ' 天', icon: 'none' })
         return
       }
+      if (this.selectedProductMaxDays > 0 && days > this.selectedProductMaxDays) {
+        uni.showToast({ title: '该设备最长可租 ' + this.selectedProductMaxDays + ' 天', icon: 'none' })
+        return
+      }
       this.rentForm.daysIndex = i
     },
     cancelRentModal() { this.showRentModal = false },
     confirmRent() {
+      const sp = this.selectedProduct
+      if (sp && sp.rentableStock !== null && sp.rentableStock !== undefined && sp.rentableStock <= 0) {
+        uni.showToast({ title: '该设备当前暂无可租库存', icon: 'none' })
+        return
+      }
       if (this.rentDays() < this.selectedProductMinDays) {
         uni.showToast({ title: '该设备最低起租 ' + this.selectedProductMinDays + ' 天', icon: 'none' })
+        return
+      }
+      if (this.selectedProductMaxDays > 0 && this.rentDays() > this.selectedProductMaxDays) {
+        uni.showToast({ title: '该设备最长可租 ' + this.selectedProductMaxDays + ' 天', icon: 'none' })
         return
       }
       const product = this.selectedProduct
@@ -1878,6 +1959,9 @@ export default {
       this[timerKey] = setTimeout(() => { this[key] = false }, 2000)
     },
     onPanelScroll(type) {
+      if (type === 'product' && this.showSortPanel) {
+        this.showSortPanel = false
+      }
       this.hintShow(type)
     },
 
@@ -1994,6 +2078,14 @@ export default {
       const typeOption = (this.rentTypeOptions || []).find(o => o.code === typeCode)
       const typeLabel = resolvedType ? resolvedType.label : (typeOption ? typeOption.label : '')
       const raasMeta = p.raas_meta && typeof p.raas_meta === 'object' ? p.raas_meta : null
+      const fallbackDaily = raasMeta && raasMeta.daily_rent_yuan != null ? Number(raasMeta.daily_rent_yuan) : NaN
+      const resolvedPrice = (catalogKind === 'rent' && Number(pricing.price) === 0 && Number.isFinite(fallbackDaily) && fallbackDaily > 0)
+        ? String(fallbackDaily)
+        : pricing.price
+      const hasMerchantRentStock = raasMeta
+        && ['rent', 'rental', 'both'].includes(String(raasMeta.fulfillment_type || ''))
+        && raasMeta.rentable_stock != null
+      const rentableStock = hasMerchantRentStock ? Math.max(0, parseInt(raasMeta.rentable_stock, 10) || 0) : null
       let raasBadge = ''
       if (raasMeta) {
         if (raasMeta.models_count > 0) {
@@ -2009,7 +2101,7 @@ export default {
         id: p.id,
         uniqueKey: catalogKind + '-' + p.id,
         name: p.name || '商品',
-        price: pricing.price,
+        price: resolvedPrice,
         // 只有真实 regular > final 才有原价;缺价时不再用现价 ×1.2 编造折扣
         originalPrice: pricing.originalPrice,
         icon: iconMap[catalogKind] || '🤖',
@@ -2020,7 +2112,7 @@ export default {
         images: images.length ? images : [cover],
         catalogKind,
         bagistoId: p.id,
-        bagistoPrice: pricing.price,
+        bagistoPrice: resolvedPrice,
         bagistoDescription: fixDescUrls(p.description || ''),
         bagistoAttributes: p.custom_attributes || null,
         plainDescription,
@@ -2034,6 +2126,7 @@ export default {
         typeLabel,
         raasMeta,
         raasBadge,
+        rentableStock,
         rating: Number((p.ratings && p.ratings.average) || 0),
         reviewCount: Number((p.reviews && p.reviews.total) || 0),
         salesCount: Number((p.sales && p.sales.total) || 0),
@@ -2121,7 +2214,7 @@ export default {
 </script>
 
 <style scoped>
-/* ===== 搜索框(租售 TOB / 场景) ===== */
+/* ===== 搜索框(租售 / 场景) ===== */
 .search-bar { padding: 8rpx 20rpx 12rpx; background: #ffffff; flex-shrink: 0; }
 
 /* ===== 基础布局 ===== */

@@ -36,7 +36,7 @@
 			<!-- 订单信息 -->
 			<view class="card info-card">
 				<view class="info-row">
-					<text class="label">租赁类型</text>
+					<text class="label">订单类型</text>
 					<text class="value type-badge" :class="order.typeClass">{{ order.typeText }}</text>
 				</view>
 				<view class="info-row" v-if="order.scene">
@@ -45,11 +45,64 @@
 				</view>
 				<view class="info-row" v-if="order.type === 'rent' || (order.type === 'plan' && (order.sceneRental || order.startDate || order.duration))">
 					<text class="label">租期</text>
-					<text class="value">{{ order.startDate || order.duration || '—' }} {{ order.startDate && order.endDate ? '至 ' + order.endDate : '' }}</text>
+					<text class="value">{{ order.startDate || order.duration || '待确认' }} {{ order.startDate && order.endDate ? '至 ' + order.endDate : '' }}</text>
 				</view>
 				<view class="info-row">
 					<text class="label">{{ (order.type === 'rent' || order.sceneRental) ? '租赁台数' : '数量' }}</text>
 					<text class="value">{{ order.quantity }} 台</text>
+				</view>
+				<view class="info-row" v-if="order.createdAt">
+					<text class="label">下单时间</text>
+					<text class="value">{{ order.createdAt }}</text>
+				</view>
+			</view>
+
+			<!-- 多商品明细（多机合单展示每款台数与单价） -->
+			<view class="card items-card" v-if="order.itemsList && order.itemsList.length > 1">
+				<text class="section-subtitle">机型清单（共 {{ order.itemsList.length }} 款）</text>
+				<view class="detail-item-row" v-for="(line, idx) in order.itemsList" :key="line.id || idx">
+					<view class="detail-item-left">
+						<text class="detail-item-name">{{ line.name }}</text>
+						<text class="detail-item-sub" v-if="line.dailyPrice > 0">¥{{ line.dailyPrice }}/天/台 × {{ line.rentDays || 1 }}天</text>
+					</view>
+					<view class="detail-item-right">
+						<text class="detail-item-qty">× {{ line.qty }} 台</text>
+						<text class="detail-item-total">¥{{ line.total }}</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 收货信息 -->
+			<view class="card info-card" v-if="order.shippingAddress && (order.shippingAddress.name || order.shippingAddress.fullAddress)">
+				<text class="section-subtitle">收货信息</text>
+				<view class="info-row" v-if="order.shippingAddress.name || order.shippingAddress.phone">
+					<text class="label">联系人</text>
+					<text class="value">{{ order.shippingAddress.name }} {{ order.shippingAddress.phone }}</text>
+				</view>
+				<view class="info-row" v-if="order.shippingAddress.fullAddress">
+					<text class="label">收货地址</text>
+					<text class="value addr-val">{{ order.shippingAddress.fullAddress }}</text>
+				</view>
+			</view>
+
+			<!-- 商户履约与物流单号 -->
+			<view class="card info-card" v-if="order.fulfillment && (order.fulfillment.statusLabel || order.fulfillment.trackingNo || order.fulfillment.deviceSn || order.fulfillment.contractNo)">
+				<text class="section-subtitle">履约与交付</text>
+				<view class="info-row" v-if="order.fulfillment.statusLabel">
+					<text class="label">履约状态</text>
+					<text class="value">{{ order.fulfillment.statusLabel }}</text>
+				</view>
+				<view class="info-row" v-if="order.fulfillment.carrier || order.fulfillment.trackingNo">
+					<text class="label">物流单号</text>
+					<text class="value">{{ [order.fulfillment.carrier, order.fulfillment.trackingNo].filter(Boolean).join(' · ') }}</text>
+				</view>
+				<view class="info-row" v-if="order.fulfillment.deviceSn">
+					<text class="label">交付设备SN</text>
+					<text class="value sn-code">{{ order.fulfillment.deviceSn }}</text>
+				</view>
+				<view class="info-row" v-if="order.fulfillment.contractNo">
+					<text class="label">租赁协议号</text>
+					<text class="value">{{ order.fulfillment.contractNo }}</text>
 				</view>
 			</view>
 
@@ -190,46 +243,60 @@ import SmIcon from '@/components/SmIcon.vue'
 			async loadOrder(id) {
 				this.loading = true
 				this.loadError = ''
-				// 方式一：优先使用列表页同步过来的完整订单（viewDetail 里 setStorageSync）
+				let cached = null
+				// 优先读取列表页同步数据作首屏快速展示，同时继续向服务端拉取最新完整详情（地址/履约时间轴/状态）
 				const synced = uni.getStorageSync('orderDetailData')
 				if (synced && (id == null || Number(synced.id) === Number(id))) {
 					if (this.routeSceneOrder(synced)) { this.loading = false; return }
 					uni.removeStorageSync('orderDetailData')
-					this.order = this.normalizeOrder(synced)
+					cached = synced
+				} else {
+					const orderList = uni.getStorageSync('orderList') || []
+					const found = orderList.find(item => Number(item.id) === Number(id))
+					if (found) {
+						if (this.routeSceneOrder(found)) { this.loading = false; return }
+						cached = found
+					}
+				}
+				if (cached) {
+					this.order = this.normalizeOrder(cached)
 					this.loading = false
-					return
 				}
 
-				// 方式二：从缓存订单列表查找（宽松匹配，避免 id 类型不一至）
-				const orderList = uni.getStorageSync('orderList') || []
-				const found = orderList.find(item => Number(item.id) === Number(id))
-				if (found) {
-					if (this.routeSceneOrder(found)) { this.loading = false; return }
-					this.order = this.normalizeOrder(found)
-					this.loading = false
-					return
-				}
-
-					// 方式三：真实接口(已登录且有数字 id)——后台订单以服务端为准,不再回退假数据
-				const token = uni.getStorageSync(TOKEN_KEY)
-				if (token && id != null && !isNaN(Number(id))) {
+				if (id != null && !isNaN(Number(id))) {
+					const token = uni.getStorageSync(TOKEN_KEY)
 					try {
-						const res = await orderApi.getOrderDetail(id)
-						const d = (res && res.data) || {}
-						if (d && d.id) {
-							if (this.routeSceneOrder(d)) { this.loading = false; return }
-							this.order = this.normalizeOrder(this.mapApiDetail(d))
+						let detail = null
+						if (token && !(cached && cached.isGuest)) {
+							try {
+								const res = await orderApi.getOrderDetail(id)
+								detail = (res && res.data) || null
+							} catch (innerErr) {
+								// 登录态下查看登录前用 X-Guest-Key 创建的游客单时，兜底查游客接口
+								const gRes = await orderApi.getGuestOrders({ id })
+								detail = (gRes && (gRes.detail || (Array.isArray(gRes.data) && gRes.data[0]))) || null
+								if (!detail) throw innerErr
+							}
+						} else {
+							const gRes = await orderApi.getGuestOrders({ id })
+							detail = (gRes && (gRes.detail || (Array.isArray(gRes.data) && gRes.data[0]))) || null
+						}
+						if (detail && detail.id) {
+							if (this.routeSceneOrder(detail)) { this.loading = false; return }
+							this.order = this.normalizeOrder(this.mapApiDetail(detail))
 							this.loading = false
 							return
 						}
 					} catch (e) {
-						// ⚠ 接口失败是**故障**,不是「订单不存在」—— 置错误标记,
-						//   由上方 StateView 的错误态承载(带重试),不再落进「订单不存在」空态。
-						this.loadError = (e && e.message) || '加载失败'
+						if (!this.order) {
+							this.loadError = (e && e.message) || '加载失败'
+						}
 					}
 				}
 
-				this.order = null
+				if (!this.order) {
+					this.order = null
+				}
 				this.loading = false
 			},
 
@@ -242,7 +309,9 @@ import SmIcon from '@/components/SmIcon.vue'
 			// 后台订单详情 → 展示字段(只映射接口真实存在的数据,mock 专属字段不伪造)
 			mapApiDetail(d) {
 				const item = (d.items && d.items[0]) || {}
-				const sr = (d.scene_rental && typeof d.scene_rental === 'object') ? d.scene_rental : null
+				const sr = (d.scene_rental && typeof d.scene_rental === 'object')
+					? d.scene_rental
+					: ((d.rental_info && typeof d.rental_info === 'object') ? d.rental_info : null)
 				const itemNames = (Array.isArray(d.items) ? d.items : []).map((it) => {
 					const n = (it && it.name) || ''
 					const a = n.split(' · ')
@@ -251,7 +320,47 @@ import SmIcon from '@/components/SmIcon.vue'
 				const cleanTitle = itemNames.join('、') || item.name || '订单'
 				const firstRaw = (item && item.name) || ''
 				const scene = (sr && sr.scene_name) || (firstRaw.split(' · ').length > 1 ? firstRaw.split(' · ')[0] : '')
-				const rentDays = (sr && Number(sr.rent_days)) || 0
+				const rangeMatch = firstRaw.match(/[（(](\d{4}-\d{2}-\d{2})~(\d{4}-\d{2}-\d{2})[）)]/)
+				const daysMatch = firstRaw.match(/[（(](?:租期)?(\d+)天[）)]/)
+				const rentDays = (sr && Number(sr.rent_days)) || (daysMatch ? Number(daysMatch[1]) : 0)
+				const itemsList = (Array.isArray(d.items) ? d.items : []).map((it) => {
+					const n = (it && it.name) || ''
+					const a = n.split(' · ')
+					const cleanName = (a.length > 1 ? a.slice(1).join(' · ') : n).replace(/【[^】]*】|[（(][^）)]*[）)]/g, '').trim()
+					const meta = (it && it.additional && (it.additional.scene_rental || it.additional.rental)) || {}
+					return {
+						id: it.id || it.product_id,
+						name: cleanName || n || '机器',
+						qty: Math.max(1, Number(it.qty_ordered) || 1),
+						dailyPrice: Number(meta.unit_daily_rent_yuan || meta.daily_price || 0),
+						rentDays: Number(meta.rent_days || rentDays || 1),
+						total: Number(it.total != null ? it.total : ((Number(it.price) || 0) * Math.max(1, Number(it.qty_ordered) || 1))),
+					}
+				})
+				const addr = d.shipping_address && typeof d.shipping_address === 'object' ? d.shipping_address : null
+				const shippingAddress = addr ? {
+					name: [addr.first_name, addr.last_name].filter(Boolean).join(' ').trim(),
+					phone: addr.phone || '',
+					fullAddress: [addr.state, addr.city, addr.address || addr.address1].filter(Boolean).join(' ').trim(),
+				} : null
+				const f = d.fulfillment && typeof d.fulfillment === 'object' ? d.fulfillment : null
+				const fulfillmentStatusLabels = {
+					pending_shipment: '待商户发货',
+					shipped: '已发货',
+					in_use: '租赁履约中',
+					returning: '归还途中',
+					returned: '已归还待验机',
+					completed: '履约已完结',
+					cancelled: '已取消',
+				}
+				const fulfillment = f ? {
+					status: f.status || '',
+					statusLabel: fulfillmentStatusLabels[f.status] || f.status || '',
+					carrier: f.carrier || '',
+					trackingNo: f.tracking_no || '',
+					deviceSn: f.device_sn || '',
+					contractNo: f.contract_no || '',
+				} : null
 				const statusMap = {
 					pending: ['待处理', 'pending'],
 					processing: ['待确认', 'confirm'],
@@ -263,6 +372,8 @@ import SmIcon from '@/components/SmIcon.vue'
 				const typeLabels = { rent: '租赁', buy: '购买', plan: '方案', custom: '定制', skill: '技能', accessory: '配件' }
 				return {
 					id: d.id,
+					isGuest: !!d.is_guest,
+					createdAt: d.created_at || '',
 					orderNo: d.increment_id,
 					name: cleanTitle,
 					icon: '🤖',
@@ -273,18 +384,23 @@ import SmIcon from '@/components/SmIcon.vue'
 					scene: scene || '',
 					duration: rentDays > 0 ? `${rentDays}天` : '',
 					rentDays,
-					startDate: (sr && sr.start_date) || '',
-					endDate: (sr && sr.end_date) || '',
+					startDate: (sr && sr.start_date) || (rangeMatch ? rangeMatch[1] : ''),
+					endDate: (sr && sr.end_date) || (rangeMatch ? rangeMatch[2] : ''),
 					rentPrice: d.grand_total != null ? String(d.grand_total) : '',
 					deposit: (sr && Number(sr.deposit_yuan) > 0) ? String(sr.deposit_yuan) : '',
+					freight: (Number(d.shipping_amount) > 0) ? String(d.shipping_amount) : '',
+					discount: (Number(d.discount_amount) > 0) ? String(d.discount_amount) : '',
 					sceneRental: sr,
 					rawItems: Array.isArray(d.items) ? d.items : [],
+					itemsList,
+					shippingAddress,
+					fulfillment,
 					quantity: d.total_qty_ordered != null ? d.total_qty_ordered : (item.qty_ordered || 1),
 					actualAmount: d.grand_total != null ? String(d.grand_total) : '0',
 					status: pair[1],
 					statusText: pair[0],
 					statusClass: pair[1],
-					timeline: [],
+					timeline: Array.isArray(d.timeline) ? d.timeline : [],
 					// 技能单才有交付设备的概念。后端 formatOrder 在技能单上返回 sn_code / delivery_method，
 					// 非技能单为 null —— 这时整块设备卡片不该出现（此前它对所有订单都显示、值恒为「—」）。
 					deviceInfoVisible: d.order_type === 'skill',
@@ -328,18 +444,25 @@ import SmIcon from '@/components/SmIcon.vue'
 					content: '确认取消该订单吗？',
 					success: (res) => {
 						if (!res.confirm) return
-						// 游客单走游客取消接口(免登录),登录单走本人取消;后者需后端已绑定 token
-						const req = uni.getStorageSync('token')
-							? orderApi.cancelOrder(id)
-							: orderApi.cancelGuestOrder(id)
+						// 游客单（含登录后查看登录前游客单）走游客取消接口；登录名下订单走本人取消
+						const req = (!uni.getStorageSync(TOKEN_KEY) || (this.order && this.order.isGuest))
+							? orderApi.cancelGuestOrder(id)
+							: orderApi.cancelOrder(id)
 						req
 							.then((r) => {
 								uni.showToast({ title: (r && r.message) || '订单已取消', icon: 'success' })
-								// 本地同步状态,不等缓存刷新
+								uni.setStorageSync('orderNeedRefresh', Date.now())
+								// 本地同步状态 + 更新缓存列表
 								if (this.order) {
 									this.order.status = 'cancelled'
 									this.order.statusText = '已取消'
 									this.order.statusClass = 'cancelled'
+								}
+								const cachedList = uni.getStorageSync('orderList')
+								if (Array.isArray(cachedList)) {
+									uni.setStorageSync('orderList', cachedList.map(o => Number(o.id) === Number(id)
+										? { ...o, status: 'cancelled', statusText: '已取消', statusClass: 'cancelled' }
+										: o))
 								}
 							})
 							.catch((err) => uni.showToast({ title: (err && err.message) || '取消失败', icon: 'none' }))
@@ -558,10 +681,10 @@ import SmIcon from '@/components/SmIcon.vue'
 			},
 			reorder() {
 				const sr = this.order.sceneRental
-				if (sr && sr.scene_id && Array.isArray(this.order.rawItems) && this.order.rawItems.length) {
-					const rentDays = Math.max(1, Number(sr.rent_days || this.order.rentDays) || 1)
+				if ((sr && sr.scene_id && Array.isArray(this.order.rawItems) && this.order.rawItems.length) || ((this.order.type === 'rent' || this.order.type === 'plan') && Array.isArray(this.order.rawItems) && this.order.rawItems.length > 1)) {
+					const rentDays = Math.max(1, Number((sr && sr.rent_days) || this.order.rentDays) || 1)
 					const mappedItems = this.order.rawItems.map((it) => {
-						const itemSr = (it && it.additional && it.additional.scene_rental) || {}
+						const itemSr = (it && it.additional && (it.additional.scene_rental || it.additional.rental)) || {}
 						const unitDaily = Number(itemSr.daily_price || itemSr.unit_daily_rent_yuan) || Math.round((Number(it.price) || 0) / rentDays)
 						const cleanName = String((it && it.name) || '机器人').split(' · ').pop().replace(/【[^】]*】|[（(][^）)]*[）)]/g, '').trim()
 						return {
@@ -570,8 +693,9 @@ import SmIcon from '@/components/SmIcon.vue'
 							name: cleanName || '机器人',
 							price: unitDaily,
 							qty: Math.max(1, Number(it.qty_ordered) || 1),
-							scene: this.order.scene || sr.scene_name || '场景租用',
+							scene: this.order.scene || (sr && sr.scene_name) || '机器租用',
 							min_rent_days: Math.max(1, Number(itemSr.min_rent_days) || 1),
+							max_rent_days: Math.max(0, Number(itemSr.max_rent_days) || 0),
 							deposit_yuan: Math.max(0, Number(itemSr.deposit_yuan) || 0),
 						}
 					}).filter(it => it.product_id)
@@ -579,15 +703,15 @@ import SmIcon from '@/components/SmIcon.vue'
 						const params = {
 							robotName: this.order.name,
 							productId: mappedItems[0].product_id,
-							scene: this.order.scene || sr.scene_name || '',
-							from: 'scene',
-							sceneId: sr.scene_id,
-							sceneRevisionId: sr.scene_revision_id || null,
+							scene: this.order.scene || (sr && sr.scene_name) || '',
+							from: (sr && sr.scene_id) ? 'scene' : '',
+							sceneId: (sr && sr.scene_id) || '',
+							sceneRevisionId: (sr && sr.scene_revision_id) || null,
 							quantity: this.order.quantity,
 							rentDays,
 							rentPeriod: `${rentDays}天`,
-							startDate: this.order.startDate || sr.start_date || '',
-							endDate: this.order.endDate || sr.end_date || '',
+							startDate: this.order.startDate || (sr && sr.start_date) || '',
+							endDate: this.order.endDate || (sr && sr.end_date) || '',
 							amount: mappedItems[0].price,
 							type: 'rent',
 							items: mappedItems,
@@ -910,5 +1034,57 @@ import SmIcon from '@/components/SmIcon.vue'
 		background: #4291F6;
 		color: #fff;
 		font-size: 26rpx;
+	}
+	.section-subtitle {
+		display: block;
+		font-size: 26rpx;
+		font-weight: 600;
+		color: #1e293b;
+		margin-bottom: 12rpx;
+	}
+	.detail-item-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 12rpx 0;
+		border-bottom: 1rpx solid #f1f5f9;
+		gap: 16rpx;
+	}
+	.detail-item-row:last-child { border-bottom: none; }
+	.detail-item-left {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4rpx;
+	}
+	.detail-item-name {
+		font-size: 25rpx;
+		font-weight: 600;
+		color: #1e293b;
+	}
+	.detail-item-sub {
+		font-size: 21rpx;
+		color: #64748b;
+	}
+	.detail-item-right {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 4rpx;
+		flex-shrink: 0;
+	}
+	.detail-item-qty {
+		font-size: 22rpx;
+		color: #64748b;
+	}
+	.detail-item-total {
+		font-size: 25rpx;
+		font-weight: 600;
+		color: #2563eb;
+	}
+	.addr-val {
+		text-align: right;
+		max-width: 460rpx;
 	}
 </style>

@@ -17,6 +17,7 @@ async function loadRobotComponent(extraGlobals = {}) {
   const context = vm.createContext({
     Jineng: {},
     Peijian: {},
+    SearchInput: {},
     StateView: {},
     SmIcon: {},
     BASE_URL: 'https://qa.invalid',
@@ -395,4 +396,27 @@ test('租购同款切换、min_rent_days 前置拦截、+方案起租天数自�
   await state.submitCustomPlanOrder()
   assert.equal(state.planDays, 5)
   assert.match(toasts[toasts.length - 1], /最低起租 5 天/)
+
+  // 5. daily_rent_yuan 兜底价格、互斥展开与 max_rent_days 上限透传
+  state.applyCatalog({
+    brands: [],
+    rent: [{
+      id: 499,
+      name: '商户直租机型',
+      prices: { final: { price: 0 } },
+      raas_meta: { daily_rent_yuan: '999', min_rent_days: 3, max_rent_days: 15, fulfillment_type: 'rent', rentable_stock: 2 },
+    }],
+    buy: [],
+    accessory: [],
+    skill: [],
+  })
+  assert.equal(state.rentCatalog[0].price, '999')
+  assert.equal(state.rentCatalog[0].rentableStock, 2)
+  state.openTypePicker()
+  assert.equal(state.showTypePicker, true)
+  state.toggleSortPanel()
+  assert.equal(state.showSortPanel, true)
+  assert.equal(state.showTypePicker, false)
+  state.onPanelScroll('product')
+  assert.equal(state.showSortPanel, false)
 })

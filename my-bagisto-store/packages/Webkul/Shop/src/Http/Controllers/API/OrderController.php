@@ -106,7 +106,8 @@ class OrderController extends APIController
     public function show(int $id): JsonResource
     {
         $customer = auth()->guard('customer')->user();
-        $guestKey = $this->guestKey(request());
+        $req = app()->bound('request') ? request() : null;
+        $guestKey = $req ? $this->guestKey($req) : null;
 
         $order = Order::query()
             ->where('id', $id)

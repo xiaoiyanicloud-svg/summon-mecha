@@ -203,7 +203,9 @@
 					cancelled: '已取消',
 				}
 				const firstItem = (o.items && o.items[0]) || {}
-				const sr = (o.scene_rental && typeof o.scene_rental === 'object') ? o.scene_rental : null
+				const sr = (o.scene_rental && typeof o.scene_rental === 'object')
+					? o.scene_rental
+					: ((o.rental_info && typeof o.rental_info === 'object') ? o.rental_info : null)
 				const amount = (o.grand_total != null) ? Number(o.grand_total).toLocaleString('en-US') : '0'
 				// 场景租用条目名形如「场景名 · 机型【租赁】（租期）」;标题只留机型,使用场景取前缀
 				// 多机合单:拼接所有机型名(不只第一台),如「宇树u2、11、众擎T800」;场景取条目名「场景名 · 」前缀
@@ -215,14 +217,18 @@
 				const name = itemNames.join('、') || '机器人订单'
 				const firstRaw = ((o.items && o.items[0] && o.items[0].name) || '')
 				const scene = (sr && sr.scene_name) || (firstRaw.split(' · ').length > 1 ? firstRaw.split(' · ')[0] : (o.scene || ''))
-				const rentDays = (sr && Number(sr.rent_days)) || 0
-				const startDate = (sr && sr.start_date) || ''
-				const endDate = (sr && sr.end_date) || ''
+				const rangeMatch = firstRaw.match(/[（(](\d{4}-\d{2}-\d{2})~(\d{4}-\d{2}-\d{2})[）)]/)
+				const daysMatch = firstRaw.match(/[（(](?:租期)?(\d+)天[）)]/)
+				const rentDays = (sr && Number(sr.rent_days)) || (daysMatch ? Number(daysMatch[1]) : 0)
+				const startDate = (sr && sr.start_date) || (rangeMatch ? rangeMatch[1] : '')
+				const endDate = (sr && sr.end_date) || (rangeMatch ? rangeMatch[2] : '')
 				const duration = startDate && endDate
 					? `${startDate} ~ ${endDate}`
-					: (rentDays > 0 ? `${rentDays}天` : (o.created_at || ''))
+					: (rentDays > 0 ? `${rentDays}天` : '')
 				return {
 					id: o.id,
+					isGuest: !!o.is_guest,
+					createdAt: o.created_at || '',
 					productId: firstItem.product_id || '',
 					orderNo: o.increment_id || `SO${o.id}`,
 					name: name || '机器人订单',
@@ -315,10 +321,10 @@
 			reorder(item) {
 				if (item.sceneWorkflow) { uni.navigateTo({url:'/pages/scene/request?source=scene'+(item.sceneWorkflow.scene_id?'&sceneId='+item.sceneWorkflow.scene_id:'')}); return }
 				const sr = item.sceneRental
-				if (sr && sr.scene_id && Array.isArray(item.rawItems) && item.rawItems.length) {
-					const rentDays = Math.max(1, Number(sr.rent_days || item.rentDays) || 1)
+				if ((sr && sr.scene_id && Array.isArray(item.rawItems) && item.rawItems.length) || ((item.type === 'rent' || item.type === 'plan') && Array.isArray(item.rawItems) && item.rawItems.length > 1)) {
+					const rentDays = Math.max(1, Number((sr && sr.rent_days) || item.rentDays) || 1)
 					const mappedItems = item.rawItems.map((it) => {
-						const itemSr = (it && it.additional && it.additional.scene_rental) || {}
+						const itemSr = (it && it.additional && (it.additional.scene_rental || it.additional.rental)) || {}
 						const unitDaily = Number(itemSr.daily_price || itemSr.unit_daily_rent_yuan) || Math.round((Number(it.price) || 0) / rentDays)
 						const cleanName = String((it && it.name) || '机器人').split(' · ').pop().replace(/【[^】]*】|[（(][^）)]*[）)]/g, '').trim()
 						return {
@@ -327,8 +333,9 @@
 							name: cleanName || '机器人',
 							price: unitDaily,
 							qty: Math.max(1, Number(it.qty_ordered) || 1),
-							scene: item.scene || sr.scene_name || '场景租用',
+							scene: item.scene || (sr && sr.scene_name) || '机器租用',
 							min_rent_days: Math.max(1, Number(itemSr.min_rent_days) || 1),
+							max_rent_days: Math.max(0, Number(itemSr.max_rent_days) || 0),
 							deposit_yuan: Math.max(0, Number(itemSr.deposit_yuan) || 0),
 						}
 					}).filter(it => it.product_id)
@@ -336,15 +343,15 @@
 						const params = {
 							robotName: item.name,
 							productId: mappedItems[0].product_id,
-							scene: item.scene || sr.scene_name || '',
-							from: 'scene',
-							sceneId: sr.scene_id,
-							sceneRevisionId: sr.scene_revision_id || null,
+							scene: item.scene || (sr && sr.scene_name) || '',
+							from: (sr && sr.scene_id) ? 'scene' : '',
+							sceneId: (sr && sr.scene_id) || '',
+							sceneRevisionId: (sr && sr.scene_revision_id) || null,
 							quantity: item.quantity,
 							rentDays,
 							rentPeriod: `${rentDays}天`,
-							startDate: item.startDate || sr.start_date || '',
-							endDate: item.endDate || sr.end_date || '',
+							startDate: item.startDate || (sr && sr.start_date) || '',
+							endDate: item.endDate || (sr && sr.end_date) || '',
 							amount: mappedItems[0].price,
 							type: 'rent',
 							items: mappedItems,

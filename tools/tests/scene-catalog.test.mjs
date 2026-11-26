@@ -71,17 +71,22 @@ test('合法 ID、分类顺序及图片地址处理', async () => {
   const catalog = createSceneCatalog(async () => ({ data: [row(2), row(1), row(3, { sort: 10 })] }))
   await catalog.load(); assert.deepEqual(catalog.rows.map(x => x.id), [3, 1, 2])
   assert.equal(normalizeSceneImage('http://localhost:8000/storage/a', 'https://api.test'), 'https://api.test/storage/a')
+  assert.equal(normalizeSceneImage('http://localhost:8000/cache/medium/product/9/pic.webp', 'https://api.test'), 'https://api.test/storage/product/9/pic.webp')
+  assert.equal(normalizeSceneImage('https://api.test/cache/large/product/9/pic.webp', 'https://api.test'), 'https://api.test/storage/product/9/pic.webp')
+  assert.equal(normalizeSceneImage('https://api.test/storage/product-placeholder/1.png', 'https://api.test'), '')
   assert.equal(normalizeSceneImage('https://cdn.test/a', 'https://api.test'), 'https://cdn.test/a')
   assert.equal(normalizeSceneImage('javascript:alert(1)', 'https://api.test'), '')
   assert.equal(normalizeSceneImage('//bad.test/a', 'https://api.test'), '')
 })
 
-test('无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品', () => {
+test('无配置、目录失败、孤儿 ID、booking 均不回退到模拟商品，并保留配置排序', () => {
   const product = { id: 99, type: 'simple' }
+  const product2 = { id: 18, type: 'simple' }
   for (const [ids, products] of [[[], [product]], [[99], []], [[88], [product]], [[99], [{ id: 99, type: 'booking' }]]]) {
     assert.deepEqual(configuredSceneProducts(ids, products), [])
   }
   assert.deepEqual(configuredSceneProducts(['99'], [product]), [product])
+  assert.deepEqual(configuredSceneProducts([99, 18], [product2, product]).map(x => x.id), [99, 18])
 })
 
 const detailScript = (await readFile(new URL('../../pages/robot/fangan.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
@@ -220,13 +225,39 @@ test('详情乱序响应只保留最新，重新进入时刷新已选机型价�
   await state.reload(); assert.equal(state.selectedMachines[0].price, '12')
 })
 
-test('详情缺产品协议与非法价格不进入交易；未配置方案保持空态', async () => {
+test('详情缺产品协议与非法价格不进入交易；日租兜底/max_rent_days/库存上限与 checkout 交互租期', async () => {
   const { state } = mountDetail(async () => detail([{ ...product, prices: {} }, { ...product, id: 2, type: 'booking' }]))
   await state.reload(); assert.equal(state.filteredProducts.length, 0); assert.equal(state.scheme.pains.length, 0)
   const missing = mountDetail(async () => ({ matched: true, scheme: {} }))
   await missing.state.reload(); assert.match(missing.state.loadError, /数据已更新/)
   for (const invalid of ['', ' ', 'NaN', '-1']) assert.equal(state.mapCatalogProduct({ ...product, prices: { regular: { price: invalid } } }), null)
   assert.equal(state.mapCatalogProduct({ ...product, prices: { regular: { price: 0 } } }).price, '0')
+  const merchantFallback = state.mapCatalogProduct({
+    ...product,
+    prices: { final: { price: 0 } },
+    raas_meta: { daily_rent_yuan: '1680.00', min_rent_days: 3, max_rent_days: 10, fulfillment_type: 'rent', rentable_stock: 2 },
+  })
+  assert.equal(merchantFallback.price, '1680')
+  assert.equal(merchantFallback.maxRentDays, 10)
+  assert.equal(merchantFallback.rentableStock, 2)
+
+  // maxRentDays 与 rentableStock 上限拦截
+  const capped = mountDetail(async () => ({
+    matched: true, name: '受限场景', description: '', banner: null, scene_revision_id: 2,
+    scheme: { robots: [99] },
+    products: [{
+      ...product,
+      prices: { final: { price: 1680 } },
+      raas_meta: { daily_rent_yuan: '1680.00', min_rent_days: 3, max_rent_days: 10, fulfillment_type: 'rent', rentable_stock: 2 },
+    }],
+  }))
+  await capped.state.reload()
+  capped.state.toggleMachine(capped.state.filteredProducts[0])
+  capped.state.selectRentDays(15)
+  assert.equal(capped.state.rentDays, 3) // 超过 max_rent_days=10 时拒绝切换
+  capped.state.changeMachineQty(capped.state.filteredProducts[0], 1)
+  capped.state.changeMachineQty(capped.state.filteredProducts[0], 1) // 第 3 台超出 rentable_stock=2
+  assert.equal(capped.state.selectedMachines[0].qty, 2)
 })
 
 test('场景咨询只进入统一需求表单，不创建零元订单或伪造已受理，支持 mode 参数并清理废弃留资弹窗', async () => {
@@ -276,7 +307,7 @@ test('结算失败或没有真实订单确认时，不写本地订单、不跳�
 test('自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交到确认订单页时使用当前商品名称和价格', async () => {
   const source = (await readFile(new URL('../../pages/robot/index.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
   const navigation = [], notices = []
-  const context = vm.createContext({ Jineng: {}, Peijian: {}, StateView: {}, SmIcon: {}, BASE_URL: 'https://qa.invalid',
+  const context = vm.createContext({ Jineng: {}, Peijian: {}, SearchInput: {}, StateView: {}, SmIcon: {}, BASE_URL: 'https://qa.invalid',
     uni: { navigateTo: input => navigation.push(input), showToast: input => notices.push(input) } })
   vm.runInContext(source.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), context)
   const state = context.component.data()
@@ -311,11 +342,16 @@ test('自定义方案旧草稿不能把模拟 ID 冒充目录 ID，提交到确�
   vm.runInContext(checkoutSource.replace(/^import .*$/gm, '').replace('export default', 'globalThis.component ='), checkoutCtx)
   const checkoutState = checkoutCtx.component.data()
   for (const [name, fn] of Object.entries(checkoutCtx.component.methods)) checkoutState[name] = fn.bind(checkoutState)
+  for (const [name, fn] of Object.entries(checkoutCtx.component.computed || {})) Object.defineProperty(checkoutState, name, { configurable: true, enumerable: true, get: () => fn.call(checkoutState) })
   checkoutState.tryPrefillFromLocal = () => {}
   const queryObj = Object.fromEntries(Array.from(params.entries()).map(([k, v]) => [k, encodeURIComponent(v)]))
   checkoutCtx.component.onLoad.call(checkoutState, queryObj)
   assert.equal(redirects.length, 0)
   assert.equal(checkoutState.multiItems.length, 1); assert.equal(checkoutState.rentDays, 1)
+  checkoutState.selectCheckoutRentDays(7)
+  assert.equal(checkoutState.rentDays, 7)
+  assert.equal(checkoutState.product.rentPeriod, '7天')
+  checkoutState.selectCheckoutRentDays(1)
   checkoutState.form = { name: '张三', phone: '13800000000', city: '上海', address: '浦东', email: '' }
   await checkoutState.submitOrder()
   assert.equal(createdPayloads.length, 1)
@@ -341,4 +377,89 @@ test('AI 页交给方案专家直接进入统一需求页，不再无 sceneId �
   assert.equal(requests[0].source, 'ai')
   assert.equal(requests[0].original_text, '需要2台展厅迎宾机器人')
   assert.equal(events[0].name, 'ai_custom_plan_click')
+})
+
+test('订单列表与详情页联调：rental_info 租期不误回退 created_at，详情页刷新完整收货/履约信息与登录后游客单取消', async () => {
+  const orderListSrc = (await readFile(new URL('../../pages/order/index.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
+  const orderCtx = vm.createContext({ CustomTabBar: {}, StateView: {}, SmIcon: {}, orderApi: {}, sceneStatusLabel: s => s, uni: { navigateTo() {} } })
+  vm.runInContext(orderListSrc.replace(/^[ \t]*import\b[\s\S]*?from\s+['"][^'"]+['"];?/gm, '').replace('export default', 'globalThis.component ='), orderCtx)
+  const listState = orderCtx.component.data()
+  const mappedStandardRent = orderCtx.component.methods.mapApiOrder.call(listState, {
+    id: 501,
+    increment_id: 'SO501',
+    is_guest: true,
+    status: 'pending',
+    order_type: 'rent',
+    created_at: '2026-11-26 10:00:00',
+    grand_total: 4200,
+    items_qty: 2,
+    rental_info: { rent_days: 3, start_date: '2026-12-01', end_date: '2026-12-04' },
+    items: [{ product_id: 11, name: 'G1【租赁】（租期3天）', qty_ordered: 2 }],
+  })
+  assert.equal(mappedStandardRent.duration, '2026-12-01 ~ 2026-12-04')
+  assert.equal(mappedStandardRent.createdAt, '2026-11-26 10:00:00')
+  assert.equal(mappedStandardRent.isGuest, true)
+
+  const mappedBuy = orderCtx.component.methods.mapApiOrder.call(listState, {
+    id: 502,
+    increment_id: 'SO502',
+    status: 'pending',
+    order_type: 'buy',
+    created_at: '2026-11-26 10:00:00',
+    grand_total: 9000,
+    items: [{ product_id: 12, name: 'Go2 购买版', qty_ordered: 1 }],
+  })
+  assert.equal(mappedBuy.duration, '')
+
+  // 详情页：有缓存首屏后仍拉最新服务端详情（通过 getOrderDetail 失败时回退 getGuestOrders({ id })），并识别 fulfillment + timeline + shippingAddress
+  const detailSrc = (await readFile(new URL('../../pages/order/order-detail.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
+  const storage = new Map([['token', 'user-jwt'], ['orderDetailData', mappedStandardRent]])
+  const cancelCalls = []
+  const detailCtx = vm.createContext({
+    TOKEN_KEY: 'token', StateView: {}, NavBar: {}, SmIcon: {}, ticketApi: {}, invoiceApi: {}, reviewApi: {},
+    orderApi: {
+      getOrderDetail: async () => { throw new Error('404 not owned') },
+      getGuestOrders: async params => ({
+        detail: {
+          id: params.id,
+          increment_id: 'SO501',
+          is_guest: true,
+          status: 'processing',
+          order_type: 'rent',
+          created_at: '2026-11-26 10:00:00',
+          grand_total: 4200,
+          items_qty: 2,
+          rental_info: { rent_days: 3, start_date: '2026-12-01', end_date: '2026-12-04' },
+          shipping_address: { first_name: '王', last_name: '五', phone: '13800001111', state: '上海', city: '浦东', address: '张江' },
+          fulfillment: { status: 'shipped', carrier: '顺丰', tracking_no: 'SF999', device_sn: 'SN-1' },
+          timeline: [{ title: '商家已出库发货', time: '2026-11-26 11:00:00', done: true, isLast: true }],
+          items: [{ id: 1, product_id: 11, name: 'G1【租赁】', qty_ordered: 2, total: 4200 }],
+        },
+      }),
+      cancelOrder: async id => { cancelCalls.push({ kind: 'auth', id }); return { message: 'ok' } },
+      cancelGuestOrder: async id => { cancelCalls.push({ kind: 'guest', id }); return { message: 'ok' } },
+    },
+    uni: {
+      getStorageSync: k => storage.get(k),
+      setStorageSync: (k, v) => storage.set(k, v),
+      removeStorageSync: k => storage.delete(k),
+      showModal: ({ success }) => success && success({ confirm: true }),
+      showToast() {},
+      navigateBack() {},
+      redirectTo() {},
+      navigateTo() {},
+    },
+  })
+  vm.runInContext(detailSrc.replace(/^[ \t]*import\b[\s\S]*?from\s+['"][^'"]+['"];?/gm, '').replace('export default', 'globalThis.component ='), detailCtx)
+  const detailState = detailCtx.component.data()
+  for (const [k, fn] of Object.entries(detailCtx.component.methods)) detailState[k] = fn.bind(detailState)
+  await detailState.loadOrder(501)
+  assert.equal(detailState.order.status, 'confirm')
+  assert.equal(detailState.order.shippingAddress.fullAddress, '上海 浦东 张江')
+  assert.equal(detailState.order.fulfillment.trackingNo, 'SF999')
+  assert.equal(detailState.order.timeline.length, 1)
+  detailState.cancelOrder()
+  await new Promise(r => setTimeout(r, 10))
+  assert.deepEqual(cancelCalls, [{ kind: 'guest', id: 501 }])
+  assert.ok(storage.get('orderNeedRefresh'))
 })

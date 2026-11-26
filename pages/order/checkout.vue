@@ -73,9 +73,31 @@
           <text class="rent-info-label">产品类型</text>
           <text class="rent-info-value">{{ productTypeLabel }}</text>
         </view>
+        <view class="rent-info-row rent-days-row">
+          <view class="rent-days-head">
+            <text class="rent-info-label">租期天数{{ effectiveMinRentDays > 1 ? `（最低 ${effectiveMinRentDays} 天）` : '' }}{{ effectiveMaxRentDays < 3650 ? `（最长 ${effectiveMaxRentDays} 天）` : '' }}</text>
+            <view class="checkout-day-stepper">
+              <view class="multi-step-btn" @tap="adjustCheckoutRentDays(-1)">−</view>
+              <text class="multi-step-num">{{ activeRentDays }}天</text>
+              <view class="multi-step-btn" @tap="adjustCheckoutRentDays(1)">＋</view>
+            </view>
+          </view>
+          <view class="rent-day-chips">
+            <text
+              class="day-chip"
+              :class="{ active: activeRentDays === d, disabled: d < effectiveMinRentDays || d > effectiveMaxRentDays }"
+              v-for="d in checkoutDayOptions"
+              :key="d"
+              @tap="selectCheckoutRentDays(d)"
+            >{{ d }}天</text>
+          </view>
+        </view>
         <view class="rent-info-row">
-          <text class="rent-info-label">租期</text>
-          <text class="rent-info-value">{{ product.rentPeriod || (rentDays + '天') }}</text>
+          <text class="rent-info-label">起租日期</text>
+          <view class="date-pill" @tap="openCheckoutDatePicker">
+            <text>{{ product.startDate || '选择起租日期' }}</text>
+            <text class="pv-arrow">▾</text>
+          </view>
         </view>
         <view class="rent-info-row" v-if="product.startDate">
           <text class="rent-info-label">服务时间</text>
@@ -228,6 +250,24 @@
         {{ submitLabel }}
       </view>
     </view>
+
+    <!-- ===== 起租日期选择弹窗 ===== -->
+    <view class="addr-form-mask" v-if="showCheckoutDatePicker" @tap="showCheckoutDatePicker = false">
+      <view class="checkout-date-modal" @tap.stop>
+        <view class="addr-form-header">
+          <text class="addr-form-title">选择起租日期</text>
+          <text class="addr-form-close" @tap="showCheckoutDatePicker = false">✕</text>
+        </view>
+        <picker-view class="date-pv" :value="checkoutDateVal" @change="onCheckoutDateChange">
+          <picker-view-column><view v-for="y in checkoutYearList" :key="y" class="checkout-pv-item">{{ y }}年</view></picker-view-column>
+          <picker-view-column><view v-for="m in [1,2,3,4,5,6,7,8,9,10,11,12]" :key="m" class="checkout-pv-item">{{ m }}月</view></picker-view-column>
+          <picker-view-column><view v-for="d in checkoutDayColumn()" :key="d" class="checkout-pv-item">{{ d }}日</view></picker-view-column>
+        </picker-view>
+        <view class="addr-form-actions">
+          <view class="addr-form-btn save" @tap="showCheckoutDatePicker = false">确定</view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -257,6 +297,10 @@ export default {
       // 多机合单(标准多机租用):items 非空时走多商品模式,全场共用租期
       multiItems: [],
       rentDays: 1,
+      checkoutDayOptions: [1, 3, 7, 15, 30],
+      showCheckoutDatePicker: false,
+      checkoutYearList: [],
+      checkoutDateVal: [0, 0, 0],
       form: {
         name: '',
         phone: '',
@@ -283,6 +327,24 @@ export default {
   },
 
   computed: {
+    activeRentDays() {
+      if (this.multiItems.length) return Math.max(1, Number(this.rentDays) || 1)
+      return Math.max(1, parseInt(this.product && this.product.rentPeriod, 10) || Number(this.rentDays) || 1)
+    },
+    effectiveMinRentDays() {
+      if (this.multiItems.length) {
+        return this.multiItems.reduce((mx, it) => Math.max(mx, Number(it.min_rent_days || it.minRentDays) || 1), 1)
+      }
+      return Math.max(1, Number(this.product && this.product.minRentDays) || 1)
+    },
+    effectiveMaxRentDays() {
+      if (this.multiItems.length) {
+        const caps = this.multiItems.map(it => Number(it.max_rent_days || it.maxRentDays) || 0).filter(d => d > 0)
+        return caps.length ? Math.min(...caps) : 3650
+      }
+      const singleMax = Number(this.product && this.product.maxRentDays) || 0
+      return singleMax > 0 ? singleMax : 3650
+    },
     productTotal() {
       // 多机合单:Σ(每台日租价 × 台数) × 共用租期天数
       if (this.multiItems.length) {
@@ -293,8 +355,8 @@ export default {
         return perDay * this.rentDays
       }
       const price = parseFloat(String(this.product.price).replace(/,/g, '')) || 0
-      // 单商品租用也要乘租期天数(机器页 rentPeriod 传「N天」,如 3天);未传则 1 天
-      const days = this.product.type === 'rent' ? (parseInt(this.product.rentPeriod) || 1) : 1
+      // 单商品租用也要乘租期天数(机器页 rentPeriod 传「N天」,如 3天);未传则回退 rentDays / 1 天
+      const days = this.product.type === 'rent' ? this.activeRentDays : 1
       return price * this.qty * days
     },
     multiTotalQty() {
@@ -353,10 +415,15 @@ export default {
       sceneId: q.sceneId || q.scene_id || '',
       sceneRevisionId: Number(q.sceneRevisionId || q.scene_revision_id) || null,
       minRentDays: Math.max(1, Number(q.minRentDays || q.min_rent_days) || 1),
+      maxRentDays: Math.max(0, Number(q.maxRentDays || q.max_rent_days) || 0),
+      rentableStock: (q.rentableStock !== undefined && q.rentableStock !== '') ? Math.max(0, parseInt(q.rentableStock, 10) || 0) : null,
       depositYuan: Math.max(0, Number(q.depositYuan || q.deposit_yuan) || 0),
       deviceId: q.deviceId ? Number(q.deviceId) || null : null,
     }
-    if (q.qty) this.qty = Math.max(1, Math.min(99, Number(q.qty) || 1))
+    if (q.qty) {
+      const cap = this.product.rentableStock !== null ? Math.min(99, Math.max(1, this.product.rentableStock)) : 99
+      this.qty = Math.max(1, Math.min(cap, Number(q.qty) || 1))
+    }
 
     // 多机合单(标准租用):items=JSON 数组,全场共用租期(rent_days)
     if (q.items) {
@@ -369,12 +436,19 @@ export default {
             ...it,
             qty: Math.max(1, Math.min(999, Number(it.qty) || 1)),
             min_rent_days: Math.max(1, Number(it.min_rent_days || it.minRentDays) || 1),
+            max_rent_days: Math.max(0, Number(it.max_rent_days || it.maxRentDays) || 0),
+            rentable_stock: (it.rentable_stock !== undefined && it.rentable_stock !== null && it.rentable_stock !== '')
+              ? Math.max(0, parseInt(it.rentable_stock, 10) || 0)
+              : null,
             deposit_yuan: Math.max(0, Number(it.deposit_yuan || it.depositYuan) || 0),
           }))
           : []
       } catch (e) { this.multiItems = [] }
       const minDays = this.multiItems.reduce((m, it) => Math.max(m, it.min_rent_days || 1), 1)
-      this.rentDays = Math.max(minDays, parseInt(q.rent_days, 10) || parseInt(q.rentPeriod, 10) || 1)
+      const maxCaps = this.multiItems.map(it => it.max_rent_days || 0).filter(d => d > 0)
+      const maxDays = maxCaps.length ? Math.min(...maxCaps) : 3650
+      const initDays = Math.max(minDays, parseInt(q.rent_days, 10) || parseInt(q.rentPeriod, 10) || 1)
+      this.rentDays = Math.min(maxDays, initDays)
       if (!q.type || q.type === 'buy') this.product.type = 'rent'
       if (!q.rentPeriod) this.product.rentPeriod = this.rentDays + '天'
     }
@@ -383,8 +457,13 @@ export default {
     this.product.productType = q.productType ? decodeURIComponent(q.productType) : ''
     const resolvedRentPeriod = q.rentPeriod
       ? decodeURIComponent(q.rentPeriod)
-      : (this.multiItems.length ? `${this.rentDays}天` : (q.rent_days ? `${Math.max(this.product.minRentDays, parseInt(q.rent_days, 10) || 1)}天` : ''))
+      : (this.multiItems.length ? `${this.rentDays}天` : (q.rent_days ? `${Math.max(this.product.minRentDays, parseInt(q.rent_days, 10) || 1)}天` : (this.product.type === 'rent' ? `${this.product.minRentDays}天` : '')))
     this.product.rentPeriod = resolvedRentPeriod
+    if (!this.multiItems.length && this.product.type === 'rent') {
+      const parsedSingleDays = Math.max(this.product.minRentDays, parseInt(resolvedRentPeriod, 10) || 1)
+      this.rentDays = this.product.maxRentDays > 0 ? Math.min(this.product.maxRentDays, parsedSingleDays) : parsedSingleDays
+      this.product.rentPeriod = `${this.rentDays}天`
+    }
     this.product.startDate = q.startDate ? decodeURIComponent(q.startDate) : ''
     if (this.product.startDate) {
       const periodDays = parseInt(this.product.rentPeriod, 10) || this.rentDays || 0
@@ -430,9 +509,16 @@ export default {
   },
 
   methods: {
-    // ================ 数量 ================
+    // ================ 数量 & 租期 ================
     increaseQty() {
-      if (this.qty < 99) this.qty += 1
+      const cap = (this.product && this.product.rentableStock !== null && this.product.rentableStock !== undefined)
+        ? Math.min(99, this.product.rentableStock)
+        : 99
+      if (this.qty >= cap) {
+        uni.showToast({ title: cap <= 0 ? '当前暂无可用库存' : `当前最多可选 ${cap} 台`, icon: 'none' })
+        return
+      }
+      this.qty += 1
     },
     decreaseQty() {
       if (this.qty > 1) this.qty -= 1
@@ -440,9 +526,81 @@ export default {
     changeMultiItemQty(idx, delta) {
       const target = this.multiItems[idx]
       if (!target) return
+      const cap = (target.rentable_stock !== null && target.rentable_stock !== undefined)
+        ? Math.min(99, target.rentable_stock)
+        : 99
       const next = (Number(target.qty) || 1) + delta
-      if (next < 1 || next > 99) return
+      if (next < 1) return
+      if (next > cap) {
+        uni.showToast({ title: cap <= 0 ? '该机型当前暂无可租库存' : `该机型当前最多可租 ${cap} 台`, icon: 'none' })
+        return
+      }
       this.multiItems.splice(idx, 1, { ...target, qty: next })
+    },
+    syncCheckoutRentDays(days) {
+      const d = Math.max(1, Number(days) || 1)
+      this.rentDays = d
+      this.product.rentPeriod = `${d}天`
+      if (this.product.startDate) {
+        this.product.endDate = this.addDays(this.product.startDate, d)
+      }
+    },
+    selectCheckoutRentDays(days) {
+      const d = Math.max(1, Number(days) || 1)
+      if (d < this.effectiveMinRentDays) {
+        uni.showToast({ title: `最低起租 ${this.effectiveMinRentDays} 天`, icon: 'none' })
+        return
+      }
+      if (d > this.effectiveMaxRentDays) {
+        uni.showToast({ title: `最长可租 ${this.effectiveMaxRentDays} 天`, icon: 'none' })
+        return
+      }
+      this.syncCheckoutRentDays(d)
+    },
+    adjustCheckoutRentDays(delta) {
+      const next = this.activeRentDays + delta
+      if (next < this.effectiveMinRentDays) {
+        uni.showToast({ title: `最低起租 ${this.effectiveMinRentDays} 天`, icon: 'none' })
+        return
+      }
+      if (next > this.effectiveMaxRentDays) {
+        uni.showToast({ title: `最长可租 ${this.effectiveMaxRentDays} 天`, icon: 'none' })
+        return
+      }
+      this.syncCheckoutRentDays(next)
+    },
+    openCheckoutDatePicker() {
+      const now = new Date()
+      const nowY = now.getFullYear()
+      this.checkoutYearList = [nowY, nowY + 1, nowY + 2]
+      const base = this.product.startDate || `${nowY}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      const [yy, mm, dd] = String(base).split('-').map(Number)
+      const yi = Math.max(0, this.checkoutYearList.indexOf(yy))
+      this.checkoutDateVal = [yi, Math.max(0, (mm || 1) - 1), Math.max(0, (dd || 1) - 1)]
+      if (!this.product.startDate) {
+        this.product.startDate = base
+        this.product.endDate = this.addDays(base, this.activeRentDays)
+      }
+      this.showCheckoutDatePicker = true
+    },
+    checkoutDayColumn() {
+      const y = this.checkoutYearList[this.checkoutDateVal[0]] || new Date().getFullYear()
+      const m = (this.checkoutDateVal[1] || 0) + 1
+      const n = new Date(y, m, 0).getDate()
+      const arr = []
+      for (let i = 1; i <= n; i++) arr.push(i)
+      return arr
+    },
+    onCheckoutDateChange(e) {
+      const [yi, mi, di] = (e && e.detail && e.detail.value) || [0, 0, 0]
+      const y = this.checkoutYearList[yi] || this.checkoutYearList[0]
+      const m = mi + 1
+      const maxDay = new Date(y, m, 0).getDate()
+      const d = Math.min(di + 1, maxDay)
+      this.checkoutDateVal = [yi, mi, d - 1]
+      const nextStart = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      this.product.startDate = nextStart
+      this.product.endDate = this.addDays(nextStart, this.activeRentDays)
     },
 
     // ================ 回填 ================
@@ -658,6 +816,23 @@ export default {
       if (!v.city.trim()) { uni.showToast({ title: '请输入所在城市', icon: 'none' }); return }
       if (!v.address.trim()) { uni.showToast({ title: '请输入详细地址', icon: 'none' }); return }
 
+      const isRentalOrder = this.multiItems.length > 0 || this.product.type === 'rent' || this.product.type === 'plan'
+      const resolvedDays = this.multiItems.length
+        ? Math.max(1, Number(this.rentDays) || 1)
+        : (isRentalOrder ? Math.max(1, parseInt(this.product.rentPeriod, 10) || Number(this.rentDays) || 1) : 1)
+      if (isRentalOrder) {
+        if (resolvedDays < this.effectiveMinRentDays) {
+          uni.showToast({ title: `所选机型最低起租 ${this.effectiveMinRentDays} 天`, icon: 'none' })
+          return
+        }
+        if (resolvedDays > this.effectiveMaxRentDays) {
+          uni.showToast({ title: `所选机型最长可租 ${this.effectiveMaxRentDays} 天`, icon: 'none' })
+          return
+        }
+      }
+      const resolvedStartDate = isRentalOrder ? (this.product.startDate || '') : ''
+      const resolvedEndDate = (isRentalOrder && resolvedStartDate) ? this.addDays(resolvedStartDate, resolvedDays) : ''
+
       this.submitting = true
       uni.showLoading({ title: '提交订单中...', mask: true })
 
@@ -681,10 +856,10 @@ export default {
           city: v.city,
           address: v.address,
           email: v.email || '',
-          rent_days: this.multiItems.length ? (this.rentDays || 1) : ((this.product.type === 'rent' || this.product.type === 'plan') ? (parseInt(this.product.rentPeriod) || 1) : 1),
-          rentPeriod: (this.product.type === 'rent' || this.product.type === 'plan') ? this.product.rentPeriod : '',
-          startDate: (this.product.type === 'rent' || this.product.type === 'plan') ? this.product.startDate : '',
-          endDate: (this.product.type === 'rent' || this.product.type === 'plan') ? this.product.endDate : '',
+          rent_days: resolvedDays,
+          rentPeriod: isRentalOrder ? `${resolvedDays}天` : '',
+          startDate: resolvedStartDate,
+          endDate: resolvedEndDate,
         }
         // B-18:技能单带券。空串不带该字段(后端 coupon_code 为 nullable,不带即不用券)。
         // 券的校验与折抵全在后端:前端不做任何"看起来能用"的本地判断。
@@ -815,7 +990,8 @@ export default {
     // ================ 工具 ================
     addDays(dateStr, days) {
       if (!dateStr) return ''
-      const d = new Date(dateStr)
+      const [yy, mm, dd] = String(dateStr).split('-').map(Number)
+      const d = new Date(yy, (mm || 1) - 1, dd || 1)
       d.setDate(d.getDate() + (days || 0))
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     },
@@ -1375,6 +1551,12 @@ export default {
 .rent-day-chips { display: flex; gap: 12rpx; flex-wrap: wrap; }
 .day-chip { font-size: 24rpx; color: #475569; background: #F1F5F9; border-radius: 24rpx; padding: 8rpx 22rpx; }
 .day-chip.active { background: #165DFF; color: #fff; }
+.day-chip.disabled { opacity: 0.4; }
+.rent-days-row { flex-direction: column; align-items: stretch; gap: 14rpx; }
+.rent-days-head { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.checkout-day-stepper { display: flex; align-items: center; gap: 12rpx; }
+.checkout-date-modal { width: 620rpx; background: #ffffff; border-radius: 24rpx; overflow: hidden; display: flex; flex-direction: column; }
+.checkout-pv-item { height: 68rpx; line-height: 68rpx; text-align: center; font-size: 26rpx; color: #1A2A3A; }
 .date-pill { display: inline-flex; align-items: center; gap: 4rpx; font-size: 26rpx; color: #165DFF; background: #EAF1FF; border-radius: 28rpx; padding: 8rpx 20rpx; }
 .pv-arrow { color: #94A3B8; font-size: 22rpx; margin-left: 4rpx; }
 .date-pv { height: 400rpx; background: #fff; border-radius: 16rpx; }

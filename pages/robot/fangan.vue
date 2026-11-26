@@ -354,6 +354,10 @@ export default {
       if (!this.selectedMachines.length) return 1
       return this.selectedMachines.reduce((mx, m) => Math.max(mx, Number(m.minRentDays) || 1), 1)
     },
+    maxRentDaysAllowed() {
+      const caps = this.selectedMachines.map(m => Number(m.maxRentDays) || 0).filter(d => d > 0)
+      return caps.length ? Math.min(...caps) : 3650
+    },
     rentEndDate() {
       return this.addDays(this.rentStartDate || this.todayStr(), this.rentDays || 1)
     },
@@ -374,6 +378,8 @@ export default {
         rows.push({ name: '指令通道', value: m.commChannels.join(' / ') })
       }
       if (m.minRentDays > 1) rows.push({ name: '最低起租', value: m.minRentDays + ' 天' })
+      if (m.maxRentDays > 0) rows.push({ name: '最长租期', value: m.maxRentDays + ' 天' })
+      if (m.rentableStock !== null) rows.push({ name: '可租库存', value: m.rentableStock + ' 台' })
       if (m.depositYuan) rows.push({ name: '参考押金', value: '¥' + m.depositYuan + '/台' })
       if (Array.isArray(m.paramSpecs)) {
         for (const ps of m.paramSpecs) {
@@ -406,9 +412,14 @@ export default {
         this.rentCatalog = res.products.map(this.mapCatalogProduct).filter(Boolean)
         const prevQtyById = new Map(this.selectedMachines.map(old => [old.id, Math.max(1, Number(old.qty) || 1)]))
         this.selectedMachines = this.filteredProducts
-          .filter(item => prevQtyById.has(item.id))
-          .map(item => ({ ...item, qty: prevQtyById.get(item.id) || 1 }))
+          .filter(item => prevQtyById.has(item.id) && (item.rentableStock === null || item.rentableStock > 0))
+          .map(item => {
+            const rawQty = prevQtyById.get(item.id) || 1
+            const cap = item.rentableStock !== null ? Math.max(1, Math.min(99, item.rentableStock)) : 99
+            return { ...item, qty: Math.min(rawQty, cap) }
+          })
         if (this.minRentDaysRequired > this.rentDays) this.rentDays = this.minRentDaysRequired
+        if (this.rentDays > this.maxRentDaysAllowed) this.rentDays = this.maxRentDaysAllowed
         if (!this.selectedMachines.length) this.showSelectedDrawer = false
         this.sceneLoaded = true
       } catch (e) {
@@ -420,12 +431,25 @@ export default {
     mapCatalogProduct(p) {
       const finalPrice = p.prices && ((p.prices.final && p.prices.final.price) ?? (p.prices.regular && p.prices.regular.price))
       const regPrice = p.prices && p.prices.regular && p.prices.regular.price
-      const price = typeof finalPrice === 'number' || (typeof finalPrice === 'string' && /^\d+(\.\d+)?$/.test(finalPrice.trim())) ? Number(finalPrice) : NaN
-      if (!sceneId(p.id) || p.type !== 'simple' || !Number.isFinite(price) || price < 0) return null
+      const rawPrice = typeof finalPrice === 'number' || (typeof finalPrice === 'string' && /^\d+(\.\d+)?$/.test(finalPrice.trim())) ? Number(finalPrice) : NaN
+      if (!sceneId(p.id) || p.type !== 'simple' || !Number.isFinite(rawPrice) || rawPrice < 0) return null
       const regularNum = (typeof regPrice === 'number' || (typeof regPrice === 'string' && /^\d+(\.\d+)?$/.test(regPrice.trim()))) ? Number(regPrice) : NaN
       const raasMeta = p.raas_meta && typeof p.raas_meta === 'object' ? p.raas_meta : null
+      // 与 TobOrderController 定价兜底对齐：Bagisto 价格为 0 且存在商户日租价时采用 daily_rent_yuan
+      const fallbackDaily = raasMeta && raasMeta.daily_rent_yuan != null ? Number(raasMeta.daily_rent_yuan) : NaN
+      const price = (rawPrice === 0 && Number.isFinite(fallbackDaily) && fallbackDaily > 0) ? fallbackDaily : rawPrice
       const minRentDays = Math.max(1, Number((raasMeta && raasMeta.min_rent_days) || 1))
+      const rawMaxDays = raasMeta && Number(raasMeta.max_rent_days) > 0 ? Number(raasMeta.max_rent_days) : 0
+      const maxRentDays = rawMaxDays > 0 ? Math.max(minRentDays, rawMaxDays) : 0
+      const hasMerchantRentStock = raasMeta
+        && ['rent', 'rental', 'both'].includes(String(raasMeta.fulfillment_type || ''))
+        && raasMeta.rentable_stock != null
+      const rentableStock = hasMerchantRentStock ? Math.max(0, parseInt(raasMeta.rentable_stock, 10) || 0) : null
       const plainDesc = String(p.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+      const firstGallery = Array.isArray(p.images) && p.images[0] ? p.images[0] : null
+      const rawImg = (p.base_image && (p.base_image.medium_image_url || p.base_image.large_image_url || p.base_image.original_image_url || p.base_image.url))
+        || (firstGallery && (firstGallery.medium_image_url || firstGallery.large_image_url || firstGallery.original_image_url || firstGallery.url))
+        || ''
       return {
         id: Number(p.id),
         bagistoId: Number(p.id),
@@ -438,6 +462,8 @@ export default {
         typeLabel: p.robot_type && p.robot_type.label ? p.robot_type.label : '',
         scene: (p.robot_type && p.robot_type.label) || this.sceneInfo.name || '场景租赁',
         minRentDays,
+        maxRentDays,
+        rentableStock,
         depositYuan: (raasMeta && raasMeta.deposit_yuan) ? String(raasMeta.deposit_yuan) : '',
         compatibleModelNames: (raasMeta && Array.isArray(raasMeta.compatible_model_names)) ? raasMeta.compatible_model_names : [],
         commChannels: (raasMeta && Array.isArray(raasMeta.comm_channels)) ? raasMeta.comm_channels : [],
@@ -446,8 +472,11 @@ export default {
         icon: '🤖',
         bg: '#F0F4FA',
         unit: '/天',
-        image: normalizeSceneImage(p.base_image && p.base_image.medium_image_url, BASE_URL),
+        image: normalizeSceneImage(rawImg, BASE_URL),
       }
+    },
+    onMachineImageError(item) {
+      if (item && item.image) item.image = ''
     },
     setActiveMode(mode) { this.activeMode = mode },
     goBack() { uni.navigateBack() },
@@ -457,7 +486,8 @@ export default {
       const current = this.selectedMachines.find(m => m.id === item.id)
       this.previewMachine = { ...item }
       this.previewQty = current ? Math.max(1, Number(current.qty) || 1) : 1
-      this.previewDays = Math.max(this.rentDays || 1, item.minRentDays || 1)
+      const baseDays = Math.max(this.rentDays || 1, item.minRentDays || 1)
+      this.previewDays = item.maxRentDays > 0 ? Math.min(baseDays, item.maxRentDays) : baseDays
       this.showMachineModal = true
     },
     closeMachineDetail() {
@@ -477,9 +507,23 @@ export default {
         this.selectedMachines.splice(index, 1)
         if (!this.selectedMachines.length) this.showSelectedDrawer = false
       } else {
+        if (item.rentableStock !== null && item.rentableStock <= 0) {
+          uni.showToast({ title: '该机型当前暂无可租库存', icon: 'none' })
+          return
+        }
+        const nextList = [...this.selectedMachines, { ...item, qty: 1 }]
+        const nextMin = nextList.reduce((mx, m) => Math.max(mx, Number(m.minRentDays) || 1), 1)
+        const nextCaps = nextList.map(m => Number(m.maxRentDays) || 0).filter(d => d > 0)
+        const nextMax = nextCaps.length ? Math.min(...nextCaps) : 3650
+        if (nextMin > nextMax) {
+          uni.showToast({ title: `所选机型租期区间冲突（最低${nextMin}天 / 最长${nextMax}天），请分开下单`, icon: 'none' })
+          return
+        }
         this.selectedMachines.push({ ...item, qty: 1 })
         if (this.minRentDaysRequired > this.rentDays) {
           this.rentDays = this.minRentDaysRequired
+        } else if (this.rentDays > this.maxRentDaysAllowed) {
+          this.rentDays = this.maxRentDaysAllowed
         }
       }
     },
@@ -487,13 +531,33 @@ export default {
       if (!this.canSelect(item)) return
       const index = this.selectedMachines.findIndex(m => m.id === item.id)
       if (index < 0) return
-      const next = (Number(this.selectedMachines[index].qty) || 1) + delta
+      const target = this.selectedMachines[index]
+      const next = (Number(target.qty) || 1) + delta
+      const maxQty = target.rentableStock !== null ? Math.min(99, target.rentableStock) : 99
       if (next <= 0) {
         this.selectedMachines.splice(index, 1)
         if (!this.selectedMachines.length) this.showSelectedDrawer = false
-      } else if (next <= 99) {
-        this.selectedMachines.splice(index, 1, { ...this.selectedMachines[index], qty: next })
+      } else if (next > maxQty) {
+        uni.showToast({ title: target.rentableStock !== null ? `该机型当前最多可租 ${maxQty} 台` : '单机型最多 99 台', icon: 'none' })
+      } else {
+        this.selectedMachines.splice(index, 1, { ...target, qty: next })
       }
+    },
+    changePreviewQty(delta) {
+      const m = this.previewMachine
+      if (!m) return
+      const maxQty = m.rentableStock !== null ? Math.min(99, Math.max(0, m.rentableStock)) : 99
+      if (maxQty <= 0) {
+        uni.showToast({ title: '该机型当前暂无可租库存', icon: 'none' })
+        return
+      }
+      const next = (Number(this.previewQty) || 1) + delta
+      if (next < 1) return
+      if (next > maxQty) {
+        uni.showToast({ title: m.rentableStock !== null ? `该机型当前最多可租 ${maxQty} 台` : '单机型最多 99 台', icon: 'none' })
+        return
+      }
+      this.previewQty = next
     },
     removeMachine(item) {
       const index = this.selectedMachines.findIndex(m => m.id === item.id)
@@ -508,6 +572,10 @@ export default {
         uni.showToast({ title: '所选机型最低起租 ' + this.minRentDaysRequired + ' 天', icon: 'none' })
         return
       }
+      if (d > this.maxRentDaysAllowed) {
+        uni.showToast({ title: '所选机型最长可租 ' + this.maxRentDaysAllowed + ' 天', icon: 'none' })
+        return
+      }
       this.rentDays = d
     },
     adjustRentDays(delta) {
@@ -516,13 +584,22 @@ export default {
         uni.showToast({ title: '所选机型最低起租 ' + this.minRentDaysRequired + ' 天', icon: 'none' })
         return
       }
+      if (next > this.maxRentDaysAllowed) {
+        uni.showToast({ title: '所选机型最长可租 ' + this.maxRentDaysAllowed + ' 天', icon: 'none' })
+        return
+      }
       if (next <= 3650) this.rentDays = next
     },
     selectPreviewDays(days) {
       if (!this.previewMachine) return
       const minD = this.previewMachine.minRentDays || 1
+      const maxD = this.previewMachine.maxRentDays || 0
       if (days < minD) {
         uni.showToast({ title: '该机型最低起租 ' + minD + ' 天', icon: 'none' })
+        return
+      }
+      if (maxD > 0 && days > maxD) {
+        uni.showToast({ title: '该机型最长可租 ' + maxD + ' 天', icon: 'none' })
         return
       }
       this.previewDays = days
@@ -530,22 +607,43 @@ export default {
     addPreviewToSelection() {
       const m = this.previewMachine
       if (!m || !this.canSelect(m)) return
-      const qty = Math.max(1, Math.min(99, Number(this.previewQty) || 1))
+      if (m.rentableStock !== null && m.rentableStock <= 0) {
+        uni.showToast({ title: '该机型当前暂无可租库存', icon: 'none' })
+        return
+      }
+      const cap = m.rentableStock !== null ? Math.min(99, m.rentableStock) : 99
+      const qty = Math.max(1, Math.min(cap, Number(this.previewQty) || 1))
       const index = this.selectedMachines.findIndex(x => x.id === m.id)
+      const nextList = index >= 0
+        ? this.selectedMachines.map((x, i) => (i === index ? { ...m, qty } : x))
+        : [...this.selectedMachines, { ...m, qty }]
+      const nextMin = nextList.reduce((mx, x) => Math.max(mx, Number(x.minRentDays) || 1), 1)
+      const nextCaps = nextList.map(x => Number(x.maxRentDays) || 0).filter(d => d > 0)
+      const nextMax = nextCaps.length ? Math.min(...nextCaps) : 3650
+      if (nextMin > nextMax) {
+        uni.showToast({ title: `所选机型租期区间冲突（最低${nextMin}天 / 最长${nextMax}天），请分开下单`, icon: 'none' })
+        return
+      }
       if (index >= 0) {
         this.selectedMachines.splice(index, 1, { ...m, qty })
       } else {
         this.selectedMachines.push({ ...m, qty })
       }
-      this.rentDays = Math.max(this.rentDays, this.previewDays, this.minRentDaysRequired)
+      this.rentDays = Math.min(nextMax, Math.max(this.rentDays, this.previewDays, this.minRentDaysRequired))
       this.closeMachineDetail()
       uni.showToast({ title: '已加入选型方案', icon: 'none' })
     },
     async orderSingleMachine() {
       const m = this.previewMachine
       if (!m || !this.canSelect(m) || this.orderSubmitting) return
-      const qty = Math.max(1, Math.min(99, Number(this.previewQty) || 1))
-      const days = Math.max(m.minRentDays || 1, Number(this.previewDays) || 1)
+      if (m.rentableStock !== null && m.rentableStock <= 0) {
+        uni.showToast({ title: '该机型当前暂无可租库存', icon: 'none' })
+        return
+      }
+      const cap = m.rentableStock !== null ? Math.min(99, m.rentableStock) : 99
+      const qty = Math.max(1, Math.min(cap, Number(this.previewQty) || 1))
+      let days = Math.max(m.minRentDays || 1, Number(this.previewDays) || 1)
+      if (m.maxRentDays > 0 && days > m.maxRentDays) days = m.maxRentDays
       this.closeMachineDetail()
       await this.dispatchCheckout([{ ...m, qty }], days)
     },
@@ -646,10 +744,32 @@ export default {
         this.sceneRobots = latest.scheme.robots || []
         this.rentCatalog = latestCatalog
         const minRequired = resolved.reduce((mx, m) => Math.max(mx, Number(m.minRentDays) || 1), 1)
+        const maxCaps = resolved.map(m => Number(m.maxRentDays) || 0).filter(d => d > 0)
+        const maxAllowed = maxCaps.length ? Math.min(...maxCaps) : 3650
+        if (minRequired > maxAllowed) {
+          uni.showToast({ title: `所选机型租期区间冲突（最低${minRequired}天 / 最长${maxAllowed}天），请分开下单`, icon: 'none' })
+          return
+        }
+        const stockShortage = resolved.find(m => m.rentableStock !== null && m.qty > m.rentableStock)
+        if (stockShortage) {
+          await this.reload()
+          uni.showToast({
+            title: stockShortage.rentableStock <= 0
+              ? `「${stockShortage.name}」当前暂无可租库存`
+              : `「${stockShortage.name}」当前最多可租 ${stockShortage.rentableStock} 台`,
+            icon: 'none',
+          })
+          return
+        }
         const finalDays = Math.max(1, Number(days) || 1)
         if (finalDays < minRequired) {
           this.rentDays = minRequired
           uni.showToast({ title: '所选机型最低起租 ' + minRequired + ' 天，请重新确认', icon: 'none' })
+          return
+        }
+        if (finalDays > maxAllowed) {
+          this.rentDays = maxAllowed
+          uni.showToast({ title: '所选机型最长可租 ' + maxAllowed + ' 天，请重新确认', icon: 'none' })
           return
         }
         const startDate = this.rentStartDate || this.todayStr()
@@ -661,6 +781,8 @@ export default {
           price: m.price,
           qty: m.qty,
           min_rent_days: m.minRentDays || 1,
+          max_rent_days: m.maxRentDays || 0,
+          rentable_stock: m.rentableStock,
           deposit_yuan: m.depositYuan || '',
           scene: this.sceneInfo.name || m.scene || '场景租用',
           icon: m.icon || '🤖',
@@ -1150,4 +1272,5 @@ page {
 .date-pv { height: 340rpx; }
 .pv-item { height: 68rpx; line-height: 68rpx; text-align: center; font-size: 26rpx; color: #1E293B; }
 .date-modal-ok { margin-top: 20rpx; height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 40rpx; background: #165DFF; color: #fff; font-size: 28rpx; font-weight: 600; }
+.product-tag.stock-out { background: #FEE2E2; color: #DC2626; }
 </style>

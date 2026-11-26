@@ -134,11 +134,27 @@ function expectSame($expected, $actual): void
     }
 }
 
-check('租用资格同时验证商品类型、类目、渠道、状态、可见性和真实引用', function () use ($catalog) {
+check('租用资格同时验证商品类型、类目、渠道、状态、可见性、排除技能且保留配置顺序', function () use ($catalog, $db) {
     expectSame([11], $catalog->rentalProductIds(1));
     expectSame([], $catalog->rentalProductIds(1, []));
     expectSame([], $catalog->rentalProductIds(1, [12, 13, 14, 15, 16, 99]));
     expectSame([14], $catalog->rentalProductIds(2));
+
+    // 多机型顺序保持：[18, 11] 不应被 p.id 升序覆写；挂靠 skill 分类的商品必须被排除
+    $db->table('category_translations')->insert(['category_id' => 3, 'slug' => 'skill']);
+    $db->table('products')->insert([['id' => 18, 'type' => 'simple'], ['id' => 19, 'type' => 'simple']]);
+    $db->table('product_flat')->insert([
+        ['product_id' => 18, 'channel' => 'default', 'status' => 1, 'visible_individually' => 1],
+        ['product_id' => 19, 'channel' => 'default', 'status' => 1, 'visible_individually' => 1],
+    ]);
+    $db->table('product_channels')->insert([['product_id' => 18, 'channel_id' => 1], ['product_id' => 19, 'channel_id' => 1]]);
+    $db->table('product_categories')->insert([
+        ['product_id' => 18, 'category_id' => 1],
+        ['product_id' => 19, 'category_id' => 1],
+        ['product_id' => 19, 'category_id' => 3], // 同时挂载 skill 分类
+    ]);
+    expectSame([18, 11], $catalog->rentalProductIds(1, [18, 19, 11]));
+    expectSame([11, 18], $catalog->rentalProductIds(1, [11, 18]));
 });
 check('公开 DTO 不公开手编咨询数和无证据收益', function () use ($catalog) {
     $data = $catalog->detail(Scene::findOrFail(1), 1);
