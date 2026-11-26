@@ -3,7 +3,6 @@
 		<!-- 第 1 层：身份与消息顶栏（克制深海工业蓝） -->
 		<view class="hero-header" :style="headerSafeStyle">
 			<view class="top-utility-row">
-				<text class="brand-caption">召唤机甲 · 账户与资产中心</text>
 				<view class="top-actions">
 					<view class="icon-btn" @tap="goPage('/pages/mine/notifications', true)">
 						<SmIcon name="notify" :size="36" />
@@ -24,11 +23,7 @@
 						<text class="user-name">{{ isLoggedIn ? (customer.name || '召唤机甲用户') : '登录 / 注册账户' }}</text>
 						<text v-if="isLoggedIn" class="edit-pill">编辑资料 ›</text>
 					</view>
-					<text class="user-sub">
-						{{ isLoggedIn
-							? (customer.company_name || maskedPhone || customer.email || '个人与企业同账号体系')
-							: '登录后管理机器设备、买断技能、订单开票与业务工作台' }}
-					</text>
+					<text v-if="userSubText" class="user-sub">{{ userSubText }}</text>
 					<view v-if="isLoggedIn && identities.length" class="identity-badges">
 						<text v-for="idItem in identities" :key="idItem.key" class="id-chip">{{ idItem.label }}</text>
 					</view>
@@ -41,25 +36,21 @@
 			<view class="cockpit-item" @tap="goPage('/pages/mine/devices', true)">
 				<text class="cp-num sm-mono">{{ isLoggedIn ? counts.devices_total : '—' }}</text>
 				<text class="cp-label">我的设备</text>
-				<text class="cp-sub">{{ isLoggedIn && counts.devices_online > 0 ? `${counts.devices_online} 台在线` : '登记与配对' }}</text>
 			</view>
 			<view class="cp-divider" />
 			<view class="cockpit-item" @tap="goPage('/pages/mine/skills', true)">
 				<text class="cp-num sm-mono">{{ isLoggedIn ? counts.active_skills : '—' }}</text>
-				<text class="cp-label">买断技能</text>
-				<text class="cp-sub">指派与执行</text>
+				<text class="cp-label">我的技能</text>
 			</view>
 			<view class="cp-divider" />
 			<view class="cockpit-item" @tap="goPage('/pages/mine/deploy', true)">
 				<text class="cp-num sm-mono">{{ isLoggedIn ? counts.running_deploy_tasks : '—' }}</text>
 				<text class="cp-label">下发记录</text>
-				<text class="cp-sub">{{ isLoggedIn && counts.running_deploy_tasks > 0 ? '任务执行中' : '安装与回滚' }}</text>
 			</view>
 			<view class="cp-divider" />
 			<view class="cockpit-item" @tap="goPage('/pages/mine/invoices', true)">
 				<text class="cp-num sm-mono">{{ isLoggedIn ? counts.invoices_total : '—' }}</text>
-				<text class="cp-label">发票抬头</text>
-				<text class="cp-sub">普票与专票</text>
+				<text class="cp-label">发票</text>
 			</view>
 		</view>
 
@@ -67,7 +58,7 @@
 			<!-- 第 3 层：订单履约与售后 -->
 			<view class="panel-card">
 				<view class="panel-head">
-					<text class="panel-title">订单与履约服务</text>
+					<text class="panel-title">我的订单</text>
 					<view class="panel-more" @tap="goOrderTab('all')">
 						<text class="more-text">全部订单</text>
 						<SmIcon name="chevron-right" :size="22" />
@@ -86,7 +77,7 @@
 							<SmIcon name="order-shipping" :size="46" />
 							<text v-if="orderCounts.processing > 0" class="cell-badge sm-mono">{{ orderCounts.processing }}</text>
 						</view>
-						<text class="order-label">履约/在租</text>
+						<text class="order-label">履约中</text>
 					</view>
 					<view class="order-cell" @tap="goOrderTab('completed')">
 						<view class="order-icon-wrap">
@@ -99,7 +90,7 @@
 							<SmIcon name="after-sales" :size="46" />
 							<text v-if="counts.open_after_sales > 0" class="cell-badge warn sm-mono">{{ counts.open_after_sales }}</text>
 						</view>
-						<text class="order-label">售后/维保</text>
+						<text class="order-label">售后</text>
 					</view>
 					<view class="order-cell" @tap="goPage('/pages/scene/requests', false)">
 						<view class="order-icon-wrap">
@@ -114,8 +105,7 @@
 			<!-- 第 4 层：企业与生态工作台（无 AI 噱头词、真实身份感知） -->
 			<view class="panel-card">
 				<view class="panel-head">
-					<text class="panel-title">企业合作与业务工作台</text>
-					<text class="panel-caption">多租户数据隔离 · 单次免登切换</text>
+					<text class="panel-title">企业服务</text>
 				</view>
 
 				<view class="tob-main-card" @tap="goPage('/pages/mine/portal-hub', true)">
@@ -126,7 +116,6 @@
 								<text class="tob-main-title">商家与开发者工作台</text>
 								<text v-if="hasBusinessRole" class="tob-active-tag">已开通</text>
 							</view>
-							<text class="tob-main-desc">{{ workbenchSubtitle }}</text>
 						</view>
 					</view>
 					<view class="tob-enter-pill">
@@ -139,15 +128,13 @@
 					<view class="tob-sub-card" @tap="goPage('/pages/mine/supplier', false)">
 						<SmIcon name="hub-supplier" :size="40" />
 						<view class="tob-sub-info">
-							<text class="tob-sub-title">供应链准入</text>
-							<text class="tob-sub-desc">邀请码核验 · 整机配件供货</text>
+							<text class="tob-sub-title">供应商入驻</text>
 						</view>
 					</view>
 					<view class="tob-sub-card" @tap="goPage('/pages/mine/cooperate', false)">
 						<SmIcon name="hub-coop" :size="40" />
 						<view class="tob-sub-info">
-							<text class="tob-sub-title">生态合作申请</text>
-							<text class="tob-sub-desc">厂商 · 算法伙伴 · 达人推荐</text>
+							<text class="tob-sub-title">商务合作</text>
 						</view>
 					</view>
 				</view>
@@ -156,7 +143,7 @@
 			<!-- 第 5 层：常用服务宫格（完整恢复收货地址等核心入口） -->
 			<view class="panel-card">
 				<view class="panel-head">
-					<text class="panel-title">常用工具与支持</text>
+					<text class="panel-title">常用服务</text>
 				</view>
 				<view class="tool-grid">
 					<view class="tool-item" @tap="goPage('/pages/mine/address', false)">
@@ -169,7 +156,7 @@
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/ecosystem/my-registrations', true)">
 						<view class="tool-icon"><SmIcon name="event" :size="42" /></view>
-						<text class="tool-label">赛事与队务</text>
+						<text class="tool-label">我的赛事</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/mine/tickets', true)">
 						<view class="tool-icon">
@@ -214,7 +201,6 @@
 						<text class="auth-title">
 							{{ authMode === 'login' ? '登录召唤机甲账户' : (authMode === 'register' ? '注册新账户' : '找回登录密码') }}
 						</text>
-						<text class="auth-sub">一个账号通用商城租售、设备管理、商家与开发者后台</text>
 					</view>
 					<view class="auth-close" @tap="showAuthModal = false"><SmIcon name="close" :size="26" /></view>
 				</view>
@@ -235,7 +221,7 @@
 						<input class="auth-input" type="password" v-model="loginForm.password" placeholder="请输入登录密码" />
 					</view>
 					<view class="forgot-row">
-						<text class="forgot-link" @tap="switchMode('forgot')">忘记密码？通过邮箱验证码重置</text>
+						<text class="forgot-link" @tap="switchMode('forgot')">忘记密码？</text>
 					</view>
 				</view>
 
@@ -373,12 +359,9 @@ export default {
 		hasBusinessRole() {
 			return this.identities.some(i => i.key === 'merchant' || i.key === 'developer' || i.key === 'supplier')
 		},
-		workbenchSubtitle() {
-			if (!this.isLoggedIn) return '统一查看名下店铺履约、技能销量并一键免登桌面后台'
-			const labels = this.identities.filter(i => i.key !== 'customer').map(i => i.label)
-			return labels.length
-				? `当前已激活身份：${labels.join(' · ')}`
-				: '支持供应链商家开店与具身技能开发者同账号免登接入'
+		userSubText() {
+			if (!this.isLoggedIn) return '登录后查看订单与设备'
+			return this.customer.company_name || this.maskedPhone || ''
 		},
 	},
 	onLoad(q) {
@@ -610,8 +593,7 @@ export default {
 	background: linear-gradient(145deg, #0E2960 0%, #16449E 100%);
 	color: #FFFFFF;
 }
-.top-utility-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30rpx; }
-.brand-caption { font-size: 24rpx; font-weight: 500; color: rgba(255, 255, 255, 0.76); letter-spacing: 1rpx; }
+.top-utility-row { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 16rpx; }
 .top-actions { display: flex; align-items: center; gap: 18rpx; }
 .icon-btn {
 	width: 68rpx;
@@ -679,14 +661,12 @@ export default {
 .cockpit-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4rpx; }
 .cp-num { font-size: 38rpx; font-weight: 700; color: #0F172A; line-height: 1.2; }
 .cp-label { font-size: 25rpx; font-weight: 600; color: #334155; margin-top: 4rpx; }
-.cp-sub { font-size: 21rpx; color: #64748B; }
 .cp-divider { width: 1rpx; height: 64rpx; background: #EDF2F7; }
 
 .body-wrap { padding: 0 28rpx; }
 .panel-card { background: #FFFFFF; border-radius: 24rpx; padding: 28rpx; margin-bottom: 22rpx; border: 1rpx solid #E5EAF2; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
 .panel-title { font-size: 30rpx; font-weight: 600; color: #0F172A; }
-.panel-caption { font-size: 23rpx; color: #64748B; }
 .panel-more { display: flex; align-items: center; gap: 6rpx; }
 .more-text { font-size: 25rpx; color: #64748B; }
 
@@ -730,7 +710,6 @@ export default {
 .tob-title-line { display: flex; align-items: center; gap: 12rpx; margin-bottom: 6rpx; }
 .tob-main-title { font-size: 29rpx; font-weight: 600; color: #0F172A; }
 .tob-active-tag { font-size: 21rpx; font-weight: 600; color: #059669; background: #ECFDF5; padding: 2rpx 12rpx; border-radius: 999rpx; }
-.tob-main-desc { display: block; font-size: 23rpx; color: #64748B; line-height: 1.45; }
 .tob-enter-pill { display: flex; align-items: center; gap: 4rpx; padding: 12rpx 20rpx; border-radius: 999rpx; background: #165DFF; color: #FFFFFF; flex-shrink: 0; }
 .tob-enter-text { font-size: 24rpx; font-weight: 600; color: #FFFFFF; }
 
@@ -738,7 +717,6 @@ export default {
 .tob-sub-card { padding: 22rpx; border-radius: 18rpx; background: #F8FAFC; border: 1rpx solid #EDF2F7; display: flex; align-items: center; gap: 16rpx; }
 .tob-sub-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .tob-sub-title { font-size: 27rpx; font-weight: 600; color: #0F172A; }
-.tob-sub-desc { font-size: 22rpx; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 28rpx; column-gap: 12rpx; }
 .tool-item { display: flex; flex-direction: column; align-items: center; gap: 12rpx; }
@@ -749,7 +727,6 @@ export default {
 .auth-sheet { width: 100%; background: #FFFFFF; border-radius: 32rpx 32rpx 0 0; padding: 32rpx 32rpx calc(36rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
 .auth-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24rpx; }
 .auth-title { display: block; font-size: 34rpx; font-weight: 700; color: #0F172A; }
-.auth-sub { display: block; font-size: 23rpx; color: #64748B; margin-top: 6rpx; }
 .auth-close { padding: 8rpx; }
 .mode-switch { display: flex; background: #F1F5F9; border-radius: 16rpx; padding: 6rpx; margin-bottom: 24rpx; }
 .mode-btn { flex: 1; height: 68rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; font-size: 27rpx; font-weight: 600; color: #475569; }
