@@ -12,6 +12,9 @@ Route::prefix(config('portal_backends.merchant_prefix', 'merchant'))->group(func
     Route::post('login', [MerchantPortalController::class, 'login'])
         ->middleware('throttle:login')
         ->name('shop.merchant.login.store');
+    Route::get('sso', [MerchantPortalController::class, 'ssoLogin'])
+        ->middleware('throttle:login')
+        ->name('shop.merchant.sso');
 
     Route::middleware('merchant.session')->group(function () {
         Route::post('logout', [MerchantPortalController::class, 'logout'])

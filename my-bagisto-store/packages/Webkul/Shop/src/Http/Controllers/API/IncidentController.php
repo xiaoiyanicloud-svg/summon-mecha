@@ -5,6 +5,7 @@ namespace Webkul\Shop\Http\Controllers\API;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\Incident;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Services\Incident\IncidentService;
@@ -179,17 +180,49 @@ class IncidentController extends APIController
             return $this->fail(ApiErrorCode::NOT_FOUND, '事故记录不存在。', 404);
         }
 
+        $deviceSn = null;
+        if ($incident->device_binding_id) {
+            $deviceSn = DB::table('device_binding')
+                ->where('id', $incident->device_binding_id)
+                ->where('owner_customer_id', $customer->id)
+                ->value('sn');
+        }
+        if ($deviceSn === null && $incident->device_id) {
+            $deviceSn = Device::query()
+                ->where('id', $incident->device_id)
+                ->where('customer_id', $customer->id)
+                ->value('sn');
+        }
+
+        $skillName = null;
+        if ($incident->skill_id) {
+            $prod = \Webkul\Product\Models\ProductProxy::modelClass()::query()->find($incident->skill_id);
+            $skillName = $prod?->name;
+        }
+
+        $skillVersionNo = null;
+        if ($incident->skill_version_id && \Illuminate\Support\Facades\Schema::hasTable('skill_versions')) {
+            $skillVersionNo = DB::table('skill_versions')
+                ->where('id', $incident->skill_version_id)
+                ->value('version');
+        }
+
         return response()->json([
             'data' => [
                 'id'             => $incident->id,
                 'incident_no'    => $incident->incident_no,
                 // B-10:来源工单(若由工单定性而来)
                 'ticket_id'      => $incident->ticket_id,
+                'device_sn'      => $deviceSn,
+                'skill_id'       => $incident->skill_id,
+                'skill_name'     => $skillName,
+                'skill_version'  => $skillVersionNo,
                 'severity'       => $incident->severity,
                 'severity_label' => $incident->severityLabel(),
                 'status'         => $incident->status,
                 'status_label'   => $incident->statusLabel(),
                 'occurred_at'    => optional($incident->occurred_at)->toDateTimeString(),
+                'created_at'     => optional($incident->created_at)->toDateTimeString(),
                 'description'    => $incident->description,
                 // 报案人自己提交的证据，原样回给他
                 'evidence'       => $incident->evidence,

@@ -4,6 +4,8 @@ namespace Webkul\Shop\Http\Controllers\API;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Webkul\Shop\Models\CooperationApplication;
@@ -82,22 +84,32 @@ class CooperationController extends APIController
         }
 
         $code = strtoupper(trim((string) $request->input('code')));
+        $context = trim((string) $request->input('context', ''));
         $redeemable = $this->invites->findRedeemable($code);
 
         if ($redeemable) {
+            $devJoinUrl = url('/dev/join?code=' . urlencode($redeemable->code));
+            $merchantOnboardingUrl = url('/merchant/onboarding?code=' . urlencode($redeemable->code));
+            $targetPortal = in_array($context, ['supplier', 'merchant', 'manufacturer'], true) ? 'merchant' : 'developer';
+
             return response()->json([
-                'message' => '邀请码有效，可用于供应链入驻登记或前往开发者门户激活。',
+                'message' => $targetPortal === 'merchant'
+                    ? '邀请码核验有效，可直接前往商家工作台完成供应链店铺入驻。'
+                    : '邀请码有效，可用于供应链入驻登记或前往开发者门户激活。',
                 'data'    => [
-                    'redeemable'     => true,
-                    'code'           => $redeemable->code,
-                    'status'         => $redeemable->status,
-                    'max_uses'       => (int) $redeemable->max_uses,
-                    'times_used'     => (int) $redeemable->times_used,
-                    'remaining_uses' => max(0, (int) $redeemable->max_uses - (int) $redeemable->times_used),
-                    'expires_at'     => $redeemable->expires_at?->toIso8601String(),
-                    'note'           => $redeemable->note ?: '平台官方生态/供应链邀约',
-                    'reason'         => null,
-                    'dev_join_url'   => url('/dev/join?code=' . urlencode($redeemable->code)),
+                    'redeemable'              => true,
+                    'code'                    => $redeemable->code,
+                    'status'                  => $redeemable->status,
+                    'max_uses'                => (int) $redeemable->max_uses,
+                    'times_used'              => (int) $redeemable->times_used,
+                    'remaining_uses'          => max(0, (int) $redeemable->max_uses - (int) $redeemable->times_used),
+                    'expires_at'              => $redeemable->expires_at?->toIso8601String(),
+                    'note'                    => $redeemable->note ?: '平台官方生态/供应链邀约',
+                    'reason'                  => null,
+                    'target_portal'           => $targetPortal,
+                    'dev_join_url'            => $devJoinUrl,
+                    'merchant_onboarding_url' => $merchantOnboardingUrl,
+                    'onboarding_url'          => $targetPortal === 'merchant' ? $merchantOnboardingUrl : $devJoinUrl,
                 ],
             ]);
         }
@@ -107,18 +119,83 @@ class CooperationController extends APIController
         return response()->json([
             'message' => $reason,
             'data'    => [
-                'redeemable'     => false,
-                'code'           => $code,
-                'status'         => 'unredeemable',
-                'max_uses'       => 0,
-                'times_used'     => 0,
-                'remaining_uses' => 0,
-                'expires_at'     => null,
-                'note'           => null,
-                'reason'         => $reason,
-                'dev_join_url'   => null,
+                'redeemable'              => false,
+                'code'                    => $code,
+                'status'                  => 'unredeemable',
+                'max_uses'                => 0,
+                'times_used'              => 0,
+                'remaining_uses'          => 0,
+                'expires_at'              => null,
+                'note'                    => null,
+                'reason'                  => $reason,
+                'target_portal'           => in_array($context, ['supplier', 'merchant', 'manufacturer'], true) ? 'merchant' : 'developer',
+                'dev_join_url'            => null,
+                'merchant_onboarding_url' => null,
+                'onboarding_url'          => null,
             ],
         ]);
+    }
+
+    /**
+     * POST /api/cooperations/attachments
+     * 上传合作申请 / 供应链入驻的营业执照或主体资质扫描件（私密盘落盘，签发短期绑定凭证）。
+     */
+    public function uploadAttachment(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf,webp|max:10240',
+        ], [
+            'file.required' => '请选择要上传的营业执照或资质附件。',
+            'file.mimes'    => '资质附件仅支持 JPG / PNG / WEBP / PDF 格式。',
+            'file.max'      => '资质附件大小不能超过 10MB。',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->fail(
+                ApiErrorCode::VALIDATION_ERROR,
+                $validator->errors()->first(),
+                422,
+                ['errors' => $validator->errors()]
+            );
+        }
+
+        $file = $request->file('file');
+        $customer = auth()->guard('customer')->user();
+        $guestKey = trim((string) ($request->header('X-Guest-Key') ?: $request->input('guest_key', '')));
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: 'dat');
+        $dir = 'cooperation-licenses/' . now()->format('Ym');
+        $storedName = Str::uuid()->toString() . '.' . $ext;
+        $storedPath = Storage::disk('private')->putFileAs($dir, $file, $storedName);
+
+        if (! $storedPath) {
+            return $this->fail(ApiErrorCode::CONFLICT, '资质文件保存失败，请稍后重试。', 500);
+        }
+
+        $realContent = Storage::disk('private')->get($storedPath);
+        $sha256 = hash('sha256', (string) $realContent);
+        $token = Str::random(40);
+        $originalName = mb_substr(trim((string) $file->getClientOriginalName()) ?: $storedName, 0, 180);
+
+        Cache::put('coop_att:' . $token, [
+            'disk_path'   => $storedPath,
+            'file_name'   => $originalName,
+            'file_size'   => (int) $file->getSize(),
+            'mime_type'   => (string) $file->getClientMimeType(),
+            'sha256'      => $sha256,
+            'customer_id' => $customer?->id ? (int) $customer->id : null,
+            'guest_key'   => $guestKey !== '' ? mb_substr($guestKey, 0, 64) : null,
+        ], now()->addHours(2));
+
+        return response()->json([
+            'message' => '资质附件已安全上传。',
+            'data'    => [
+                'attachment_token' => $token,
+                'file_name'        => $originalName,
+                'file_size'        => (int) $file->getSize(),
+                'mime_type'        => (string) $file->getClientMimeType(),
+            ],
+        ], 201);
     }
 
     /**
@@ -234,6 +311,30 @@ class CooperationController extends APIController
 
         $customer = auth()->guard('customer')->user();
         $guestKey = trim((string) ($request->header('X-Guest-Key') ?: $request->input('guest_key', '')));
+
+        if (! empty($cleanMeta['license_attachment_token'])) {
+            $attToken = (string) $cleanMeta['license_attachment_token'];
+            unset($cleanMeta['license_attachment_token']);
+
+            $cachedAtt = Cache::pull('coop_att:' . $attToken);
+            if (! is_array($cachedAtt) || empty($cachedAtt['disk_path'])) {
+                return $this->fail(
+                    ApiErrorCode::VALIDATION_ERROR,
+                    '资质附件凭证已失效，请重新上传营业执照或资质扫描件。',
+                    422
+                );
+            }
+
+            if (! empty($cachedAtt['customer_id']) && $customer && (int) $cachedAtt['customer_id'] !== (int) $customer->id) {
+                return $this->fail(ApiErrorCode::FORBIDDEN, '无权使用他人上传的资质附件。', 403);
+            }
+
+            $cleanMeta['license_disk_path'] = (string) $cachedAtt['disk_path'];
+            $cleanMeta['license_file_name'] = (string) ($cachedAtt['file_name'] ?? ($cleanMeta['license_file_name'] ?? '资质附件'));
+            $cleanMeta['license_sha256']    = (string) ($cachedAtt['sha256'] ?? '');
+            $cleanMeta['license_uploaded']  = true;
+        }
+
         $orgName  = trim((string) $request->input('org_name'));
         $phone    = trim((string) $request->input('contact_phone'));
 
@@ -317,5 +418,90 @@ class CooperationController extends APIController
             'message' => '合作申请已提交，专属商务顾问将在 1-3 个工作日内与您联系。',
             'data'    => $application->toApiArray(),
         ], 201);
+    }
+
+    /**
+     * GET /api/cooperations/{id}
+     * 查看本人（或同 guest_key）提交的合作申请详情与格式化字段。
+     */
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $application = $this->resolveOwnedApplication($request, $id);
+        if (! $application) {
+            return $this->fail(ApiErrorCode::NOT_FOUND, '未找到对应的合作申请记录。', 404);
+        }
+
+        $data = $application->toApiArray();
+        $data['formatted_meta'] = CooperationApplication::formatMetaForDisplay($application->meta);
+
+        return response()->json(['data' => $data]);
+    }
+
+    /**
+     * POST /api/cooperations/{id}/withdraw
+     * 撤回尚处于「待审核」状态的合作申请，撤回后可修改资料重新提交。
+     */
+    public function withdraw(Request $request, int $id): JsonResponse
+    {
+        $application = $this->resolveOwnedApplication($request, $id);
+        if (! $application) {
+            return $this->fail(ApiErrorCode::NOT_FOUND, '未找到对应的合作申请记录。', 404);
+        }
+
+        if ($application->status !== CooperationApplication::STATUS_PENDING) {
+            return $this->fail(
+                ApiErrorCode::CONFLICT,
+                '当前申请已进入跟进或终审阶段，无法自助撤回；如需变更请联系商务顾问。',
+                409
+            );
+        }
+
+        $application->update([
+            'status' => CooperationApplication::STATUS_WITHDRAWN,
+        ]);
+
+        $customer = auth()->guard('customer')->user();
+        try {
+            $this->oplog->log(
+                $customer ? OperationLog::ACTOR_CUSTOMER : 'guest',
+                $customer?->id,
+                'cooperation.withdrawn',
+                'cooperation_application',
+                $application->id,
+                ['application_no' => $application->application_no],
+                $request->ip()
+            );
+        } catch (\Throwable) {
+            // 审计日志异常不阻断
+        }
+
+        return response()->json([
+            'message' => '合作申请已撤回，您可修改资料后重新发起申请。',
+            'data'    => $application->fresh()->toApiArray(),
+        ]);
+    }
+
+    protected function resolveOwnedApplication(Request $request, int $id): ?CooperationApplication
+    {
+        $customer = auth()->guard('customer')->user();
+        $guestKey = trim((string) ($request->header('X-Guest-Key') ?: $request->query('guest_key', $request->input('guest_key', ''))));
+
+        if (! $customer && strlen($guestKey) < 6) {
+            return null;
+        }
+
+        return CooperationApplication::query()
+            ->where('id', $id)
+            ->where(function ($q) use ($customer, $guestKey) {
+                if ($customer) {
+                    $q->where('customer_id', $customer->id);
+                    if (strlen($guestKey) >= 6) {
+                        $q->orWhere('guest_key', $guestKey);
+                    }
+                } else {
+                    $q->where('guest_key', $guestKey);
+                }
+            })
+            ->first();
     }
 }

@@ -35,6 +35,7 @@ $devPrefix = trim((string) config('developer_portal.prefix'), '/') ?: 'dev';
 Route::controller(PortalController::class)->prefix($devPrefix)->group(function () {
     Route::get('login', 'showLogin')->name('shop.dev.login');
     Route::post('login', 'login')->name('shop.dev.login.attempt');
+    Route::get('sso', 'ssoLogin')->middleware('throttle:login')->name('shop.dev.sso');
 });
 
 /**

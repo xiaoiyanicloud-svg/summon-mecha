@@ -73,13 +73,24 @@
 							<text v-else>商</text>
 						</view>
 						<view class="product-context-main">
-							<text class="product-context-kicker">随消息发送商品</text>
+							<text class="product-context-kicker">{{ contextKicker(productContext) }}</text>
 							<text class="product-context-name">{{ productContext.name }}</text>
 							<text class="product-context-meta">
-								{{ productKindLabel(productContext.kind) }}<text v-if="productContext.sku"> · {{ productContext.sku }}</text><text v-if="productContext.price"> · ¥{{ productContext.price }}</text>
+								<text v-if="productContext.increment_id">#{{ productContext.increment_id }} · </text>
+								<text v-if="productContext.sn">SN {{ productContext.sn }} · </text>
+								{{ contextMetaText(productContext) }}
 							</text>
 						</view>
 						<view class="product-context-remove" role="button" tabindex="0" aria-label="移除商品" @tap="removeProductContext">×</view>
+					</view>
+
+					<view v-if="!productContext" class="attach-bar">
+						<picker v-if="myOrders.length" :range="orderAttachLabels" @change="onPickOrderAttach">
+							<text class="attach-pill">+ 关联我的订单</text>
+						</picker>
+						<picker v-if="myDevices.length" :range="deviceAttachLabels" @change="onPickDeviceAttach">
+							<text class="attach-pill">+ 关联我的设备</text>
+						</picker>
 					</view>
 
 					<textarea
@@ -219,7 +230,7 @@
 </template>
 
 <script>
-import { ticketApi } from '@/utils/api'
+import { ticketApi, orderApi, deviceApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import {
 	CATEGORY_OPTIONS,
@@ -257,6 +268,8 @@ export default {
 			faqItems: FAQ_ITEMS,
 			topics: CATEGORY_OPTIONS,
 			productContext: null,
+			myOrders: [],
+			myDevices: [],
 		}
 	},
 	computed: {
@@ -294,6 +307,12 @@ export default {
 		restUnread() {
 			return this.restItems.reduce((sum, item) => sum + this.unreadCount(item), 0)
 		},
+		orderAttachLabels() {
+			return this.myOrders.map(o => `#${o.increment_id || o.id} · ${(o.items && o.items[0] && o.items[0].name) || '订单'} · ¥${o.grand_total}`)
+		},
+		deviceAttachLabels() {
+			return this.myDevices.map(d => `${d.sn}${d.display_name ? `（${d.display_name}）` : ''}`)
+		},
 	},
 	onLoad(options) {
 		const q = options || {}
@@ -307,9 +326,9 @@ export default {
 			this.content = content
 			this.inputFocus = false
 		}
-		if (q.productContext) {
+		if (q.productContext || q.orderContext || q.deviceContext) {
 			const context = uni.getStorageSync('supportProductContext')
-			if (context && context.type === 'product' && context.name) {
+			if (context && ['product', 'order', 'device'].includes(context.type) && context.name) {
 				this.productContext = context
 			} else {
 				uni.removeStorageSync('supportProductContext')
@@ -346,6 +365,40 @@ export default {
 		onInputBlur() { this.inputFocus = false },
 		productKindLabel(kind) {
 			return ({ rent: '租赁', buy: '购买', accessory: '配件', skill: '技能' })[kind] || '商品'
+		},
+		contextKicker(ctx) {
+			if (!ctx) return ''
+			if (ctx.type === 'order') return '随消息关联订单'
+			if (ctx.type === 'device') return '随消息关联设备'
+			return '随消息发送商品'
+		},
+		contextMetaText(ctx) {
+			if (!ctx) return ''
+			if (ctx.type === 'order') return [ctx.status_label, ctx.price ? `¥${ctx.price}` : ''].filter(Boolean).join(' · ')
+			if (ctx.type === 'device') return '名下登记机器设备'
+			return [this.productKindLabel(ctx.kind), ctx.sku, ctx.price ? `¥${ctx.price}` : ''].filter(Boolean).join(' · ')
+		},
+		onPickOrderAttach(e) {
+			const o = this.myOrders[Number(e.detail.value)]
+			if (!o) return
+			this.productContext = {
+				type: 'order',
+				order_id: o.id,
+				increment_id: String(o.increment_id || o.id),
+				name: (o.items && o.items[0] && o.items[0].name) || `订单 #${o.increment_id || o.id}`,
+				price: String(o.grand_total || ''),
+				status_label: o.status_label || o.status || '',
+			}
+		},
+		onPickDeviceAttach(e) {
+			const d = this.myDevices[Number(e.detail.value)]
+			if (!d) return
+			this.productContext = {
+				type: 'device',
+				device_id: d.id,
+				name: d.display_name || `机器设备 ${d.sn}`,
+				sn: d.sn || '',
+			}
 		},
 		removeProductContext() {
 			this.productContext = null
@@ -443,6 +496,8 @@ export default {
 		async refresh() {
 			this.loading = true
 			this.loadError = ''
+			orderApi.getOrders({ limit: 20 }).then((r) => { this.myOrders = (r && Array.isArray(r.data)) ? r.data : [] }).catch(() => {})
+			deviceApi.list().then((r) => { this.myDevices = (r && Array.isArray(r.data)) ? r.data : [] }).catch(() => {})
 			try {
 				const res = await ticketApi.list()
 				this.list = (res && Array.isArray(res.data)) ? res.data : []
@@ -461,6 +516,9 @@ export default {
 			try {
 				const useOnline = this.channel === 'online'
 				const payload = { content: text, category: this.currentTopic.value }
+				if (this.productContext) {
+					payload.attachments = [this.productContext]
+				}
 				const res = useOnline
 					? await ticketApi.createOnline(payload)
 					: await ticketApi.create(payload)
@@ -493,13 +551,15 @@ export default {
 
 <style scoped>
 page {
-	background: linear-gradient(180deg, #4291f6 0%, #b3d5ff 100%);
+	background: #F4F7FB;
 	min-height: 100vh;
 	height: 100%;
 	overflow: hidden;
 }
-.page-container { position: relative; z-index: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: radial-gradient(circle at 88% 2%, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 32%), radial-gradient(circle at 6% 16%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 26%), linear-gradient(180deg, #4291f6 0%, #b3d5ff 46%, #eef6ff 100%); }
-.glass { background: rgba(255, 255, 255, 0.58); border: 1rpx solid rgba(255, 255, 255, 0.66); backdrop-filter: blur(20rpx); }
+.page-container { position: relative; z-index: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: linear-gradient(180deg, #102F6E 0%, #174299 300rpx, #F4F7FB 520rpx, #F4F7FB 100%); }
+.glass { background: #FFFFFF; border: 1rpx solid #E5EAF2; }
+.attach-bar { display: flex; gap: 14rpx; margin-top: 16rpx; }
+.attach-pill { font-size: 22rpx; font-weight: 600; color: #165DFF; background: #EEF4FF; padding: 8rpx 20rpx; border-radius: 999rpx; }
 
 .nav-area { flex-shrink: 0; padding: calc(80rpx + env(safe-area-inset-top)) 30rpx 12rpx 30rpx; padding: calc(80rpx + constant(safe-area-inset-top)) 30rpx 12rpx 30rpx; }
 .nav-content { display: flex; align-items: flex-start; }

@@ -316,7 +316,18 @@
 				})
 			},
 			contactService(item) {
-				uni.showToast({ title: '客服已接入', icon: 'none' })
+				if (!item) return
+				uni.setStorageSync('supportProductContext', {
+					type: 'order',
+					order_id: item.id,
+					increment_id: String(item.orderNo || item.id || ''),
+					name: item.name || `订单 #${item.orderNo || item.id}`,
+					price: String(item.amount || item.actualAmount || ''),
+					status_label: item.statusText || '',
+				})
+				uni.navigateTo({
+					url: '/pages/mine/tickets?orderContext=1&category=payment'
+				})
 			},
 			reorder(item) {
 				if (item.sceneWorkflow) { uni.navigateTo({url:'/pages/scene/request?source=scene'+(item.sceneWorkflow.scene_id?'&sceneId='+item.sceneWorkflow.scene_id:'')}); return }

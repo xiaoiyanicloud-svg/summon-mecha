@@ -27,7 +27,7 @@
 	    <nav-bar :title="docTitle" variant="safe" />
 	    <nav-bar title="技能详情" variant="sticky"><template #right>…</template></nav-bar>
 	-->
-	<view class="nav-bar" :class="'nav-variant-' + variant">
+	<view class="nav-bar" :class="'nav-variant-' + variant" :style="safeBarStyle">
 		<view class="nav-back" @click="onBack">
 			<text class="back-icon">‹</text>
 			<text v-if="backText" class="back-text">{{ backText }}</text>
@@ -43,26 +43,54 @@
 /**
  * 统一导航栏（uni-app Options API）。
  *
- * - 返回键默认 `uni.navigateBack({ delta: 1 })`；同时 `$emit('back')` 供页面接管
- *   （若父组件绑定了 `@back`，则不再走默认返回，避免"处理了又被弹一次"）。
+ * - 自动适配手机状态栏与安全区（statusBarHeight + safe-area-inset-top），防止刘海屏与小程序胶囊遮挡；
+ * - 返回键默认 `uni.navigateBack({ delta: 1 })`；当页面栈只有 1 层（刷新/外链直达）时回退至「我的」Tab。
  */
 export default {
 	name: 'NavBar',
 	props: {
 		// 居中标题。留空则不显示（如 rmfangan 无标题）
 		title: { type: String, default: '' },
-		// 视觉皮肤：default | safe | pill | sticky | frost（见模板注释）
+		// 视觉皮肤：default | safe | pill | sticky | frost
 		variant: { type: String, default: 'default' },
 		// 返回键旁的文字（仅 rmfangan 用："返回"）
 		backText: { type: String, default: '' },
+		// 无历史栈时的兜底 Tab 路径
+		fallbackTab: { type: String, default: '/pages/mine/index' },
+	},
+	data() {
+		let statusBarPx = 0
+		try {
+			const sys = typeof uni !== 'undefined' && uni.getSystemInfoSync ? uni.getSystemInfoSync() : null
+			if (sys && Number(sys.statusBarHeight) > 0) {
+				statusBarPx = Number(sys.statusBarHeight)
+			}
+		} catch (_) {}
+		return {
+			statusBarPx,
+		}
+	},
+	computed: {
+		safeBarStyle() {
+			if (this.variant === 'default' && this.statusBarPx > 0) {
+				return {
+					paddingTop: `${this.statusBarPx}px`,
+					height: `calc(88rpx + ${this.statusBarPx}px)`,
+				}
+			}
+			return {}
+		},
 	},
 	methods: {
 		onBack() {
-			// uni-app 没有稳定的"是否绑定了监听器"判断，这里用 $attrs 上的 onBack 探测；
-			// 探测不到就按默认返回上一页。
 			const handled = !!(this.$attrs && this.$attrs.onBack)
 			this.$emit('back')
 			if (!handled) {
+				const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
+				if (Array.isArray(pages) && pages.length <= 1) {
+					uni.switchTab({ url: this.fallbackTab })
+					return
+				}
 				uni.navigateBack({ delta: 1 })
 			}
 		},
@@ -77,31 +105,76 @@ export default {
 	align-items: center;
 	justify-content: space-between;
 	box-sizing: border-box;
+	position: relative;
+	z-index: 20;
 }
 .nav-title {
 	font-weight: 600;
+	color: #0F172A;
 }
 
-/* ===== default：普通白底导航栏（高度 88rpx） ===== */
+/* ===== default：白底标准导航栏（自动兼容安全区） ===== */
 .nav-variant-default {
-	height: 88rpx;
-	padding: 0 24rpx;
-	background: #fff;
+	min-height: calc(88rpx + env(safe-area-inset-top));
+	padding: env(safe-area-inset-top) 28rpx 0;
+	background: #FFFFFF;
+	border-bottom: 1rpx solid #EEF2F7;
 }
-.nav-variant-default .nav-back { width: 60rpx; }
-.nav-variant-default .back-icon { font-size: 48rpx; color: #333; }
-.nav-variant-default .nav-title { font-size: 32rpx; font-weight: 600; color: #222; }
-.nav-variant-default .nav-right { width: 60rpx; }
+.nav-variant-default .nav-back {
+	min-width: 80rpx;
+	height: 88rpx;
+	display: flex;
+	align-items: center;
+}
+.nav-variant-default .back-icon { font-size: 46rpx; color: #0F172A; line-height: 1; }
+.nav-variant-default .nav-title {
+	flex: 1;
+	text-align: center;
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #0F172A;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.nav-variant-default .nav-right {
+	min-width: 80rpx;
+	height: 88rpx;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+}
 
 /* ===== safe：顶到安全区下方（刘海屏不被状态栏压住） ===== */
 .nav-variant-safe {
-	padding: calc(80rpx + env(safe-area-inset-top)) 30rpx 20rpx;
+	padding: calc(24rpx + env(safe-area-inset-top)) 28rpx 20rpx;
 	background: #FFFFFF;
+	border-bottom: 1rpx solid #EEF2F7;
 }
-.nav-variant-safe .nav-back { width: 60rpx; }
-.nav-variant-safe .back-icon { font-size: 48rpx; color: #1A2A3A; line-height: 1; }
-.nav-variant-safe .nav-title { font-size: 34rpx; font-weight: 600; color: #1A2A3A; }
-.nav-variant-safe .nav-right { width: 60rpx; }
+.nav-variant-safe .nav-back {
+	min-width: 80rpx;
+	height: 64rpx;
+	display: flex;
+	align-items: center;
+}
+.nav-variant-safe .back-icon { font-size: 46rpx; color: #0F172A; line-height: 1; }
+.nav-variant-safe .nav-title {
+	flex: 1;
+	text-align: center;
+	font-size: 33rpx;
+	font-weight: 600;
+	color: #0F172A;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.nav-variant-safe .nav-right {
+	min-width: 80rpx;
+	height: 64rpx;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+}
 
 /* ===== pill：圆形浅底返回键（order-detail） ===== */
 .nav-variant-pill {

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Webkul\Shop\Http\Controllers\Controller;
 use Webkul\Shop\Models\DeveloperProfile;
 use Webkul\Shop\Services\Developer\DeveloperSkillService;
+use Webkul\Shop\Services\Merchant\PortalBackendRegistryService;
 use Webkul\Shop\Services\Ops\OpsMetricsService;
 
 /**
@@ -22,7 +23,9 @@ class PortalController extends Controller
     public function __construct(
         protected OpsMetricsService $metrics,
         protected DeveloperSkillService $skills,
+        protected PortalBackendRegistryService $registryService,
     ) {}
+
     public function showLogin()
     {
         if (auth('developer')->check()) {
@@ -30,6 +33,39 @@ class PortalController extends Controller
         }
 
         return view('shop::dev.login');
+    }
+
+    /**
+     * GET /dev/sso?ticket=... —— 核销 C 端签发的 45 秒单次免登票据并建立开发者门户会话。
+     */
+    public function ssoLogin(Request $request)
+    {
+        $ticket = trim((string) $request->query('ticket', ''));
+        $consumed = $this->registryService->consumeHandoffTicket($ticket, 'developer_skill', $request);
+        $customer = $consumed['customer'];
+
+        if (! $customer) {
+            return redirect()->route('shop.dev.login')
+                ->withErrors(['email' => '免登凭证已过期或已使用，请登录开发者工作台。']);
+        }
+
+        auth('developer')->login($customer);
+        $request->session()->regenerate();
+
+        $devPrefix = '/' . (trim((string) config('developer_portal.prefix'), '/') ?: 'dev');
+        if (! empty($consumed['redirect_path']) && str_starts_with($consumed['redirect_path'], $devPrefix)) {
+            return redirect($consumed['redirect_path']);
+        }
+
+        $profile = DeveloperProfile::query()
+            ->where('customer_id', $customer->id)
+            ->first();
+
+        if (! $profile) {
+            return redirect()->route('shop.dev.onboarding');
+        }
+
+        return redirect()->route('shop.dev.dashboard');
     }
 
     public function login(Request $request)

@@ -1,48 +1,53 @@
 <template>
 	<view class="detail-page">
-		<!-- 导航栏 -->
-		<nav-bar title="事故详情" />
+		<nav-bar title="物理事故报案详情" />
 
-		<scroll-view class="scroll-content" scroll-y="true" show-scrollbar="false">
-			<!-- 三态:加载中 / 故障(带重试) / 取不到这条记录。故障不伪装成「记录不存在」 -->
+		<scroll-view class="scroll-content" scroll-y>
 			<state-view
 				:loading="loading"
 				:error="loadError"
 				:empty="!incident"
-				empty-icon="📋"
-				empty-text="事故记录不存在"
-				btn-color="#ff6b00"
+				icon="clipboard"
+				title="未找到该条事故记录"
 				@retry="refresh"
 			>
-				<view class="card head-card">
+				<view class="card">
 					<view class="head-row">
-						<text class="i-no">{{ incident.incident_no }}</text>
+						<text class="i-no sm-mono">{{ incident.incident_no }}</text>
 						<text class="i-sev" :class="incident.severity">{{ incident.severity_label }}</text>
 					</view>
-					<view class="head-foot">
-						<text class="i-status">{{ incident.status_label }}</text>
-						<text class="i-time">{{ incident.occurred_at || incident.created_at }}</text>
+					<view class="kv-list">
+						<view class="kv-row"><text class="kk">当前处置阶段</text><text class="kv highlight">{{ incident.status_label }}</text></view>
+						<view v-if="incident.device_sn" class="kv-row"><text class="kk">涉及机器设备</text><text class="kv sm-mono">{{ incident.device_sn }}</text></view>
+						<view v-if="incident.skill_name" class="kv-row">
+							<text class="kk">涉及技能版本</text>
+							<text class="kv">{{ incident.skill_name }}{{ incident.skill_version ? ` (v${incident.skill_version})` : '' }}</text>
+						</view>
+						<view v-if="incident.occurred_at" class="kv-row"><text class="kk">填报事发时间</text><text class="kv sm-mono">{{ incident.occurred_at }}</text></view>
+						<view v-if="incident.created_at" class="kv-row"><text class="kk">存证冻结时间</text><text class="kv sm-mono">{{ incident.created_at }}</text></view>
 					</view>
 				</view>
 
 				<view class="card">
-					<text class="sec-title">情况描述</text>
+					<text class="sec-title">事发情况描述</text>
 					<text class="body-text">{{ incident.description }}</text>
 				</view>
 
-				<!-- 证据:报案人自己提交的文字/链接,原样回显 -->
-				<view class="card" v-if="evidence.length">
-					<text class="sec-title">证据说明</text>
+				<view v-if="evidence.length" class="card">
+					<text class="sec-title">报案人提交的证据索引</text>
 					<text v-for="(e, i) in evidence" :key="i" class="body-text evidence">{{ e }}</text>
 				</view>
 
-				<!-- 责任认定:未认定时后端给 null —— 如实显示「尚未认定」,不编一个假答案 -->
 				<view class="card">
-					<text class="sec-title">责任认定</text>
+					<text class="sec-title">调查结论与责任认定</text>
 					<text v-if="incident.responsibility" class="resp-text">{{ incident.responsibility }}</text>
-					<text v-else class="resp-text pending">尚未认定</text>
-					<text v-if="!incident.responsibility" class="resp-hint">认定结论由平台在调查后给出,做出后这里会自动显示。</text>
-					<text v-if="incident.resolved_at" class="resp-hint">结案时间：{{ incident.resolved_at }}</text>
+					<text v-else class="resp-text pending">调查进行中 · 尚未出具最终认定</text>
+					<text v-if="!incident.responsibility" class="resp-hint">平台安全专员完成日志与包签名核验后，认定结论将自动同步至此。</text>
+					<text v-if="incident.resolved_at" class="resp-hint sm-mono">结案时间：{{ incident.resolved_at }}</text>
+
+					<view v-if="incident.ticket_id" class="ticket-jump" @tap="goTicket(incident.ticket_id)">
+						<text class="tj-text">前往关联客服工单补充沟通 ›</text>
+					</view>
 				</view>
 
 				<view style="height: 60rpx;"></view>
@@ -52,21 +57,12 @@
 </template>
 
 <script>
-import { incidentApi } from '@/utils/api'
-import StateView from '@/components/StateView.vue'
 import NavBar from '@/components/NavBar.vue'
+import StateView from '@/components/StateView.vue'
+import { incidentApi } from '@/utils/api'
 
-/**
- * 事故详情 —— 消费既有接口 GET /api/incidents/{id}（shop.api.incidents.show）。
- *
- * ⚠ 此前列表项**没有任何点击入口**,接口虽已存在却无人调用 —— 报案人永远看不到
- *   责任认定（responsibility）,事故闭环缺最后一公里（A8）。
- *
- * ⚠ 责任认定在未认定时后端返回 null（不是「尚未认定」字符串）——
- *   这里如实显示「尚未认定」并说明由平台在调查后给出,**不编一个假结论**。
- */
 export default {
-	components: { StateView, NavBar },
+	components: { NavBar, StateView },
 	data() {
 		return {
 			id: null,
@@ -84,9 +80,12 @@ export default {
 	onLoad(options) {
 		this.id = options && options.id ? Number(options.id) : null
 		if (this.id) this.refresh()
-		else this.loading = false // 没带 id = 链接坏了,走「记录不存在」空态
+		else this.loading = false
 	},
 	methods: {
+		goTicket(ticketId) {
+			uni.navigateTo({ url: `/pages/mine/ticket-detail?id=${ticketId}` })
+		},
 		async refresh() {
 			this.loading = true
 			this.loadError = ''
@@ -94,8 +93,7 @@ export default {
 				const res = await incidentApi.detail(this.id)
 				this.incident = (res && res.data) || null
 			} catch (e) {
-				// ⚠ 故障 ≠「记录不存在」:置错误标记交给错误态(带重试),而不是落进空态
-				this.loadError = (e && e.message) || '加载失败'
+				this.loadError = (e && e.message) || '加载事故详情失败'
 				this.incident = null
 			} finally {
 				this.loading = false
@@ -106,26 +104,23 @@ export default {
 </script>
 
 <style scoped>
-.detail-page { min-height: 100vh; background: #f5f6f8; }
-.scroll-content { height: calc(100vh - 88rpx); }
-.card { background: #fff; border-radius: 16rpx; margin: 20rpx 24rpx; padding: 28rpx; }
-
-.head-card { margin-top: 24rpx; }
-.head-row { display: flex; align-items: center; justify-content: space-between; }
-.i-no { font-size: 30rpx; font-weight: 600; color: #222; }
-.i-sev { font-size: 24rpx; color: #888; }
-.i-sev.severe, .i-sev.critical { color: #cf1322; font-weight: 600; }
-.head-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14rpx; }
-.i-status { font-size: 24rpx; color: #ff6b00; }
-.i-time { font-size: 22rpx; color: #aaa; }
-
-.sec-title { display: block; font-size: 28rpx; font-weight: 600; color: #333; margin-bottom: 14rpx; }
-.body-text { display: block; font-size: 27rpx; color: #333; line-height: 1.7; white-space: pre-wrap; }
-.body-text.evidence { color: #165DFF; word-break: break-all; margin-bottom: 6rpx; }
-.resp-text { display: block; font-size: 28rpx; color: #222; font-weight: 600; }
-.resp-text.pending { color: #999; font-weight: 400; }
-.resp-hint { display: block; margin-top: 10rpx; font-size: 23rpx; color: #aaa; line-height: 1.6; }
-
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 120rpx; }
-.empty-text { margin-top: 20rpx; font-size: 27rpx; color: #999; }
+.detail-page { min-height: 100vh; background: #F4F7FB; display: flex; flex-direction: column; }
+.scroll-content { flex: 1; padding: 22rpx 28rpx; box-sizing: border-box; }
+.card { background: #FFFFFF; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx; border: 1rpx solid #E5EAF2; }
+.head-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18rpx; border-bottom: 1rpx solid #F1F5F9; margin-bottom: 12rpx; }
+.i-no { font-size: 31rpx; font-weight: 700; color: #0F172A; }
+.i-sev { font-size: 23rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 8rpx; background: #F1F5F9; color: #475569; }
+.i-sev.severe, .i-sev.critical { background: #FEF2F2; color: #DC2626; }
+.kv-row { display: flex; justify-content: space-between; gap: 20rpx; padding: 10rpx 0; font-size: 25rpx; }
+.kk { color: #64748B; }
+.kv { color: #0F172A; font-weight: 500; text-align: right; }
+.kv.highlight { color: #165DFF; font-weight: 600; }
+.sec-title { display: block; font-size: 28rpx; font-weight: 600; color: #0F172A; margin-bottom: 14rpx; }
+.body-text { display: block; font-size: 27rpx; color: #334155; line-height: 1.65; white-space: pre-wrap; }
+.body-text.evidence { color: #165DFF; word-break: break-all; margin-bottom: 8rpx; }
+.resp-text { display: block; font-size: 28rpx; font-weight: 600; color: #0F172A; }
+.resp-text.pending { color: #64748B; font-weight: 500; }
+.resp-hint { display: block; margin-top: 10rpx; font-size: 23rpx; color: #64748B; line-height: 1.55; }
+.ticket-jump { margin-top: 22rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: #EEF4FF; display: flex; justify-content: center; }
+.tj-text { font-size: 26rpx; font-weight: 600; color: #165DFF; }
 </style>

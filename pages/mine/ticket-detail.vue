@@ -108,13 +108,16 @@
 											<view v-if="isProductAttachment(attachment)" class="message-product-card">
 												<view class="message-product-image">
 													<image v-if="attachment.image" :src="attachment.image" mode="aspectFill"></image>
-													<text v-else>商</text>
+													<text v-else>{{ attachmentBadgeText(attachment) }}</text>
 												</view>
 												<view class="message-product-main">
-													<text class="message-product-kicker">商品咨询 · {{ productKindLabel(attachment.kind) }}</text>
+													<text class="message-product-kicker">{{ attachmentKicker(attachment) }}</text>
 													<text class="message-product-name">{{ attachment.name }}</text>
 													<text class="message-product-meta">
-														<text v-if="attachment.sku">{{ attachment.sku }}</text>
+														<text v-if="attachment.increment_id">#{{ attachment.increment_id }} </text>
+														<text v-if="attachment.sn">SN {{ attachment.sn }} </text>
+														<text v-if="attachment.sku">{{ attachment.sku }} </text>
+														<text v-if="attachment.status_label">{{ attachment.status_label }} </text>
 														<text v-if="attachment.price">¥{{ attachment.price }}</text>
 													</text>
 												</view>
@@ -346,7 +349,19 @@ export default {
 			else uni.redirectTo({ url: '/pages/mine/tickets' })
 		},
 		isProductAttachment(attachment) {
-			return !!(attachment && typeof attachment === 'object' && attachment.type === 'product')
+			return !!(attachment && typeof attachment === 'object' && ['product', 'order', 'device'].includes(attachment.type))
+		},
+		attachmentBadgeText(att) {
+			if (!att) return '卡'
+			if (att.type === 'order') return '单'
+			if (att.type === 'device') return '机'
+			return '商'
+		},
+		attachmentKicker(att) {
+			if (!att) return ''
+			if (att.type === 'order') return '关联交易订单'
+			if (att.type === 'device') return '关联机器设备'
+			return `商品咨询 · ${this.productKindLabel(att.kind)}`
 		},
 		productKindLabel(kind) {
 			return ({ rent: '租赁', buy: '购买', accessory: '配件', skill: '技能' })[kind] || '商品'
@@ -585,13 +600,13 @@ export default {
 
 <style scoped>
 page {
-	background: linear-gradient(180deg, #4291f6 0%, #b3d5ff 100%);
+	background: #F4F7FB;
 	min-height: 100vh;
 	height: 100%;
 	overflow: hidden;
 }
-.page-container { position: relative; z-index: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: radial-gradient(circle at 88% 2%, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 32%), radial-gradient(circle at 6% 16%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 26%), linear-gradient(180deg, #4291f6 0%, #b3d5ff 46%, #eef6ff 100%); }
-.glass { background: rgba(255, 255, 255, 0.58); border: 1rpx solid rgba(255, 255, 255, 0.66); backdrop-filter: blur(20rpx); }
+.page-container { position: relative; z-index: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: linear-gradient(180deg, #102F6E 0%, #174299 280rpx, #F4F7FB 460rpx, #F4F7FB 100%); }
+.glass { background: #FFFFFF; border: 1rpx solid #E5EAF2; }
 
 .nav-area { flex-shrink: 0; padding: calc(80rpx + env(safe-area-inset-top)) 30rpx 12rpx 30rpx; padding: calc(80rpx + constant(safe-area-inset-top)) 30rpx 12rpx 30rpx; }
 .nav-content { display: flex; align-items: flex-start; }

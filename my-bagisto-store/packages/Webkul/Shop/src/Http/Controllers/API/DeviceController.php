@@ -9,7 +9,9 @@ use Webkul\Product\Models\ProductProxy;
 use Webkul\Sales\Models\OrderProxy;
 use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\DeviceBinding;
+use Webkul\Shop\Models\DeviceModel;
 use Webkul\Shop\Models\OperationLog;
+use Webkul\Shop\Models\SkillAsset;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Services\Deploy\DeviceCredentialService;
 use Webkul\Shop\Services\Ops\OperationLogger;
@@ -41,6 +43,61 @@ class DeviceController extends APIController
     public function __construct(protected OperationLogger $oplog) {}
 
     /**
+     * GET /api/device-models —— 平台标准机器人机型字典（18 款基线 + 诚实 L1/L2/L3 兼容性分级）。
+     *
+     * 严守红线（ai-project-brief §2.3）：
+     *   - active + 具备可用交付通道 -> L1 可交付（承诺可用通道下发）
+     *   - display_only             -> L3 仅展示（不承诺开箱即用、不发售）
+     */
+    public function models(): JsonResponse
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('device_model')) {
+            return response()->json(['data' => []]);
+        }
+
+        $rows = DeviceModel::query()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => $rows->map(function (DeviceModel $m) {
+                $channels = is_array($m->comm_channels) ? $m->comm_channels : [];
+                $isActive = $m->status === DeviceModel::STATUS_ACTIVE;
+                $hasAgent = in_array(SkillAsset::DELIVERY_AGENT, $channels, true);
+                $hasManual = in_array(SkillAsset::DELIVERY_MANUAL, $channels, true) || $channels !== [];
+
+                if (! $isActive) {
+                    $tier = 'L3';
+                    $tierLabel = 'L3 仅展示';
+                } elseif ($hasAgent || $hasManual) {
+                    $tier = 'L1';
+                    $tierLabel = 'L1 可交付';
+                } else {
+                    $tier = 'L2';
+                    $tierLabel = 'L2 可适配';
+                }
+
+                return [
+                    'id'                 => $m->id,
+                    'brand'              => $m->brand,
+                    'model_code'         => $m->model_code,
+                    'model_name'         => $m->model_name,
+                    'vendor_code'        => $m->vendor_code,
+                    'degrees_of_freedom' => $m->degrees_of_freedom,
+                    'compute_platform'   => $m->compute_platform,
+                    'comm_channels'      => $channels,
+                    'status'              => $m->status,
+                    'support_level'       => $tier,
+                    'support_level_label' => $tierLabel,
+                    'compatibility_tier'  => $tier,
+                    'compatibility_label' => $tierLabel,
+                ];
+            })->values(),
+        ]);
+    }
+
+    /**
      * 我的设备列表,每台带上已获得的技能。
      */
     public function index(): JsonResponse
@@ -70,9 +127,10 @@ class DeviceController extends APIController
         $customer = auth()->guard('customer')->user();
 
         $payload = $request->validate([
-            'sn'           => ['required', 'string', 'max:64'],
-            'product_id'   => ['nullable', 'integer'],
-            'display_name' => ['nullable', 'string', 'max:191'],
+            'sn'            => ['required', 'string', 'max:64'],
+            'product_id'    => ['nullable', 'integer'],
+            'model_id'      => ['nullable', 'integer'],
+            'display_name'  => ['nullable', 'string', 'max:191'],
             // B-19:一机一码(工信部编码)。可选 —— 拿到就录,拿不到不拦登记。
             'national_code' => ['nullable', 'string', 'max:40'],
         ]);
@@ -122,7 +180,13 @@ class DeviceController extends APIController
         // ⚠ 吞异常:这只是"补建绑定",失败不应影响"登记设备"这条主链路
         //   (与 Listeners/SkillDelivery 同样的防御姿态)。
         try {
-            app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)->ensureForDevice($device, $nationalCode);
+            $binding = app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)->ensureForDevice($device, $nationalCode);
+            if ($binding && ! empty($payload['model_id']) && \Illuminate\Support\Facades\Schema::hasTable('device_model')) {
+                if (DeviceModel::query()->whereKey((int) $payload['model_id'])->exists()) {
+                    $binding->model_id = (int) $payload['model_id'];
+                    $binding->save();
+                }
+            }
         } catch (\Throwable $e) {
             report($e);
         }
@@ -168,8 +232,9 @@ class DeviceController extends APIController
         }
 
         $payload = $request->validate([
-            'product_id'   => ['nullable', 'integer'],
-            'display_name' => ['nullable', 'string', 'max:191'],
+            'product_id'    => ['nullable', 'integer'],
+            'model_id'      => ['nullable', 'integer'],
+            'display_name'  => ['nullable', 'string', 'max:191'],
             // B-19:补录一机一码(登记时漏填的,这里可补)
             'national_code' => ['nullable', 'string', 'max:40'],
         ]);
@@ -209,10 +274,19 @@ class DeviceController extends APIController
 
         $device->save();
 
-        if ($hasNationalInput) {
+        $hasModelInput = array_key_exists('model_id', $payload);
+        if ($hasNationalInput || $hasModelInput) {
             $binding = app(\Webkul\Shop\Services\SkillDelivery\DeviceBindingService::class)->ensureForDevice($device);
             if ($binding) {
-                $binding->national_code = $nationalCode;
+                if ($hasNationalInput) {
+                    $binding->national_code = $nationalCode;
+                }
+                if ($hasModelInput) {
+                    $mid = $payload['model_id'] ? (int) $payload['model_id'] : null;
+                    $binding->model_id = ($mid && \Illuminate\Support\Facades\Schema::hasTable('device_model') && DeviceModel::query()->whereKey($mid)->exists())
+                        ? $mid
+                        : null;
+                }
                 $binding->save();
             }
         }
@@ -529,34 +603,41 @@ class DeviceController extends APIController
      */
     protected function format(Device $device): array
     {
-        // Agent 配对/在线态的唯一真相源是 device_binding(不在这里做写操作)
         $binding = $device->binding_id
             ? DeviceBinding::find($device->binding_id)
             : DeviceBinding::query()->where('devices_id', $device->id)->first();
 
+        $deviceModel = ($binding && $binding->model_id && \Illuminate\Support\Facades\Schema::hasTable('device_model'))
+            ? DeviceModel::find($binding->model_id)
+            : null;
+
+        $meta = is_array($binding?->meta) ? $binding->meta : [];
+        $hasCredential = ! empty($meta['agent_credential']) && empty($meta['agent_credential']['revoked_at']);
+
         return [
-            'id'            => $device->id,
-            'sn'            => $device->sn,
-            'display_name'  => $device->display_name,
-            'bind_status'   => $device->bind_status,
-            // 一机一码(B-19)。存在真相源 device_binding 上,不在 devices(登记视图)上。
-            // ⚠ 平台无法核验其真伪 —— 只是"用户录了且未与其它设备重复",别读成"已核验"。
-            'national_code' => $binding?->national_code,
-            // ⚠ 核验状态必须透出:平台无法验证这台机器真实存在,
-            //   界面要如实标注「未核验」,不能让用户以为平台已经连上了他的机器人
-            'verify_status' => $device->verify_status,
-            'verify_label'  => $device->verifyLabel(),
-            'verified_via'  => $device->verified_via,
-            'verified_at'   => optional($device->verified_at)->toDateTimeString(),
-            'bound_at'      => optional($device->bound_at)->toDateTimeString(),
-            // Agent 已配对 = 这台机器真跑起过 Agent(与"已核验"是两回事)
-            'agent_paired'  => (bool) ($binding && $binding->source === DeviceBinding::SOURCE_AGENT),
-            // ⚠ 在线是**读时判断**(最近一次心跳在 90 秒窗口内),不是读 online_status 列 ——
-            //   那一列只有写入 true，从没写过 false，断线后会永远显示"在线"。
-            //   详见 DeviceBinding 的类注释。
-            'agent_online'   => (bool) $binding?->isOnlineNow(),
-            'last_online_at' => optional($binding?->last_online_at)->toDateTimeString(),
-            'product'        => $device->product ? [
+            'id'                   => $device->id,
+            'sn'                   => $device->sn,
+            'display_name'         => $device->display_name,
+            'bind_status'          => $device->bind_status,
+            'national_code'        => $binding?->national_code,
+            'verify_status'        => $device->verify_status,
+            'verify_label'         => $device->verifyLabel(),
+            'verified_via'         => $device->verified_via,
+            'verified_at'          => optional($device->verified_at)->toDateTimeString(),
+            'bound_at'             => optional($device->bound_at)->toDateTimeString(),
+            'agent_paired'         => (bool) ($binding && $binding->source === DeviceBinding::SOURCE_AGENT),
+            'has_agent_credential' => $hasCredential,
+            'agent_online'         => (bool) $binding?->isOnlineNow(),
+            'last_online_at'       => optional($binding?->last_online_at)->toDateTimeString(),
+            'model_id'             => $binding?->model_id ? (int) $binding->model_id : null,
+            'device_model'         => $deviceModel ? [
+                'id'         => $deviceModel->id,
+                'brand'      => $deviceModel->brand,
+                'model_code' => $deviceModel->model_code,
+                'model_name' => $deviceModel->model_name,
+                'status'     => $deviceModel->status,
+            ] : null,
+            'product'              => $device->product ? [
                 'id'   => $device->product->id,
                 'name' => $device->product->name,
             ] : null,

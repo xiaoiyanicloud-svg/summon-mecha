@@ -170,6 +170,62 @@
       }
     },
     {
+      "path": "pages/mine/profile",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "账户与企业资料",
+        "backgroundColor": "#F4F7FB"
+      }
+    },
+    {
+      "path": "pages/mine/address",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "收货地址",
+        "backgroundColor": "#F4F7FB"
+      }
+    },
+    {
+      "path": "pages/mine/invoices",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "发票与抬头簿",
+        "backgroundColor": "#F4F7FB"
+      }
+    },
+    {
+      "path": "pages/mine/cooperate",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "生态合作申请",
+        "backgroundColor": "#F4F7FB"
+      }
+    },
+    {
+      "path": "pages/mine/supplier",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "供应链入驻",
+        "backgroundColor": "#F4F7FB"
+      }
+    },
+    {
+      "path": "pages/mine/portal-hub",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "业务工作台",
+        "backgroundColor": "#F4F7FB"
+      }
+    },
+    {
+      "path": "pages/mine/settings",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "账户与安全设置",
+        "backgroundColor": "#F4F7FB"
+      }
+    },
+    {
       "path": "pages/ecosystem/events",
       "style": {
         "navigationStyle": "custom",

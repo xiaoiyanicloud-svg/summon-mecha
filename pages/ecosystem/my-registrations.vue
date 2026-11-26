@@ -6,6 +6,13 @@
       <view class="nav-side"></view>
     </view>
 
+    <view v-if="hasToken" class="comp-bar">
+      <view class="comp-pill" role="button" tabindex="0" @click="goSub('/pages/ecosystem/competition-team')">组队参赛</view>
+      <view class="comp-pill" role="button" tabindex="0" @click="goSub('/pages/ecosystem/competition-submission')">作品提交</view>
+      <view class="comp-pill" role="button" tabindex="0" @click="goSub('/pages/ecosystem/competition-showcase')">展示授权</view>
+      <view class="comp-pill" role="button" tabindex="0" @click="goSub('/pages/ecosystem/events')">赛事大厅</view>
+    </view>
+
     <view v-if="!hasToken" class="panel login-needed">
       <text class="panel-title">请先登录</text>
       <text class="hint">登录后可查看本人报名、回执、取消/重报、变更确认与入场凭证。</text>
@@ -118,6 +125,9 @@ export default {
     },
     goLogin() {
       uni.switchTab({ url: '/pages/mine/index' })
+    },
+    goSub(url) {
+      uni.navigateTo({ url })
     },
     statusLabel(status) {
       const labels = {
@@ -253,7 +263,9 @@ export default {
 
 <style scoped>
 .eco-page { min-height: 100vh; background: #f5f7fb; color: #102f6e; }
-.eco-nav { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx; background: #fff; border-bottom: 1rpx solid #e6ecf7; }
+.eco-nav { display: flex; align-items: center; justify-content: space-between; padding: calc(24rpx + env(safe-area-inset-top)) 28rpx 24rpx; background: #fff; border-bottom: 1rpx solid #e6ecf7; }
+.comp-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; padding: 18rpx 24rpx 0; }
+.comp-pill { text-align: center; padding: 14rpx 8rpx; border-radius: 14rpx; background: #ffffff; border: 1rpx solid #dce5f5; font-size: 24rpx; font-weight: 600; color: #165dff; }
 .nav-back { width: 64rpx; font-size: 44rpx; line-height: 1; color: #102f6e; }
 .nav-title { font-size: 32rpx; font-weight: 700; }
 .nav-side { width: 64rpx; }

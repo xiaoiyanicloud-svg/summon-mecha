@@ -431,24 +431,254 @@ class PortalBackendRegistryService
             return false;
         }
 
-        $hasInviteVerified = Schema::hasColumn('cooperation_applications', 'invite_verified');
-        $hasIssuedCode = Schema::hasColumn('cooperation_applications', 'issued_invite_code');
-
-        return CooperationApplication::query()
+        $apps = CooperationApplication::query()
             ->where('customer_id', $customer->id)
             ->whereIn('coop_type', [
                 CooperationApplication::TYPE_SUPPLIER_INVITE,
                 CooperationApplication::TYPE_MANUFACTURER,
             ])
-            ->where(function ($q) use ($hasInviteVerified, $hasIssuedCode) {
-                $q->where('status', CooperationApplication::STATUS_APPROVED);
-                if ($hasInviteVerified) {
-                    $q->orWhere('invite_verified', true);
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get(['status', 'meta']);
+
+        foreach ($apps as $app) {
+            if ($app->status === CooperationApplication::STATUS_APPROVED) {
+                return true;
+            }
+            $meta = is_array($app->meta) ? $app->meta : [];
+            if (! empty($meta['invite_verified']) || ! empty($meta['issued_invite_code'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 签发 45 秒单次有效的跨端免登交换票据（App/H5 Sanctum Token -> /merchant 或 /dev Web Session）。
+     *
+     * @return array{ok: bool, code?: string, message?: string, ticket?: string, expires_in?: int, sso_url?: string}
+     */
+    public function issueHandoffTicket(
+        Customer $customer,
+        string $backendCode,
+        ?string $redirectPath = null,
+        ?Request $request = null,
+    ): array {
+        $items = collect($this->listForCustomer($customer))->keyBy('code');
+        $target = $items->get($backendCode);
+
+        if (! $target) {
+            return ['ok' => false, 'code' => 'NOT_FOUND', 'message' => '目标工作台不存在。'];
+        }
+
+        if (! ($target['canEnter'] ?? false)) {
+            return [
+                'ok'      => false,
+                'code'    => 'FORBIDDEN',
+                'message' => (string) ($target['disabledReason'] ?? '当前账号暂无该工作台访问权限。'),
+            ];
+        }
+
+        if (! Schema::hasTable('portal_handoff_tickets')) {
+            return ['ok' => false, 'code' => 'SERVICE_UNAVAILABLE', 'message' => '免登票据服务尚未完成迁移初始化。'];
+        }
+
+        $plainTicket = bin2hex(random_bytes(32));
+        $ticketHash = hash('sha256', $plainTicket);
+        $ttlSeconds = 45;
+
+        // 仅允许站内相对路径跳转，严防 Open Redirect
+        $safeRedirect = null;
+        if ($redirectPath !== null && trim($redirectPath) !== '') {
+            $candidate = trim($redirectPath);
+            if (str_starts_with($candidate, '/') && ! str_starts_with($candidate, '//')) {
+                $safeRedirect = mb_substr($candidate, 0, 255);
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::table('portal_handoff_tickets')->insert([
+            'ticket_hash'   => $ticketHash,
+            'customer_id'   => $customer->id,
+            'backend_code'  => $backendCode,
+            'redirect_path' => $safeRedirect,
+            'issued_ip'     => $request?->ip(),
+            'expires_at'    => now()->addSeconds($ttlSeconds),
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        $ssoRoute = match ($backendCode) {
+            'merchant_admin'  => '/'.(trim((string) config('portal_backends.merchant_prefix', 'merchant'), '/') ?: 'merchant').'/sso',
+            'developer_skill' => '/'.(trim((string) config('developer_portal.prefix', 'dev'), '/') ?: 'dev').'/sso',
+            default           => rtrim((string) $target['routeUrl'], '/').'/sso',
+        };
+
+        $ssoUrl = url($ssoRoute).'?ticket='.urlencode($plainTicket);
+
+        $this->ops->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'portal.handoff.issued',
+            'portal_backend',
+            null,
+            ['backend_code' => $backendCode, 'expires_in' => $ttlSeconds],
+            $request?->ip()
+        );
+
+        return [
+            'ok'         => true,
+            'ticket'     => $plainTicket,
+            'expires_in' => $ttlSeconds,
+            'sso_url'    => $ssoUrl,
+        ];
+    }
+
+    /**
+     * 原子核销单次免登票据（防重放：WHERE consumed_at IS NULL 行级原子更新）。
+     *
+     * @return array{customer: ?Customer, redirect_path: ?string}
+     */
+    public function consumeHandoffTicket(string $plainTicket, string $expectedBackendCode, ?Request $request = null): array
+    {
+        if (strlen($plainTicket) < 32 || ! Schema::hasTable('portal_handoff_tickets')) {
+            return ['customer' => null, 'redirect_path' => null];
+        }
+
+        $ticketHash = hash('sha256', $plainTicket);
+
+        $row = \Illuminate\Support\Facades\DB::transaction(function () use ($ticketHash, $expectedBackendCode, $request) {
+            $record = \Illuminate\Support\Facades\DB::table('portal_handoff_tickets')
+                ->where('ticket_hash', $ticketHash)
+                ->where('backend_code', $expectedBackendCode)
+                ->whereNull('consumed_at')
+                ->where('expires_at', '>', now())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $record) {
+                return null;
+            }
+
+            $affected = \Illuminate\Support\Facades\DB::table('portal_handoff_tickets')
+                ->where('id', $record->id)
+                ->whereNull('consumed_at')
+                ->update([
+                    'consumed_at' => now(),
+                    'consumed_ip' => $request?->ip(),
+                    'updated_at'  => now(),
+                ]);
+
+            return $affected === 1 ? $record : null;
+        });
+
+        if (! $row) {
+            return ['customer' => null, 'redirect_path' => null];
+        }
+
+        /** @var Customer|null $customer */
+        $customer = Customer::query()->find((int) $row->customer_id);
+        if (! $customer || (isset($customer->status) && ! $customer->status)) {
+            return ['customer' => null, 'redirect_path' => null];
+        }
+
+        $this->ops->log(
+            OperationLog::ACTOR_CUSTOMER,
+            $customer->id,
+            'portal.handoff.consumed',
+            'portal_backend',
+            null,
+            ['backend_code' => $expectedBackendCode],
+            $request?->ip()
+        );
+
+        return [
+            'customer'      => $customer,
+            'redirect_path' => $row->redirect_path ? (string) $row->redirect_path : null,
+        ];
+    }
+
+    /**
+     * 面向小程序 / 移动端的原生轻量工作台概览（只读汇总商家经营待办与开发者技能供给状态）。
+     */
+    public function mobileWorkbenchSummary(Customer $customer): array
+    {
+        $backends = $this->listForCustomer($customer);
+
+        $merchantSummary = ['eligible' => false, 'has_shop' => false];
+        $merchantCheck = $this->checkMerchantPortalAccess($customer);
+        if ($merchantCheck['ok']) {
+            $merchantSummary['eligible'] = true;
+            $merchantSummary['onboarding_required'] = $merchantCheck['onboarding_required'];
+
+            if (! $merchantCheck['onboarding_required'] && Schema::hasTable('merchant_shops')) {
+                $tenantService = app(MerchantTenantService::class);
+                $ctx = $tenantService->resolveContext((int) $customer->id);
+                if ($ctx['active_shop']) {
+                    $shop = $ctx['active_shop'];
+                    $metrics = $tenantService->dashboardMetrics($shop);
+                    $merchantSummary = [
+                        'eligible'            => true,
+                        'has_shop'            => true,
+                        'onboarding_required' => false,
+                        'shop_name'           => $shop->shop_name,
+                        'shop_code'           => $shop->shop_code,
+                        'role_code'           => $ctx['active_member']?->role_code,
+                        'kpis'                => [
+                            'gmv'                => $metrics['gmv']['value'] ?? '0.00',
+                            'net_sales'          => $metrics['net_sales']['value'] ?? '0.00',
+                            'deposit_in_custody' => $metrics['deposit_in_custody']['value'] ?? '0.00',
+                            'on_shelf_products'  => $metrics['on_shelf_products']['value'] ?? 0,
+                        ],
+                        'todos'               => [
+                            'pending_shipment'   => $metrics['todo_pending_shipment']['value'] ?? 0,
+                            'pending_inspection' => $metrics['todo_pending_inspection']['value'] ?? 0,
+                            'expiring_rentals'   => $metrics['todo_expiring_rentals']['value'] ?? 0,
+                            'open_tickets'       => $metrics['todo_open_tickets']['value'] ?? 0,
+                            'low_stock_alerts'   => $metrics['low_stock_alerts']['value'] ?? 0,
+                        ],
+                    ];
                 }
-                if ($hasIssuedCode) {
-                    $q->orWhereNotNull('issued_invite_code');
+            }
+        }
+
+        $devSummary = ['has_profile' => false];
+        if (Schema::hasTable('developer_profile')) {
+            $dp = DeveloperProfile::query()->where('customer_id', $customer->id)->first();
+            if ($dp) {
+                $skillsCount = 0;
+                $publishedVersions = 0;
+                // 严守 seller_id 非空守卫（见 Dev\PortalController 注释：绝不把 null 查成平台自营）
+                if ($dp->seller_id) {
+                    $productIds = \Illuminate\Support\Facades\DB::table('products')
+                        ->where('seller_id', $dp->seller_id)
+                        ->pluck('id')
+                        ->all();
+                    $skillsCount = count($productIds);
+                    if ($productIds !== [] && Schema::hasTable('skill_versions')) {
+                        $publishedVersions = \Illuminate\Support\Facades\DB::table('skill_versions')
+                            ->whereIn('product_id', $productIds)
+                            ->where('status', 'published')
+                            ->count();
+                    }
                 }
-            })
-            ->exists();
+
+                $devSummary = [
+                    'has_profile'       => true,
+                    'active'            => $dp->isActive(),
+                    'dev_type'          => $dp->dev_type,
+                    'realname_status'   => $dp->realname_status,
+                    'agreements_signed' => $dp->hasSignedAllAgreements(),
+                    'skills_count'      => $skillsCount,
+                    'published_count'   => $publishedVersions,
+                ];
+            }
+        }
+
+        return [
+            'backends'  => $backends,
+            'merchant'  => $merchantSummary,
+            'developer' => $devSummary,
+        ];
     }
 }

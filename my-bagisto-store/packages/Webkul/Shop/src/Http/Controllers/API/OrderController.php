@@ -299,6 +299,35 @@ class OrderController extends APIController
                     $data['timeline'] = $timeline;
                 }
             }
+
+            // 非商家单（如技能单、自营单）基于订单自身真实时间戳输出客观节点，不伪造未发生节点
+            if (empty($data['timeline'])) {
+                $timeline = [
+                    ['title' => '订单已提交', 'time' => $order->created_at->format('Y-m-d H:i:s'), 'done' => true],
+                ];
+                if (in_array($order->status, [Order::STATUS_PROCESSING, Order::STATUS_COMPLETED, Order::STATUS_CLOSED], true)) {
+                    $timeline[] = [
+                        'title' => $order->order_type === 'skill' ? '款项确认并已发放技能授权' : '订单已确认进入处理',
+                        'time'  => $order->updated_at ? $order->updated_at->format('Y-m-d H:i:s') : $order->created_at->format('Y-m-d H:i:s'),
+                        'done'  => true,
+                    ];
+                }
+                if (in_array($order->status, [Order::STATUS_COMPLETED, Order::STATUS_CLOSED], true)) {
+                    $timeline[] = [
+                        'title' => '订单已完成',
+                        'time'  => $order->updated_at ? $order->updated_at->format('Y-m-d H:i:s') : '',
+                        'done'  => true,
+                    ];
+                } elseif ($order->status === Order::STATUS_CANCELED) {
+                    $timeline[] = [
+                        'title' => '订单已取消',
+                        'time'  => $order->updated_at ? $order->updated_at->format('Y-m-d H:i:s') : '',
+                        'done'  => true,
+                    ];
+                }
+                $timeline[count($timeline) - 1]['isLast'] = true;
+                $data['timeline'] = $timeline;
+            }
         }
 
         return $data;

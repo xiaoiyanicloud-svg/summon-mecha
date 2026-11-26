@@ -353,7 +353,7 @@ class CatalogBrandService
     /** 给商品列表批量补充真实销量（已开票 - 已退款，排除取消订单），供「销量优先」排序使用。 */
     public function attachSalesCounts($products): void
     {
-        $items = method_exists($products, 'getCollection') ? $products->getCollection() : collect($products);
+        $items = (is_object($products) && method_exists($products, 'getCollection')) ? $products->getCollection() : collect($products);
         $ids = $items->pluck('id')->filter()->map(fn ($id) => (int) $id)->values()->all();
 
         if ($ids === [] || ! Schema::hasTable('order_items') || ! Schema::hasTable('orders')) {
@@ -382,7 +382,7 @@ class CatalogBrandService
      */
     public function attachCatalogMeta($products): void
     {
-        $items = method_exists($products, 'getCollection') ? $products->getCollection() : collect($products);
+        $items = (is_object($products) && method_exists($products, 'getCollection')) ? $products->getCollection() : collect($products);
         if ($items->isEmpty()) {
             return;
         }

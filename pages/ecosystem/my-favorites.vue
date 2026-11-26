@@ -30,6 +30,16 @@
       >商品</text>
     </view>
 
+    <view v-if="tab === 'product' && items.length > 0" class="kind-filter-bar">
+      <text
+        v-for="kf in productKindFilters"
+        :key="kf.key"
+        class="kf-pill"
+        :class="{ on: productKind === kf.key }"
+        @click="productKind = kf.key"
+      >{{ kf.label }}</text>
+    </view>
+
     <state-view
       :loading="loading"
       :error="errorMessage"
@@ -44,7 +54,7 @@
     >
       <view class="list">
         <view
-          v-for="item in items"
+          v-for="item in displayedItems"
           :key="item.type + '-' + item.key"
           class="fav-card"
           role="button"
@@ -94,6 +104,14 @@ export default {
   data() {
     return {
       tab: 'event',
+      productKind: 'all',
+      productKindFilters: [
+        { key: 'all', label: '全部' },
+        { key: 'rent', label: '租赁' },
+        { key: 'buy', label: '购买' },
+        { key: 'accessory', label: '配件' },
+        { key: 'skill', label: '技能' },
+      ],
       items: [],
       loading: false,
       loadingMore: false,
@@ -106,6 +124,10 @@ export default {
     }
   },
   computed: {
+    displayedItems() {
+      if (this.tab !== 'product' || this.productKind === 'all') return this.items
+      return this.items.filter((x) => x.catalog_type === this.productKind)
+    },
     emptyHint() {
       if (this.tab === 'product') return '在商品详情页点「收藏」后会出现在这里。'
       return this.tab === 'event'
@@ -113,7 +135,10 @@ export default {
         : '在资讯详情页点「收藏」后会出现在这里。'
     },
   },
-  onLoad() {
+  onLoad(options) {
+    if (options && ['event', 'content', 'product'].includes(options.tab)) {
+      this.tab = options.tab
+    }
     this.reload()
   },
   onPullDownRefresh() {
@@ -310,6 +335,9 @@ export default {
   background: #F5F7FB; color: #4B5563; font-size: 26rpx;
 }
 .tab.on { background: #165DFF; color: #FFFFFF; font-weight: 600; }
+.kind-filter-bar { display: flex; gap: 12rpx; padding: 16rpx 24rpx 0; flex-wrap: wrap; }
+.kf-pill { font-size: 23rpx; padding: 8rpx 22rpx; border-radius: 999rpx; background: #FFFFFF; border: 1rpx solid #DCE5F5; color: #475569; }
+.kf-pill.on { background: #EEF4FF; border-color: #165DFF; color: #165DFF; font-weight: 600; }
 .tab:focus-visible { outline: 3rpx solid #102F6E; }
 .list { padding: 24rpx; display: flex; flex-direction: column; gap: 18rpx; }
 .fav-card {

@@ -180,6 +180,50 @@ class DeployController extends APIController
     }
 
     /**
+     * GET /api/deploy/tasks —— 当前用户名下设备的下发/卸载/回退任务记录（最新 50 条）。
+     */
+    public function tasks(Request $request): JsonResponse
+    {
+        $customer = auth()->guard('customer')->user();
+
+        $bindings = DeviceBinding::query()
+            ->where('owner_customer_id', $customer->id)
+            ->get(['did', 'sn']);
+
+        if ($bindings->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+
+        $snByDid = $bindings->pluck('sn', 'did');
+        $dids = $bindings->pluck('did')->filter()->values()->all();
+
+        $query = DeployTask::query()->whereIn('did', $dids);
+        if ($request->filled('status')) {
+            $query->where('status', (string) $request->query('status'));
+        }
+
+        $tasks = $query->orderByDesc('id')->limit(50)->get();
+
+        $skillIds = $tasks->pluck('skill_id')->filter()->unique()->values()->all();
+        $skillNames = $skillIds !== []
+            ? \Webkul\Product\Models\ProductProxy::modelClass()::query()
+                ->whereIn('id', $skillIds)
+                ->get()
+                ->mapWithKeys(fn ($p) => [$p->id => $p->name])
+            : collect();
+
+        return response()->json([
+            'data' => $tasks->map(function (DeployTask $task) use ($snByDid, $skillNames) {
+                $row = $this->format($task);
+                $row['device_sn'] = $snByDid[$task->did] ?? null;
+                $row['skill_name'] = $skillNames[$task->skill_id] ?? ('技能 #'.$task->skill_id);
+
+                return $row;
+            })->values(),
+        ]);
+    }
+
+    /**
      * 某设备已安装的技能(install_record)。
      */
     public function installs(int $deviceId): JsonResponse
@@ -192,16 +236,27 @@ class DeployController extends APIController
             return $this->fail(ApiErrorCode::DEVICE_NOT_FOUND, '设备不存在。', 404);
         }
 
-        $rows = InstallRecord::query()->where('did', $binding->did)->get();
+        $rows = InstallRecord::query()->where('did', $binding->did)->orderByDesc('installed_at')->get();
+        $versionIds = $rows->pluck('skill_version_id')->filter()->unique()->values()->all();
+        $versions = $versionIds !== []
+            ? SkillVersion::query()->whereIn('id', $versionIds)->with('product')->get()->keyBy('id')
+            : collect();
 
         return response()->json([
-            'data' => $rows->map(fn (InstallRecord $r) => [
-                'id'               => $r->id,
-                'skill_version_id' => $r->skill_version_id,
-                'status'           => $r->status,
-                'current_version'  => $r->current_version,
-                'installed_at'     => optional($r->installed_at)->toDateTimeString(),
-            ])->values(),
+            'data' => $rows->map(function (InstallRecord $r) use ($versions) {
+                $ver = $versions->get($r->skill_version_id);
+
+                return [
+                    'id'               => $r->id,
+                    'skill_version_id' => $r->skill_version_id,
+                    'skill_id'         => $ver?->product_id,
+                    'skill_name'       => $ver?->product?->name ?: ('版本 #'.$r->skill_version_id),
+                    'status'           => $r->status,
+                    'channel'          => $r->channel ?? null,
+                    'current_version'  => $r->current_version ?: $ver?->version,
+                    'installed_at'     => optional($r->installed_at)->toDateTimeString(),
+                ];
+            })->values(),
         ]);
     }
 
@@ -262,16 +317,26 @@ class DeployController extends APIController
 
     protected function format(DeployTask $task): array
     {
+        $opLabels = [
+            1 => '安装技能',
+            2 => '卸载技能',
+            3 => '回退版本',
+            4 => '启用技能',
+            5 => '停用技能',
+            6 => '试用回收',
+        ];
+
         return [
-            'task_no'   => $task->task_no,
-            'did'       => $task->did,
-            'operation' => $task->operation,
-            'status'    => $task->status,
-            'skill_id'  => $task->skill_id,
-            'error_code' => $task->error_code,
-            'error_msg'  => $task->error_msg,
-            'created_at' => optional($task->created_at)->toDateTimeString(),
-            'completed_at' => optional($task->completed_at)->toDateTimeString(),
+            'task_no'         => $task->task_no,
+            'did'             => $task->did,
+            'operation'       => $task->operation,
+            'operation_label' => $opLabels[(int) $task->operation] ?? ('操作 #'.$task->operation),
+            'status'          => $task->status,
+            'skill_id'        => $task->skill_id,
+            'error_code'      => $task->error_code,
+            'error_msg'       => $task->error_msg,
+            'created_at'      => optional($task->created_at)->toDateTimeString(),
+            'completed_at'    => optional($task->completed_at)->toDateTimeString(),
         ];
     }
 }

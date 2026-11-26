@@ -101,6 +101,9 @@ Route::group(['prefix' => 'api'], function () {
             ->name('shop.api.cms.pages.show');
     });
 
+    Route::get('cms/compliance-filings', [CmsPageController::class, 'complianceFilings'])
+        ->name('shop.api.cms.compliance-filings');
+
     Route::controller(ProductController::class)->prefix('products')->group(function () {
         Route::get('', 'index')->name('shop.api.products.index');
 
@@ -353,8 +356,16 @@ Route::group(['prefix' => 'api'], function () {
     Route::controller(CooperationController::class)->prefix('cooperations')->middleware(['api.customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.cooperations.index');
         Route::post('', 'store')->middleware('throttle:write')->name('shop.api.cooperations.store');
+        Route::post('attachments', 'uploadAttachment')->middleware('throttle:write')->name('shop.api.cooperations.attachments.store');
         Route::post('verify-invite', 'verifyInvite')->middleware('throttle:write')->name('shop.api.cooperations.verify_invite');
+        Route::get('{id}', 'show')->whereNumber('id')->name('shop.api.cooperations.show');
+        Route::post('{id}/withdraw', 'withdraw')->whereNumber('id')->middleware('throttle:write')->name('shop.api.cooperations.withdraw');
     });
+
+    // 平台支持的机器本体型号目录（含 L1/L2/L3 诚实适配分级）
+    Route::get('device-models', [DeviceController::class, 'models'])
+        ->middleware(['api.customer'])
+        ->name('shop.api.device-models.index');
 
     /**
      * 技能上传通道 —— 本项目第一个商品写接口。
@@ -436,11 +447,15 @@ Route::group(['prefix' => 'api'], function () {
     });
 
     /**
-     * B-15 · 发票（开票登记，用户侧）。Admin 侧只有只读台账，这里是唯一的用户入口。
+     * B-15 · 发票（开票登记与企业抬头簿，用户侧）。Admin 侧只有只读台账，这里是唯一的用户入口。
      */
     Route::controller(InvoiceController::class)->prefix('invoices')->middleware(['customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.invoices.index');
         Route::post('', 'store')->middleware('throttle:write')->name('shop.api.invoices.store');
+        Route::get('headers', 'headers')->name('shop.api.invoices.headers.index');
+        Route::post('headers', 'storeHeader')->middleware('throttle:write')->name('shop.api.invoices.headers.store');
+        Route::put('headers/{id}', 'updateHeader')->whereNumber('id')->middleware('throttle:write')->name('shop.api.invoices.headers.update');
+        Route::delete('headers/{id}', 'destroyHeader')->whereNumber('id')->middleware('throttle:write')->name('shop.api.invoices.headers.destroy');
     });
 
     /**
@@ -457,12 +472,14 @@ Route::group(['prefix' => 'api'], function () {
     Route::post('callback/payment', [PaymentCallbackController::class, 'handle'])->middleware('throttle:ai')->name('shop.api.callback.payment');
 
     /**
-     * v3.4 步骤 4 · 售后/退款(虚拟商品政策)。
+     * v3.4 步骤 4 · 售后/退款/维保(技能虚拟商品政策 + 租售与配件维保统一入口)。
      */
     Route::controller(AfterSaleController::class)->prefix('after-sale')->middleware(['customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.after-sale.index');
         // X3:写入口挂 write 档(按 customer,30/分);同组 GET 不限流,避免翻页被自己限死
         Route::post('', 'store')->middleware('throttle:write')->name('shop.api.after-sale.store');
+        Route::post('{id}/cancel', 'cancel')->whereNumber('id')->middleware('throttle:write')->name('shop.api.after-sale.cancel');
+        Route::post('{id}/appeal', 'appeal')->whereNumber('id')->middleware('throttle:write')->name('shop.api.after-sale.appeal');
     });
 
     /**
@@ -470,6 +487,7 @@ Route::group(['prefix' => 'api'], function () {
      */
     Route::controller(NotificationController::class)->prefix('notifications')->middleware(['customer'])->group(function () {
         Route::get('', 'index')->name('shop.api.notifications.index');
+        Route::post('read-all', 'markAllRead')->middleware('throttle:write')->name('shop.api.notifications.read-all');
         Route::put('{id}/read', 'markRead')->name('shop.api.notifications.read');
     });
 
@@ -553,6 +571,7 @@ Route::group(['prefix' => 'api'], function () {
      * v3.4 步骤 8 · 下发任务(用户侧)。
      */
     Route::controller(DeployController::class)->prefix('deploy')->middleware(['customer'])->group(function () {
+        Route::get('tasks', 'tasks')->name('shop.api.deploy.tasks.index');
         Route::post('tasks', 'store')->name('shop.api.deploy.store');
         Route::get('tasks/{taskNo}', 'show')->name('shop.api.deploy.show');
         Route::post('tasks/{taskNo}/cancel', 'cancel')->name('shop.api.deploy.cancel');
@@ -691,6 +710,8 @@ Route::group(['prefix' => 'api'], function () {
     Route::controller(PortalBackendController::class)->prefix('portal')->group(function () {
         Route::get('backends', 'index')->name('shop.api.portal.backends.index');
         Route::post('backends/track', 'track')->middleware('throttle:write')->name('shop.api.portal.backends.track');
+        Route::post('handoff-ticket', 'handoffTicket')->middleware(['customer', 'throttle:write'])->name('shop.api.portal.handoff-ticket');
+        Route::get('summary', 'summary')->middleware(['customer'])->name('shop.api.portal.summary');
     });
 
     /**
@@ -755,18 +776,32 @@ Route::group(['prefix' => 'api'], function () {
     });
 
     /**
-     * Login routes.
+     * Login & password recovery routes.
      */
     Route::controller(CustomerController::class)->prefix('customer')->group(function () {
         Route::post('login', 'login')->middleware('throttle:login')->name('shop.api.customers.session.create');
 
         Route::post('register', 'register')->middleware('throttle:login')->name('shop.api.customers.register');
+
+        Route::post('forgot-password', 'forgotPassword')->middleware('throttle:login')->name('shop.api.customers.forgot-password');
+
+        Route::post('reset-password', 'resetPassword')->middleware('throttle:login')->name('shop.api.customers.reset-password');
     });
 
     Route::get('robot-support-matrix', [RobotSupportMatrixController::class, 'index'])->name('shop.api.robot-support-matrix');
 
     Route::group(['middleware' => ['customer'], 'prefix' => 'customer'], function () {
         Route::post('logout', [CustomerController::class, 'logout'])->name('shop.api.customers.logout');
+
+        Route::get('overview', [CustomerController::class, 'overview'])->name('shop.api.customers.overview');
+
+        Route::get('profile', [CustomerController::class, 'profile'])->name('shop.api.customers.profile.show');
+
+        Route::put('profile', [CustomerController::class, 'updateProfile'])->middleware('throttle:write')->name('shop.api.customers.profile.update');
+
+        Route::put('password', [CustomerController::class, 'updatePassword'])->middleware('throttle:write')->name('shop.api.customers.password.update');
+
+        Route::post('deletion-request', [CustomerController::class, 'deletionRequest'])->middleware('throttle:write')->name('shop.api.customers.deletion-request');
 
         Route::controller(AddressController::class)->prefix('addresses')->group(function () {
             Route::get('', 'index')->name('shop.api.customers.account.addresses.index');

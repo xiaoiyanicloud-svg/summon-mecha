@@ -20,6 +20,16 @@ class AfterSale extends Model
 
     public const TYPE_COMPLAINT = 'complaint';
 
+    public const TYPE_REPAIR = 'repair';
+
+    public const TYPE_EXCHANGE = 'exchange';
+
+    public const TYPE_RETURN_REFUND = 'return_refund';
+
+    public const DOMAIN_SKILL = 'skill';
+
+    public const DOMAIN_ORDER = 'order';
+
     public const STATUS_APPLIED = 'applied';
 
     public const STATUS_REVIEWING = 'reviewing';
@@ -30,7 +40,10 @@ class AfterSale extends Model
 
     public const STATUS_REFUNDED = 'refunded';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $fillable = [
+        'target_domain',
         'order_id',
         'order_item_id',
         'entitlement_id',
@@ -40,6 +53,10 @@ class AfterSale extends Model
         'detail',
         'policy_basis',
         'status',
+        'review_note',
+        'appeal_detail',
+        'appealed_at',
+        'cancelled_at',
         'reviewer_id',
         'reviewed_at',
     ];
@@ -51,5 +68,7 @@ class AfterSale extends Model
         'customer_id'    => 'integer',
         'reviewer_id'    => 'integer',
         'reviewed_at'    => 'datetime',
+        'appealed_at'    => 'datetime',
+        'cancelled_at'   => 'datetime',
     ];
 }

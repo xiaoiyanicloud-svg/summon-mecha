@@ -31,6 +31,40 @@ class MerchantPortalController extends Controller
         return view('shop::merchant.login');
     }
 
+    /**
+     * GET /merchant/sso?ticket=... —— 核销 C 端签发的 45 秒单次免登票据并建立商家会话。
+     */
+    public function ssoLogin(Request $request): RedirectResponse
+    {
+        $ticket = trim((string) $request->query('ticket', ''));
+        $consumed = $this->registryService->consumeHandoffTicket($ticket, 'merchant_admin', $request);
+        $customer = $consumed['customer'];
+
+        if (! $customer) {
+            return redirect()->route('shop.merchant.login')
+                ->with('error', '免登凭证已过期或已使用，请登录商家工作台。');
+        }
+
+        auth()->guard('merchant')->login($customer);
+        $request->session()->regenerate();
+
+        $access = $this->registryService->checkMerchantPortalAccess($customer);
+        if (! $access['has_permission']) {
+            return redirect()->route('shop.merchant.dashboard');
+        }
+
+        if (! empty($consumed['redirect_path']) && str_starts_with($consumed['redirect_path'], '/merchant')) {
+            return redirect($consumed['redirect_path']);
+        }
+
+        $context = $this->tenantService->resolveContext((int) $customer->id);
+        if (! $context['active_shop']) {
+            return redirect()->route('shop.merchant.onboarding');
+        }
+
+        return redirect()->route('shop.merchant.dashboard');
+    }
+
     public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([

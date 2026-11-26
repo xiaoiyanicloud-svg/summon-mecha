@@ -181,16 +181,18 @@
 			</template>
 			<template v-else-if="order.status === 'confirm'">
 				<view class="btn-outline" @click="cancelOrder">取消订单</view>
+				<view v-if="order.type !== 'skill'" class="btn-outline" @click="goOrderAfterSale">申请售后</view>
+				<view class="btn-primary" @click="contactService">联系客服</view>
 			</template>
 			<template v-else-if="order.status === 'active'">
 				<view class="btn-outline" @click="extendRent">续租</view>
 				<view class="btn-outline" @click="applyReturn">申请归还</view>
-				<view class="btn-outline" @click="reportRepair">一键报修</view>
-				<view class="btn-outline" @click="viewContract">查看电子合同</view>
+				<view class="btn-outline" @click="goOrderAfterSale">售后维保</view>
 				<view class="btn-primary" @click="contactService">联系服务商</view>
 			</template>
 			<template v-else-if="order.status === 'completed'">
-				<view class="btn-outline" @click="applyInvoice">开发票</view>
+				<view class="btn-outline" @click="applyInvoice">开票登记</view>
+				<view v-if="order.type !== 'skill'" class="btn-outline" @click="goOrderAfterSale">申请售后</view>
 				<view class="btn-outline" @click="evaluate">评价</view>
 				<view class="btn-primary" @click="reorder">再次下单</view>
 			</template>
@@ -199,7 +201,7 @@
 </template>
 
 <script>
-import { orderApi, ticketApi, invoiceApi, reviewApi } from '@/utils/api'
+import { orderApi, ticketApi, invoiceApi, reviewApi, paymentApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
 import StateView from '@/components/StateView.vue'
 import NavBar from '@/components/NavBar.vue'
@@ -433,7 +435,56 @@ import SmIcon from '@/components/SmIcon.vue'
 			goSkills() { uni.navigateTo({ url: '/pages/mine/skills' }); },
 
 			// ===== 按钮交互 =====
-			payOrder() { uni.showToast({ title: '跳转支付', icon: 'none' }) },
+			async payOrder() {
+				const id = this.order && this.order.id
+				if (!id) return
+				if (!uni.getStorageSync(TOKEN_KEY)) {
+					uni.showModal({
+						title: '请先登录',
+						content: '支付订单需要先登录账户，是否前往登录？',
+						confirmText: '去登录',
+						success: (r) => { if (r.confirm) uni.switchTab({ url: '/pages/mine/index' }) },
+					})
+					return
+				}
+				try {
+					const res = await paymentApi.create(id)
+					const data = (res && res.data) || {}
+					const params = data.params || {}
+					if (params.mock && data.out_trade_no) {
+						uni.showModal({
+							title: '沙箱模拟支付确认',
+							content: `当前为联调模拟支付环境（真实微信商户号待配置），单号 ${data.out_trade_no}，应付 ¥${params.amount || this.order.actualAmount}。是否模拟支付回调？`,
+							confirmText: '确认模拟付款',
+							success: async (m) => {
+								if (!m.confirm) return
+								try {
+									await paymentApi.mockCallback({
+										out_trade_no: data.out_trade_no,
+										mock_paid: 1,
+										amount: params.amount,
+									})
+									uni.setStorageSync('orderNeedRefresh', Date.now())
+									uni.showToast({ title: '支付已完成', icon: 'success' })
+									await this.loadOrder(id)
+								} catch (cbErr) {
+									uni.showToast({ title: (cbErr && cbErr.message) || '回调处理失败', icon: 'none' })
+								}
+							},
+						})
+						return
+					}
+					uni.showToast({ title: '支付单已创建，请按终端提示完成付款', icon: 'none' })
+				} catch (e) {
+					uni.showToast({ title: (e && e.message) || '创建支付单失败', icon: 'none' })
+				}
+			},
+
+			goOrderAfterSale() {
+				const id = this.order && this.order.id
+				if (!id) return
+				uni.navigateTo({ url: `/pages/mine/after-sales?orderId=${id}` })
+			},
 
 			// 真实自助取消:仅本人待处理订单(后端校验),成功后刷新状态
 			cancelOrder() {
@@ -555,11 +606,7 @@ import SmIcon from '@/components/SmIcon.vue'
 				const orderId = this.order && this.order.id
 				if (!orderId) { uni.showToast({ title: '暂不可开票', icon: 'none' }); return }
 				if (!this.ensureLoggedIn('开发票')) return
-
-				uni.showActionSheet({
-					itemList: ['个人', '企业'],
-					success: (r) => this.promptInvoiceTitle(r.tapIndex === 1 ? 'company' : 'personal'),
-				})
+				uni.navigateTo({ url: '/pages/mine/invoices' })
 			},
 			promptInvoiceTitle(type) {
 				uni.showModal({

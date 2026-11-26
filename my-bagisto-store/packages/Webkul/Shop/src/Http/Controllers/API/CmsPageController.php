@@ -83,4 +83,62 @@ class CmsPageController extends APIController
             ],
         ]);
     }
+
+    /**
+     * GET /api/cms/compliance-filings —— 公开读取已正式生效的合规备案记录（ICP/算法备案等）。
+     *
+     * 严守诚实纪律：仅返回 status='approved'（或 'active'）且存在真实 filing_no 的记录；
+     * 无真实备案号时返回空数组，前端如实展示合规状态说明，绝不伪造。
+     */
+    public function complianceFilings(): JsonResponse
+    {
+        $honestStatement = '本平台尚未取得 ICP 备案与增值电信业务经营许可等资质，因此暂不展示备案编号；取得真实资质后将在此动态公示。';
+
+        if (! \Illuminate\Support\Facades\Schema::hasTable('compliance_filing')) {
+            return response()->json([
+                'data' => [
+                    'app_name'           => '召唤机甲',
+                    'has_filings'        => false,
+                    'operator_entity'    => null,
+                    'icp_filing_no'      => null,
+                    'edi_license_no'     => null,
+                    'public_security_no' => null,
+                    'items'              => [],
+                    'honest_statement'   => $honestStatement,
+                ],
+            ]);
+        }
+
+        $rows = \Illuminate\Support\Facades\DB::table('compliance_filing')
+            ->whereIn('status', ['approved', 'active'])
+            ->whereNotNull('filing_no')
+            ->where('filing_no', '!=', '')
+            ->orderBy('id')
+            ->get(['filing_type', 'name', 'filing_no', 'authority']);
+
+        $items = $rows->map(fn ($r) => [
+            'filing_type' => (string) $r->filing_type,
+            'name'        => (string) $r->name,
+            'filing_no'   => (string) $r->filing_no,
+            'authority'   => $r->authority ? (string) $r->authority : null,
+        ])->values();
+
+        $byType = [];
+        foreach ($items as $it) {
+            $byType[strtolower($it['filing_type'])] = $it['filing_no'];
+        }
+
+        return response()->json([
+            'data' => [
+                'app_name'           => '召唤机甲',
+                'has_filings'        => $items->isNotEmpty(),
+                'operator_entity'    => $byType['operator_entity'] ?? null,
+                'icp_filing_no'      => $byType['icp'] ?? ($byType['icp_filing'] ?? null),
+                'edi_license_no'     => $byType['edi'] ?? ($byType['edi_license'] ?? null),
+                'public_security_no' => $byType['public_security'] ?? null,
+                'items'              => $items,
+                'honest_statement'   => $honestStatement,
+            ],
+        ]);
+    }
 }

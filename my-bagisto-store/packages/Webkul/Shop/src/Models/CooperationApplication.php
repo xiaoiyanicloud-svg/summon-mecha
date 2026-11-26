@@ -47,20 +47,29 @@ class CooperationApplication extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
+    public const STATUS_WITHDRAWN = 'withdrawn';
+
     public const STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_CONTACTING,
+        self::STATUS_APPROVED,
+        self::STATUS_REJECTED,
+        self::STATUS_WITHDRAWN,
+    ];
+
+    public const ALLOWED_STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_CONTACTING,
         self::STATUS_APPROVED,
         self::STATUS_REJECTED,
     ];
 
-    public const ALLOWED_STATUSES = self::STATUSES;
-
     public const STATUS_LABELS = [
         self::STATUS_PENDING    => '待审核',
         self::STATUS_CONTACTING => '商务跟进中',
         self::STATUS_APPROVED   => '已通过',
         self::STATUS_REJECTED   => '未通过',
+        self::STATUS_WITHDRAWN  => '申请人已撤回',
     ];
 
     public const META_LABELS = [
@@ -76,6 +85,7 @@ class CooperationApplication extends Model
         'level'                    => '意向签约级别',
         'recommender_type'         => '推荐人身份',
         'license_file_name'        => '营业执照附件',
+        'license_uploaded'         => '资质原件归档状态',
         'entry_mode'               => '入驻通道模式',
         'supply_category'          => '供应链类别',
         'supply_items'             => '核心供货清单 / 服务内容',
@@ -146,7 +156,7 @@ class CooperationApplication extends Model
 
         $rows = [];
         foreach ($meta as $k => $v) {
-            if ($v === null || $v === '' || $k === 'issued_invite_id') {
+            if ($v === null || $v === '' || in_array($k, ['issued_invite_id', 'license_disk_path', 'license_sha256'], true)) {
                 continue;
             }
 
@@ -162,6 +172,8 @@ class CooperationApplication extends Model
                 $displayValue = $v === 'apply_code' ? '无码申请供应链邀约' : '持邀请码极速入驻';
             } elseif ($key === 'invite_verified') {
                 $displayValue = filter_var($v, FILTER_VALIDATE_BOOLEAN) ? '已核验有效' : '未核验 / 待人工确认';
+            } elseif ($key === 'license_uploaded') {
+                $displayValue = filter_var($v, FILTER_VALIDATE_BOOLEAN) ? '已上传至平台私密存储' : '仅登记文件名';
             }
 
             $rows[] = [
@@ -177,7 +189,21 @@ class CooperationApplication extends Model
     public function toApiArray(): array
     {
         $meta = is_array($this->meta) ? $this->meta : [];
+        $publicMeta = $meta;
+        unset($publicMeta['license_disk_path'], $publicMeta['license_sha256']);
+
         $followerName = $this->followup_person ?: ($meta['follower_name'] ?? null);
+        $activeCode = $meta['issued_invite_code'] ?? ($meta['invite_code'] ?? null);
+        $targetPortal = in_array($this->coop_type, [self::TYPE_MANUFACTURER, self::TYPE_SUPPLIER_INVITE], true)
+            ? 'merchant'
+            : ($this->coop_type === self::TYPE_RAAS ? 'developer' : 'partner');
+
+        $onboardingUrl = null;
+        if ($targetPortal === 'merchant') {
+            $onboardingUrl = url('/merchant/onboarding' . ($activeCode ? '?code=' . urlencode((string) $activeCode) : ''));
+        } elseif ($targetPortal === 'developer') {
+            $onboardingUrl = url('/dev/join' . ($activeCode ? '?code=' . urlencode((string) $activeCode) : ''));
+        }
 
         return [
             'id'                       => $this->id,
@@ -192,10 +218,15 @@ class CooperationApplication extends Model
             'region'                   => $this->region,
             'coop_direction'           => $this->coop_direction,
             'summary'                  => $this->summary,
-            'meta'                     => $meta,
+            'meta'                     => $publicMeta,
             'invite_code'              => $meta['invite_code'] ?? null,
             'invite_verified'          => (bool) ($meta['invite_verified'] ?? false),
             'invite_note'              => $meta['invite_note'] ?? null,
+            'has_license_attachment'   => ! empty($meta['license_disk_path']),
+            'license_file_name'        => $meta['license_file_name'] ?? null,
+            'target_portal'            => $targetPortal,
+            'onboarding_url'           => $onboardingUrl,
+            'can_withdraw'             => $this->status === self::STATUS_PENDING,
             'follower_name'            => $followerName,
             'followup_person'          => $followerName,
             'follower_contact'         => $meta['follower_contact'] ?? null,
@@ -203,7 +234,6 @@ class CooperationApplication extends Model
             'issued_invite_expires_at' => $meta['issued_invite_expires_at'] ?? null,
             'status'                   => $this->status,
             'status_label'             => self::statusLabel($this->status),
-            'followup_person'          => $this->followup_person,
             'admin_note'               => $this->admin_note,
             'reviewed_at'              => $this->reviewed_at?->format('Y-m-d H:i'),
             'created_at'               => $this->created_at?->format('Y-m-d H:i'),

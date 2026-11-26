@@ -32,6 +32,10 @@ class Invoice extends Model
 
     public const TYPE_COMPANY = 'company';
 
+    public const KIND_ORDINARY = 'ordinary';
+
+    public const KIND_SPECIAL = 'special';
+
     /**
      * 开票状态。
      *
@@ -46,8 +50,15 @@ class Invoice extends Model
         'customer_id',
         'order_ids',
         'type',
+        'invoice_kind',
         'title',
         'tax_no',
+        'receive_email',
+        'receive_phone',
+        'bank_name',
+        'bank_account',
+        'company_address',
+        'company_phone',
         'amount',
         'status',
         'file_path',

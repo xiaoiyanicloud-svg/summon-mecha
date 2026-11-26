@@ -15,6 +15,13 @@ export const authApi = {
   register: (payload) => http.post('/api/customer/register', payload, { loading: true, loadingText: '注册中...' }),
   // 登出：通知后端撤销当前 Sanctum token（即使请求失败，前端也会清本地登录态）
   logout: () => http.post('/api/customer/logout', {}, { loading: false }),
+  overview: () => http.get('/api/customer/overview', { loading: false }),
+  profile: () => http.get('/api/customer/profile', { loading: false }),
+  updateProfile: (data) => http.put('/api/customer/profile', data, { loading: true, loadingText: '保存资料...' }),
+  updatePassword: (data) => http.put('/api/customer/password', data, { loading: true, loadingText: '更新密码...' }),
+  forgotPassword: (email) => http.post('/api/customer/forgot-password', { email }, { loading: true, loadingText: '发送验证码...' }),
+  resetPassword: (data) => http.post('/api/customer/reset-password', data, { loading: true, loadingText: '重置密码...' }),
+  deletionRequest: (data) => http.post('/api/customer/deletion-request', data, { loading: true, loadingText: '提交申请...' }),
 }
 
 // ==================== 商品 ====================
@@ -105,6 +112,8 @@ export const deviceApi = {
   // v3.4 步骤 8:签发一次性 Agent 安装 token(30 分钟、一次性)
   // 返回 { token, expires_at, server_url, command } —— command 是可直接复制的安装命令
   agentToken: (id) => http.post(`/api/devices/${id}/agent-token`, {}, { loading: true, loadingText: '生成中...' }),
+  models: () => http.get('/api/device-models', { loading: false }),
+  revokeAgentCredential: (id) => http.delete(`/api/devices/${id}/agent-credential`, {}, { loading: true, loadingText: '吊销凭据中...' }),
 }
 
 // ==================== 我的技能 ====================
@@ -129,12 +138,19 @@ export const skillApi = {
   // 试用(B-3 · D4):发放 20 分钟在线授权并**直接下发**到该设备。
   // 仅声明了 agent 通道的技能可试用(人工通道 20 分钟后收不回来,后端会拒)。
   trial: (productId, deviceId) => http.post(`/api/skills/${productId}/trial`, { device_id: deviceId }, { loading: true, loadingText: '开通试用中...' }),
+  triggerExecution: (entitlementId, data = {}) => http.post(`/api/skills/entitlements/${entitlementId}/executions`, data, { loading: true, loadingText: '发送指令中...' }),
+  executionStatus: (executionId) => http.get(`/api/skills/executions/${executionId}`, { loading: false }),
+  cancelExecution: (executionId) => http.post(`/api/skills/executions/${executionId}/cancel`, {}, { loading: true, loadingText: '发送急停中...' }),
+  cancelAfterSale: (id) => http.post(`/api/after-sale/${id}/cancel`, {}, { loading: true, loadingText: '撤回中...' }),
+  appealAfterSale: (id, data) => http.post(`/api/after-sale/${id}/appeal`, data, { loading: true, loadingText: '提交申诉中...' }),
+  createReview: (data) => http.post('/api/skill-reviews', data, { loading: true, loadingText: '提交评价...' }),
 }
 
 // ==================== 通知中心(v3.4 步骤 7) ====================
 export const notificationApi = {
-  list: () => http.get('/api/notifications', { loading: false }),
+  list: (params = {}) => http.get('/api/notifications', { data: params, loading: false }),
   markRead: (id) => http.put(`/api/notifications/${id}/read`, {}, { loading: false }),
+  markAllRead: () => http.post('/api/notifications/read-all', {}, { loading: true, loadingText: '处理中...' }),
 }
 
 // ==================== 客服工单(v3.4 步骤 7) ====================
@@ -237,6 +253,7 @@ export const deployApi = {
   cancel: (taskNo) => http.post(`/api/deploy/tasks/${taskNo}/cancel`, {}, { loading: false }),
   // 某设备已安装的技能
   installs: (deviceId) => http.get(`/api/deploy/devices/${deviceId}/installs`, { loading: false }),
+  tasks: (params = {}) => http.get('/api/deploy/tasks', { data: params, loading: false }),
 }
 
 // ==================== 场景(TOB) ====================
@@ -585,6 +602,10 @@ export const invoiceApi = {
   list: () => http.get('/api/invoices', { loading: false }),
   // data: { order_id(必填), type: 'personal'|'company', title, tax_no?(企业必填) }
   apply: (data) => http.post('/api/invoices', data, { loading: true, loadingText: '提交中...' }),
+  headers: () => http.get('/api/invoices/headers', { loading: false }),
+  createHeader: (data) => http.post('/api/invoices/headers', data, { loading: true, loadingText: '保存抬头...' }),
+  updateHeader: (id, data) => http.put(`/api/invoices/headers/${id}`, data, { loading: true, loadingText: '更新抬头...' }),
+  deleteHeader: (id) => http.delete(`/api/invoices/headers/${id}`, {}, { loading: true, loadingText: '删除中...' }),
 }
 
 // ==================== 收货地址 ====================
@@ -608,6 +629,7 @@ export const addressApi = {
  */
 export const cmsApi = {
   page: (slug) => http.get(`/api/cms/pages/${slug}`, { loading: false }),
+  complianceFilings: () => http.get('/api/cms/compliance-filings', { loading: false }),
 }
 
 
@@ -617,18 +639,40 @@ export const cooperationApi = {
     data: guestKey ? { guest_key: guestKey } : {},
     loading: false,
   }),
+  detail: (id, guestKey = '') => http.get(`/api/cooperations/${id}`, {
+    data: guestKey ? { guest_key: guestKey } : {},
+    loading: false,
+  }),
   submit: (data) => http.post('/api/cooperations', data, {
     loading: true,
     loadingText: '提交申请中...',
   }),
-  verifyInvite: (code) => http.post('/api/cooperations/verify-invite', { code }, {
-    loading: true,
-    loadingText: '正在核验邀请码...',
-  }),
+  uploadAttachment: (filePath) => http.upload(
+    '/api/cooperations/attachments',
+    filePath,
+    {},
+    { loading: true, loadingText: '上传资质中...' },
+  ),
+  withdraw: (id, guestKey = '') => http.post(
+    `/api/cooperations/${id}/withdraw`,
+    guestKey ? { guest_key: guestKey } : {},
+    { loading: true, loadingText: '撤回申请中...' },
+  ),
+  verifyInvite: (code, context = '') => http.post(
+    '/api/cooperations/verify-invite',
+    context ? { code, context } : { code },
+    { loading: true, loadingText: '正在核验邀请码...' },
+  ),
 }
 
 // ==================== 统一后台选择入口（Portal Backend Registry） ====================
 export const portalApi = {
   backends: () => http.get('/api/portal/backends', { loading: false }),
   track: (data) => http.post('/api/portal/backends/track', data, { loading: false }),
+  handoffTicket: (key, redirectPath = '') => http.post('/api/portal/handoff-ticket', {
+    backend_code: key,
+    key,
+    ...(redirectPath ? { redirect_path: redirectPath } : {}),
+  }, { loading: true, loadingText: '正在签发免登凭证...' }),
+  summary: () => http.get('/api/portal/summary', { loading: false }),
 }

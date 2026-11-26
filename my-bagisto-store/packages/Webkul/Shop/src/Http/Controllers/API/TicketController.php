@@ -840,6 +840,7 @@ class TicketController extends APIController
     protected function normalizeAttachments(array $attachments): array
     {
         $normalized = [];
+        $customerId = (int) (auth()->guard('customer')->id() ?? 0);
 
         foreach (array_values($attachments) as $index => $attachment) {
             if (is_string($attachment)) {
@@ -855,10 +856,81 @@ class TicketController extends APIController
                 continue;
             }
 
-            if (! is_array($attachment) || ($attachment['type'] ?? null) !== 'product') {
+            if (! is_array($attachment) || ! in_array($attachment['type'] ?? null, ['product', 'order', 'device'], true)) {
                 throw ValidationException::withMessages([
                     'attachments.'.$index => '附件格式不正确。',
                 ]);
+            }
+
+            $type = (string) $attachment['type'];
+
+            if ($type === 'order') {
+                if (isset($attachment['price']) && is_numeric($attachment['price'])) {
+                    $attachment['price'] = (string) $attachment['price'];
+                }
+
+                $data = Validator::make($attachment, [
+                    'type'         => ['required', 'in:order'],
+                    'order_id'     => ['required', 'integer', 'min:1'],
+                    'increment_id' => ['nullable', 'string', 'max:64'],
+                    'name'         => ['required', 'string', 'max:255'],
+                    'price'        => ['nullable', 'string', 'max:32'],
+                    'status_label' => ['nullable', 'string', 'max:64'],
+                ])->validate();
+
+                if ($customerId > 0) {
+                    $owned = DB::table('orders')
+                        ->where('id', (int) $data['order_id'])
+                        ->where('customer_id', $customerId)
+                        ->exists();
+
+                    if (! $owned) {
+                        throw ValidationException::withMessages([
+                            'attachments.'.$index.'.order_id' => '关联订单不属于当前账号。',
+                        ]);
+                    }
+                }
+
+                $normalized[] = array_filter([
+                    'type'         => 'order',
+                    'order_id'     => (int) $data['order_id'],
+                    'increment_id' => trim((string) ($data['increment_id'] ?? '')),
+                    'name'         => trim((string) $data['name']),
+                    'price'        => trim((string) ($data['price'] ?? '')),
+                    'status_label' => trim((string) ($data['status_label'] ?? '')),
+                ], fn ($value) => $value !== null && $value !== '');
+                continue;
+            }
+
+            if ($type === 'device') {
+                $data = Validator::make($attachment, [
+                    'type'      => ['required', 'in:device'],
+                    'device_id' => ['required', 'integer', 'min:1'],
+                    'name'      => ['required', 'string', 'max:255'],
+                    'sn'        => ['nullable', 'string', 'max:128'],
+                ])->validate();
+
+                if ($customerId > 0) {
+                    $owned = DB::table('device_binding')
+                        ->where('id', (int) $data['device_id'])
+                        ->where('customer_id', $customerId)
+                        ->whereNull('deleted_at')
+                        ->exists();
+
+                    if (! $owned) {
+                        throw ValidationException::withMessages([
+                            'attachments.'.$index.'.device_id' => '关联设备不属于当前账号。',
+                        ]);
+                    }
+                }
+
+                $normalized[] = array_filter([
+                    'type'      => 'device',
+                    'device_id' => (int) $data['device_id'],
+                    'name'      => trim((string) $data['name']),
+                    'sn'        => trim((string) ($data['sn'] ?? '')),
+                ], fn ($value) => $value !== null && $value !== '');
+                continue;
             }
 
             if (isset($attachment['price']) && is_numeric($attachment['price'])) {
