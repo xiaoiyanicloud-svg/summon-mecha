@@ -1,17 +1,17 @@
 <template>
 	<view class="mine-page">
-		<!-- 第 1 层：身份与消息顶栏（克制深海工业蓝） -->
+		<!-- 第 1 层：身份与消息顶栏（清爽天空科技蓝） -->
 		<view class="hero-header" :style="headerSafeStyle">
 			<view class="top-utility-row">
 				<view class="top-actions">
 					<view class="icon-btn" @tap="goPage('/pages/mine/notifications', true)">
-						<SmIcon name="notify" :size="36" />
+						<SmIcon name="top-notify" :size="38" />
 						<text v-if="counts.unread_notifications > 0" class="dot-badge sm-mono">
 							{{ counts.unread_notifications > 99 ? '99+' : counts.unread_notifications }}
 						</text>
 					</view>
 					<view class="icon-btn" @tap="goPage('/pages/mine/settings', false)">
-						<SmIcon name="settings" :size="36" />
+						<SmIcon name="top-settings" :size="38" />
 					</view>
 				</view>
 			</view>
@@ -109,41 +109,41 @@
 				</view>
 				<view class="tool-grid">
 					<view class="tool-item" @tap="goPage('/pages/mine/address', false)">
-						<view class="tool-icon"><SmIcon name="location" :size="42" /></view>
+						<view class="tool-icon"><SmIcon name="location" :size="46" /></view>
 						<text class="tool-label">收货地址</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/ecosystem/my-favorites?tab=product', false)">
-						<view class="tool-icon"><SmIcon name="favorite" :size="42" /></view>
+						<view class="tool-icon"><SmIcon name="favorite" :size="46" /></view>
 						<text class="tool-label">我的收藏</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/ecosystem/my-registrations', true)">
-						<view class="tool-icon"><SmIcon name="event" :size="42" /></view>
+						<view class="tool-icon"><SmIcon name="event" :size="46" /></view>
 						<text class="tool-label">我的赛事</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/mine/tickets', true)">
 						<view class="tool-icon">
-							<SmIcon name="service" :size="42" />
+							<SmIcon name="service" :size="46" />
 							<text v-if="counts.open_tickets > 0" class="cell-badge sm-mono">{{ counts.open_tickets }}</text>
 						</view>
 						<text class="tool-label">客服工单</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/mine/incidents', true)">
-						<view class="tool-icon"><SmIcon name="shield-lock" :size="42" /></view>
+						<view class="tool-icon"><SmIcon name="shield-lock" :size="46" /></view>
 						<text class="tool-label">事故上报</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/mine/notifications', true)">
 						<view class="tool-icon">
-							<SmIcon name="notify" :size="42" />
+							<SmIcon name="notify" :size="46" />
 							<text v-if="counts.unread_notifications > 0" class="cell-badge sm-mono">{{ counts.unread_notifications }}</text>
 						</view>
 						<text class="tool-label">消息通知</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/mine/legal?slug=terms-of-use', false)">
-						<view class="tool-icon"><SmIcon name="doc-text" :size="42" /></view>
+						<view class="tool-icon"><SmIcon name="doc-text" :size="46" /></view>
 						<text class="tool-label">服务条款</text>
 					</view>
 					<view class="tool-item" @tap="goPage('/pages/mine/settings', false)">
-						<view class="tool-icon"><SmIcon name="settings" :size="42" /></view>
+						<view class="tool-icon"><SmIcon name="settings" :size="46" /></view>
 						<text class="tool-label">账户设置</text>
 					</view>
 				</view>
@@ -157,7 +157,7 @@
 
 				<view class="tob-main-card" @tap="goPage('/pages/mine/portal-hub', true)">
 					<view class="tob-main-left">
-						<view class="tob-main-icon"><SmIcon name="hub-portal" :size="42" /></view>
+						<view class="tob-main-icon"><SmIcon name="hub-portal" :size="44" /></view>
 						<view class="tob-main-info">
 							<view class="tob-title-line">
 								<text class="tob-main-title">商家/开发者工作台</text>
@@ -167,19 +167,19 @@
 					</view>
 					<view class="tob-enter-pill">
 						<text class="tob-enter-text">工作台</text>
-						<SmIcon name="chevron-right" :size="22" />
+						<text class="tob-enter-arrow">›</text>
 					</view>
 				</view>
 
 				<view class="tob-sub-grid">
 					<view class="tob-sub-card" @tap="goPage('/pages/mine/supplier', false)">
-						<view class="tob-sub-icon"><SmIcon name="hub-supplier" :size="34" /></view>
+						<view class="tob-sub-icon"><SmIcon name="hub-supplier" :size="38" /></view>
 						<view class="tob-sub-info">
 							<text class="tob-sub-title">供应商入驻</text>
 						</view>
 					</view>
 					<view class="tob-sub-card" @tap="goPage('/pages/mine/cooperate', false)">
-						<view class="tob-sub-icon"><SmIcon name="hub-coop" :size="34" /></view>
+						<view class="tob-sub-icon"><SmIcon name="hub-coop" :size="38" /></view>
 						<view class="tob-sub-info">
 							<text class="tob-sub-title">商务合作</text>
 						</view>
@@ -589,8 +589,10 @@ export default {
 <style scoped>
 .mine-page { min-height: 100vh; background: #F4F7FB; }
 .hero-header {
-	padding: calc(28rpx + env(safe-area-inset-top)) 32rpx 86rpx;
-	background: linear-gradient(145deg, #0E2960 0%, #16449E 100%);
+	padding: calc(28rpx + env(safe-area-inset-top)) 32rpx 88rpx;
+	background:
+		radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 48%),
+		linear-gradient(155deg, #277BF6 0%, #459BFF 54%, #72BEFF 100%);
 	color: #FFFFFF;
 }
 .top-utility-row { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 16rpx; }
@@ -599,7 +601,8 @@ export default {
 	width: 68rpx;
 	height: 68rpx;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.92);
+	background: rgba(255, 255, 255, 0.2);
+	border: 1rpx solid rgba(255, 255, 255, 0.34);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -613,7 +616,7 @@ export default {
 	height: 32rpx;
 	padding: 0 8rpx;
 	border-radius: 999rpx;
-	background: #DC2626;
+	background: #EF4444;
 	color: #FFFFFF;
 	font-size: 20rpx;
 	font-weight: 700;
@@ -627,22 +630,22 @@ export default {
 	height: 116rpx;
 	border-radius: 50%;
 	background: #FFFFFF;
-	border: 3rpx solid rgba(255, 255, 255, 0.42);
+	border: 4rpx solid rgba(255, 255, 255, 0.65);
+	box-shadow: 0 6rpx 18rpx rgba(21, 90, 200, 0.16);
 	flex-shrink: 0;
 }
 .profile-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; }
 .name-line { display: flex; align-items: center; gap: 16rpx; }
-.user-name { font-size: 36rpx; font-weight: 700; color: #FFFFFF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.edit-pill { font-size: 22rpx; color: rgba(255, 255, 255, 0.88); background: rgba(255, 255, 255, 0.16); padding: 4rpx 16rpx; border-radius: 999rpx; flex-shrink: 0; }
-.user-sub { font-size: 24rpx; color: rgba(255, 255, 255, 0.8); line-height: 1.45; }
+.user-name { font-size: 36rpx; font-weight: 700; color: #FFFFFF; text-shadow: 0 1rpx 3rpx rgba(16, 62, 140, 0.12); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.edit-pill { font-size: 22rpx; color: #FFFFFF; background: rgba(255, 255, 255, 0.22); border: 1rpx solid rgba(255, 255, 255, 0.32); padding: 4rpx 16rpx; border-radius: 999rpx; flex-shrink: 0; }
+.user-sub { font-size: 24rpx; color: rgba(255, 255, 255, 0.92); line-height: 1.45; }
 .identity-badges { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 6rpx; }
 .id-chip {
 	font-size: 21rpx;
-	font-weight: 500;
-	color: #F8FAFC;
-	background: rgba(255, 255, 255, 0.18);
-	border: 1rpx solid rgba(255, 255, 255, 0.28);
-	padding: 3rpx 14rpx;
+	font-weight: 600;
+	color: #1A62D6;
+	background: rgba(255, 255, 255, 0.92);
+	padding: 3rpx 16rpx;
 	border-radius: 999rpx;
 }
 
@@ -682,7 +685,7 @@ export default {
 	height: 30rpx;
 	padding: 0 8rpx;
 	border-radius: 999rpx;
-	background: #165DFF;
+	background: #2979FF;
 	color: #FFFFFF;
 	font-size: 20rpx;
 	font-weight: 700;
@@ -696,8 +699,8 @@ export default {
 .tob-main-card {
 	padding: 24rpx;
 	border-radius: 20rpx;
-	background: #F8FAFC;
-	border: 1rpx solid #DCE7F9;
+	background: #F8FAFD;
+	border: 1rpx solid #E2ECF8;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -705,23 +708,24 @@ export default {
 	margin-bottom: 18rpx;
 }
 .tob-main-left { display: flex; align-items: center; gap: 18rpx; flex: 1; min-width: 0; }
-.tob-main-icon { width: 72rpx; height: 72rpx; border-radius: 18rpx; background: linear-gradient(135deg, #102F6E, #165DFF); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tob-main-icon { width: 72rpx; height: 72rpx; border-radius: 18rpx; background: #EAF3FF; border: 1rpx solid #D6E7FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tob-main-info { flex: 1; min-width: 0; }
 .tob-title-line { display: flex; align-items: center; gap: 10rpx; flex-wrap: nowrap; }
 .tob-main-title { font-size: 28rpx; font-weight: 600; color: #0F172A; white-space: nowrap; }
 .tob-active-tag { font-size: 21rpx; font-weight: 600; color: #059669; background: #ECFDF5; padding: 3rpx 12rpx; border-radius: 999rpx; white-space: nowrap; flex-shrink: 0; }
-.tob-enter-pill { display: flex; align-items: center; gap: 4rpx; padding: 12rpx 20rpx; border-radius: 999rpx; background: #165DFF; color: #FFFFFF; flex-shrink: 0; }
+.tob-enter-pill { display: flex; align-items: center; gap: 6rpx; padding: 12rpx 22rpx; border-radius: 999rpx; background: #2979FF; color: #FFFFFF; flex-shrink: 0; }
 .tob-enter-text { font-size: 24rpx; font-weight: 600; color: #FFFFFF; white-space: nowrap; }
+.tob-enter-arrow { font-size: 26rpx; font-weight: 600; color: #FFFFFF; line-height: 1; }
 
 .tob-sub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16rpx; }
-.tob-sub-card { padding: 20rpx; border-radius: 18rpx; background: #F8FAFC; border: 1rpx solid #EDF2F7; display: flex; align-items: center; gap: 16rpx; }
-.tob-sub-icon { width: 60rpx; height: 60rpx; border-radius: 14rpx; background: linear-gradient(135deg, #102F6E, #165DFF); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tob-sub-card { padding: 20rpx 22rpx; border-radius: 18rpx; background: #F8FAFD; border: 1rpx solid #E8EEF6; display: flex; align-items: center; gap: 16rpx; }
+.tob-sub-icon { width: 60rpx; height: 60rpx; border-radius: 14rpx; background: #EAF3FF; border: 1rpx solid #DCEAFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tob-sub-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .tob-sub-title { font-size: 27rpx; font-weight: 600; color: #0F172A; white-space: nowrap; }
 
 .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 28rpx; column-gap: 12rpx; }
-.tool-item { display: flex; flex-direction: column; align-items: center; gap: 12rpx; }
-.tool-icon { width: 76rpx; height: 76rpx; border-radius: 20rpx; background: #F8FAFC; display: flex; align-items: center; justify-content: center; position: relative; }
+.tool-item { display: flex; flex-direction: column; align-items: center; gap: 12rpx; padding: 4rpx 0; }
+.tool-icon { width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; position: relative; }
 .tool-label { font-size: 24rpx; color: #334155; font-weight: 500; }
 
 .auth-mask { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.52); z-index: 200; display: flex; align-items: flex-end; }
