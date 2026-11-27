@@ -102,45 +102,7 @@
 				</view>
 			</view>
 
-			<!-- 第 4 层：企业与生态工作台（无 AI 噱头词、真实身份感知） -->
-			<view class="panel-card">
-				<view class="panel-head">
-					<text class="panel-title">企业服务</text>
-				</view>
-
-				<view class="tob-main-card" @tap="goPage('/pages/mine/portal-hub', true)">
-					<view class="tob-main-left">
-						<view class="tob-main-icon"><SmIcon name="hub-portal" :size="46" /></view>
-						<view class="tob-main-info">
-							<view class="tob-title-line">
-								<text class="tob-main-title">商家与开发者工作台</text>
-								<text v-if="hasBusinessRole" class="tob-active-tag">已开通</text>
-							</view>
-						</view>
-					</view>
-					<view class="tob-enter-pill">
-						<text class="tob-enter-text">工作台</text>
-						<SmIcon name="chevron-right" :size="22" />
-					</view>
-				</view>
-
-				<view class="tob-sub-grid">
-					<view class="tob-sub-card" @tap="goPage('/pages/mine/supplier', false)">
-						<SmIcon name="hub-supplier" :size="40" />
-						<view class="tob-sub-info">
-							<text class="tob-sub-title">供应商入驻</text>
-						</view>
-					</view>
-					<view class="tob-sub-card" @tap="goPage('/pages/mine/cooperate', false)">
-						<SmIcon name="hub-coop" :size="40" />
-						<view class="tob-sub-info">
-							<text class="tob-sub-title">商务合作</text>
-						</view>
-					</view>
-				</view>
-			</view>
-
-			<!-- 第 5 层：常用服务宫格（完整恢复收货地址等核心入口） -->
+			<!-- 第 4 层：常用服务宫格 -->
 			<view class="panel-card">
 				<view class="panel-head">
 					<text class="panel-title">常用服务</text>
@@ -183,6 +145,44 @@
 					<view class="tool-item" @tap="goPage('/pages/mine/settings', false)">
 						<view class="tool-icon"><SmIcon name="settings" :size="42" /></view>
 						<text class="tool-label">账户设置</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 第 5 层：企业服务 -->
+			<view class="panel-card">
+				<view class="panel-head">
+					<text class="panel-title">企业服务</text>
+				</view>
+
+				<view class="tob-main-card" @tap="goPage('/pages/mine/portal-hub', true)">
+					<view class="tob-main-left">
+						<view class="tob-main-icon"><SmIcon name="hub-portal" :size="42" /></view>
+						<view class="tob-main-info">
+							<view class="tob-title-line">
+								<text class="tob-main-title">商家/开发者工作台</text>
+								<text v-if="hasBusinessRole" class="tob-active-tag">已开通</text>
+							</view>
+						</view>
+					</view>
+					<view class="tob-enter-pill">
+						<text class="tob-enter-text">工作台</text>
+						<SmIcon name="chevron-right" :size="22" />
+					</view>
+				</view>
+
+				<view class="tob-sub-grid">
+					<view class="tob-sub-card" @tap="goPage('/pages/mine/supplier', false)">
+						<view class="tob-sub-icon"><SmIcon name="hub-supplier" :size="34" /></view>
+						<view class="tob-sub-info">
+							<text class="tob-sub-title">供应商入驻</text>
+						</view>
+					</view>
+					<view class="tob-sub-card" @tap="goPage('/pages/mine/cooperate', false)">
+						<view class="tob-sub-icon"><SmIcon name="hub-coop" :size="34" /></view>
+						<view class="tob-sub-info">
+							<text class="tob-sub-title">商务合作</text>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -599,7 +599,7 @@ export default {
 	width: 68rpx;
 	height: 68rpx;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.14);
+	background: rgba(255, 255, 255, 0.92);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -704,19 +704,20 @@ export default {
 	gap: 16rpx;
 	margin-bottom: 18rpx;
 }
-.tob-main-left { display: flex; align-items: center; gap: 20rpx; flex: 1; min-width: 0; }
-.tob-main-icon { width: 80rpx; height: 80rpx; border-radius: 18rpx; background: #EEF4FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tob-main-left { display: flex; align-items: center; gap: 18rpx; flex: 1; min-width: 0; }
+.tob-main-icon { width: 72rpx; height: 72rpx; border-radius: 18rpx; background: linear-gradient(135deg, #102F6E, #165DFF); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tob-main-info { flex: 1; min-width: 0; }
-.tob-title-line { display: flex; align-items: center; gap: 12rpx; margin-bottom: 6rpx; }
-.tob-main-title { font-size: 29rpx; font-weight: 600; color: #0F172A; }
-.tob-active-tag { font-size: 21rpx; font-weight: 600; color: #059669; background: #ECFDF5; padding: 2rpx 12rpx; border-radius: 999rpx; }
+.tob-title-line { display: flex; align-items: center; gap: 10rpx; flex-wrap: nowrap; }
+.tob-main-title { font-size: 28rpx; font-weight: 600; color: #0F172A; white-space: nowrap; }
+.tob-active-tag { font-size: 21rpx; font-weight: 600; color: #059669; background: #ECFDF5; padding: 3rpx 12rpx; border-radius: 999rpx; white-space: nowrap; flex-shrink: 0; }
 .tob-enter-pill { display: flex; align-items: center; gap: 4rpx; padding: 12rpx 20rpx; border-radius: 999rpx; background: #165DFF; color: #FFFFFF; flex-shrink: 0; }
-.tob-enter-text { font-size: 24rpx; font-weight: 600; color: #FFFFFF; }
+.tob-enter-text { font-size: 24rpx; font-weight: 600; color: #FFFFFF; white-space: nowrap; }
 
 .tob-sub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16rpx; }
-.tob-sub-card { padding: 22rpx; border-radius: 18rpx; background: #F8FAFC; border: 1rpx solid #EDF2F7; display: flex; align-items: center; gap: 16rpx; }
+.tob-sub-card { padding: 20rpx; border-radius: 18rpx; background: #F8FAFC; border: 1rpx solid #EDF2F7; display: flex; align-items: center; gap: 16rpx; }
+.tob-sub-icon { width: 60rpx; height: 60rpx; border-radius: 14rpx; background: linear-gradient(135deg, #102F6E, #165DFF); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tob-sub-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.tob-sub-title { font-size: 27rpx; font-weight: 600; color: #0F172A; }
+.tob-sub-title { font-size: 27rpx; font-weight: 600; color: #0F172A; white-space: nowrap; }
 
 .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 28rpx; column-gap: 12rpx; }
 .tool-item { display: flex; flex-direction: column; align-items: center; gap: 12rpx; }
