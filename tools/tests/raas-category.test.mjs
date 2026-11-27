@@ -62,9 +62,12 @@ function bindComponentState(component, overrides = {}) {
   return state
 }
 
-test('分类页模板已完成 4 主 Tab（租售 | 场景 | 技能 | 配件）重构、去 TOB 与布局统一', async () => {
+test('分类页模板已完成 4 主 Tab（租售 | 场景 | 技能 | 配件）重构、顶部图标与布局统一', async () => {
   const vue = await readFile(new URL('../../pages/robot/index.vue', import.meta.url), 'utf8')
-  assert.match(vue, /@tap="switchTab\('tob'\)">租售<\/text>/)
+  assert.match(vue, /@tap="switchTab\('tob'\)"[\s\S]*?\/static\/icons\/category\/tob-active\.png[\s\S]*?<text class="tab-label">租售<\/text>/)
+  assert.match(vue, /@tap="switchTab\('scene'\)"[\s\S]*?\/static\/icons\/category\/scene-active\.png[\s\S]*?<text class="tab-label">场景<\/text>/)
+  assert.match(vue, /@tap="switchTab\('skill'\)"[\s\S]*?\/static\/icons\/category\/skill-active\.png[\s\S]*?<text class="tab-label">技能<\/text>/)
+  assert.match(vue, /@tap="switchTab\('accessory'\)"[\s\S]*?\/static\/icons\/category\/accessory-active\.png[\s\S]*?<text class="tab-label">配件<\/text>/)
   assert.doesNotMatch(vue, /@tap="switchTab\('tob'\)">租售\s*TOB<\/text>/)
   assert.doesNotMatch(vue, /租售\s*TOB/)
   assert.doesNotMatch(vue, /@tap="switchTab\('rent'\)">租用<\/text>/)

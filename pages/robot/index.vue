@@ -2,10 +2,22 @@
   <view class="rental-page">
     <!-- ===== 顶部主 Tab（四个）：租售 | 场景 | 技能 | 配件 ===== -->
     <view class="top-tabs" v-if="!customPlanMode">
-      <text class="tab-item" :class="{ active: currentTab === 'tob' }" @tap="switchTab('tob')">租售</text>
-      <text class="tab-item" :class="{ active: currentTab === 'scene' }" @tap="switchTab('scene')">场景</text>
-      <text class="tab-item" :class="{ active: currentTab === 'skill' }" @tap="switchTab('skill')">技能</text>
-      <text class="tab-item" :class="{ active: currentTab === 'accessory' }" @tap="switchTab('accessory')">配件</text>
+      <view class="tab-item" :class="{ active: currentTab === 'tob' }" @tap="switchTab('tob')">
+        <image class="tab-icon" :src="currentTab === 'tob' ? '/static/icons/category/tob-active.png' : '/static/icons/category/tob.png'" mode="aspectFit"></image>
+        <text class="tab-label">租售</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'scene' }" @tap="switchTab('scene')">
+        <image class="tab-icon" :src="currentTab === 'scene' ? '/static/icons/category/scene-active.png' : '/static/icons/category/scene.png'" mode="aspectFit"></image>
+        <text class="tab-label">场景</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'skill' }" @tap="switchTab('skill')">
+        <image class="tab-icon" :src="currentTab === 'skill' ? '/static/icons/category/skill-active.png' : '/static/icons/category/skill.png'" mode="aspectFit"></image>
+        <text class="tab-label">技能</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'accessory' }" @tap="switchTab('accessory')">
+        <image class="tab-icon" :src="currentTab === 'accessory' ? '/static/icons/category/accessory-active.png' : '/static/icons/category/accessory.png'" mode="aspectFit"></image>
+        <text class="tab-label">配件</text>
+      </view>
     </view>
 
     <!-- ===== 自定义方案顶栏 ===== -->
@@ -2266,21 +2278,39 @@ page {
 .top-tabs .tab-item {
   position: relative;
   flex: 1;
-  height: 86rpx;
-  line-height: 86rpx;
+  height: 116rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 0 16rpx;
+  box-sizing: border-box;
   text-align: center;
-  font-size: 29rpx;
-  font-weight: 600;
   color: #475569;
-  letter-spacing: 0.5rpx;
   white-space: nowrap;
-  border-radius: 16rpx 16rpx 0 0;
+  border-radius: 18rpx 18rpx 0 0;
   transition: background 0.2s ease, color 0.2s ease;
+}
+.top-tabs .tab-icon {
+  width: 44rpx;
+  height: 44rpx;
+  display: block;
+  margin-bottom: 6rpx;
+  flex-shrink: 0;
+}
+.top-tabs .tab-label {
+  font-size: 26rpx;
+  line-height: 34rpx;
+  font-weight: 600;
+  color: inherit;
+  letter-spacing: 0.5rpx;
 }
 /* 激活态：整格铺白 + 底部主题蓝指示线 */
 .top-tabs .tab-item.active {
   background: #FFFFFF;
   color: #102F6E;
+}
+.top-tabs .tab-item.active .tab-label {
   font-weight: 700;
 }
 .top-tabs .tab-item.active::after {
@@ -2289,7 +2319,7 @@ page {
   left: 50%;
   bottom: 6rpx;
   transform: translateX(-50%);
-  width: 44rpx;
+  width: 40rpx;
   height: 6rpx;
   border-radius: 999rpx;
   background: #165DFF;
