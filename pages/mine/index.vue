@@ -1,17 +1,17 @@
 <template>
 	<view class="mine-page">
-		<!-- 第 1 层：身份与消息顶栏（清爽天空科技蓝） -->
+		<!-- 第 1 层：身份与消息顶栏（科技蓝白自上而下渐变） -->
 		<view class="hero-header" :style="headerSafeStyle">
 			<view class="top-utility-row">
 				<view class="top-actions">
 					<view class="icon-btn" @tap="goPage('/pages/mine/notifications', true)">
-						<SmIcon name="top-notify" :size="38" />
+						<SmIcon name="notify" :size="36" />
 						<text v-if="counts.unread_notifications > 0" class="dot-badge sm-mono">
 							{{ counts.unread_notifications > 99 ? '99+' : counts.unread_notifications }}
 						</text>
 					</view>
 					<view class="icon-btn" @tap="goPage('/pages/mine/settings', false)">
-						<SmIcon name="top-settings" :size="38" />
+						<SmIcon name="settings" :size="36" />
 					</view>
 				</view>
 			</view>
@@ -590,10 +590,8 @@ export default {
 .mine-page { min-height: 100vh; background: #F4F7FB; }
 .hero-header {
 	padding: calc(28rpx + env(safe-area-inset-top)) 32rpx 88rpx;
-	background:
-		radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 48%),
-		linear-gradient(155deg, #277BF6 0%, #459BFF 54%, #72BEFF 100%);
-	color: #FFFFFF;
+	background: linear-gradient(180deg, #3F89F8 0%, #8FC3FF 42%, #ECF5FF 76%, #FFFFFF 90%, #F4F7FB 100%);
+	color: #0F172A;
 }
 .top-utility-row { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 16rpx; }
 .top-actions { display: flex; align-items: center; gap: 18rpx; }
@@ -601,8 +599,9 @@ export default {
 	width: 68rpx;
 	height: 68rpx;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.2);
-	border: 1rpx solid rgba(255, 255, 255, 0.34);
+	background: rgba(255, 255, 255, 0.82);
+	border: 1rpx solid rgba(255, 255, 255, 0.92);
+	box-shadow: 0 4rpx 12rpx rgba(22, 93, 255, 0.08);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -630,21 +629,22 @@ export default {
 	height: 116rpx;
 	border-radius: 50%;
 	background: #FFFFFF;
-	border: 4rpx solid rgba(255, 255, 255, 0.65);
-	box-shadow: 0 6rpx 18rpx rgba(21, 90, 200, 0.16);
+	border: 4rpx solid #FFFFFF;
+	box-shadow: 0 6rpx 18rpx rgba(22, 93, 255, 0.12);
 	flex-shrink: 0;
 }
 .profile-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; }
 .name-line { display: flex; align-items: center; gap: 16rpx; }
-.user-name { font-size: 36rpx; font-weight: 700; color: #FFFFFF; text-shadow: 0 1rpx 3rpx rgba(16, 62, 140, 0.12); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.edit-pill { font-size: 22rpx; color: #FFFFFF; background: rgba(255, 255, 255, 0.22); border: 1rpx solid rgba(255, 255, 255, 0.32); padding: 4rpx 16rpx; border-radius: 999rpx; flex-shrink: 0; }
-.user-sub { font-size: 24rpx; color: rgba(255, 255, 255, 0.92); line-height: 1.45; }
+.user-name { font-size: 36rpx; font-weight: 700; color: #0F172A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.edit-pill { font-size: 22rpx; font-weight: 500; color: #165DFF; background: rgba(255, 255, 255, 0.82); border: 1rpx solid rgba(22, 93, 255, 0.18); padding: 4rpx 16rpx; border-radius: 999rpx; flex-shrink: 0; }
+.user-sub { font-size: 24rpx; color: #475569; line-height: 1.45; }
 .identity-badges { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 6rpx; }
 .id-chip {
 	font-size: 21rpx;
 	font-weight: 600;
-	color: #1A62D6;
-	background: rgba(255, 255, 255, 0.92);
+	color: #165DFF;
+	background: rgba(255, 255, 255, 0.88);
+	border: 1rpx solid rgba(22, 93, 255, 0.16);
 	padding: 3rpx 16rpx;
 	border-radius: 999rpx;
 }
