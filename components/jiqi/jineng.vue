@@ -1,14 +1,32 @@
 <template>
   <scroll-view class="product-area-wrapper" scroll-y="true">
-    <SkillMarket ref="market" :active="active" @select="$emit('item-click', $event)" />
+    <SkillMarket
+      ref="market"
+      :active="active"
+      :show-search="showSearch"
+      :external-query="externalQuery"
+      @update:external-query="$emit('update:external-query', $event)"
+      @select="$emit('item-click', $event)"
+    />
   </scroll-view>
 </template>
 <script>
 import SkillMarket from '@/components/SkillMarket.vue'
 export default {
-  name: 'Jineng', components: { SkillMarket },
-  props: { active: { type: Boolean, default: true } }, emits: ['item-click'],
-  methods: { refresh() { return this.$refs.market && this.$refs.market.refresh() } },
+  name: 'Jineng',
+  components: { SkillMarket },
+  props: {
+    active: { type: Boolean, default: true },
+    showSearch: { type: Boolean, default: true },
+    externalQuery: { type: String, default: undefined },
+  },
+  emits: ['item-click', 'update:external-query'],
+  methods: {
+    refresh() { return this.$refs.market && this.$refs.market.refresh() },
+    onExternalInput(val) { return this.$refs.market && this.$refs.market.setExternalQuery(val) },
+    confirmSearch(val) { return this.$refs.market && this.$refs.market.confirmExternalSearch(val) },
+    clearSearch() { return this.$refs.market && this.$refs.market.clearSearch() },
+  },
 }
 </script>
 <style scoped>

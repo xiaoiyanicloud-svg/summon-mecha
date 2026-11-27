@@ -1,5 +1,35 @@
 <template>
   <view class="rental-page">
+    <!-- ===== 顶部搜索栏（四个搜索框统一置于四个主 Tab 上方） ===== -->
+    <view class="top-search-header" v-if="!customPlanMode">
+      <view class="search-bar" v-show="currentTab === 'tob'">
+        <SearchInput v-model="searchQ" placeholder="搜索机器人" round />
+      </view>
+      <view class="search-bar" v-show="currentTab === 'scene'">
+        <SearchInput v-model="sceneSearchQ" placeholder="搜索场景" round />
+      </view>
+      <view class="search-bar" v-show="currentTab === 'skill'">
+        <SearchInput
+          v-model="skillSearchQ"
+          placeholder="搜索技能"
+          round
+          @input="onSkillSearchInput"
+          @confirm="onSkillSearchConfirm"
+          @clear="onSkillSearchClear"
+        />
+      </view>
+      <view class="search-bar" v-show="currentTab === 'accessory'">
+        <SearchInput
+          v-model="accessorySearchQ"
+          placeholder="搜索配件"
+          round
+          @input="onAccessorySearchInput"
+          @confirm="onAccessorySearchConfirm"
+          @clear="onAccessorySearchClear"
+        />
+      </view>
+    </view>
+
     <!-- ===== 顶部主 Tab（四个）：租售 | 场景 | 技能 | 配件 ===== -->
     <view class="top-tabs" v-if="!customPlanMode">
       <view class="tab-item" :class="{ active: currentTab === 'tob' }" @tap="switchTab('tob')">
@@ -26,14 +56,6 @@
     <!-- ===== 类别选择：原弹窗已改为内联向下展开（见 .type-bar 下方 .type-inline） ===== -->
 
     <!-- ===== 场景分类滚动条 - 已删除 ===== -->
-
-    <!-- ===== 搜索框(租售 / 场景) ===== -->
-    <view class="search-bar" v-show="currentTab === 'tob'">
-      <SearchInput v-model="searchQ" placeholder="搜索机器人" />
-    </view>
-    <view class="search-bar" v-show="currentTab === 'scene'">
-      <SearchInput v-model="sceneSearchQ" placeholder="搜索场景" />
-    </view>
 
     <!-- ===== 主体 ===== -->
     <view class="main-body">
@@ -226,10 +248,26 @@
       </view>
 
       <!-- 技能组件 -->
-      <Jineng ref="skillMarket" v-show="currentTab === 'skill'" :active="currentTab === 'skill'" @item-click="onSkill" />
+      <Jineng
+        ref="skillMarket"
+        v-show="currentTab === 'skill'"
+        :active="currentTab === 'skill'"
+        :show-search="false"
+        :external-query="skillSearchQ"
+        @update:external-query="skillSearchQ = $event"
+        @item-click="onSkill"
+      />
 
       <!-- 配件组件 -->
-      <Peijian v-show="currentTab === 'accessory'" :active="currentTab === 'accessory'" @item-click="onAccessory" />
+      <Peijian
+        ref="accessoryMarket"
+        v-show="currentTab === 'accessory'"
+        :active="currentTab === 'accessory'"
+        :show-search="false"
+        :external-query="accessorySearchQ"
+        @update:external-query="accessorySearchQ = $event"
+        @item-click="onAccessory"
+      />
       </view>
 
       <!-- 滚动提示：轻微淡入，暗示可继续滑动查看 -->
@@ -850,6 +888,8 @@ export default {
       ],
       searchQ: '',
       sceneSearchQ: '',
+      skillSearchQ: '',
+      accessorySearchQ: '',
       fromHome: false,
       // 本次详情是否来自 AI 召唤页(关闭详情时切回 AI 页,而不是停在机器 tab)
       fromAi: false,
@@ -1229,6 +1269,38 @@ export default {
       this.goDetail(sibling)
     },
     selectSceneCategory(category) { this.currentSceneCategory = category },
+    onSkillSearchInput(val) {
+      if (this.$refs.skillMarket && this.$refs.skillMarket.onExternalInput) {
+        this.$refs.skillMarket.onExternalInput(val)
+      }
+    },
+    onSkillSearchConfirm() {
+      if (this.$refs.skillMarket && this.$refs.skillMarket.confirmSearch) {
+        this.$refs.skillMarket.confirmSearch(this.skillSearchQ)
+      }
+    },
+    onSkillSearchClear() {
+      this.skillSearchQ = ''
+      if (this.$refs.skillMarket && this.$refs.skillMarket.clearSearch) {
+        this.$refs.skillMarket.clearSearch()
+      }
+    },
+    onAccessorySearchInput(val) {
+      if (this.$refs.accessoryMarket && this.$refs.accessoryMarket.setExternalQuery) {
+        this.$refs.accessoryMarket.setExternalQuery(val)
+      }
+    },
+    onAccessorySearchConfirm() {
+      if (this.$refs.accessoryMarket && this.$refs.accessoryMarket.confirmExternalSearch) {
+        this.$refs.accessoryMarket.confirmExternalSearch(this.accessorySearchQ)
+      }
+    },
+    onAccessorySearchClear() {
+      this.accessorySearchQ = ''
+      if (this.$refs.accessoryMarket && this.$refs.accessoryMarket.clearSearch) {
+        this.$refs.accessoryMarket.clearSearch()
+      }
+    },
 
     // ===== 自定义方案：机器页多选 + 方案框 + 下单/保存 =====
     enterCustomPlanMode() {
@@ -2224,8 +2296,19 @@ export default {
 </script>
 
 <style scoped>
-/* ===== 搜索框(租售 / 场景) ===== */
-.search-bar { padding: 8rpx 20rpx 12rpx; background: #ffffff; flex-shrink: 0; }
+/* ===== 顶部搜索栏（四个搜索框统一位于四个主 Tab 上方） ===== */
+.top-search-header {
+  background: #EEF4FF;
+  padding: 88rpx 20rpx 14rpx;
+  flex-shrink: 0;
+}
+.search-bar {
+  width: 85%;
+  margin: 0 auto;
+  padding: 0;
+  background: transparent;
+  flex-shrink: 0;
+}
 
 /* ===== 基础布局 ===== */
 page {
@@ -2257,9 +2340,10 @@ page {
    新版 WXSS 不支持通配符 * 作子代选择器(报 error at token "*")；改显式类名是唯一
    既不报错、又不改布局的写法。注意：勿用 `> view`(元素选择器会把 specificity 抬到 0,2,1，
    盖过弹层自身的 position:fixed → 布局崩)。
-   这里只列真正需要抬升的常驻流量元素：top-tabs / custom-plan-header。
+   这里只列真正需要抬升的常驻流量元素：top-search-header / top-tabs / custom-plan-header。
    其余直接子元素均为 position:fixed 全屏弹层(自带 z-index 999~1250，天然在渐变之上)、
    或 .main-body(其规则已自带 position:relative + z-index:1)。 */
+.rental-page > .top-search-header,
 .rental-page > .top-tabs,
 .rental-page > .custom-plan-header {
   position: relative;
@@ -2271,7 +2355,7 @@ page {
 .top-tabs {
   display: flex;
   background: #EEF4FF;
-  padding: 88rpx 16rpx 0;
+  padding: 2rpx 16rpx 0;
   flex-shrink: 0;
   /* 刻意不写 border-bottom：选中方块要与下方白色内容区连成一体，有线就割开了 */
 }

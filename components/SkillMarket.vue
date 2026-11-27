@@ -1,6 +1,6 @@
 <template>
   <view class="skill-market" :class="{ compact }">
-    <view class="market-search">
+    <view v-if="showSearch" class="market-search">
       <SearchInput
         v-model="query"
         placeholder="搜索技能"
@@ -79,8 +79,10 @@ export default {
     active: { type: Boolean, default: true },
     // 首页生态中心内嵌时不展示机型/交付/动作分类筛选；机器页技能分类页保持展示
     showFilters: { type: Boolean, default: true },
+    showSearch: { type: Boolean, default: true },
+    externalQuery: { type: String, default: undefined },
   },
-  emits: ['select', 'show-all'],
+  emits: ['select', 'show-all', 'update:external-query'],
   data() {
     return {
       query: '', filters: { model: '', channel: '', motion: '' }, market: createSkillMarketState(),
@@ -106,8 +108,19 @@ export default {
         if (this.showFilters && this.filterError) this.loadFilters()
       } else { this.market.sequence++; this.market.loading = false }
     },
+    externalQuery(val) {
+      if (val === undefined) return
+      const next = String(val)
+      if (next === this.query) return
+      this.query = next
+      this.onQueryInput(next)
+    },
   },
-  mounted() { if (this.showFilters) this.loadFilters(); if (this.active) this.refreshIfStale() },
+  mounted() {
+    if (this.externalQuery !== undefined) this.query = String(this.externalQuery)
+    if (this.showFilters) this.loadFilters()
+    if (this.active) this.refreshIfStale()
+  },
   beforeUnmount() {
     if (this._searchTimer) clearTimeout(this._searchTimer)
     this.market.sequence++
@@ -143,11 +156,28 @@ export default {
     loadMore() { return loadSkillMarket(this.market, skillCatalogApi.search, { query: this.query, filters: this.filters, append: true }) },
     filterIndex(group) { return Math.max(0, group.options.findIndex(x => x.value === this.filters[group.key])) },
     pickFilter(group, event) { this.filters[group.key] = group.options[Number(event.detail.value)]?.value || ''; this.refreshNow() },
-    resetFilters() { this.query = ''; Object.keys(this.filters).forEach(key => { this.filters[key] = '' }); this.refreshNow() },
+    resetFilters() {
+      this.query = ''
+      this.$emit('update:external-query', '')
+      Object.keys(this.filters).forEach(key => { this.filters[key] = '' })
+      this.refreshNow()
+    },
     clearSearch() {
       if (this._searchTimer) clearTimeout(this._searchTimer)
       this.query = ''
+      this.$emit('update:external-query', '')
       this.refreshNow()
+    },
+    setExternalQuery(val) {
+      const next = typeof val === 'string' ? val : String(val?.detail?.value ?? '')
+      if (next === this.query) return
+      this.query = next
+      this.onQueryInput(next)
+    },
+    confirmExternalSearch(val) {
+      if (val !== undefined) this.query = String(val)
+      if (this._searchTimer) clearTimeout(this._searchTimer)
+      return this.refreshNow()
     },
     onQueryInput(val) {
       if (this._searchTimer) clearTimeout(this._searchTimer)

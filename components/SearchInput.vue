@@ -1,5 +1,5 @@
 <template>
-  <view class="search-row">
+  <view class="search-row" :class="{ 'is-round': round }">
     <view class="search-icon" aria-hidden="true">
       <view class="search-icon-ring"></view>
       <view class="search-icon-handle"></view>
@@ -24,6 +24,7 @@ export default {
     modelValue: { type: String, default: undefined },
     value: { type: String, default: '' },
     placeholder: { type: String, default: '搜索' },
+    round: { type: Boolean, default: false },
   },
   emits: ['update:modelValue', 'input', 'confirm', 'clear'],
   computed: {
@@ -63,6 +64,10 @@ export default {
 .search-row:focus-within {
   border-color: #94B8FF;
   box-shadow: 0 4rpx 16rpx rgba(22, 93, 255, 0.10);
+}
+.search-row.is-round {
+  border-radius: 999rpx;
+  padding: 0 16rpx 0 26rpx;
 }
 .search-icon {
   position: relative;

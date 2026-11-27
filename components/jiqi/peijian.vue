@@ -2,7 +2,7 @@
   <view class="product-area-wrapper">
     <!-- 搜索 / 机型 / 排序：全部走服务端，数据来自 /api/accessory-catalog -->
     <view class="filter-section">
-      <view class="search-wrap">
+      <view v-if="showSearch" class="search-wrap">
         <SearchInput
           v-model="q"
           placeholder="搜索配件"
@@ -172,8 +172,10 @@ export default {
   components: { StateView, SmLoading, SearchInput },
   props: {
     active: { type: Boolean, default: true },
+    showSearch: { type: Boolean, default: true },
+    externalQuery: { type: String, default: undefined },
   },
-  emits: ['item-click'],
+  emits: ['item-click', 'update:external-query'],
   data() {
     return {
       q: '',
@@ -237,17 +239,22 @@ export default {
       // 切走再切回时不要把上次展开的筛选/排序面板留在屏幕上
       this.showModelPanel = false
       this.showSortPanel = false
-      if (value) this.refresh()
+      if (value) {
+        this.consumeInitialFilters()
+        this.refresh()
+      }
+    },
+    externalQuery(val) {
+      if (val === undefined) return
+      const next = String(val)
+      if (next === this.q) return
+      this.q = next
+      this.onSearchInput()
     },
   },
   mounted() {
-    const initial = uni.getStorageSync('accessoryInitialFilters')
-    if (initial && typeof initial === 'object') {
-      uni.removeStorageSync('accessoryInitialFilters')
-      if (initial.q) this.q = String(initial.q)
-      if (initial.category) this.category = String(initial.category)
-      if (initial.model) this.model = String(initial.model)
-    }
+    if (this.externalQuery !== undefined) this.q = String(this.externalQuery)
+    this.consumeInitialFilters()
     this.loadFilters()
     this.refresh()
   },
@@ -322,13 +329,39 @@ export default {
     loadMore() {
       return this.load(true)
     },
+    consumeInitialFilters() {
+      const initial = uni.getStorageSync('accessoryInitialFilters')
+      if (initial && typeof initial === 'object') {
+        uni.removeStorageSync('accessoryInitialFilters')
+        if (initial.q !== undefined) {
+          this.q = String(initial.q)
+          this.$emit('update:external-query', this.q)
+        }
+        if (initial.category) this.category = String(initial.category)
+        if (initial.model) this.model = String(initial.model)
+      }
+    },
     onSearchInput() {
       this.showSortPanel = false
       if (this.searchTimer) clearTimeout(this.searchTimer)
       this.searchTimer = setTimeout(() => this.refresh(), 350)
     },
+    setExternalQuery(val) {
+      const next = typeof val === 'string' ? val : String(val?.detail?.value ?? '')
+      if (next === this.q) return
+      this.q = next
+      this.onSearchInput()
+    },
+    confirmExternalSearch(val) {
+      if (val !== undefined) this.q = String(val)
+      this.showSortPanel = false
+      if (this.searchTimer) clearTimeout(this.searchTimer)
+      return this.refresh()
+    },
     clearSearch() {
+      if (this.searchTimer) clearTimeout(this.searchTimer)
       this.q = ''
+      this.$emit('update:external-query', '')
       this.refresh()
     },
     // 品牌中文名取机型名第一个词（"宇树 G1" → "宇树"、"Tesla Optimus" → "Tesla"），
