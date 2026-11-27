@@ -17,10 +17,10 @@
 
     <!-- ===== 搜索框(租售 / 场景) ===== -->
     <view class="search-bar" v-show="currentTab === 'tob'">
-      <SearchInput v-model="searchQ" placeholder="搜索机型 / 品牌 / SKU / 形态" />
+      <SearchInput v-model="searchQ" placeholder="搜索机器人" />
     </view>
     <view class="search-bar" v-show="currentTab === 'scene'">
-      <SearchInput v-model="sceneSearchQ" placeholder="搜索场景名称 / 描述 / 标签" />
+      <SearchInput v-model="sceneSearchQ" placeholder="搜索场景" />
     </view>
 
     <!-- ===== 主体 ===== -->
@@ -32,10 +32,7 @@
         </view>
         <view class="brand-item" v-for="b in brandList" :key="b.code" :class="{ active: currentBrand === b.code }" @tap="selectBrand(b.code)">
           <image v-if="b.logoUrl" class="brand-logo" :src="b.logoUrl" mode="aspectFit" />
-          <view class="brand-label-row">
-            <text class="brand-name">{{ b.name }}</text>
-            <text v-if="b.isHot" class="brand-hot-dot"></text>
-          </view>
+          <text class="brand-name">{{ b.name }}</text>
         </view>
         <view style="height: 250rpx; flex-shrink: 0;"></view>
       </scroll-view>
@@ -2106,7 +2103,7 @@ export default {
         // 只有真实 regular > final 才有原价;缺价时不再用现价 ×1.2 编造折扣
         originalPrice: pricing.originalPrice,
         icon: iconMap[catalogKind] || '🤖',
-        bg: '#F0F4FA',
+        bg: '#F8FAFC',
         scene: catalogKind === 'accessory' ? '配件' : (catalogKind === 'skill' ? '技能' : typeLabel),
         sku: p.sku || '',
         image: cover,
@@ -2601,8 +2598,8 @@ page {
 }
 .scene-tag {
   font-size: 18rpx;
-  color: #475569;
-  background: #F1F5F9;
+  color: #64748B;
+  background: #F4F6F9;
   padding: 3rpx 10rpx;
   border-radius: 6rpx;
   line-height: 1.3;
@@ -2624,22 +2621,21 @@ page {
 .product-price {
   font-size: 30rpx;
   font-weight: 700;
-  color: #FF6B00;
+  color: #FF7820;
   line-height: 1.2;
 }
 .product-price .price-badge {
   font-size: 18rpx;
-  font-weight: 600;
-  color: #FF6B00;
-  background: #FFF2E8;
-  padding: 2rpx 6rpx;
-  border-radius: 6rpx;
-  margin-right: 4rpx;
+  font-weight: 400;
+  color: #94A3B8;
+  background: transparent;
+  padding: 0;
+  margin-right: 6rpx;
 }
 .product-price .price-cur {
   font-size: 20rpx;
   font-weight: 600;
-  color: #FF6B00;
+  color: #FF7820;
 }
 .product-original {
   font-size: 19rpx;
@@ -2664,13 +2660,13 @@ page {
 /* ===== 企业部署横幅 ===== */
 .enterprise-banner {
   width: 100%;
-  background: linear-gradient(135deg, #F0F6FF 0%, #E6F0FF 100%);
+  background: #F8FAFC;
   border-radius: 14rpx;
   padding: 14rpx 18rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1rpx solid #C7DCFF;
+  border: 1rpx solid #E8EDF4;
   box-sizing: border-box;
   margin-bottom: 2rpx;
   flex-shrink: 0;
@@ -2684,17 +2680,17 @@ page {
 }
 .banner-badge {
   font-size: 18rpx;
-  font-weight: 600;
-  color: #165DFF;
-  background: #DCE8FF;
+  font-weight: 500;
+  color: #475569;
+  background: #EAEEF5;
   padding: 3rpx 10rpx;
   border-radius: 6rpx;
   flex-shrink: 0;
 }
 .banner-title {
   font-size: 22rpx;
-  font-weight: 600;
-  color: #102F6E;
+  font-weight: 500;
+  color: #334155;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2710,12 +2706,13 @@ page {
   color: #6B7280;
 }
 .banner-btn {
-  background: #165DFF;
-  color: #fff;
-  padding: 8rpx 18rpx;
+  background: #FFFFFF;
+  color: #334155;
+  border: 1rpx solid #DCE3EE;
+  padding: 7rpx 18rpx;
   border-radius: 999rpx;
   font-size: 20rpx;
-  font-weight: 600;
+  font-weight: 500;
   text-align: center;
   line-height: 1.2;
 }
@@ -3741,7 +3738,7 @@ page {
 /* ===== 自定义方案(机器页多选 + 方案框) ===== */
 .custom-plan-header { display: flex; align-items: center; justify-content: center; background: #fff; padding: 88rpx 24rpx 0; border-bottom: 2rpx solid #E8EDF3; flex-shrink: 0; }
 .cpp-btns { display: flex; flex-direction: row; align-items: center; gap: 12rpx; }
-.cpp-btn { font-size: 24rpx; color: #165DFF; background: #EAF1FF; border-radius: 28rpx; padding: 10rpx 30rpx; text-align: center; }
+.cpp-btn { font-size: 24rpx; color: #475569; background: #F1F5F9; border: 1rpx solid #E2E8F0; border-radius: 28rpx; padding: 10rpx 30rpx; text-align: center; }
 .type-bar {
   display: flex;
   align-items: center;
@@ -3761,15 +3758,19 @@ page {
   height: 52rpx;
   padding: 0 20rpx;
   border-radius: 999rpx;
-  background: #EFF6FF;
-  border: 1rpx solid #BFDBFE;
-  color: #165DFF;
+  background: #F1F5F9;
+  border: 1rpx solid #E2E8F0;
+  color: #475569;
   font-size: 22rpx;
-  font-weight: 600;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+.custom-plan-fixed:active {
+  background: #E2E8F0;
+  opacity: 1;
 }
 .bar-reset {
   margin-left: auto;
@@ -3839,7 +3840,7 @@ page {
 .scene-cart-total .cart-sum { margin-left: 12rpx; font-size: 36rpx; font-weight: 700; color: #FF7820; }
 .scene-cart-actions { display: flex; gap: 16rpx; margin-top: 14rpx; }
 .scene-cart-save { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 40rpx; border: 1px solid #CBD5E1; color: #475569; font-size: 28rpx; }
-.scene-cart-submit { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 40rpx; }
+.scene-cart-submit { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: #165DFF; border-radius: 40rpx; }
 .plan-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.55); z-index: 1200; display: flex; align-items: center; justify-content: center; }
 .plan-modal { width: 640rpx; max-height: 68vh; background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx; box-sizing: border-box; display: flex; flex-direction: column; }
 .plan-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
@@ -3859,7 +3860,7 @@ page {
 .plan-date-title { font-size: 30rpx; font-weight: 700; color: #1F2937; }
 .plan-date-close { font-size: 30rpx; color: #94A3B8; padding: 6rpx 12rpx; }
 .plan-date-pv { height: 400rpx; }
-.plan-date-ok { margin-top: 24rpx; height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: linear-gradient(135deg, #1E6FFF, #0EA5B7); border-radius: 42rpx; }
+.plan-date-ok { margin-top: 24rpx; height: 84rpx; line-height: 84rpx; text-align: center; color: #fff; font-size: 30rpx; font-weight: 600; background: #165DFF; border-radius: 42rpx; }
 
 /* ===== RaaS 品牌图标 / 租售子切换栏 / 卡片标签 ===== */
 .brand-logo {
@@ -3869,19 +3870,6 @@ page {
   background: #FFFFFF;
   border: 1rpx solid #E2E8F0;
   margin-bottom: 6rpx;
-}
-.brand-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4rpx;
-}
-.brand-hot-dot {
-  width: 10rpx;
-  height: 10rpx;
-  border-radius: 50%;
-  background: #F59E0B;
-  flex-shrink: 0;
 }
 .tob-toolbar-head {
   display: flex;
@@ -3905,16 +3893,16 @@ page {
   padding: 8rpx 20rpx;
   font-size: 23rpx;
   font-weight: 500;
-  color: #475569;
+  color: #64748B;
   background: transparent;
   border-radius: 10rpx;
   line-height: 1.25;
 }
 .tob-sub-pill.active {
-  color: #165DFF;
+  color: #1E293B;
   background: #FFFFFF;
-  font-weight: 700;
-  box-shadow: 0 2rpx 6rpx rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+  box-shadow: 0 2rpx 6rpx rgba(15, 23, 42, 0.06);
 }
 .card-tags-row {
   display: flex;
@@ -3925,23 +3913,22 @@ page {
 }
 .mode-tag {
   font-size: 18rpx;
-  font-weight: 600;
+  font-weight: 500;
   padding: 3rpx 10rpx;
   border-radius: 6rpx;
   line-height: 1.3;
+  color: #334155;
+  background: #EEF2F6;
 }
-.mode-tag.rent {
-  color: #165DFF;
-  background: #EFF6FF;
-}
+.mode-tag.rent,
 .mode-tag.buy {
-  color: #059669;
-  background: #ECFDF5;
+  color: #334155;
+  background: #EEF2F6;
 }
 .raas-tag {
   font-size: 18rpx;
-  color: #4338CA;
-  background: #EEF2FF;
+  color: #64748B;
+  background: #F4F6F9;
   padding: 3rpx 10rpx;
   border-radius: 6rpx;
   line-height: 1.3;
@@ -3965,13 +3952,13 @@ page {
   align-items: center;
   gap: 6rpx;
   padding: 5rpx 14rpx;
-  background: #EFF6FF;
-  border: 1rpx solid #BFDBFE;
+  background: #F1F5F9;
+  border: 1rpx solid #E2E8F0;
   border-radius: 999rpx;
   font-size: 21rpx;
-  color: #1D4ED8;
+  color: #334155;
 }
-.af-close { font-weight: 700; }
+.af-close { color: #94A3B8; font-weight: 600; }
 .af-reset {
   font-size: 21rpx;
   color: #64748B;

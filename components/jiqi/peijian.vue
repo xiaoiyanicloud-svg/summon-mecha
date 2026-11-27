@@ -5,7 +5,7 @@
       <view class="search-wrap">
         <SearchInput
           v-model="q"
-          placeholder="搜索配件名称 / SKU"
+          placeholder="搜索配件"
           @input="onSearchInput"
           @confirm="refresh"
           @clear="clearSearch"

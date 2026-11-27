@@ -3,7 +3,7 @@
     <view class="market-search">
       <SearchInput
         v-model="query"
-        placeholder="搜索已上架技能"
+        placeholder="搜索技能"
         @input="onQueryInput"
         @confirm="refreshNow"
         @clear="clearSearch"
