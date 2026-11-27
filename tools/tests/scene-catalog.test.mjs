@@ -463,3 +463,94 @@ test('订单列表与详情页联调：rental_info 租期不误回退 created_at
   assert.deepEqual(cancelCalls, [{ kind: 'guest', id: 501 }])
   assert.ok(storage.get('orderNeedRefresh'))
 })
+
+test('订单页状态联调：履约态识别服务中、processing 跳转定位、合并排序分页、技能/配件分支与列表取消/去付款', async () => {
+  const orderListSrc = (await readFile(new URL('../../pages/order/index.vue', import.meta.url), 'utf8')).match(/<script>([\s\S]*?)<\/script>/)[1]
+  const storage = new Map([['token', 'user-jwt'], ['orderStatus', 'processing']])
+  const navCalls = []
+  const cancelCalls = []
+  const orderCtx = vm.createContext({
+    CustomTabBar: {}, StateView: {}, SmIcon: {}, sceneStatusLabel: s => s,
+    orderApi: {
+      getGuestOrders: async ({ page } = {}) => page === 2 ? {
+        data: [], current: 2, last_page: 2, has_more: false,
+      } : {
+        data: [{
+          id: 601, increment_id: 'SO601', is_guest: true, status: 'pending', order_type: 'accessory',
+          created_at: '2026-11-25 09:00:00', grand_total: 399,
+          items: [{ product_id: 21, name: '3D 深度相机', qty_ordered: 1 }],
+        }],
+        current: 1, last_page: 1, has_more: false,
+        counts: { total: 1, scene: 0, pending: 1, confirm: 0, active: 0, completed: 0, cancelled: 0 },
+      },
+      getOrders: async ({ page } = {}) => page === 2 ? {
+        data: [{
+          id: 602, increment_id: 'SO602', is_guest: false, status: 'processing', order_type: 'skill',
+          created_at: '2026-11-24 08:00:00', grand_total: 199,
+          delivery_method: '人工安装', sn_code: 'SN-G1-01',
+          items: [{ product_id: 31, name: '展会迎宾技能', qty_ordered: 1 }],
+        }],
+        current: 2, last_page: 2, has_more: false,
+      } : {
+        data: [{
+          id: 603, increment_id: 'SO603', is_guest: false, status: 'processing', order_type: 'rent',
+          created_at: '2026-11-27 12:00:00', grand_total: 5600,
+          fulfillment_status: 'shipped', carrier: '顺丰', tracking_no: 'SF603',
+          rental_info: { rent_days: 2, start_date: '2026-12-01', end_date: '2026-12-03' },
+          items: [{ product_id: 11, name: '宇树 G1【租赁】（2天）', qty_ordered: 1 }],
+        }],
+        current: 1, last_page: 2, has_more: true,
+        counts: { total: 2, scene: 0, pending: 0, confirm: 0, active: 2, completed: 0, cancelled: 0 },
+      },
+      cancelOrder: async id => { cancelCalls.push({ kind: 'auth', id }); return { success: true, message: '订单已取消' } },
+      cancelGuestOrder: async id => { cancelCalls.push({ kind: 'guest', id }); return { success: true, message: '订单已取消' } },
+    },
+    uni: {
+      getStorageSync: k => storage.get(k),
+      setStorageSync: (k, v) => storage.set(k, v),
+      removeStorageSync: k => storage.delete(k),
+      showModal: ({ success }) => success && success({ confirm: true }),
+      showToast() {},
+      navigateTo: v => navCalls.push(v),
+      switchTab: v => navCalls.push(v),
+    },
+  })
+  vm.runInContext(orderListSrc.replace(/^[ \t]*import\b[\s\S]*?from\s+['"][^'"]+['"];?/gm, '').replace('export default', 'globalThis.component ='), orderCtx)
+  const state = orderCtx.component.data()
+  for (const [k, fn] of Object.entries(orderCtx.component.methods)) state[k] = fn.bind(state)
+  for (const [k, fn] of Object.entries(orderCtx.component.computed)) Object.defineProperty(state, k, { configurable: true, enumerable: true, get: () => fn.call(state) })
+
+  orderCtx.component.onShow.call(state)
+  await new Promise(r => setTimeout(r, 20))
+  // processing 定位在 confirm=0 且 active>0 时自动切到 active；顺序按 createdAt 倒序 (603 在 601 前)
+  assert.equal(state.currentStatus, 'active')
+  assert.deepEqual(Array.from(state.orders, o => o.id), [603, 601])
+  assert.equal(state.orders[0].status, 'active')
+  assert.equal(state.orders[0].statusText, '已发货 · 服务中')
+  assert.equal(state.orders[1].icon, '🧩')
+  assert.equal(state.hasMore, true)
+  assert.equal(state.getTotalCount(), 3)
+  assert.equal(state.getCountByStatus('active'), 2)
+  const rentFields = Object.fromEntries(state.orderFields(state.orders[0]).map(r => [r.label, r.value]))
+  assert.equal(rentFields['物流单号'], '顺丰 · SF603')
+
+  // 加载第 2 页技能单，检验技能字段展示与再次下单跳技能详情
+  await state.loadMore()
+  assert.equal(state.hasMore, false)
+  const skillOrder = state.orders.find(o => o.id === 602)
+  assert.ok(skillOrder)
+  const skillFields = Object.fromEntries(state.orderFields(skillOrder).map(r => [r.label, r.value]))
+  assert.equal(skillFields['交付方式'], '人工安装')
+  assert.equal(skillFields['设备SN'], 'SN-G1-01')
+  state.reorder(skillOrder)
+  assert.equal(navCalls[navCalls.length - 1].url, '/pages/home/jineng?skillId=31&productId=31')
+
+  // 待付款游客单：列表中直接去付款 / 取消订单
+  const pendingGuest = state.orders.find(o => o.id === 601)
+  state.payOrder(pendingGuest)
+  assert.equal(navCalls[navCalls.length - 1].url, '/pages/order/order-detail?id=601&pay=1')
+  state.cancelOrder(pendingGuest)
+  await new Promise(r => setTimeout(r, 10))
+  assert.deepEqual(cancelCalls, [{ kind: 'guest', id: 601 }])
+  assert.equal(state.orders.find(o => o.id === 601).status, 'cancelled')
+})

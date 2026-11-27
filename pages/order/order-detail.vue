@@ -180,9 +180,11 @@
 				<view class="btn-primary" @click="payOrder">立即付款</view>
 			</template>
 			<template v-else-if="order.status === 'confirm'">
-				<view class="btn-outline" @click="cancelOrder">取消订单</view>
+				<view v-if="order.fulfillment && ['shipped', 'in_use'].includes(order.fulfillment.status)" class="btn-outline" @click="extendRent">续租</view>
+				<view v-if="order.fulfillment && ['shipped', 'in_use'].includes(order.fulfillment.status)" class="btn-outline" @click="applyReturn">申请归还</view>
 				<view v-if="order.type !== 'skill'" class="btn-outline" @click="goOrderAfterSale">申请售后</view>
-				<view class="btn-primary" @click="contactService">联系客服</view>
+				<view v-if="order.type === 'skill'" class="btn-primary" @click="goSkills">去使用</view>
+				<view v-else class="btn-primary" @click="contactService">联系客服</view>
 			</template>
 			<template v-else-if="order.status === 'active'">
 				<view class="btn-outline" @click="extendRent">续租</view>
@@ -214,11 +216,16 @@ import SmIcon from '@/components/SmIcon.vue'
 				orderId: null,
 				loading: true,
 				loadError: '',
+				_autoPayOnLoad: false,
+				_autoPayTriggered: false,
 			}
 		},
 		onLoad(options) {
-			const id = parseInt(options.id)
+			const opts = options || {}
+			const id = parseInt(opts.id)
 			this.orderId = id || null
+			this._autoPayOnLoad = String(opts.pay || '') === '1'
+			this._autoPayTriggered = false
 			if (id) {
 				this.loadOrder(id)
 			} else {
@@ -287,6 +294,10 @@ import SmIcon from '@/components/SmIcon.vue'
 							if (this.routeSceneOrder(detail)) { this.loading = false; return }
 							this.order = this.normalizeOrder(this.mapApiDetail(detail))
 							this.loading = false
+							if (this._autoPayOnLoad && !this._autoPayTriggered && this.order.status === 'pending') {
+								this._autoPayTriggered = true
+								this.payOrder()
+							}
 							return
 						}
 					} catch (e) {
@@ -727,6 +738,10 @@ import SmIcon from '@/components/SmIcon.vue'
 				})
 			},
 			reorder() {
+				if (this.order && this.order.type === 'skill' && this.order.productId) {
+					uni.navigateTo({ url: `/pages/home/jineng?skillId=${this.order.productId}&productId=${this.order.productId}` })
+					return
+				}
 				const sr = this.order.sceneRental
 				if ((sr && sr.scene_id && Array.isArray(this.order.rawItems) && this.order.rawItems.length) || ((this.order.type === 'rent' || this.order.type === 'plan') && Array.isArray(this.order.rawItems) && this.order.rawItems.length > 1)) {
 					const rentDays = Math.max(1, Number((sr && sr.rent_days) || this.order.rentDays) || 1)

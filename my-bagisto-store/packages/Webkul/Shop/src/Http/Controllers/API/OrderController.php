@@ -2,14 +2,17 @@
 
 namespace Webkul\Shop\Http\Controllers\API;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Webkul\Sales\Models\Order;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SkillEntitlement;
 use Webkul\Shop\Services\Ops\OperationLogger;
+use Webkul\Shop\Services\Scenes\SceneLinkedOrderService;
 use Webkul\Shop\Services\SkillDelivery\SkillDeliveryManager;
 
 class OrderController extends APIController
@@ -19,24 +22,15 @@ class OrderController extends APIController
     /**
      * Order listings of the authenticated customer.
      */
-    public function index(): JsonResource
+    public function index(?Request $request = null): JsonResource
     {
+        $request = $request ?? request();
         $customer = auth()->guard('customer')->user();
 
-        $orders = Order::query()
-            ->where('customer_id', $customer->id)
-            ->with(['items'])
-            ->orderByDesc('created_at')
-            ->paginate(20);
-
-        $data = $orders->through(fn ($order) => $this->formatOrder($order))->items();
-
-        return new JsonResource([
-            'data' => $data,
-            'total' => $orders->total(),
-            'current' => $orders->currentPage(),
-            'last_page' => $orders->lastPage(),
-        ]);
+        return $this->paginateOrderScope(
+            Order::query()->where('customer_id', $customer->id),
+            $request
+        );
     }
 
     /**
@@ -58,6 +52,8 @@ class OrderController extends APIController
                 'total' => 0,
                 'current' => 1,
                 'last_page' => 1,
+                'has_more' => false,
+                'counts' => $this->emptyStatusCounts(),
             ]);
         }
 
@@ -80,24 +76,271 @@ class OrderController extends APIController
                 'total' => $formatted ? 1 : 0,
                 'current' => 1,
                 'last_page' => 1,
+                'has_more' => false,
             ]);
         }
 
-        $orders = Order::query()
-            ->whereNull('customer_id')
-            ->where('guest_key', $guestKey)
-            ->with(['items'])
-            ->orderByDesc('created_at')
-            ->paginate(20);
+        return $this->paginateOrderScope(
+            Order::query()->whereNull('customer_id')->where('guest_key', $guestKey),
+            $request
+        );
+    }
 
-        $data = $orders->through(fn ($order) => $this->formatOrder($order))->items();
+    /**
+     * 统一订单列表分页、筛选、检索、全量状态计数与履约概要批量预加载。
+     */
+    protected function paginateOrderScope(Builder $scopeQuery, Request $request): JsonResource
+    {
+        $perPage = max(1, min(50, (int) $request->query('limit', $request->query('per_page', 20))));
+        $page = max(1, (int) $request->query('page', 1));
+        $counts = $this->computeScopeCounts(clone $scopeQuery);
+
+        $listQuery = (clone $scopeQuery)->with(['items']);
+        $q = trim((string) $request->query('q', ''));
+        if ($q !== '') {
+            $like = '%'.addcslashes($q, '%_\\').'%';
+            $listQuery->where(function ($sub) use ($like) {
+                $sub->where('increment_id', 'like', $like)
+                    ->orWhereExists(function ($itemQ) use ($like) {
+                        $itemQ->select(DB::raw(1))
+                            ->from('order_items')
+                            ->whereColumn('order_items.order_id', 'orders.id')
+                            ->where(function ($nameQ) use ($like) {
+                                $nameQ->where('order_items.name', 'like', $like)
+                                    ->orWhere('order_items.sku', 'like', $like);
+                            });
+                    });
+            });
+        }
+
+        $statusFilter = trim((string) $request->query('status', ''));
+        $this->applyListStatusFilter($listQuery, $statusFilter);
+
+        $orders = $listQuery
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $orderIds = collect($orders->items())->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $merchantSummaries = $this->preloadMerchantSummaries($orderIds);
+
+        $data = $orders->through(function ($order) use ($merchantSummaries) {
+            return $this->formatOrder($order, false, [
+                'merchant' => $merchantSummaries[(int) $order->id] ?? null,
+            ]);
+        })->items();
 
         return new JsonResource([
             'data' => $data,
             'total' => $orders->total(),
             'current' => $orders->currentPage(),
             'last_page' => $orders->lastPage(),
+            'has_more' => $orders->hasMorePages(),
+            'counts' => $counts,
         ]);
+    }
+
+    protected function emptyStatusCounts(): array
+    {
+        return [
+            'total' => 0,
+            'scene' => 0,
+            'pending' => 0,
+            'confirm' => 0,
+            'active' => 0,
+            'completed' => 0,
+            'cancelled' => 0,
+        ];
+    }
+
+    /**
+     * 按页面真实口径统计当前用户/本机游客的全部订单分状态计数（不受分页 20 条截断影响）。
+     */
+    protected function computeScopeCounts(Builder $scopeQuery): array
+    {
+        $counts = $this->emptyStatusCounts();
+        $rows = $scopeQuery->select('id', 'status', 'order_type')->get();
+        if ($rows->isEmpty()) {
+            return $counts;
+        }
+
+        $orderIds = $rows->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $merchantSummaries = $this->preloadMerchantSummaries($orderIds);
+        $sceneOrderIds = [];
+        if (Schema::hasTable('scene_order_links')) {
+            $sceneOrderIds = DB::table('scene_order_links')
+                ->whereIn('order_id', $orderIds)
+                ->pluck('order_id')
+                ->map(fn ($id) => (int) $id)
+                ->flip()
+                ->all();
+        }
+
+        foreach ($rows as $row) {
+            $counts['total']++;
+            $oid = (int) $row->id;
+            if (isset($sceneOrderIds[$oid])) {
+                $counts['scene']++;
+                continue;
+            }
+            $mStatus = $merchantSummaries[$oid]->status ?? null;
+            $bucket = $this->resolveListStatusBucket((string) $row->status, (string) ($row->order_type ?? ''), $mStatus);
+            if (isset($counts[$bucket])) {
+                $counts[$bucket]++;
+            }
+        }
+
+        return $counts;
+    }
+
+    protected function resolveListStatusBucket(string $orderStatus, string $orderType, ?string $merchantStatus): string
+    {
+        if ($orderType === 'custom') {
+            return 'completed';
+        }
+        if (in_array($orderStatus, ['pending', 'pending_payment'], true)) {
+            return 'pending';
+        }
+        if ($orderStatus === 'processing') {
+            if ($merchantStatus !== null) {
+                if (in_array($merchantStatus, ['shipped', 'in_use', 'returning', 'returned', 'returned_inspecting'], true)) {
+                    return 'active';
+                }
+                if ($merchantStatus === 'completed') {
+                    return 'completed';
+                }
+                if ($merchantStatus === 'cancelled') {
+                    return 'cancelled';
+                }
+            }
+
+            return 'confirm';
+        }
+        if (in_array($orderStatus, ['completed', 'closed'], true)) {
+            return 'completed';
+        }
+        if (in_array($orderStatus, ['canceled', 'fraud'], true)) {
+            return 'cancelled';
+        }
+
+        return 'active';
+    }
+
+    protected function applyListStatusFilter(Builder $query, string $status): void
+    {
+        if ($status === '' || $status === 'all') {
+            return;
+        }
+        $hasSceneLinks = Schema::hasTable('scene_order_links');
+        $hasMerchant = Schema::hasTable('merchant_orders');
+
+        if ($status === 'scene') {
+            if ($hasSceneLinks) {
+                $query->whereExists(function ($sq) {
+                    $sq->select(DB::raw(1))
+                        ->from('scene_order_links')
+                        ->whereColumn('scene_order_links.order_id', 'orders.id');
+                });
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+
+            return;
+        }
+
+        if ($hasSceneLinks) {
+            $query->whereNotExists(function ($sq) {
+                $sq->select(DB::raw(1))
+                    ->from('scene_order_links')
+                    ->whereColumn('scene_order_links.order_id', 'orders.id');
+            });
+        }
+
+        if ($status === 'pending') {
+            $query->whereIn('status', ['pending', 'pending_payment'])
+                ->where(fn ($q) => $q->whereNull('order_type')->orWhere('order_type', '!=', 'custom'));
+        } elseif ($status === 'completed') {
+            $query->where(function ($q) use ($hasMerchant) {
+                $q->where('order_type', 'custom')
+                    ->orWhereIn('status', ['completed', 'closed']);
+                if ($hasMerchant) {
+                    $q->orWhere(function ($mq) {
+                        $mq->where('status', 'processing')
+                            ->whereExists(function ($ex) {
+                                $ex->select(DB::raw(1))
+                                    ->from('merchant_orders')
+                                    ->whereColumn('merchant_orders.bagisto_order_id', 'orders.id')
+                                    ->where('merchant_orders.status', 'completed');
+                            });
+                    });
+                }
+            });
+        } elseif ($status === 'cancelled') {
+            $query->where(function ($q) use ($hasMerchant) {
+                $q->whereIn('status', ['canceled', 'fraud'])
+                    ->where(fn ($qt) => $qt->whereNull('order_type')->orWhere('order_type', '!=', 'custom'));
+                if ($hasMerchant) {
+                    $q->orWhere(function ($mq) {
+                        $mq->where('status', 'processing')
+                            ->whereExists(function ($ex) {
+                                $ex->select(DB::raw(1))
+                                    ->from('merchant_orders')
+                                    ->whereColumn('merchant_orders.bagisto_order_id', 'orders.id')
+                                    ->where('merchant_orders.status', 'cancelled');
+                            });
+                    });
+                }
+            });
+        } elseif ($status === 'active') {
+            $query->where(function ($q) use ($hasMerchant) {
+                $q->whereNotIn('status', ['pending', 'pending_payment', 'processing', 'completed', 'closed', 'canceled', 'fraud'])
+                    ->where(fn ($qt) => $qt->whereNull('order_type')->orWhere('order_type', '!=', 'custom'));
+                if ($hasMerchant) {
+                    $q->orWhere(function ($mq) {
+                        $mq->where('status', 'processing')
+                            ->whereExists(function ($ex) {
+                                $ex->select(DB::raw(1))
+                                    ->from('merchant_orders')
+                                    ->whereColumn('merchant_orders.bagisto_order_id', 'orders.id')
+                                    ->whereIn('merchant_orders.status', ['shipped', 'in_use', 'returning', 'returned', 'returned_inspecting']);
+                            });
+                    });
+                }
+            });
+        } elseif (in_array($status, ['confirm', 'processing'], true)) {
+            $query->where('status', 'processing')
+                ->where(fn ($qt) => $qt->whereNull('order_type')->orWhere('order_type', '!=', 'custom'));
+            if ($hasMerchant) {
+                $query->whereNotExists(function ($ex) {
+                    $ex->select(DB::raw(1))
+                        ->from('merchant_orders')
+                        ->whereColumn('merchant_orders.bagisto_order_id', 'orders.id')
+                        ->whereIn('merchant_orders.status', ['shipped', 'in_use', 'returning', 'returned', 'returned_inspecting', 'completed', 'cancelled']);
+                });
+            }
+        }
+    }
+
+    protected function preloadMerchantSummaries(array $orderIds): array
+    {
+        if (empty($orderIds) || ! Schema::hasTable('merchant_orders')) {
+            return [];
+        }
+
+        $rows = DB::table('merchant_orders')
+            ->whereIn('bagisto_order_id', $orderIds)
+            ->orderBy('id')
+            ->get(['bagisto_order_id', 'order_no', 'status', 'carrier', 'tracking_no', 'device_sn']);
+
+        $map = [];
+        foreach ($rows as $row) {
+            $oid = (int) $row->bagisto_order_id;
+            if (! isset($map[$oid])) {
+                $map[$oid] = $row;
+            }
+        }
+
+        return $map;
     }
 
     /**
@@ -136,7 +379,7 @@ class OrderController extends APIController
     /**
      * Convert an order model into a frontend-friendly array.
      */
-    protected function formatOrder(Order $order, bool $withDetails = false): array
+    protected function formatOrder(Order $order, bool $withDetails = false, array $preloaded = []): array
     {
         $firstSceneRental = null;
         $firstRental = null;
@@ -195,10 +438,31 @@ class OrderController extends APIController
             'discount_amount' => $order->discount_amount ?? 0,
             'customer_name' => trim($order->customer_first_name.' '.$order->customer_last_name),
             'customer_email' => $order->customer_email,
-            'scene_workflow' => app(\Webkul\Shop\Services\Scenes\SceneLinkedOrderService::class)->context((int) $order->id),
+            'scene_workflow' => app(SceneLinkedOrderService::class)->context((int) $order->id),
             'scene_rental' => $firstSceneRental,
             'rental_info' => $firstSceneRental ?: $firstRental,
         ];
+
+        $merchantSummary = array_key_exists('merchant', $preloaded)
+            ? $preloaded['merchant']
+            : ($this->preloadMerchantSummaries([(int) $order->id])[(int) $order->id] ?? null);
+
+        $fulfillmentLabels = [
+            'pending_shipment'    => '待发货',
+            'shipped'             => '已发货',
+            'in_use'              => '租赁履约中',
+            'returning'           => '归还途中',
+            'returned'            => '已归还待验机',
+            'returned_inspecting' => '归还验机中',
+            'completed'           => '履约已完结',
+            'cancelled'           => '已取消',
+        ];
+        $data['fulfillment_status'] = $merchantSummary->status ?? null;
+        $data['fulfillment_status_label'] = $merchantSummary && $merchantSummary->status
+            ? ($fulfillmentLabels[$merchantSummary->status] ?? $merchantSummary->status)
+            : null;
+        $data['carrier'] = $merchantSummary->carrier ?? null;
+        $data['tracking_no'] = $merchantSummary->tracking_no ?? null;
 
         // 技能单:把授权信息接进订单详情。
         // 「设备SN码」「交付方式」这两个字段订单详情页早就画好了,但一直没人赋值,永远显示「—」。
@@ -374,7 +638,7 @@ class OrderController extends APIController
                 return ['order' => $order, 'canceled' => false, 'scene' => true];
             }
 
-            if ($order->status !== 'pending') {
+            if (! in_array($order->status, ['pending', 'pending_payment'], true)) {
                 return ['order' => $order, 'canceled' => false];
             }
 

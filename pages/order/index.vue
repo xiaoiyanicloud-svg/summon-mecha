@@ -8,7 +8,7 @@
 		<!-- ===== 统计卡片 ===== -->
 		<view class="stats-row">
 			<view class="stat-card" @click="filterByStatus('all')">
-				<text class="stat-number">{{ orders.length }}</text>
+				<text class="stat-number">{{ getTotalCount() }}</text>
 				<text class="stat-label">全部订单</text>
 			</view>
 			<view class="stat-card" @click="filterByStatus('pending')">
@@ -85,14 +85,33 @@
 					</view>
 				</view>
 
-				<!-- 卡片底部 -->
+				<!-- 卡片底部：按真实订单状态分流操作 -->
 				<view class="card-footer">
-					<view class="btn-group">
+					<view class="btn-group" v-if="item.sceneWorkflow">
+						<view class="btn-outline" @click.stop="contactService(item)">联系客服</view>
+						<view class="btn-outline" @click.stop="reorder(item)">再次需求</view>
+						<view class="btn-primary" @click.stop="viewDetail(item)">查看项目</view>
+					</view>
+					<view class="btn-group" v-else-if="item.status === 'pending'">
+						<view class="btn-outline" @click.stop="cancelOrder(item)">取消订单</view>
+						<view class="btn-outline" @click.stop="viewDetail(item)">查看详情</view>
+						<view class="btn-primary" @click.stop="payOrder(item)">去付款</view>
+					</view>
+					<view class="btn-group" v-else-if="item.type === 'skill' && item.status !== 'cancelled'">
 						<view class="btn-outline" @click.stop="viewDetail(item)">查看详情</view>
 						<view class="btn-outline" @click.stop="contactService(item)">联系客服</view>
-						<view class="btn-primary" @click.stop="reorder(item)">再次下单</view>
+						<view class="btn-primary" @click.stop="goSkills()">去使用</view>
+					</view>
+					<view class="btn-group" v-else>
+						<view class="btn-outline" @click.stop="viewDetail(item)">查看详情</view>
+						<view class="btn-outline" @click.stop="contactService(item)">联系客服</view>
+						<view v-if="item.productId || (item.rawItems && item.rawItems.length)" class="btn-primary" @click.stop="reorder(item)">再次下单</view>
 					</view>
 				</view>
+			</view>
+
+			<view class="load-more-bar" v-if="filteredOrders.length && hasMore" @click="loadMore">
+				<text class="load-more-text">{{ loadingMore ? '正在加载更多订单…' : '点击加载更多订单' }}</text>
 			</view>
 
 			</state-view>
@@ -120,65 +139,178 @@
 			return {
 				currentStatus: 'all',
 				loading: true,
+				loadingMore: false,
 				loadError: '',
 				orders: [],
+				serverCounts: null,
+				guestPage: 1,
+				guestHasMore: false,
+				minePage: 1,
+				mineHasMore: false,
+				_loadSeq: 0,
+				_pendingMineStatus: '',
 			}
 		},
 		computed: {
 			filteredOrders() {
 				if (this.currentStatus === 'all') return this.orders
 				return this.orders.filter(item => item.status === this.currentStatus)
-			}
+			},
+			hasMore() {
+				return !!(this.guestHasMore || this.mineHasMore)
+			},
 		},
 		onShow() {
 			// 消费「我的-订单入口」传来的状态定位(读后即清),再刷新
 			const status = uni.getStorageSync('orderStatus')
 			if (status) {
 				uni.removeStorageSync('orderStatus')
-				if (['pending', 'confirm', 'completed'].includes(status)) this.currentStatus = status
+				if (status === 'processing') {
+					this._pendingMineStatus = 'processing'
+					this.currentStatus = 'confirm'
+				} else if (['all', 'scene', 'pending', 'confirm', 'active', 'completed', 'cancelled'].includes(status)) {
+					this._pendingMineStatus = ''
+					this.currentStatus = status
+				}
 			}
-			this.loadOrders()
+			this.loadOrders(false)
+		},
+		onPullDownRefresh() {
+			Promise.resolve(this.loadOrders(false)).finally(() => {
+				if (typeof uni.stopPullDownRefresh === 'function') uni.stopPullDownRefresh()
+			})
+		},
+		onReachBottom() {
+			if (this.hasMore && !this.loading && !this.loadingMore) {
+				this.loadOrders(true)
+			}
 		},
 		methods: {
 			switchStatus(status) { this.currentStatus = status },
 			filterByStatus(status) { this.currentStatus = status },
 
+			sumServerCounts(guestRes, mineRes) {
+				const keys = ['total', 'scene', 'pending', 'confirm', 'active', 'completed', 'cancelled']
+				const gCounts = guestRes && guestRes.counts && typeof guestRes.counts === 'object' ? guestRes.counts : null
+				const mCounts = mineRes && mineRes.counts && typeof mineRes.counts === 'object' ? mineRes.counts : null
+				if (!gCounts && !mCounts) return null
+				const out = {}
+				keys.forEach((k) => {
+					out[k] = Number((gCounts && gCounts[k]) || 0) + Number((mCounts && mCounts[k]) || 0)
+				})
+				return out
+			},
+
+			mergeAndSortOrders(baseList, incomingList) {
+				const byId = new Map()
+				;(Array.isArray(baseList) ? baseList : []).forEach((item) => {
+					if (item && item.id != null) byId.set(Number(item.id), item)
+				})
+				;(Array.isArray(incomingList) ? incomingList : []).forEach((item) => {
+					if (item && item.id != null) byId.set(Number(item.id), item)
+				})
+				return [...byId.values()].sort((a, b) => {
+					const ta = a.createdAt ? Date.parse(String(a.createdAt).replace(' ', 'T')) : 0
+					const tb = b.createdAt ? Date.parse(String(b.createdAt).replace(' ', 'T')) : 0
+					if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return tb - ta
+					return Number(b.id || 0) - Number(a.id || 0)
+				})
+			},
+
+			loadMore() {
+				if (!this.hasMore || this.loading || this.loadingMore) return
+				return this.loadOrders(true)
+			},
+
 			// ================ 订单数据加载（以后端真实单为准） ================
-			async loadOrders() {
+			async loadOrders(append = false) {
 				// 清理历史本地意向单(旧假数据);订单以后端 guest-orders 真实单为准
 				uni.removeStorageSync('intentOrders')
-				const intents = []
+				if (append && (this.loading || this.loadingMore || !this.hasMore)) return
 
-				this.loading = true
-				this.loadError = ''
-				let apiOrders = []
-				try {
-					// 通用:始终拉游客单(场景租用/游客单真实数据);登录用户再叠加本人订单(按 id 去重)
-					const gg = await orderApi.getGuestOrders()
-					let list = (gg && gg.data) ? gg.data : []
-					if (uni.getStorageSync('token')) {
-						const mine = await orderApi.getOrders()
-						const mList = (mine && mine.data) ? mine.data : []
-						const ids = new Set(list.map(o => o.id))
-						list = [...list, ...mList.filter(o => !ids.has(o.id))]
-					}
-					apiOrders = list.map(o => this.mapApiOrder(o))
-				} catch (e) {
-					// ⚠ 故障 ≠「暂无订单」:置错误标记交给 StateView 的错误态(带重试)
-					this.loadError = (e && e.message) || '加载失败'
-					apiOrders = []
-				} finally {
-					this.loading = false
+				const seq = ++this._loadSeq
+				if (append) {
+					this.loadingMore = true
+				} else {
+					this.loading = true
+					this.loadError = ''
+					this.guestPage = 1
+					this.minePage = 1
+					this.guestHasMore = false
+					this.mineHasMore = false
 				}
 
-				// 只看真实单
-				this.orders = apiOrders
+				const hasToken = !!uni.getStorageSync('token')
+				const nextGuestPage = append ? (this.guestPage + 1) : 1
+				const nextMinePage = append ? (this.minePage + 1) : 1
+				let guestRes = null
+				let mineRes = null
+				let batchOrders = []
+				let fetchErr = null
+
+				try {
+					if (!append || this.guestHasMore) {
+						guestRes = await orderApi.getGuestOrders({ page: nextGuestPage })
+						const gList = (guestRes && Array.isArray(guestRes.data)) ? guestRes.data : []
+						batchOrders = batchOrders.concat(gList.map(o => this.mapApiOrder(o)))
+					}
+					if (hasToken && (!append || this.mineHasMore)) {
+						mineRes = await orderApi.getOrders({ page: nextMinePage })
+						const mList = (mineRes && Array.isArray(mineRes.data)) ? mineRes.data : []
+						batchOrders = batchOrders.concat(mList.map(o => this.mapApiOrder(o)))
+					}
+				} catch (e) {
+					fetchErr = e
+				}
+
+				if (seq !== this._loadSeq) return
+
+				if (fetchErr) {
+					if (append) {
+						this.loadingMore = false
+						uni.showToast({ title: (fetchErr && fetchErr.message) || '加载更多失败，请重试', icon: 'none' })
+						return
+					}
+					// ⚠ 故障 ≠「暂无订单」:置错误标记交给 StateView 的错误态(带重试)
+					this.loadError = (fetchErr && fetchErr.message) || '加载失败'
+					this.orders = []
+					this.serverCounts = null
+					this.loading = false
+					return
+				}
+
+				if (guestRes) {
+					this.guestPage = Number(guestRes.current || nextGuestPage)
+					const last = Number(guestRes.last_page || 1)
+					this.guestHasMore = typeof guestRes.has_more === 'boolean' ? guestRes.has_more : (this.guestPage < last)
+				}
+				if (mineRes) {
+					this.minePage = Number(mineRes.current || nextMinePage)
+					const last = Number(mineRes.last_page || 1)
+					this.mineHasMore = typeof mineRes.has_more === 'boolean' ? mineRes.has_more : (this.minePage < last)
+				} else if (!hasToken) {
+					this.mineHasMore = false
+				}
+
+				const merged = append ? this.mergeAndSortOrders(this.orders, batchOrders) : this.mergeAndSortOrders([], batchOrders)
+				this.orders = merged
+				if (!append) {
+					this.serverCounts = this.sumServerCounts(guestRes, mineRes)
+				}
+
+				if (this._pendingMineStatus === 'processing') {
+					if (this.getCountByStatus('confirm') === 0 && this.getCountByStatus('active') > 0) {
+						this.currentStatus = 'active'
+					}
+					this._pendingMineStatus = ''
+				}
+
+				this.loading = false
+				this.loadingMore = false
 				// 拉取失败时**不**把空数组写进缓存 —— 否则一次网络抖动会清掉订单缓存,
 				// 订单详情页(读 orderList 兜底)也跟着查不到单。
-				if (!this.loadError) {
-					uni.setStorageSync('orderList', apiOrders)
-					uni.removeStorageSync('orderNeedRefresh')
-				}
+				uni.setStorageSync('orderList', merged)
+				uni.removeStorageSync('orderNeedRefresh')
 			},
 
 			// 后端订单 → 前端卡片字段
@@ -192,8 +324,6 @@
 					closed: 'completed',
 					fraud: 'cancelled',
 				}
-				// 方案咨询/定制类线索(custom):提交即视为已完成,无需后续操作
-				const status = o.scene_workflow ? 'scene' : ((o.order_type === 'custom') ? 'completed' : (statusMap[o.status] || 'active'))
 				const textMap = {
 					pending: '待付款',
 					confirm: '待确认',
@@ -201,6 +331,33 @@
 					active: '服务中',
 					completed: '已完成',
 					cancelled: '已取消',
+				}
+				const fulfillmentStatus = o.fulfillment_status || (o.fulfillment && o.fulfillment.status) || ''
+				let status = o.scene_workflow ? 'scene' : ((o.order_type === 'custom') ? 'completed' : (statusMap[o.status] || 'active'))
+				let statusText = o.scene_workflow
+					? sceneStatusLabel(o.scene_workflow.state) + ' · ' + sceneStatusLabel(o.scene_workflow.payment_state)
+					: (textMap[status] || '处理中')
+
+				if (!o.scene_workflow && o.order_type !== 'custom' && o.status === 'processing' && fulfillmentStatus) {
+					if (fulfillmentStatus === 'shipped') {
+						status = 'active'
+						statusText = '已发货 · 服务中'
+					} else if (fulfillmentStatus === 'in_use') {
+						status = 'active'
+						statusText = '服务中'
+					} else if (['returning', 'returned', 'returned_inspecting'].includes(fulfillmentStatus)) {
+						status = 'active'
+						statusText = '归还待验机'
+					} else if (fulfillmentStatus === 'pending_shipment') {
+						status = 'confirm'
+						statusText = '待发货'
+					} else if (fulfillmentStatus === 'completed') {
+						status = 'completed'
+						statusText = '已完成'
+					} else if (fulfillmentStatus === 'cancelled') {
+						status = 'cancelled'
+						statusText = '已取消'
+					}
 				}
 				const firstItem = (o.items && o.items[0]) || {}
 				const sr = (o.scene_rental && typeof o.scene_rental === 'object')
@@ -232,7 +389,7 @@
 					productId: firstItem.product_id || '',
 					orderNo: o.increment_id || `SO${o.id}`,
 					name: name || '机器人订单',
-					icon: '🤖',
+					icon: o.order_type === 'accessory' ? '🧩' : '🤖',
 					bg: '#F0F4FA',
 					// 真实类型(后端 order_type):页签/详情分类显示的数据源
 					type: o.order_type || 'buy',
@@ -248,63 +405,65 @@
 					quantity: o.items_qty || (Array.isArray(o.items) ? o.items.reduce((s, i) => s + (Number(i.qty_ordered) || 0), 0) : 0) || 1,
 					amount,
 					status,
-					statusText: o.scene_workflow ? sceneStatusLabel(o.scene_workflow.state) + ' · ' + sceneStatusLabel(o.scene_workflow.payment_state) : textMap[status],
+					statusText,
 					statusClass: o.scene_workflow ? 'confirm' : status,
+					fulfillmentStatus,
+					carrier: o.carrier || (o.fulfillment && o.fulfillment.carrier) || '',
+					trackingNo: o.tracking_no || (o.fulfillment && o.fulfillment.tracking_no) || '',
+					deliveryMethod: o.delivery_method || '',
+					snCode: o.sn_code || '',
 					sceneWorkflow: o.scene_workflow || null,
 				}
 			},
 
-			// 本地意向订单 → 前端卡片字段
-			mapIntent(i) {
-				const isRent = i.type === 'rent'
-				return {
-					id: i.id,
-					productId: i.productId || '',
-					orderNo: `ZT${i.id}`,
-					name: i.name,
-					icon: i.icon || '🤖',
-					bg: i.bg || '#F0F4FA',
-					type: isRent ? 'rent' : 'buy',
-					typeText: isRent ? '租赁' : '购买',
-					typeClass: isRent ? 'rent' : 'buy',
-					// 购买不再出现「购买意向」措辞；优先用实际场景
-					scene: i.scene || (isRent ? '租用意向' : '产品购买'),
-					duration: i.rentPeriod || i.time || '',
-					quantity: i.qty || 1,
-					amount: i.price ? String(Math.round(parseFloat(String(i.price).replace(/[^\d.]/g, '')) * 100) / 100) : '0',
-					status: 'confirm',
-					statusText: '待确认',
-					statusClass: 'confirm',
-				}
-			},
-
-			// 按订单类型动态生成展示字段（租用/购买/方案/定制），代码逻辑区分而非硬写
+			// 按订单类型动态生成展示字段（租用/购买/方案/技能/定制），代码逻辑区分而非硬写
 			orderFields(item) {
 				const t = item.type || 'buy'
-				const rows = [{ label: '使用场景', value: item.scene || '—' }]
-				if (t === 'rent') {
-					const duration = item.duration || (item.startDate ? `${item.startDate} ~ ${item.endDate || ''}` : '—')
-					rows.push({ label: '租期', value: duration })
-					rows.push({ label: '租用数量', value: `${item.quantity} 台` })
-				} else if (t === 'plan') {
-					if (item.sceneRental || item.rentDays > 0 || item.startDate) {
-						const duration = item.startDate && item.endDate
-							? `${item.startDate} ~ ${item.endDate}（${item.rentDays || 1}天）`
-							: (item.rentDays > 0 ? `${item.rentDays}天` : (item.duration || '—'))
-						rows.push({ label: '租期', value: duration })
-					}
-					rows.push({ label: '方案台数', value: `${item.quantity} 台` })
-				} else if (t === 'custom') {
-					rows.push({ label: '定制数量', value: `${item.quantity} 台` })
+				const rows = []
+				if (t === 'skill') {
+					rows.push({ label: '交付方式', value: item.deliveryMethod || '授权交付' })
+					rows.push({ label: '设备SN', value: item.snCode || '待指派' })
 				} else {
-					// buy 及其它：购买不需要租期
-					rows.push({ label: '数量', value: `${item.quantity} 台` })
+					rows.push({ label: '使用场景', value: item.scene || '—' })
+					if (t === 'rent') {
+						const duration = item.duration || (item.startDate ? `${item.startDate} ~ ${item.endDate || ''}` : '—')
+						rows.push({ label: '租期', value: duration })
+						rows.push({ label: '租用数量', value: `${item.quantity} 台` })
+					} else if (t === 'plan') {
+						if (item.sceneRental || item.rentDays > 0 || item.startDate) {
+							const duration = item.startDate && item.endDate
+								? `${item.startDate} ~ ${item.endDate}（${item.rentDays || 1}天）`
+								: (item.rentDays > 0 ? `${item.rentDays}天` : (item.duration || '—'))
+							rows.push({ label: '租期', value: duration })
+						}
+						rows.push({ label: '方案台数', value: `${item.quantity} 台` })
+					} else if (t === 'custom') {
+						rows.push({ label: '定制数量', value: `${item.quantity} 台` })
+					} else {
+						// buy / accessory：购买不需要租期
+						rows.push({ label: '数量', value: `${item.quantity} 件` })
+					}
+					if (item.trackingNo) {
+						rows.push({ label: '物流单号', value: [item.carrier, item.trackingNo].filter(Boolean).join(' · ') })
+					}
 				}
 				rows.push({ label: '订单金额', value: `¥${item.amount}`, highlight: true, className: 'price' })
 				return rows
 			},
 
+			getTotalCount() {
+				if (this.serverCounts && Number.isFinite(Number(this.serverCounts.total)) && !this.hasMore) {
+					return this.orders.length
+				}
+				if (this.serverCounts && Number.isFinite(Number(this.serverCounts.total))) {
+					return Number(this.serverCounts.total)
+				}
+				return this.orders.length
+			},
 			getCountByStatus(status) {
+				if (this.serverCounts && this.hasMore && Object.prototype.hasOwnProperty.call(this.serverCounts, status)) {
+					return Number(this.serverCounts[status] || 0)
+				}
 				return this.orders.filter(item => item.status === status).length
 			},
 			viewDetail(item) {
@@ -314,6 +473,50 @@
 				uni.navigateTo({
 					url: `/pages/order/order-detail?id=${item.id}`
 				})
+			},
+			payOrder(item) {
+				if (!item || !item.id) return
+				uni.setStorageSync('orderDetailData', item)
+				uni.navigateTo({
+					url: `/pages/order/order-detail?id=${item.id}&pay=1`
+				})
+			},
+			cancelOrder(item) {
+				if (!item || !item.id) return
+				uni.showModal({
+					title: '取消订单',
+					content: `确认取消订单「${item.name || item.orderNo}」吗？`,
+					success: (res) => {
+						if (!res.confirm) return
+						const req = (!uni.getStorageSync('token') || item.isGuest)
+							? orderApi.cancelGuestOrder(item.id)
+							: orderApi.cancelOrder(item.id)
+						req
+							.then((r) => {
+								if (r && r.success === false) {
+									uni.showToast({ title: r.message || '取消失败', icon: 'none' })
+									return
+								}
+								uni.showToast({ title: (r && r.message) || '订单已取消', icon: 'success' })
+								uni.setStorageSync('orderNeedRefresh', Date.now())
+								this.orders = this.orders.map(o => Number(o.id) === Number(item.id)
+									? { ...o, status: 'cancelled', statusText: '已取消', statusClass: 'cancelled' }
+									: o)
+								if (this.serverCounts) {
+									this.serverCounts = {
+										...this.serverCounts,
+										pending: Math.max(0, Number(this.serverCounts.pending || 0) - 1),
+										cancelled: Number(this.serverCounts.cancelled || 0) + 1,
+									}
+								}
+								uni.setStorageSync('orderList', this.orders)
+							})
+							.catch((err) => uni.showToast({ title: (err && err.message) || '取消失败', icon: 'none' }))
+					}
+				})
+			},
+			goSkills() {
+				uni.navigateTo({ url: '/pages/mine/skills' })
 			},
 			contactService(item) {
 				if (!item) return
@@ -325,12 +528,25 @@
 					price: String(item.amount || item.actualAmount || ''),
 					status_label: item.statusText || '',
 				})
+				if (!uni.getStorageSync('token')) {
+					uni.showModal({
+						title: '联系客服',
+						content: '提交订单咨询工单需要先登录，前往「我的」登录？',
+						confirmText: '去登录',
+						success: (r) => { if (r.confirm) uni.switchTab({ url: '/pages/mine/index' }) },
+					})
+					return
+				}
 				uni.navigateTo({
 					url: '/pages/mine/tickets?orderContext=1&category=payment'
 				})
 			},
 			reorder(item) {
 				if (item.sceneWorkflow) { uni.navigateTo({url:'/pages/scene/request?source=scene'+(item.sceneWorkflow.scene_id?'&sceneId='+item.sceneWorkflow.scene_id:'')}); return }
+				if (item.type === 'skill' && item.productId) {
+					uni.navigateTo({ url: `/pages/home/jineng?skillId=${item.productId}&productId=${item.productId}` })
+					return
+				}
 				const sr = item.sceneRental
 				if ((sr && sr.scene_id && Array.isArray(item.rawItems) && item.rawItems.length) || ((item.type === 'rent' || item.type === 'plan') && Array.isArray(item.rawItems) && item.rawItems.length > 1)) {
 					const rentDays = Math.max(1, Number((sr && sr.rent_days) || item.rentDays) || 1)
@@ -620,6 +836,21 @@
 	.type-badge.buy { background: #d1fae5; color: #059669; }
 	.type-badge.plan { background: #fef3c7; color: #d97706; }
 	.type-badge.custom { background: #ede9fe; color: #7c3aed; }
+	.type-badge.skill { background: #eef4ff; color: #165dff; }
+	.type-badge.accessory { background: #e0f2fe; color: #0369a1; }
+	.load-more-bar {
+		padding: 20rpx 0 12rpx;
+		text-align: center;
+	}
+	.load-more-text {
+		font-size: 23rpx;
+		color: #2563eb;
+		padding: 10rpx 28rpx;
+		background: #ffffff;
+		border: 1rpx solid #dbeafe;
+		border-radius: 999rpx;
+		display: inline-block;
+	}
 	.detail-value.price {
 		font-size: 26rpx;
 		font-weight: 700;
