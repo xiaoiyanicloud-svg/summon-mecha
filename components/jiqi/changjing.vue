@@ -1,6 +1,6 @@
 <template>
   <view class="product-area-wrapper">
-    <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false">
+    <scroll-view class="product-scroll" scroll-y="true" :enhanced="true" :show-scrollbar="false">
       <view class="scene-list-wrapper">
         <view v-if="currentCategory !== 'all'" class="scene-category-header">
           <text class="scene-category-title">{{ currentCategoryLabel }}</text>
@@ -85,6 +85,13 @@ export default {
   height: 100%;
   padding: 16rpx 12rpx 0 12rpx;
   box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.product-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 .scene-list-wrapper {
   padding: 0 4rpx;

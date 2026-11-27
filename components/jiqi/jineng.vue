@@ -1,5 +1,5 @@
 <template>
-  <scroll-view class="product-area-wrapper" scroll-y="true">
+  <scroll-view class="product-area-wrapper" scroll-y="true" :enhanced="true" :show-scrollbar="false">
     <SkillMarket
       ref="market"
       :active="active"
@@ -30,5 +30,17 @@ export default {
 }
 </script>
 <style scoped>
-.product-area-wrapper { flex: 1; height: 100%; min-height: 0; background: #f5f7fc; }
+.product-area-wrapper {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  background: #f5f7fc;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.product-area-wrapper::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
 </style>

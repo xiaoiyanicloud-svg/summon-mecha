@@ -41,7 +41,7 @@
 
       <!-- 适配机型：左品牌 / 右机型。18 个机型平铺成一列要翻很久，两级各点一次就到 -->
       <view class="model-panel" v-if="showModelPanel">
-        <scroll-view class="model-brands" scroll-y="true" show-scrollbar="false">
+        <scroll-view class="model-brands" scroll-y="true" :enhanced="true" :show-scrollbar="false">
           <view class="model-brand" :class="{ active: modelBrand === '' }" @tap="pickModelBrand('')">
             <text class="model-brand-name">全部</text>
           </view>
@@ -56,7 +56,7 @@
           </view>
         </scroll-view>
 
-        <scroll-view class="model-list" scroll-y="true" show-scrollbar="false">
+        <scroll-view class="model-list" scroll-y="true" :enhanced="true" :show-scrollbar="false">
           <view
             class="model-opt"
             :class="{ active: model === '' }"
@@ -84,7 +84,7 @@
     </view>
 
     <view class="main-body">
-      <scroll-view v-if="filters.categories.length" class="brand-sidebar" scroll-y="true" show-scrollbar="false">
+      <scroll-view v-if="filters.categories.length" class="brand-sidebar" scroll-y="true" :enhanced="true" :show-scrollbar="false">
         <view
           class="brand-item"
           :class="{ active: category === '' }"
@@ -104,7 +104,7 @@
         <view style="height: 250rpx; flex-shrink: 0;"></view>
       </scroll-view>
 
-      <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" @scrolltolower="loadMore">
+      <scroll-view class="product-scroll" scroll-y="true" :enhanced="true" :show-scrollbar="false" @scrolltolower="loadMore">
         <state-view
           :loading="loading && rows.length === 0"
           :error="error"
@@ -621,7 +621,10 @@ export default {
   height: 100%;
   padding: 16rpx 12rpx 0 12rpx;
   box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.product-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .product-flex-wrapper {
   display: flex;
   flex-wrap: wrap;

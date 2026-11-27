@@ -26,7 +26,7 @@
 		</view>
 
 		<!-- ===== 状态Tab ===== -->
-		<scroll-view class="tab-scroll" scroll-x="true" show-scrollbar="false">
+		<scroll-view class="tab-scroll" scroll-x="true" :enhanced="true" :show-scrollbar="false">
 			<view class="tab-list">
 				<text class="tab-item" :class="{ active: currentStatus === 'all' }" @click="switchStatus('all')">全部</text>
 				<text class="tab-item" :class="{ active: currentStatus === 'scene' }" @click="switchStatus('scene')">场景服务</text>
@@ -414,7 +414,7 @@
 <style scoped>
 	.order-page {
 		position: relative;
-		background-color: #f5f7fa;
+		background-color: #F4F7FB;
 		min-height: 100vh;
 		padding: 88rpx 24rpx 160rpx;  /* 底部内边距从120rpx改为160rpx，为自定义导航栏留空间 */
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -425,10 +425,10 @@
 		top: 0;
 		left: 0;
 		right: 0;
-		height: 240rpx;
-		background: linear-gradient(135deg, #7AB8F7, #D4EAFF);
-		border-radius: 0 0 48rpx 48rpx;
+		height: 360rpx;
+		background: linear-gradient(180deg, #3F89F8 0%, #8FC3FF 42%, #ECF5FF 76%, #FFFFFF 90%, #F4F7FB 100%);
 		z-index: 0;
+		pointer-events: none;
 	}
 	.page-header {
 		position: relative;
@@ -441,7 +441,7 @@
 	.page-title {
 		font-size: 36rpx;
 		font-weight: 700;
-		color: #1A2A3A;
+		color: #0F172A;
 	}
 	.custom-plan-btn {
 		display: flex;
@@ -493,6 +493,13 @@
 		position: relative;
 		z-index: 1;
 		margin-bottom: 20rpx;
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+	.tab-scroll::-webkit-scrollbar {
+		display: none;
+		width: 0;
+		height: 0;
 	}
 	.tab-list {
 		display: flex;
@@ -686,4 +693,24 @@
 	.bottom-safe {
 		display: none;
 	}
+</style>
+
+<style>
+::-webkit-scrollbar,
+page::-webkit-scrollbar,
+scroll-view::-webkit-scrollbar,
+uni-scroll-view::-webkit-scrollbar,
+uni-scroll-view .uni-scroll-view::-webkit-scrollbar,
+.uni-scroll-view::-webkit-scrollbar {
+	width: 0 !important;
+	height: 0 !important;
+	display: none !important;
+}
+page,
+scroll-view,
+uni-scroll-view,
+.uni-scroll-view {
+	scrollbar-width: none !important;
+	-ms-overflow-style: none !important;
+}
 </style>

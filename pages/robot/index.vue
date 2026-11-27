@@ -60,7 +60,7 @@
     <!-- ===== 主体 ===== -->
     <view class="main-body">
       <!-- 租售：动态品牌侧边栏（后台品牌管理驱动，未入库兼容兜底） -->
-      <scroll-view class="brand-sidebar" scroll-y="true" show-scrollbar="false" v-show="currentTab === 'tob'" @scroll="onPanelScroll('brand')">
+      <scroll-view class="brand-sidebar" scroll-y="true" :enhanced="true" :show-scrollbar="false" v-show="currentTab === 'tob'" @scroll="onPanelScroll('brand')">
         <view class="brand-item" :class="{ active: currentBrand === 'all' }" @tap="selectBrand('all')">
           <text class="brand-name">全部品牌</text>
         </view>
@@ -72,7 +72,7 @@
       </scroll-view>
 
       <!-- 场景：场景分类左侧 -->
-      <scroll-view class="brand-sidebar" scroll-y="true" show-scrollbar="false" v-show="currentTab === 'scene'" @scroll="onPanelScroll('brand')">
+      <scroll-view class="brand-sidebar" scroll-y="true" :enhanced="true" :show-scrollbar="false" v-show="currentTab === 'scene'" @scroll="onPanelScroll('brand')">
         <view class="brand-item" :class="{ active: currentSceneCategory === 'all' }" @tap="selectSceneCategory('all')">
           <text class="brand-name">全部场景</text>
         </view>
@@ -158,7 +158,7 @@
 
         <!-- 租售（统一目录：支持 全部 / 租赁 / 购买 及 +方案 多机合单） -->
         <view class="product-area-wrapper" v-show="currentTab === 'tob'">
-        <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
+        <scroll-view class="product-scroll" scroll-y="true" :enhanced="true" :show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
           <view class="product-flex-wrapper">
             <view class="active-filters-bar" v-if="hasActiveTobFilters">
               <view class="af-chip" v-if="currentBrand !== 'all'" @tap="selectBrand('all')">
@@ -222,7 +222,7 @@
 
       <!-- 场景 -->
       <view class="product-area-wrapper" v-show="currentTab === 'scene'">
-        <scroll-view class="product-scroll" scroll-y="true" show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
+        <scroll-view class="product-scroll" scroll-y="true" :enhanced="true" :show-scrollbar="false" enable-flex @scroll="onPanelScroll('product')">
           <StateView :loading="scenesLoading" :error="scenesError" :empty="!filteredSceneList.length" empty-text="没有找到匹配的场景方案" @retry="refreshScenes" />
           <view class="scene-list-wrapper" v-if="!scenesLoading && !scenesError">
             <view v-if="currentSceneCategory !== 'all'" class="scene-category-header">
@@ -269,10 +269,6 @@
         @item-click="onAccessory"
       />
       </view>
-
-      <!-- 滚动提示：轻微淡入，暗示可继续滑动查看 -->
-      <view class="scroll-hint brand-hint" :class="{ 'is-visible': brandHint }"></view>
-      <view class="scroll-hint product-hint" :class="{ 'is-visible': scrollHint }"></view>
     </view>
 
     <!-- ========== 全屏商品详情页 ========== -->
@@ -284,7 +280,7 @@
           <text class="detail-nav-title"></text>
           <text class="detail-nav-placeholder"></text>
         </view>
-        <scroll-view class="detail-scroll" scroll-y="true" show-scrollbar="false" v-if="selectedProduct">
+        <scroll-view class="detail-scroll" scroll-y="true" :enhanced="true" :show-scrollbar="false" v-if="selectedProduct">
           <swiper class="detail-swiper" :style="{ height: detailImgHeight + 'rpx' }" indicator-dots indicator-color="rgba(255,255,255,0.5)" indicator-active-color="#ffffff" autoplay circular>
             <swiper-item v-for="(img, idx) in detailImageList" :key="idx">
               <view class="swiper-slide" :style="{ backgroundColor: selectedProduct.bg }">
@@ -495,7 +491,7 @@
       <!-- 无机型时的引导 -->
       <view v-if="!selectedPlanItems.length" class="scene-cart-empty">点上方机型的「＋」添加到方案</view>
       <!-- 已选机型列表(每台：图/名/单价/移除) -->
-      <scroll-view v-else class="cart-items-scroll" scroll-x="true" show-scrollbar="false">
+      <scroll-view v-else class="cart-items-scroll" scroll-x="true" :enhanced="true" :show-scrollbar="false">
         <view class="cart-item" v-for="m in selectedPlanItems" :key="(m.bagistoId || m.id)">
           <view class="cart-item-img" :style="{ backgroundColor: m.bg || '#F0F4FA' }">
             <image v-if="m.image" class="cart-item-img-img" :src="m.image" mode="aspectFill" />
@@ -546,7 +542,7 @@
           <text class="plan-modal-title">我的方案</text>
           <text class="plan-modal-close" @tap="showCustomPlanModal = false">✕</text>
         </view>
-        <scroll-view class="plan-modal-list" scroll-y="true">
+        <scroll-view class="plan-modal-list" scroll-y="true" :enhanced="true" :show-scrollbar="false">
           <view class="plan-item" v-for="p in customPlanList" :key="p.id" @tap="loadPlanFromList(p)">
             <view class="plan-item-info">
               <text class="plan-item-name">{{ p.name }} · {{ p.items.length }}台 · {{ p.days }}天</text>
@@ -593,7 +589,7 @@
           <text class="em-title">企业部署咨询</text>
           <text class="em-subtitle">{{ enterpriseForm.mode === 'rent' ? '批量租用享专属优惠，专家1小时内为您定制方案' : '批量采购享阶梯折扣，专家1小时内为您定制方案' }}</text>
         </view>
-        <scroll-view class="em-body" scroll-y="true" show-scrollbar="false">
+        <scroll-view class="em-body" scroll-y="true" :enhanced="true" :show-scrollbar="false">
           <!-- 意向类型 -->
           <view class="em-item">
             <text class="em-label">意向类型 <text class="required">*</text></text>
@@ -864,9 +860,9 @@ export default {
         company: '',
         demand: ''
       },
-      // ===== 滚动提示（轻微淡入，暗示可滑动查看更多） =====
-      scrollHint: true,
-      brandHint: true,
+      // ===== 滚动提示（已关闭视觉占位线条，避免常驻干扰） =====
+      scrollHint: false,
+      brandHint: false,
       _hintProductTimer: null,
       _hintBrandTimer: null,
       detailImages: [1, 2, 3],
@@ -2031,20 +2027,15 @@ export default {
       }
       return tab.iconEmoji
     },
-    // ===== 滚动提示控制（轻微淡入，持续 2 秒后淡出） =====
-    hintShow(type) {
-      const isBrand = type === 'brand'
-      const key = isBrand ? 'brandHint' : 'scrollHint'
-      const timerKey = isBrand ? '_hintBrandTimer' : '_hintProductTimer'
-      this[key] = true
-      clearTimeout(this[timerKey])
-      this[timerKey] = setTimeout(() => { this[key] = false }, 2000)
+    // ===== 滚动提示控制（保留方法兼容调用，不再显示常驻长竖条） =====
+    hintShow() {
+      this.brandHint = false
+      this.scrollHint = false
     },
     onPanelScroll(type) {
       if (type === 'product' && this.showSortPanel) {
         this.showSortPanel = false
       }
-      this.hintShow(type)
     },
 
 
@@ -2287,10 +2278,6 @@ export default {
 
     // 拉取后台维护的场景列表,按 id 合并进 enterprise(TOB)卡片; 完成后刷新场景列表
     this.refreshScenes()
-
-    // 进入页面先展示一次滚动提示（2 秒后淡出）
-    this.hintShow('product')
-    this.hintShow('brand')
   }
 }
 </script>
@@ -2298,7 +2285,7 @@ export default {
 <style scoped>
 /* ===== 顶部搜索栏（四个搜索框统一位于四个主 Tab 上方） ===== */
 .top-search-header {
-  background: #EEF4FF;
+  background: transparent;
   padding: 88rpx 20rpx 14rpx;
   flex-shrink: 0;
 }
@@ -2331,8 +2318,8 @@ page {
   top: 0;
   left: 0;
   right: 0;
-  height: 88rpx;
-  background: linear-gradient(to bottom, #4291F6, #B3D5FF);
+  height: 316rpx;
+  background: linear-gradient(180deg, #3F89F8 0%, #8FC3FF 42%, #ECF5FF 76%, #FFFFFF 90%, #F4F7FB 100%);
   z-index: 0;
   pointer-events: none;
 }
@@ -2354,7 +2341,7 @@ page {
 /* ===== 顶部 Tab（四个主Tab：租售 | 场景 | 技能 | 配件） ===== */
 .top-tabs {
   display: flex;
-  background: #EEF4FF;
+  background: transparent;
   padding: 2rpx 16rpx 0;
   flex-shrink: 0;
   /* 刻意不写 border-bottom：选中方块要与下方白色内容区连成一体，有线就割开了 */
@@ -2563,29 +2550,6 @@ page {
   margin-top: 0;
 }
 
-/* ===== 滚动提示条（轻微淡入，暗示可滑动查看更多） ===== */
-.scroll-hint {
-  position: absolute;
-  top: 10rpx;
-  bottom: 10rpx;
-  width: 3rpx;
-  border-radius: 3rpx;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  pointer-events: none;
-  z-index: 5;
-}
-.scroll-hint.brand-hint {
-  left: 147rpx;
-  background: linear-gradient(180deg, rgba(66, 145, 246, 0.0), rgba(66, 145, 246, 0.4), rgba(66, 145, 246, 0.0));
-}
-.scroll-hint.product-hint {
-  right: 3rpx;
-  background: linear-gradient(180deg, rgba(66, 145, 246, 0.0), rgba(66, 145, 246, 0.32), rgba(66, 145, 246, 0.0));
-}
-.scroll-hint.is-visible {
-  opacity: 0.85;
-}
 .brand-sidebar {
   width: 152rpx;
   background: #F7F9FC;
