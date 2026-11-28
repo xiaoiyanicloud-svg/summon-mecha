@@ -7,7 +7,7 @@
  */
 
 export const SERVICE_NAME = '召唤机甲客服'
-export const SERVICE_HOURS = '每日 9:00–21:00'
+export const SERVICE_HOURS = '9:00–21:00'
 export const REPLY_PROMISE = '24 小时内回复'
 
 export const STATUS_TEXT = {
@@ -40,34 +40,44 @@ export const CATEGORY_TEXT = {
 }
 
 export const CATEGORY_OPTIONS = [
-	{ label: '其他问题', value: 'other' },
-	{ label: '安装/下发', value: 'delivery' },
-	{ label: '技能功能', value: 'skill' },
+	{ label: '下发/安装', value: 'delivery' },
 	{ label: '设备问题', value: 'device' },
+	{ label: '技能功能', value: 'skill' },
 	{ label: '支付/退款', value: 'payment' },
+	{ label: '其他', value: 'other' },
 ]
 
-/** 常见问题：纯前端预填，不新增数据模型，也不伪造智能客服。 */
+/** 常见问题：提供直接可执行的自助排查说明，支持一键转人工带入分类。 */
 export const FAQ_ITEMS = [
 	{
 		category: 'delivery',
-		question: '技能安装失败 / 下发一直超时',
-		prompt: '技能安装失败，提示连接超时。',
+		question: '技能下发超时或安装失败怎么办？',
+		answer: '请确认设备处于开机联网状态，并前往「我的 - 下发记录」查看失败原因。若提示网络超时，建议切换稳定的 Wi-Fi 后重新下发。',
+		prompt: '技能下发或安装失败，请协助排查原因。',
 	},
 	{
 		category: 'device',
-		question: '设备无法连接或频繁掉线',
-		prompt: '设备无法连接平台，或者连接后频繁掉线。',
-	},
-	{
-		category: 'payment',
-		question: '退款进度与到账时间',
-		prompt: '我想查询退款进度和预计到账时间。',
+		question: '设备显示离线或无法连接平台怎么排查？',
+		answer: '请检查机体电源与网络连接是否正常，确认设备端服务已启动且序列号（SN）与「我的设备」中绑定的信息一致。',
+		prompt: '设备显示离线或无法连接平台，请协助核查。',
 	},
 	{
 		category: 'skill',
-		question: '技能无法启动 / 功能异常',
-		prompt: '技能可以安装，但启动失败或功能与描述不符。',
+		question: '技能安装后无法启动或运行表现异常？',
+		answer: '请核对当前设备固件及机型是否在技能兼容范围内，尝试重启设备端应用后再试；若仍异常，可附上设备型号联系客服排查。',
+		prompt: '技能已安装但无法正常启动或运行异常。',
+	},
+	{
+		category: 'payment',
+		question: '订单取消、退款规则与到账时间说明',
+		answer: '未履约订单可在「订单详情」直接取消；已发起的售后退款审核通过后将原路退回，通常在 1–3 个工作日内到账。',
+		prompt: '我想咨询订单取消或退款到账进度。',
+	},
+	{
+		category: 'payment',
+		question: '如何申请开具发票？',
+		answer: '订单完成后，可前往「我的 - 发票」提交电子普通发票或增值税专用发票申请，开具完成后支持在线查看与下载。',
+		prompt: '我想咨询订单开具发票相关问题。',
 	},
 ]
 

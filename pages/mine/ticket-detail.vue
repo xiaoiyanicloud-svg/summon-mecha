@@ -36,9 +36,8 @@
 			<view class="service-bar">
 				<view class="service-left">
 					<text class="status-tag" :class="'st-' + (ticket.held ? 'held' : ticket.status)">{{ ticketStatusText }}</text>
-					<text class="service-id sm-mono" v-if="ticket.id">#{{ ticket.id }}</text>
 				</view>
-				<text class="service-hours sm-mono">人工服务 {{ serviceHours }}</text>
+				<text class="service-hours">人工服务 {{ serviceHours }}</text>
 			</view>
 
 			<view v-if="syncError" class="sync-banner">
@@ -48,9 +47,8 @@
 			<view v-if="ticket.incident" class="incident-banner">
 				<SmIcon name="state-warn" size="36rpx" />
 				<view class="incident-left">
-					<text class="incident-kicker">事故追溯</text>
 					<text class="incident-title">已进入事故处理流程</text>
-					<text class="incident-meta sm-mono">{{ ticket.incident.incident_no }} · {{ ticket.incident.severity_label }} · {{ ticket.incident.status_label }}</text>
+					<text class="incident-meta">{{ ticket.incident.incident_no }} · {{ ticket.incident.severity_label }} · {{ ticket.incident.status_label }}</text>
 				</view>
 			</view>
 
@@ -63,15 +61,13 @@
 				:scroll-with-animation="true"
 			>
 				<view class="messages-body">
-					<view class="welcome-note">
+					<view v-if="!renderedMessages.length" class="welcome-note">
 						<text>{{ introDesc }}</text>
 					</view>
 
 					<block v-for="message in renderedMessages" :key="message.id">
 						<view v-if="message.showDay" class="day-divider">
-							<view></view>
-							<text class="sm-mono">{{ message.dayLabel }}</text>
-							<view></view>
+							<text>{{ message.dayLabel }}</text>
 						</view>
 
 						<view v-if="message.actor_type === 'system'" class="system-row" :id="'message-' + message.id">
@@ -87,7 +83,7 @@
 							<view class="message-column">
 								<view class="message-meta">
 									<text class="message-actor">{{ actorText(message.actor_type) }}</text>
-									<text class="message-time sm-mono">{{ clockTime(message.created_at) }}</text>
+									<text class="message-time">{{ clockTime(message.created_at) }}</text>
 									<text
 										v-if="message.actor_type === 'customer'"
 										class="message-receipt"
@@ -101,18 +97,11 @@
 											<view v-if="isProductAttachment(attachment)" class="message-product-card">
 												<view class="message-product-image">
 													<image v-if="attachment.image" :src="attachment.image" mode="aspectFill"></image>
-													<SmIcon v-else :name="attachmentIconName(attachment)" size="40rpx" />
+													<SmIcon v-else :name="attachmentIconName(attachment)" size="38rpx" />
 												</view>
 												<view class="message-product-main">
-													<text class="message-product-kicker">{{ attachmentKicker(attachment) }}</text>
 													<text class="message-product-name">{{ attachment.name }}</text>
-													<text class="message-product-meta sm-mono">
-														<text v-if="attachment.increment_id">#{{ attachment.increment_id }} </text>
-														<text v-if="attachment.sn">SN {{ attachment.sn }} </text>
-														<text v-if="attachment.sku">{{ attachment.sku }} </text>
-														<text v-if="attachment.status_label">{{ attachment.status_label }} </text>
-														<text v-if="attachment.price">¥{{ attachment.price }}</text>
-													</text>
+													<text class="message-product-meta">{{ attachmentMetaText(attachment) }}</text>
 												</view>
 											</view>
 											<view v-else class="attachment" @click="copyAttachment(attachment)">
@@ -200,6 +189,7 @@
 						<textarea
 							v-model="draft"
 							class="input-box"
+							rows="1"
 							:placeholder="composerPlaceholder"
 							placeholder-class="input-placeholder"
 							maxlength="2000"
@@ -360,11 +350,16 @@ export default {
 			if (att.type === 'device') return 'devices'
 			return 'hub-cube'
 		},
-		attachmentKicker(att) {
+		attachmentMetaText(att) {
 			if (!att) return ''
-			if (att.type === 'order') return '关联交易订单'
-			if (att.type === 'device') return '关联机器设备'
-			return `商品咨询 · ${this.productKindLabel(att.kind)}`
+			const parts = []
+			if (att.increment_id) parts.push(`订单 #${att.increment_id}`)
+			if (att.sn) parts.push(`SN ${att.sn}`)
+			if (att.type === 'product' && att.kind) parts.push(this.productKindLabel(att.kind))
+			if (att.sku) parts.push(att.sku)
+			if (att.status_label) parts.push(att.status_label)
+			if (att.price) parts.push(`¥${att.price}`)
+			return parts.join(' · ')
 		},
 		productKindLabel(kind) {
 			return ({ rent: '租赁', buy: '购买', accessory: '配件', skill: '技能' })[kind] || '商品'
@@ -602,16 +597,15 @@ export default {
 	flex-direction: column;
 	height: 100vh;
 	overflow: hidden;
-	background: #F4F7FB;
+	background: #F5F6F8;
 }
 .nav-end-btn {
 	padding: 8rpx 20rpx;
 	border-radius: 999rpx;
-	background: #F1F5F9;
-	border: 1rpx solid #DCE5F2;
-	font-size: 22rpx;
+	background: #F5F6F8;
+	font-size: 23rpx;
 	font-weight: 500;
-	color: #475569;
+	color: #4B5563;
 	white-space: nowrap;
 }
 
@@ -622,33 +616,31 @@ export default {
 	align-items: center;
 	justify-content: space-between;
 	gap: 16rpx;
-	padding: 14rpx 28rpx;
+	padding: 16rpx 28rpx;
 	background: #FFFFFF;
-	border-bottom: 1rpx solid #E5EAF2;
+	border-bottom: 1rpx solid rgba(15, 23, 42, 0.05);
 }
 .service-left { display: flex; align-items: center; gap: 12rpx; }
 .status-tag {
 	padding: 4rpx 14rpx;
-	border-radius: 6rpx;
-	font-size: 21rpx;
+	border-radius: 8rpx;
+	font-size: 22rpx;
 	font-weight: 500;
 	background: #EEF4FF;
 	color: #165DFF;
 }
 .st-resolved { background: #ECFDF5; color: #059669; }
 .st-held { background: #FFFBEB; color: #B45309; }
-.st-closed { background: #F1F5F9; color: #64748B; }
-.service-id { font-size: 21rpx; color: #94A3B8; }
-.service-hours { font-size: 21rpx; color: #64748B; }
+.st-closed { background: #F3F4F6; color: #6B7280; }
+.service-hours { font-size: 22rpx; color: #9CA3AF; font-variant-numeric: tabular-nums; }
 
 .sync-banner {
 	flex-shrink: 0;
 	margin: 12rpx 24rpx 0;
 	padding: 12rpx 18rpx;
-	border: 1rpx solid #FDE68A;
 	border-radius: 12rpx;
 	background: #FFFBEB;
-	font-size: 21rpx;
+	font-size: 22rpx;
 	color: #92400E;
 }
 .incident-banner {
@@ -657,15 +649,13 @@ export default {
 	align-items: center;
 	gap: 14rpx;
 	margin: 12rpx 24rpx 0;
-	padding: 16rpx 18rpx;
-	border: 1rpx solid #FDE68A;
-	border-radius: 14rpx;
+	padding: 18rpx 20rpx;
+	border-radius: 16rpx;
 	background: #FFFBEB;
 }
 .incident-left { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.incident-kicker { font-size: 19rpx; color: #B45309; font-weight: 600; }
-.incident-title { margin-top: 2rpx; font-size: 25rpx; font-weight: 600; color: #78350F; }
-.incident-meta { margin-top: 4rpx; font-size: 20rpx; color: #92400E; }
+.incident-title { font-size: 25rpx; font-weight: 600; color: #78350F; }
+.incident-meta { margin-top: 4rpx; font-size: 21rpx; color: #92400E; font-variant-numeric: tabular-nums; }
 
 .messages-scroll {
 	flex: 1;
@@ -674,41 +664,36 @@ export default {
 	-ms-overflow-style: none;
 }
 .messages-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
-.messages-body { padding: 18rpx 24rpx; }
-.welcome-note { display: flex; justify-content: center; padding: 4rpx 16rpx 22rpx; }
+.messages-body { padding: 20rpx 24rpx; }
+.welcome-note { display: flex; justify-content: center; padding: 12rpx 16rpx 24rpx; }
 .welcome-note text {
-	padding: 8rpx 20rpx;
-	border-radius: 999rpx;
-	background: #FFFFFF;
-	border: 1rpx solid #E5EAF2;
 	text-align: center;
-	font-size: 21rpx;
+	font-size: 23rpx;
 	line-height: 1.5;
-	color: #64748B;
+	color: #9CA3AF;
 }
 
-.day-divider { display: flex; align-items: center; gap: 14rpx; margin: 20rpx 0; }
-.day-divider view { flex: 1; height: 1rpx; background: #E2E8F0; }
-.day-divider text { font-size: 20rpx; color: #94A3B8; }
+.day-divider { display: flex; justify-content: center; margin: 18rpx 0; }
+.day-divider text { font-size: 22rpx; color: #9CA3AF; font-variant-numeric: tabular-nums; }
 .system-row { display: flex; justify-content: center; margin: 16rpx 24rpx; }
 .system-row text {
-	padding: 8rpx 18rpx;
-	border-radius: 999rpx;
-	background: #EEF2F6;
+	padding: 6rpx 18rpx;
+	border-radius: 10rpx;
+	background: rgba(15, 23, 42, 0.04);
 	text-align: center;
-	font-size: 21rpx;
+	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748B;
+	color: #6B7280;
 }
 
-.message-row { display: flex; margin-bottom: 22rpx; }
+.message-row { display: flex; margin-bottom: 24rpx; }
 .message-row.mine { justify-content: flex-end; }
-.message-column { display: flex; flex-direction: column; align-items: flex-start; max-width: 84%; }
+.message-column { display: flex; flex-direction: column; align-items: flex-start; max-width: 82%; }
 .message-row.mine .message-column { align-items: flex-end; }
-.message-meta { display: flex; align-items: center; gap: 10rpx; margin: 0 4rpx 6rpx; }
-.message-actor { font-size: 20rpx; color: #64748B; font-weight: 500; }
-.message-time { font-size: 19rpx; color: #94A3B8; }
-.message-receipt { font-size: 19rpx; color: #94A3B8; }
+.message-meta { display: flex; align-items: center; gap: 10rpx; margin: 0 4rpx 8rpx; }
+.message-actor { font-size: 21rpx; color: #6B7280; }
+.message-time { font-size: 20rpx; color: #9CA3AF; font-variant-numeric: tabular-nums; }
+.message-receipt { font-size: 20rpx; color: #9CA3AF; }
 .message-receipt.read { color: #165DFF; }
 
 .typing-indicator {
@@ -717,9 +702,8 @@ export default {
 	display: flex;
 	align-items: center;
 	gap: 10rpx;
-	margin: 0 24rpx 10rpx;
-	padding: 8rpx 18rpx;
-	border: 1rpx solid #E5EAF2;
+	margin: 0 24rpx 12rpx;
+	padding: 10rpx 20rpx;
 	border-radius: 999rpx;
 	background: #FFFFFF;
 }
@@ -727,185 +711,183 @@ export default {
 .typing-dots text { width: 8rpx; height: 8rpx; border-radius: 50%; background: #165DFF; opacity: 0.35; }
 .typing-dots text:nth-child(2) { animation: typing-pulse 1.2s infinite 0.15s; }
 .typing-dots text:nth-child(3) { animation: typing-pulse 1.2s infinite 0.3s; }
-.typing-text { font-size: 20rpx; color: #64748B; }
+.typing-text { font-size: 21rpx; color: #6B7280; }
 @keyframes typing-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
 .message-bubble {
-	padding: 18rpx 22rpx;
-	border: 1rpx solid #E5EAF2;
-	border-radius: 6rpx 18rpx 18rpx 18rpx;
+	padding: 20rpx 24rpx;
+	border-radius: 8rpx 20rpx 20rpx 20rpx;
 	background: #FFFFFF;
+	box-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.02);
 }
 .message-row.mine .message-bubble {
-	border-color: #165DFF;
 	background: #165DFF;
-	border-radius: 18rpx 6rpx 18rpx 18rpx;
+	border-radius: 20rpx 8rpx 20rpx 20rpx;
+	box-shadow: none;
 }
-.message-content { font-size: 27rpx; line-height: 1.68; color: #0F172A; white-space: pre-wrap; word-break: break-word; }
+.message-content { font-size: 28rpx; line-height: 1.65; color: #111827; white-space: pre-wrap; word-break: break-word; }
 .message-row.mine .message-content { color: #FFFFFF; }
 
-.attachment-list { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
+.attachment-list { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 14rpx; }
 .attachment {
 	display: inline-flex;
 	align-items: center;
-	gap: 6rpx;
-	padding: 8rpx 14rpx;
+	gap: 8rpx;
+	padding: 10rpx 16rpx;
 	border-radius: 10rpx;
-	background: #F8FAFC;
-	border: 1rpx solid #E5EAF2;
+	background: #F5F6F8;
 }
 .message-row.mine .attachment {
-	background: rgba(255, 255, 255, 0.16);
-	border-color: rgba(255, 255, 255, 0.25);
+	background: rgba(255, 255, 255, 0.18);
 }
-.attachment-text { font-size: 20rpx; color: #165DFF; }
+.attachment-text { font-size: 22rpx; color: #165DFF; }
 .message-row.mine .attachment-text { color: #FFFFFF; }
 
 .message-product-card {
 	width: 100%;
 	min-width: 390rpx;
 	display: flex;
-	gap: 14rpx;
-	padding: 14rpx;
-	border-radius: 12rpx;
-	background: #F8FAFC;
-	border: 1rpx solid #DCE5F2;
+	align-items: center;
+	gap: 16rpx;
+	padding: 16rpx;
+	border-radius: 14rpx;
+	background: #F7F8FA;
 	box-sizing: border-box;
 }
+.message-row.mine .message-product-card {
+	background: #FFFFFF;
+}
 .message-product-image {
-	width: 84rpx;
-	height: 84rpx;
+	width: 76rpx;
+	height: 76rpx;
 	flex-shrink: 0;
 	overflow: hidden;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 10rpx;
+	border-radius: 12rpx;
 	background: #EEF4FF;
 }
 .message-product-image image { width: 100%; height: 100%; }
-.message-product-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; text-align: left; }
-.message-product-kicker { color: #165DFF; font-size: 19rpx; font-weight: 600; }
-.message-product-name { overflow: hidden; color: #0F172A; font-size: 24rpx; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.message-product-meta { display: flex; flex-wrap: wrap; gap: 6rpx 12rpx; color: #64748B; font-size: 20rpx; }
+.message-product-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; text-align: left; }
+.message-product-name { overflow: hidden; color: #111827; font-size: 25rpx; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.message-product-meta { color: #6B7280; font-size: 21rpx; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .message-bottom { height: 6rpx; }
 
 .rating-card {
 	flex-shrink: 0;
-	margin: 0 24rpx 12rpx;
-	padding: 22rpx;
-	border-radius: 16rpx;
+	margin: 0 24rpx 14rpx;
+	padding: 24rpx;
+	border-radius: 20rpx;
 	background: #FFFFFF;
-	border: 1rpx solid #E5EAF2;
 }
 .rating-head { display: flex; align-items: baseline; justify-content: space-between; }
-.rating-title { font-size: 27rpx; font-weight: 600; color: #0F172A; }
-.rating-sub { font-size: 21rpx; color: #64748B; }
-.rating-stars { display: flex; align-items: center; gap: 8rpx; margin-top: 12rpx; }
-.rating-star { font-size: 42rpx; line-height: 1; color: #CBD5E1; }
+.rating-title { font-size: 28rpx; font-weight: 600; color: #111827; }
+.rating-sub { font-size: 22rpx; color: #9CA3AF; }
+.rating-stars { display: flex; align-items: center; gap: 10rpx; margin-top: 14rpx; }
+.rating-star { font-size: 44rpx; line-height: 1; color: #E5E7EB; }
 .rating-star.on { color: #F59E0B; }
-.rating-value { margin-left: 10rpx; font-size: 22rpx; color: #475569; }
-.rating-tags { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
+.rating-value { margin-left: 10rpx; font-size: 23rpx; color: #4B5563; }
+.rating-tags { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 14rpx; }
 .rating-tag {
-	padding: 8rpx 18rpx;
-	border: 1rpx solid #DCE5F2;
-	border-radius: 999rpx;
-	background: #F8FAFC;
-	font-size: 22rpx;
-	color: #475569;
+	padding: 10rpx 20rpx;
+	border-radius: 12rpx;
+	background: #F5F6F8;
+	font-size: 23rpx;
+	color: #374151;
 }
-.rating-tag.active { border-color: #165DFF; background: #EEF4FF; color: #165DFF; font-weight: 500; }
+.rating-tag.active { background: #EEF4FF; color: #165DFF; font-weight: 500; }
 .rating-input {
 	width: 100%;
 	height: 84rpx;
-	margin-top: 12rpx;
+	margin-top: 14rpx;
 	padding: 14rpx 18rpx;
 	box-sizing: border-box;
-	border: 1rpx solid #DCE5F2;
-	border-radius: 12rpx;
-	background: #F8FAFC;
-	font-size: 24rpx;
-	color: #0F172A;
+	border-radius: 14rpx;
+	background: #F7F8FA;
+	font-size: 25rpx;
+	color: #111827;
 }
-.rating-placeholder { color: #94A3B8; }
+.rating-placeholder { color: #9CA3AF; }
 .rating-submit {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 74rpx;
-	margin-top: 14rpx;
+	height: 78rpx;
+	margin-top: 16rpx;
 	border-radius: 999rpx;
 	background: #165DFF;
 	color: #FFFFFF;
-	font-size: 25rpx;
+	font-size: 26rpx;
 	font-weight: 600;
 }
 .rating-submit.disabled { opacity: 0.45; }
 .rating-done { display: flex; align-items: center; justify-content: center; gap: 14rpx; }
 .rating-done-stars { font-size: 28rpx; letter-spacing: 4rpx; color: #F59E0B; }
-.rating-done-text { font-size: 22rpx; color: #64748B; }
+.rating-done-text { font-size: 23rpx; color: #6B7280; }
 
 .composer-panel {
 	flex-shrink: 0;
 	background: #FFFFFF;
-	border-top: 1rpx solid #E5EAF2;
-	padding: 12rpx 20rpx calc(20rpx + env(safe-area-inset-bottom));
-	padding: 12rpx 20rpx calc(20rpx + constant(safe-area-inset-bottom));
+	border-top: 1rpx solid rgba(15, 23, 42, 0.06);
+	padding: 14rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+	padding: 14rpx 24rpx calc(20rpx + constant(safe-area-inset-bottom));
 }
 .quick-scroll {
 	width: 100%;
-	margin-bottom: 10rpx;
+	margin-bottom: 12rpx;
 	white-space: nowrap;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
 }
 .quick-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
-.quick-list { display: inline-flex; gap: 10rpx; padding-right: 10rpx; }
+.quick-list { display: inline-flex; gap: 12rpx; padding-right: 10rpx; }
 .quick-chip {
 	flex-shrink: 0;
-	padding: 10rpx 18rpx;
-	border: 1rpx solid #DCE5F2;
+	padding: 10rpx 20rpx;
 	border-radius: 999rpx;
-	background: #F8FAFC;
-	font-size: 22rpx;
-	color: #334155;
+	background: #F5F6F8;
+	font-size: 23rpx;
+	color: #374151;
 }
 .input-area {
 	display: flex;
 	align-items: flex-end;
-	gap: 12rpx;
+	gap: 14rpx;
 }
 .input-main { flex: 1; min-width: 0; position: relative; display: flex; }
 .input-box {
 	flex: 1;
 	width: 100%;
-	min-height: 72rpx;
+	height: 76rpx;
+	min-height: 76rpx;
 	max-height: 200rpx;
-	padding: 16rpx 22rpx;
+	padding: 18rpx 26rpx;
 	box-sizing: border-box;
-	border: 1rpx solid #DCE5F2;
+	border: none;
 	outline: none;
 	resize: none;
-	border-radius: 36rpx;
-	background: #F4F7FB;
-	font-size: 27rpx;
-	line-height: 1.5;
-	color: #0F172A;
+	border-radius: 38rpx;
+	background: #F5F6F8;
+	font-family: inherit;
+	font-size: 28rpx;
+	line-height: 40rpx;
+	color: #111827;
 }
 .input-box .uni-textarea-textarea { height: auto !important; min-height: 40rpx; max-height: 170rpx; }
-.input-placeholder { color: #94A3B8; }
-.input-count { position: absolute; right: 18rpx; bottom: 8rpx; font-size: 19rpx; color: #94A3B8; pointer-events: none; }
+.input-placeholder { color: #9CA3AF; }
+.input-count { position: absolute; right: 20rpx; bottom: 10rpx; font-size: 20rpx; color: #9CA3AF; pointer-events: none; }
 .send-btn {
 	flex-shrink: 0;
-	height: 72rpx;
-	padding: 0 28rpx;
+	height: 76rpx;
+	padding: 0 32rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	border-radius: 999rpx;
 	background: #165DFF;
 	color: #FFFFFF;
-	font-size: 25rpx;
+	font-size: 27rpx;
 	font-weight: 600;
 }
 .send-btn.disabled { opacity: 0.45; }
@@ -918,15 +900,15 @@ export default {
 	padding: 12rpx 4rpx;
 }
 .closed-copy { min-width: 0; flex: 1; }
-.closed-title { display: block; font-size: 25rpx; font-weight: 600; color: #0F172A; }
-.closed-desc { display: block; margin-top: 4rpx; font-size: 21rpx; line-height: 1.45; color: #64748B; }
+.closed-title { display: block; font-size: 26rpx; font-weight: 600; color: #111827; }
+.closed-desc { display: block; margin-top: 4rpx; font-size: 22rpx; line-height: 1.45; color: #6B7280; }
 .closed-btn {
 	flex-shrink: 0;
-	padding: 14rpx 24rpx;
+	padding: 14rpx 26rpx;
 	border-radius: 999rpx;
 	background: #165DFF;
 	color: #FFFFFF;
-	font-size: 23rpx;
+	font-size: 24rpx;
 	font-weight: 500;
 }
 </style>
