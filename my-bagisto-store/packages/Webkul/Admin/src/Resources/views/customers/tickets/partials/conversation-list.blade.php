@@ -7,6 +7,8 @@
             'resolved' => 'support-tone-resolved',
             'closed' => 'support-tone-closed',
         ][$row['status']] ?? 'support-tone-closed';
+        $categoryKey = $row['category'] ?? 'other';
+        $categoryTone = 'support-tone-'.($row['category_tone'] ?? 'closed');
     @endphp
 
     <a
@@ -15,6 +17,7 @@
         data-customer-id="{{ $row['customer_id'] }}"
         data-ticket-id="{{ $row['ticket_id'] }}"
         data-ticket-no="{{ $row['ticket_no'] }}"
+        data-category="{{ $categoryKey }}"
         data-unread="{{ $row['unread'] }}"
         data-waiting="{{ $row['waiting_minutes'] === null ? '' : $row['waiting_minutes'] }}"
         data-queue="{{ $row['is_queue'] ? '1' : '0' }}"
@@ -22,7 +25,7 @@
         data-held="{{ $row['is_held'] ? '1' : '0' }}"
         data-mine="{{ $row['is_mine'] ? '1' : '0' }}"
         data-search="{{ $row['search'] }}"
-        title="{{ $row['ticket_no'] }} · {{ $row['assignee_label'] }}"
+        title="{{ $row['ticket_no'] }} · {{ $row['category_label'] }} · {{ $row['assignee_label'] }}"
         @if ($isActive) aria-current="true" @endif
         class="support-inbox-row block border-l-2 border-l-transparent px-4 py-3 transition {{ $isActive ? 'support-active' : 'hover:bg-gray-50 dark:hover:bg-gray-800' }}"
     >
@@ -40,8 +43,9 @@
 
         <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">{{ $row['preview'] }}</p>
 
-        <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
             <span class="support-tone {{ $statusTone }}">{{ $row['status_label'] }}</span>
+            <span class="support-tone {{ $categoryTone }}">{{ $row['category_label'] }}</span>
 
             @if ($row['is_mine'])
                 <span class="support-tone support-tone-processing">我负责</span>
@@ -68,7 +72,7 @@
             @endif
 
             <span class="text-[10px] text-gray-400 dark:text-gray-500">
-                {{ $row['service_mode'] === 'online' ? '在线' : '留言' }} · {{ $row['category_label'] }} · {{ $row['assignee_label'] }}
+                {{ $row['service_mode'] === 'online' ? '在线' : '留言' }} · {{ $row['assignee_label'] }}
             </span>
 
             @if ($row['ticket_count'] > 1)

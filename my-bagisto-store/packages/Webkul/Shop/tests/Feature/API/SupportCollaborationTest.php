@@ -267,3 +267,25 @@ it('增量同步会单独下发用户消息的已读回执', function () {
         ->assertJsonPath('data.receipts.0.id', $message->id)
         ->assertJsonPath('data.receipts.0.read_at', fn ($value) => $value !== null);
 });
+
+it('原会话为「其他」分类时，用户带明确分类续接会自动完成归类升级', function () {
+    $customer = collabCustomer();
+    actingAs($customer, 'customer');
+
+    $first = postJson(route('shop.api.tickets.store'), [
+        'content'  => '先随便问一下',
+        'category' => SupportTicket::CATEGORY_OTHER,
+    ])->assertCreated();
+
+    $ticketId = $first->json('data.id');
+
+    postJson(route('shop.api.tickets.store'), [
+        'content'  => '其实是机器连不上平台',
+        'category' => SupportTicket::CATEGORY_DEVICE,
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.id', $ticketId)
+        ->assertJsonPath('data.resumed', true);
+
+    expect(SupportTicket::find($ticketId)->category)->toBe(SupportTicket::CATEGORY_DEVICE);
+});

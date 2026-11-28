@@ -614,6 +614,16 @@ class TicketController extends APIController
             $ticket->queued_at = $ticket->queued_at ?: now();
         }
 
+        // 若原工单仍是兜底的「其他」且客户本次携带了明确分类，顺手完成一次自动归类
+        $incomingCategory = $payload['category'] ?? null;
+        if ($ticket->category === SupportTicket::CATEGORY_OTHER
+            && is_string($incomingCategory)
+            && $incomingCategory !== ''
+            && $incomingCategory !== SupportTicket::CATEGORY_OTHER
+            && isset(SupportTicket::CATEGORY_LABELS[$incomingCategory])) {
+            $ticket->category = $incomingCategory;
+        }
+
         $this->appendCustomerMessage($ticket, $customerId, $payload['content'], $payload['attachments'] ?? null);
 
         return $ticket;

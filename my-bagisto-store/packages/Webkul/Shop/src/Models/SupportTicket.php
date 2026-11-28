@@ -87,6 +87,14 @@ class SupportTicket extends Model
         self::CATEGORY_OTHER    => '其他',
     ];
 
+    public const CATEGORY_TONES = [
+        self::CATEGORY_DELIVERY => 'open',
+        self::CATEGORY_SKILL    => 'processing',
+        self::CATEGORY_DEVICE   => 'urgent',
+        self::CATEGORY_PAYMENT  => 'overdue',
+        self::CATEGORY_OTHER    => 'closed',
+    ];
+
     /**
      * 满意度评价标签（CSAT）。
      *
@@ -255,6 +263,11 @@ class SupportTicket extends Model
     public function categoryLabel(): string
     {
         return self::CATEGORY_LABELS[$this->category] ?? ($this->category ?: '其他');
+    }
+
+    public function categoryTone(): string
+    {
+        return self::CATEGORY_TONES[$this->category] ?? 'closed';
     }
 
     /**

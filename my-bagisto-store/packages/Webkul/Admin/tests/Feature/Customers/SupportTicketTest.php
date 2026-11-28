@@ -148,3 +148,38 @@ it('受理动作留痕到 operation_log', function () {
         ->where('target_id', $ticket->id)
         ->exists())->toBeTrue();
 });
+
+it('后台可以重新归类工单分类并校验分类白名单', function () {
+    $ticket = stTicket(['category' => SupportTicket::CATEGORY_OTHER]);
+
+    $this->loginAsAdmin();
+
+    post(route('admin.customers.tickets.status', $ticket->id), [
+        'status'   => SupportTicket::STATUS_PROCESSING,
+        'priority' => 'high',
+        'category' => 'invalid_category',
+    ])->assertSessionHasErrors('category');
+
+    expect($ticket->fresh()->category)->toBe(SupportTicket::CATEGORY_OTHER);
+
+    post(route('admin.customers.tickets.status', $ticket->id), [
+        'status'   => SupportTicket::STATUS_PROCESSING,
+        'priority' => 'high',
+        'category' => SupportTicket::CATEGORY_DEVICE,
+    ])->assertRedirect();
+
+    expect($ticket->fresh()->category)->toBe(SupportTicket::CATEGORY_DEVICE)
+        ->and($ticket->fresh()->priority)->toBe('high')
+        ->and($ticket->fresh()->status)->toBe(SupportTicket::STATUS_PROCESSING);
+});
+
+it('工单列表页展示待处理归类分布概览', function () {
+    stTicket(['category' => SupportTicket::CATEGORY_DELIVERY, 'status' => SupportTicket::STATUS_OPEN]);
+
+    $this->loginAsAdmin();
+
+    get(route('admin.customers.tickets.index'))
+        ->assertOk()
+        ->assertSeeText('待处理归类分布')
+        ->assertSeeText('下发/安装');
+});

@@ -9,148 +9,235 @@
 			</template>
 		</nav-bar>
 
-		<scroll-view v-if="loggedIn" class="scroll-content" scroll-y="true" :enhanced="true" :show-scrollbar="false">
-			<view class="page-content">
-				<view class="compose-card">
-					<view class="compose-head">
-						<text class="compose-title">发起咨询或留言</text>
-						<text class="compose-hours sm-mono">{{ serviceHours }}</text>
-					</view>
-
-					<view class="topic-row">
-						<text
-							v-for="(topic, idx) in topics"
-							:key="topic.value"
-							class="topic-chip"
-							:class="{ active: topicIndex === idx }"
-							role="button"
-							tabindex="0"
-							@tap="selectTopic(idx)"
-						>{{ topic.label }}</text>
-					</view>
-
-					<view class="channel-row">
-						<view
-							class="channel-option"
-							:class="{ active: channel === 'online' }"
-							role="button"
-							tabindex="0"
-							aria-label="选择在线客服"
-							@tap="selectChannel('online')"
-						>
-							<view class="channel-top">
-								<text class="channel-title">在线客服</text>
-								<view class="channel-dot" :class="{ on: isOnline }"></view>
-							</view>
-							<text class="channel-desc sm-mono">{{ onlineChannelDesc }}</text>
-						</view>
-						<view
-							class="channel-option"
-							:class="{ active: channel === 'async' }"
-							role="button"
-							tabindex="0"
-							aria-label="选择工单留言"
-							@tap="selectChannel('async')"
-						>
-							<view class="channel-top">
-								<text class="channel-title">工单留言</text>
-							</view>
-							<text class="channel-desc">{{ replyPromise }}，进度可追溯</text>
-						</view>
-					</view>
-
-					<view v-if="activeTicket" class="active-hint" role="button" tabindex="0" aria-label="查看进行中的会话" @tap="goDetail(activeTicket)">
-						<text class="active-hint-text">你有进行中的会话，本次发送会续接到该会话</text>
-						<text class="active-hint-link">查看 ›</text>
-					</view>
-
-					<view v-if="productContext" class="product-context-card">
-						<view class="product-context-image">
-							<image v-if="productContext.image" :src="productContext.image" mode="aspectFill"></image>
-							<SmIcon v-else :name="contextIconName(productContext)" size="42rpx" />
-						</view>
-						<view class="product-context-main">
-							<text class="product-context-kicker">{{ contextKicker(productContext) }}</text>
-							<text class="product-context-name">{{ productContext.name }}</text>
-							<text class="product-context-meta sm-mono">
-								<text v-if="productContext.increment_id">#{{ productContext.increment_id }} · </text>
-								<text v-if="productContext.sn">SN {{ productContext.sn }} · </text>
-								{{ contextMetaText(productContext) }}
-							</text>
-						</view>
-						<view class="product-context-remove" role="button" tabindex="0" aria-label="移除关联对象" @tap="removeProductContext">×</view>
-					</view>
-
-					<view v-if="!productContext && (myOrders.length || myDevices.length)" class="attach-bar">
-						<picker v-if="myOrders.length" :range="orderAttachLabels" @change="onPickOrderAttach">
-							<view class="attach-pill">
-								<SmIcon name="clipboard" size="24rpx" />
-								<text>关联订单</text>
-							</view>
-						</picker>
-						<picker v-if="myDevices.length" :range="deviceAttachLabels" @change="onPickDeviceAttach">
-							<view class="attach-pill">
-								<SmIcon name="devices" size="24rpx" />
-								<text>关联设备</text>
-							</view>
-						</picker>
-					</view>
-
-					<view class="compose-box">
-						<textarea
-							v-model="content"
-							class="compose-input"
-							:focus="inputFocus"
-							placeholder="请描述你遇到的问题，例如：技能安装报错、设备掉线、订单退款进度…"
-							placeholder-class="compose-placeholder"
-							maxlength="2000"
-							auto-height="false"
-							cursor-spacing="16"
-							@blur="onInputBlur"
-						/>
-						<text v-if="content.length > 0" class="compose-count sm-mono">{{ content.length }}/2000</text>
-					</view>
-
-					<view class="compose-foot">
-						<text class="privacy-note">请勿发送密码、验证码等敏感信息</text>
-						<view
-							class="send-btn"
-							:class="{ disabled: submitting || !content.trim() }"
-							role="button"
-							tabindex="0"
-							aria-label="发送问题"
-							@tap="submit"
-						>
-							<text>{{ submitting ? '发送中…' : (channel === 'online' ? '发送咨询' : '提交留言') }}</text>
-						</view>
-					</view>
-				</view>
-
-				<view class="section-head">
-					<view class="section-head-copy">
-						<text class="section-title">我的会话</text>
-						<text class="section-sub sm-mono">{{ listSummary }}</text>
-					</view>
-					<view class="refresh-btn" role="button" tabindex="0" aria-label="刷新会话" @tap="refresh">刷新</view>
-				</view>
-
-				<state-view
-					:loading="loading"
-					:error="loadError"
-					:empty="false"
-					compact
-					btn-color="#165DFF"
-					@retry="refresh"
+		<view v-if="loggedIn" class="work-shell">
+			<!-- 一级工作区切换：把「发起新咨询」与「服务记录」解耦，消除单页信息堆积 -->
+			<view class="mode-bar">
+				<view
+					class="mode-tab"
+					:class="{ active: activeTab === 'ask' }"
+					role="tab"
+					:aria-selected="activeTab === 'ask' ? 'true' : 'false'"
+					tabindex="0"
+					@tap="switchTab('ask')"
 				>
-					<view v-if="!list.length" class="empty-panel">
-						<SmIcon name="empty-inbox" size="72rpx" />
-						<text class="empty-title">暂无服务记录</text>
-						<text class="empty-desc">在上方描述问题并发送，客服回复后会在这里提醒你。</text>
+					<text class="mode-tab-text">发起咨询</text>
+				</view>
+				<view
+					class="mode-tab"
+					:class="{ active: activeTab === 'records' }"
+					role="tab"
+					:aria-selected="activeTab === 'records' ? 'true' : 'false'"
+					tabindex="0"
+					@tap="switchTab('records')"
+				>
+					<text class="mode-tab-text">服务记录</text>
+					<view v-if="totalUnread > 0" class="mode-unread-badge sm-mono">
+						<text>{{ totalUnread > 99 ? '99+' : totalUnread }}</text>
+					</view>
+					<text v-else-if="list.length" class="mode-tab-count sm-mono">{{ list.length }}</text>
+				</view>
+			</view>
+
+			<!-- Tab 1：先排查（AI/常见问题） -> 再结构化填单 -->
+			<scroll-view v-if="activeTab === 'ask'" class="scroll-content" scroll-y="true" :enhanced="true" :show-scrollbar="false">
+				<view class="page-content">
+					<view
+						v-if="activeTicket"
+						class="resume-strip"
+						role="button"
+						tabindex="0"
+						aria-label="查看进行中的会话"
+						@tap="goDetail(activeTicket)"
+					>
+						<view class="resume-dot"></view>
+						<text class="resume-text">你有进行中的会话（{{ categoryLabel(activeTicket.category) }}），点击继续沟通</text>
+						<text class="resume-link">查看 ›</text>
 					</view>
 
-					<block v-else>
-						<block v-for="(item, index) in visibleList" :key="item.id">
+					<!-- 模块 1：前置分流（AI 助手 + 常见问题一键填入） -->
+					<view class="card triage-card">
+						<view class="card-head">
+							<view class="card-title-wrap">
+								<text class="card-title">快速排查与提问</text>
+								<text class="card-sub">点击常见场景可快速填入下方表单</text>
+							</view>
+							<view class="ai-link-btn" role="button" tabindex="0" aria-label="先问 AI 小召" @tap="goAi">
+								<SmIcon name="state-spark" size="26rpx" />
+								<text class="ai-link-text">问 AI 小召 ›</text>
+							</view>
+						</view>
+
+						<view class="faq-grid">
 							<view
+								v-for="(item, index) in faqItems"
+								:key="item.question"
+								class="faq-chip-card"
+								:class="{ active: selectedFaqIndex === index }"
+								role="button"
+								tabindex="0"
+								@tap="useFaq(item, index)"
+							>
+								<text class="faq-chip-cat">{{ categoryLabel(item.category) }}</text>
+								<text class="faq-chip-q">{{ item.question }}</text>
+							</view>
+						</view>
+					</view>
+
+					<!-- 模块 2：联系人工客服结构化表单 -->
+					<view class="card compose-card">
+						<view class="card-head">
+							<text class="card-title">联系人工客服</text>
+							<text class="card-hours sm-mono">{{ serviceHours }}</text>
+						</view>
+
+						<text class="field-label">问题类型</text>
+						<view class="topic-row">
+							<text
+								v-for="(topic, idx) in topics"
+								:key="topic.value"
+								class="topic-chip"
+								:class="{ active: topicIndex === idx }"
+								role="button"
+								tabindex="0"
+								@tap="selectTopic(idx)"
+							>{{ topic.label }}</text>
+						</view>
+
+						<text class="field-label" style="margin-top: 20rpx;">接入方式</text>
+						<view class="channel-segment">
+							<view
+								class="segment-item"
+								:class="{ active: channel === 'online' }"
+								role="button"
+								tabindex="0"
+								aria-label="选择在线客服"
+								@tap="selectChannel('online')"
+							>
+								<view class="segment-title-row">
+									<view class="segment-dot" :class="{ on: isOnline }"></view>
+									<text class="segment-title">在线客服</text>
+								</view>
+								<text class="segment-desc sm-mono">{{ onlineChannelDesc }}</text>
+							</view>
+							<view
+								class="segment-item"
+								:class="{ active: channel === 'async' }"
+								role="button"
+								tabindex="0"
+								aria-label="选择工单留言"
+								@tap="selectChannel('async')"
+							>
+								<view class="segment-title-row">
+									<text class="segment-title">工单留言</text>
+								</view>
+								<text class="segment-desc">{{ replyPromise }} · 进度可查</text>
+							</view>
+						</view>
+
+						<text class="field-label" style="margin-top: 20rpx;">问题描述</text>
+						<view class="compose-box">
+							<view v-if="productContext" class="context-inline">
+								<view class="context-inline-icon">
+									<image v-if="productContext.image" :src="productContext.image" mode="aspectFill"></image>
+									<SmIcon v-else :name="contextIconName(productContext)" size="32rpx" />
+								</view>
+								<view class="context-inline-info">
+									<text class="context-inline-kicker">{{ contextKicker(productContext) }}</text>
+									<text class="context-inline-name">{{ productContext.name }}</text>
+									<text v-if="contextMetaLine(productContext)" class="context-inline-meta sm-mono">{{ contextMetaLine(productContext) }}</text>
+								</view>
+								<view class="context-inline-remove" role="button" tabindex="0" aria-label="移除关联对象" @tap="removeProductContext">×</view>
+							</view>
+
+							<textarea
+								v-model="content"
+								class="compose-input"
+								:focus="inputFocus"
+								placeholder="请说明遇到的具体报错、订单或设备现象，便于快速排查…"
+								placeholder-class="compose-placeholder"
+								maxlength="2000"
+								auto-height="false"
+								cursor-spacing="16"
+								@blur="onInputBlur"
+							/>
+
+							<view class="compose-toolbar">
+								<view class="attach-actions">
+									<picker v-if="!productContext && myOrders.length" :range="orderAttachLabels" @change="onPickOrderAttach">
+										<view class="attach-trigger">
+											<SmIcon name="clipboard" size="22rpx" />
+											<text>关联订单</text>
+										</view>
+									</picker>
+									<picker v-if="!productContext && myDevices.length" :range="deviceAttachLabels" @change="onPickDeviceAttach">
+										<view class="attach-trigger">
+											<SmIcon name="devices" size="22rpx" />
+											<text>关联设备</text>
+										</view>
+									</picker>
+									<text v-if="productContext" class="attach-bound-hint">已附带当前关联卡片</text>
+									<text v-else-if="!myOrders.length && !myDevices.length" class="attach-bound-hint">请勿填写密码或验证码</text>
+								</view>
+								<text class="compose-count sm-mono">{{ content.length }}/2000</text>
+							</view>
+						</view>
+
+						<view class="compose-foot">
+							<text class="privacy-note">信息仅用于售后诊断，请勿发送密码、验证码</text>
+							<view
+								class="send-btn"
+								:class="{ disabled: submitting || !content.trim() }"
+								role="button"
+								tabindex="0"
+								aria-label="发送问题"
+								@tap="submit"
+							>
+								<text>{{ submitting ? '提交中…' : (channel === 'online' ? '发送咨询' : '提交留言') }}</text>
+							</view>
+						</view>
+					</view>
+
+					<view class="safe-space"></view>
+				</view>
+			</scroll-view>
+
+			<!-- Tab 2：专注服务记录与未读追踪 -->
+			<scroll-view v-else class="scroll-content" scroll-y="true" :enhanced="true" :show-scrollbar="false">
+				<view class="page-content">
+					<view class="records-toolbar">
+						<view class="filter-pills">
+							<text
+								v-for="f in recordFilters"
+								:key="f.key"
+								class="filter-pill"
+								:class="{ active: recordFilter === f.key }"
+								role="button"
+								tabindex="0"
+								@tap="recordFilter = f.key"
+							>{{ f.label }}<text v-if="f.count > 0" class="filter-count sm-mono">{{ f.count }}</text></text>
+						</view>
+						<view class="refresh-btn" role="button" tabindex="0" aria-label="刷新会话" @tap="refresh">刷新</view>
+					</view>
+
+					<state-view
+						:loading="loading"
+						:error="loadError"
+						:empty="false"
+						compact
+						btn-color="#165DFF"
+						@retry="refresh"
+					>
+						<view v-if="!filteredList.length" class="empty-panel">
+							<SmIcon name="empty-inbox" size="76rpx" />
+							<text class="empty-title">{{ list.length ? '当前筛选暂无记录' : '暂无服务记录' }}</text>
+							<text class="empty-desc">{{ list.length ? '可切换“全部”查看所有历史工单，或发起新的咨询。' : '遇到安装、设备或订单问题时，可在“发起咨询”随时联系人工客服。' }}</text>
+							<view class="empty-cta" role="button" tabindex="0" @tap="switchTab('ask')">去发起咨询</view>
+						</view>
+
+						<view v-else class="records-list">
+							<view
+								v-for="item in filteredList"
+								:key="item.id"
 								class="conversation"
 								role="button"
 								tabindex="0"
@@ -162,78 +249,32 @@
 								</view>
 								<view class="conv-main">
 									<view class="conv-top">
-										<text class="conv-title">{{ categoryLabel(item.category) }}</text>
+										<view class="conv-title-row">
+											<text class="conv-title">{{ categoryLabel(item.category) }}</text>
+											<text v-if="item.id" class="conv-id sm-mono">#{{ item.id }}</text>
+										</view>
 										<text class="conv-time sm-mono">{{ relativeTime(item.updated_at || item.created_at) }}</text>
 									</view>
 									<text class="conv-preview">{{ preview(item) }}</text>
 									<view class="conv-bottom">
 										<text class="conv-status" :class="'status-' + (item.held ? 'held' : item.status)">{{ item.status_label || statusLabel(item.status) }}</text>
 										<view v-if="unreadCount(item)" class="unread-badge sm-mono">
-											<text>{{ unreadCount(item) > 99 ? '99+' : unreadCount(item) }}</text>
+											<text>{{ unreadCount(item) > 99 ? '99+' : unreadCount(item) }}条未读</text>
 										</view>
 									</view>
 								</view>
 								<text class="conv-arrow">›</text>
 							</view>
+						</view>
+					</state-view>
 
-							<view
-								v-if="index === 0 && restItems.length"
-								class="conv-toggle"
-								role="button"
-								tabindex="0"
-								:aria-label="expanded ? '收起历史会话' : '展开历史会话'"
-								@tap="toggleExpanded"
-							>
-								<text class="conv-toggle-text">{{ expanded ? '收起历史会话' : `展开其余 ${restItems.length} 条会话` }}</text>
-								<view v-if="!expanded && restUnread" class="unread-badge sm-mono">
-									<text>{{ restUnread > 99 ? '99+' : restUnread }}</text>
-								</view>
-								<text class="conv-toggle-caret" :class="{ open: expanded }">▾</text>
-							</view>
-						</block>
-					</block>
-				</state-view>
-
-				<view class="ai-entry" role="button" tabindex="0" aria-label="先问问机甲 AI" @tap="goAi">
-					<view class="ai-entry-mark">
-						<SmIcon name="state-spark" size="36rpx" />
+					<view class="service-foot">
+						<text>人工服务时间：{{ serviceHours }} · 非服务时间留言会在 {{ replyPromise }}</text>
 					</view>
-					<view class="ai-entry-main">
-						<text class="ai-entry-title">先问问机甲 AI</text>
-						<text class="ai-entry-desc">选型与常见问题即时解答，复杂故障再转人工</text>
-					</view>
-					<text class="ai-entry-arrow">›</text>
+					<view class="safe-space"></view>
 				</view>
-
-				<view class="section-head">
-					<view class="section-head-copy">
-						<text class="section-title">常见问题</text>
-						<text class="section-sub">点击快速填入上方输入框</text>
-					</view>
-				</view>
-
-				<view class="faq-card">
-					<view
-						v-for="(item, index) in faqItems"
-						:key="item.question"
-						class="faq-row"
-						:class="{ last: index === faqItems.length - 1 }"
-						role="button"
-						tabindex="0"
-						@tap="useFaq(item)"
-					>
-						<text class="faq-text">{{ item.question }}</text>
-						<text class="faq-arrow">›</text>
-					</view>
-				</view>
-
-				<view class="service-foot">
-					<text>人工服务时间：{{ serviceHours }}</text>
-					<text>非服务时间留言，我们会在 {{ replyPromise }}。</text>
-				</view>
-				<view class="safe-space"></view>
-			</view>
-		</scroll-view>
+			</scroll-view>
+		</view>
 
 		<view v-else class="login-wrap">
 			<view class="login-card">
@@ -265,6 +306,12 @@ import {
 
 const SEEN_KEY = 'customer_service_seen_tickets_v1'
 
+const ORDERED_TOPICS = [...CATEGORY_OPTIONS].sort((a, b) => {
+	if (a.value === 'other') return 1
+	if (b.value === 'other') return -1
+	return 0
+})
+
 export default {
 	components: { NavBar, SmIcon, StateView },
 	data() {
@@ -273,8 +320,11 @@ export default {
 			loading: true,
 			loadError: '',
 			submitting: false,
+			activeTab: 'ask',
+			recordFilter: 'all',
 			content: '',
 			topicIndex: 0,
+			selectedFaqIndex: -1,
 			inputFocus: false,
 			online: false,
 			agentsOnline: 0,
@@ -283,11 +333,10 @@ export default {
 			channelTouched: false,
 			statusTimer: null,
 			list: [],
-			expanded: false,
 			replyPromise: REPLY_PROMISE,
 			serviceHours: SERVICE_HOURS,
 			faqItems: FAQ_ITEMS,
-			topics: CATEGORY_OPTIONS,
+			topics: ORDERED_TOPICS,
 			productContext: null,
 			myOrders: [],
 			myDevices: [],
@@ -298,43 +347,53 @@ export default {
 			return !!this.online
 		},
 		activeTicket() {
-			return this.list.find((item) => item.status === 'open' || item.status === 'processing') || null
+			return this.list.find((item) => item.status === 'open' || item.status === 'processing' || item.status === 'replied') || null
 		},
-		listSummary() {
-			if (!this.list.length) return '你的服务记录会出现在这里'
-			const active = this.activeTicket ? 1 : 0
-			const history = this.list.length - active
-			return history ? `进行中 ${active} · 历史 ${history}` : `进行中 ${active}`
+		totalUnread() {
+			return this.list.reduce((sum, item) => sum + this.unreadCount(item), 0)
+		},
+		activeCount() {
+			return this.list.filter((item) => item.status === 'open' || item.status === 'processing' || item.status === 'replied').length
+		},
+		closedCount() {
+			return this.list.filter((item) => item.status === 'closed' || item.status === 'resolved').length
+		},
+		recordFilters() {
+			return [
+				{ key: 'all', label: '全部', count: this.list.length },
+				{ key: 'active', label: '进行中', count: this.activeCount },
+				{ key: 'closed', label: '已完结', count: this.closedCount },
+			]
+		},
+		filteredList() {
+			if (this.recordFilter === 'active') {
+				return this.list.filter((item) => item.status === 'open' || item.status === 'processing' || item.status === 'replied')
+			}
+			if (this.recordFilter === 'closed') {
+				return this.list.filter((item) => item.status === 'closed' || item.status === 'resolved')
+			}
+			return this.list
 		},
 		onlineChannelDesc() {
-			if (!this.isOnline) return '暂无客服在线，可排队'
-			const queue = this.queueSize > 0 ? ` · 排队 ${this.queueSize} 人` : ' · 无需排队'
-			return `客服在线 ${this.agentsOnline} 位${queue}`
-		},
-		topicLabels() {
-			return this.topics.map((topic) => topic.label)
+			if (!this.isOnline) return '当前离线 · 可排队接入'
+			const queue = this.queueSize > 0 ? `排队 ${this.queueSize} 人` : '无需排队'
+			return `${this.agentsOnline} 位在线 · ${queue}`
 		},
 		currentTopic() {
 			return this.topics[this.topicIndex] || this.topics[0]
 		},
-		restItems() {
-			return this.list.slice(1)
-		},
-		visibleList() {
-			return this.expanded ? this.list : this.list.slice(0, 1)
-		},
-		restUnread() {
-			return this.restItems.reduce((sum, item) => sum + this.unreadCount(item), 0)
-		},
 		orderAttachLabels() {
-			return this.myOrders.map(o => `#${o.increment_id || o.id} · ${(o.items && o.items[0] && o.items[0].name) || '订单'} · ¥${o.grand_total}`)
+			return this.myOrders.map(o => `#${o.increment_id || o.id} · ${(o.items && o.items[0] && o.items[0].name) || o.product_name || '订单'}${o.grand_total ? ` · ¥${o.grand_total}` : ''}`)
 		},
 		deviceAttachLabels() {
-			return this.myDevices.map(d => `${d.sn}${d.display_name ? `（${d.display_name}）` : ''}`)
+			return this.myDevices.map(d => `${d.sn || d.serial_number || ''}${d.display_name || d.name ? `（${d.display_name || d.name}）` : ''}`)
 		},
 	},
 	onLoad(options) {
 		const q = options || {}
+		if (q.tab === 'records') {
+			this.activeTab = 'records'
+		}
 		if (q.category) {
 			const index = this.topics.findIndex((topic) => topic.value === q.category)
 			if (index >= 0) this.topicIndex = index
@@ -343,12 +402,14 @@ export default {
 			let content = String(q.content)
 			try { content = decodeURIComponent(content) } catch (e) {}
 			this.content = content
+			this.activeTab = 'ask'
 			this.inputFocus = false
 		}
 		if (q.productContext || q.orderContext || q.deviceContext) {
 			const context = uni.getStorageSync('supportProductContext')
 			if (context && ['product', 'order', 'device'].includes(context.type) && context.name) {
 				this.productContext = context
+				this.activeTab = 'ask'
 			} else {
 				uni.removeStorageSync('supportProductContext')
 			}
@@ -373,11 +434,11 @@ export default {
 		statusLabel,
 		goLogin() { uni.switchTab({ url: '/pages/mine/index' }) },
 		goAi() { uni.switchTab({ url: '/pages/ai/index' }) },
+		switchTab(tab) {
+			this.activeTab = tab === 'records' ? 'records' : 'ask'
+		},
 		selectTopic(index) {
 			this.topicIndex = Number(index) || 0
-		},
-		onTopicChange(event) {
-			this.topicIndex = Number(event.detail.value) || 0
 		},
 		onInputBlur() { this.inputFocus = false },
 		categoryIconName(category) {
@@ -398,15 +459,26 @@ export default {
 		},
 		contextKicker(ctx) {
 			if (!ctx) return ''
-			if (ctx.type === 'order') return '随消息关联订单'
-			if (ctx.type === 'device') return '随消息关联设备'
-			return '随消息发送商品'
+			if (ctx.type === 'order') return '关联订单'
+			if (ctx.type === 'device') return '关联设备'
+			return '关联商品'
 		},
-		contextMetaText(ctx) {
+		contextMetaLine(ctx) {
 			if (!ctx) return ''
-			if (ctx.type === 'order') return [ctx.status_label, ctx.price ? `¥${ctx.price}` : ''].filter(Boolean).join(' · ')
-			if (ctx.type === 'device') return '名下登记机器设备'
-			return [this.productKindLabel(ctx.kind), ctx.sku, ctx.price ? `¥${ctx.price}` : ''].filter(Boolean).join(' · ')
+			const parts = []
+			if (ctx.increment_id) parts.push(`#${ctx.increment_id}`)
+			if (ctx.sn) parts.push(`SN ${ctx.sn}`)
+			if (ctx.type === 'order') {
+				if (ctx.status_label) parts.push(ctx.status_label)
+				if (ctx.price) parts.push(`¥${ctx.price}`)
+			} else if (ctx.type === 'device') {
+				parts.push('名下登记设备')
+			} else {
+				parts.push(this.productKindLabel(ctx.kind))
+				if (ctx.sku) parts.push(ctx.sku)
+				if (ctx.price) parts.push(`¥${ctx.price}`)
+			}
+			return parts.join(' · ')
 		},
 		onPickOrderAttach(e) {
 			const o = this.myOrders[Number(e.detail.value)]
@@ -415,7 +487,7 @@ export default {
 				type: 'order',
 				order_id: o.id,
 				increment_id: String(o.increment_id || o.id),
-				name: (o.items && o.items[0] && o.items[0].name) || `订单 #${o.increment_id || o.id}`,
+				name: (o.items && o.items[0] && o.items[0].name) || o.product_name || `订单 #${o.increment_id || o.id}`,
 				price: String(o.grand_total || ''),
 				status_label: o.status_label || o.status || '',
 			}
@@ -426,19 +498,21 @@ export default {
 			this.productContext = {
 				type: 'device',
 				device_id: d.id,
-				name: d.display_name || `机器设备 ${d.sn}`,
-				sn: d.sn || '',
+				name: d.display_name || d.name || `机器设备 ${d.sn || d.serial_number || ''}`,
+				sn: d.sn || d.serial_number || '',
 			}
 		},
 		removeProductContext() {
 			this.productContext = null
 			uni.removeStorageSync('supportProductContext')
 		},
-		useFaq(item) {
-			const index = this.topics.findIndex((topic) => topic.value === item.category)
-			if (index >= 0) this.topicIndex = index
-			this.content = item.prompt
+		useFaq(item, index) {
+			const idx = this.topics.findIndex((topic) => topic.value === item.category)
+			if (idx >= 0) this.topicIndex = idx
+			this.selectedFaqIndex = typeof index === 'number' ? index : -1
+			this.content = item.prompt || item.question || ''
 			this.inputFocus = true
+			uni.showToast({ title: '已填入问题描述', icon: 'none' })
 		},
 		startStatusPolling() {
 			this.stopStatusPolling()
@@ -473,14 +547,17 @@ export default {
 			this.markSeen(item)
 			uni.navigateTo({ url: `/pages/mine/ticket-detail?id=${item.id}` })
 		},
-		toggleExpanded() {
-			this.expanded = !this.expanded
-		},
 		preview(item) {
 			const last = item && item.last_message
-			if (!last || !last.content) return '会话已创建，等待补充问题'
+			if (typeof last === 'string' && last.trim()) return last.trim().slice(0, 48)
+			if (!last || !last.content) {
+				if (item && item.content) return String(item.content).replace(/\s+/g, ' ').slice(0, 48)
+				return '会话已创建，等待补充问题'
+			}
 			const prefix = {
 				admin: '客服：',
+				agent: '客服：',
+				staff: '客服：',
 				developer: '技术：',
 				system: '系统：',
 				customer: '我：',
@@ -497,11 +574,11 @@ export default {
 			const server = Number(item && item.unread_count || 0)
 			if (server > 0) return server
 			const last = item && item.last_message
-			if (!last || last.actor_type === 'customer') return 0
+			if (!last || typeof last !== 'object' || last.actor_type === 'customer') return 0
 			return Number(last.id || 0) > Number(this.seenMap()[item.id] || 0) ? 1 : 0
 		},
 		markSeen(item) {
-			if (!item || !item.last_message) return
+			if (!item || !item.last_message || typeof item.last_message !== 'object') return
 			const map = this.seenMap()
 			map[item.id] = item.last_message.id
 			uni.setStorageSync(SEEN_KEY, map)
@@ -521,11 +598,18 @@ export default {
 		async refresh() {
 			this.loading = true
 			this.loadError = ''
-			orderApi.getOrders({ limit: 20 }).then((r) => { this.myOrders = (r && Array.isArray(r.data)) ? r.data : [] }).catch(() => {})
-			deviceApi.list().then((r) => { this.myDevices = (r && Array.isArray(r.data)) ? r.data : [] }).catch(() => {})
+			orderApi.getOrders({ limit: 20 }).then((r) => {
+				const raw = r && r.data
+				this.myOrders = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.items) ? raw.items : [])
+			}).catch(() => {})
+			deviceApi.list().then((r) => {
+				const raw = r && r.data
+				this.myDevices = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.items) ? raw.items : [])
+			}).catch(() => {})
 			try {
 				const res = await ticketApi.list()
-				this.list = (res && Array.isArray(res.data)) ? res.data : []
+				const raw = res && res.data
+				this.list = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.items) ? raw.items : [])
 			} catch (e) {
 				this.loadError = (e && e.message) || '加载失败'
 				this.list = []
@@ -550,6 +634,7 @@ export default {
 				const id = res && res.data && res.data.id
 				const resumed = !!(res && res.data && res.data.resumed)
 				this.content = ''
+				this.selectedFaqIndex = -1
 				this.productContext = null
 				uni.removeStorageSync('supportProductContext')
 				uni.showToast({
@@ -563,6 +648,8 @@ export default {
 				await this.refresh()
 				if (id) {
 					uni.navigateTo({ url: `/pages/mine/ticket-detail?id=${id}` })
+				} else {
+					this.activeTab = 'records'
 				}
 			} catch (e) {
 				uni.showToast({ title: (e && e.message) || '发送失败', icon: 'none' })
@@ -582,6 +669,14 @@ export default {
 	overflow: hidden;
 	background: #F4F7FB;
 }
+.work-shell {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
 .nav-status-pill {
 	display: inline-flex;
 	align-items: center;
@@ -591,26 +686,68 @@ export default {
 	background: #F1F5F9;
 	border: 1rpx solid #E5EAF2;
 }
-.nav-status-pill.online {
-	background: #ECFDF5;
-	border-color: #A7F3D0;
+.nav-status-pill.online { background: #ECFDF5; border-color: #A7F3D0; }
+.nav-status-dot { width: 10rpx; height: 10rpx; border-radius: 50%; background: #94A3B8; }
+.nav-status-dot.on { background: #059669; }
+.nav-status-text { font-size: 21rpx; font-weight: 500; color: #475569; }
+.nav-status-pill.online .nav-status-text { color: #059669; }
+
+/* 顶部工作区两段式导航 */
+.mode-bar {
+	flex-shrink: 0;
+	display: flex;
+	align-items: stretch;
+	background: #FFFFFF;
+	border-bottom: 1rpx solid #E5EAF2;
+	padding: 0 24rpx;
+	gap: 12rpx;
 }
-.nav-status-dot {
-	width: 10rpx;
-	height: 10rpx;
-	border-radius: 50%;
-	background: #94A3B8;
-}
-.nav-status-dot.on {
-	background: #059669;
-}
-.nav-status-text {
-	font-size: 21rpx;
+.mode-tab {
+	flex: 1;
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	height: 84rpx;
+	color: #64748B;
+	font-size: 27rpx;
 	font-weight: 500;
-	color: #475569;
 }
-.nav-status-pill.online .nav-status-text {
-	color: #059669;
+.mode-tab.active {
+	color: #165DFF;
+	font-weight: 600;
+}
+.mode-tab.active::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 72rpx;
+	bottom: 0;
+	height: 5rpx;
+	border-radius: 5rpx 5rpx 0 0;
+	background: #165DFF;
+}
+.mode-tab-count {
+	font-size: 21rpx;
+	color: #94A3B8;
+}
+.mode-tab.active .mode-tab-count {
+	color: #165DFF;
+}
+.mode-unread-badge {
+	min-width: 30rpx;
+	height: 30rpx;
+	padding: 0 8rpx;
+	border-radius: 999rpx;
+	background: #DC2626;
+	color: #FFFFFF;
+	font-size: 19rpx;
+	font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .scroll-content {
@@ -622,33 +759,120 @@ export default {
 .scroll-content::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .page-content { padding: 20rpx 24rpx 0; }
 
-.compose-card {
+/* 进行中会话置顶轻提示条 */
+.resume-strip {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin-bottom: 18rpx;
+	padding: 16rpx 20rpx;
+	border-radius: 14rpx;
+	background: #EEF4FF;
+	border: 1rpx solid #BFDBFE;
+}
+.resume-dot {
+	width: 12rpx;
+	height: 12rpx;
+	border-radius: 50%;
+	background: #165DFF;
+	flex-shrink: 0;
+}
+.resume-text {
+	flex: 1;
+	min-width: 0;
+	font-size: 23rpx;
+	color: #1E3A8A;
+	line-height: 1.4;
+}
+.resume-link {
+	flex-shrink: 0;
+	font-size: 23rpx;
+	font-weight: 600;
+	color: #165DFF;
+}
+
+.card {
 	background: #FFFFFF;
 	border: 1rpx solid #E5EAF2;
 	border-radius: 18rpx;
 	padding: 24rpx;
+	margin-bottom: 18rpx;
 }
-.compose-head {
+.card-head {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: 12rpx;
 }
-.compose-title { font-size: 30rpx; font-weight: 600; color: #0F172A; }
-.compose-hours { font-size: 21rpx; color: #64748B; }
-
-.topic-row {
+.card-title-wrap {
+	flex: 1;
+	min-width: 0;
 	display: flex;
-	flex-wrap: wrap;
-	gap: 10rpx;
+	flex-direction: column;
+	gap: 4rpx;
+}
+.card-title { font-size: 29rpx; font-weight: 600; color: #0F172A; line-height: 1.3; }
+.card-sub { font-size: 21rpx; color: #64748B; }
+.card-hours { flex-shrink: 0; font-size: 21rpx; color: #64748B; padding-top: 4rpx; }
+
+/* AI 快速分流入口 */
+.ai-link-btn {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 8rpx 16rpx;
+	border-radius: 999rpx;
+	background: #EEF4FF;
+	border: 1rpx solid #DCE5F2;
+}
+.ai-link-text { font-size: 22rpx; font-weight: 600; color: #165DFF; }
+
+/* 2x2 快速场景卡片 */
+.faq-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12rpx;
 	margin-top: 18rpx;
 }
+.faq-chip-card {
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
+	padding: 16rpx 18rpx;
+	border-radius: 14rpx;
+	background: #F8FAFC;
+	border: 1rpx solid #E5EAF2;
+}
+.faq-chip-card.active {
+	background: #EEF4FF;
+	border-color: #165DFF;
+}
+.faq-chip-cat { font-size: 19rpx; font-weight: 600; color: #165DFF; }
+.faq-chip-q {
+	font-size: 23rpx;
+	font-weight: 500;
+	color: #0F172A;
+	line-height: 1.4;
+}
+
+/* 填单内部节律 */
+.field-label {
+	display: block;
+	margin-top: 18rpx;
+	margin-bottom: 10rpx;
+	font-size: 22rpx;
+	font-weight: 500;
+	color: #64748B;
+}
+.topic-row { display: flex; flex-wrap: wrap; gap: 8rpx; }
 .topic-chip {
-	padding: 8rpx 18rpx;
+	flex-shrink: 0;
+	padding: 10rpx 16rpx;
 	border-radius: 999rpx;
 	background: #F8FAFC;
 	border: 1rpx solid #E5EAF2;
-	font-size: 23rpx;
+	font-size: 22rpx;
 	color: #475569;
 }
 .topic-chip.active {
@@ -658,105 +882,82 @@ export default {
 	font-weight: 600;
 }
 
-.channel-row { display: flex; gap: 14rpx; margin-top: 18rpx; }
-.channel-option {
+/* 轻量分段接入方式 */
+.channel-segment {
+	display: flex;
+	gap: 8rpx;
+	padding: 6rpx;
+	border-radius: 14rpx;
+	background: #F4F7FB;
+	border: 1rpx solid #E5EAF2;
+}
+.segment-item {
 	flex: 1;
 	min-width: 0;
-	padding: 16rpx 18rpx;
-	border: 1rpx solid #E5EAF2;
-	border-radius: 14rpx;
-	background: #F8FAFC;
+	padding: 12rpx 14rpx;
+	border-radius: 10rpx;
 }
-.channel-option.active {
-	border-color: #165DFF;
-	background: #EEF4FF;
+.segment-item.active {
+	background: #FFFFFF;
+	box-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.06);
 }
-.channel-top { display: flex; align-items: center; gap: 8rpx; }
-.channel-title { font-size: 25rpx; font-weight: 600; color: #0F172A; }
-.channel-option.active .channel-title { color: #165DFF; }
-.channel-dot { flex-shrink: 0; width: 12rpx; height: 12rpx; border-radius: 50%; background: #CBD5E1; }
-.channel-dot.on { background: #059669; box-shadow: 0 0 0 4rpx rgba(5, 150, 105, 0.14); }
-.channel-desc { display: block; margin-top: 6rpx; font-size: 20rpx; line-height: 1.4; color: #64748B; }
+.segment-title-row { display: flex; align-items: center; gap: 8rpx; }
+.segment-dot { width: 10rpx; height: 10rpx; border-radius: 50%; background: #CBD5E1; flex-shrink: 0; }
+.segment-dot.on { background: #059669; }
+.segment-title { font-size: 24rpx; font-weight: 600; color: #475569; }
+.segment-item.active .segment-title { color: #165DFF; }
+.segment-desc { display: block; margin-top: 4rpx; font-size: 20rpx; color: #64748B; }
 
-.active-hint {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 14rpx;
-	margin-top: 16rpx;
-	padding: 14rpx 18rpx;
-	border: 1rpx solid #BFDBFE;
-	border-radius: 12rpx;
-	background: #EEF4FF;
-}
-.active-hint-text { flex: 1; font-size: 22rpx; line-height: 1.45; color: #165DFF; }
-.active-hint-link { flex-shrink: 0; font-size: 22rpx; font-weight: 600; color: #165DFF; }
-
-.product-context-card {
-	display: flex;
-	align-items: center;
-	gap: 16rpx;
-	margin-top: 16rpx;
-	padding: 16rpx;
-	border-radius: 14rpx;
-	background: #F8FAFC;
-	border: 1rpx solid #DCE5F2;
-}
-.product-context-image {
-	width: 84rpx;
-	height: 84rpx;
-	flex-shrink: 0;
-	overflow: hidden;
-	border-radius: 12rpx;
-	background: #EEF4FF;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-.product-context-image image { width: 100%; height: 100%; }
-.product-context-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.product-context-kicker { color: #165DFF; font-size: 20rpx; font-weight: 600; }
-.product-context-name { overflow: hidden; color: #0F172A; font-size: 25rpx; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.product-context-meta { color: #64748B; font-size: 20rpx; }
-.product-context-remove {
-	width: 44rpx;
-	height: 44rpx;
-	flex-shrink: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 50%;
-	background: #E2E8F0;
-	color: #475569;
-	font-size: 28rpx;
-}
-
-.attach-bar { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 16rpx; }
-.attach-pill {
-	display: inline-flex;
-	align-items: center;
-	gap: 8rpx;
-	font-size: 22rpx;
-	font-weight: 500;
-	color: #334155;
-	background: #F8FAFC;
-	border: 1rpx solid #DCE5F2;
-	padding: 8rpx 18rpx;
-	border-radius: 999rpx;
-}
-
+/* 输入区与附件一体框 */
 .compose-box {
-	position: relative;
-	margin-top: 16rpx;
 	background: #F8FAFC;
 	border: 1rpx solid #DCE5F2;
 	border-radius: 14rpx;
-	padding: 18rpx 20rpx 38rpx;
+	overflow: hidden;
+}
+.context-inline {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin: 14rpx 14rpx 0;
+	padding: 12rpx 14rpx;
+	border-radius: 10rpx;
+	background: #FFFFFF;
+	border: 1rpx solid #DCE5F2;
+}
+.context-inline-icon {
+	width: 60rpx;
+	height: 60rpx;
+	flex-shrink: 0;
+	border-radius: 10rpx;
+	background: #EEF4FF;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.context-inline-icon image { width: 100%; height: 100%; }
+.context-inline-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2rpx; }
+.context-inline-kicker { font-size: 19rpx; font-weight: 600; color: #165DFF; }
+.context-inline-name { font-size: 23rpx; font-weight: 600; color: #0F172A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.context-inline-meta { font-size: 19rpx; color: #64748B; }
+.context-inline-remove {
+	width: 38rpx;
+	height: 38rpx;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: #F1F5F9;
+	color: #64748B;
+	font-size: 24rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 .compose-input {
 	width: 100%;
-	height: 148rpx;
+	height: 156rpx;
 	box-sizing: border-box;
+	padding: 18rpx 20rpx 12rpx;
 	border: 0;
 	outline: none;
 	resize: none;
@@ -766,25 +967,42 @@ export default {
 	color: #0F172A;
 }
 .compose-placeholder { color: #94A3B8; }
-.compose-count {
-	position: absolute;
-	right: 18rpx;
-	bottom: 10rpx;
-	font-size: 20rpx;
-	color: #94A3B8;
+.compose-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12rpx;
+	padding: 10rpx 16rpx;
+	border-top: 1rpx solid #E5EAF2;
+	background: rgba(255, 255, 255, 0.7);
 }
+.attach-actions { display: flex; align-items: center; gap: 10rpx; flex: 1; min-width: 0; }
+.attach-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 6rpx;
+	padding: 6rpx 14rpx;
+	border-radius: 999rpx;
+	background: #FFFFFF;
+	border: 1rpx solid #DCE5F2;
+	font-size: 21rpx;
+	font-weight: 500;
+	color: #334155;
+}
+.attach-bound-hint { font-size: 20rpx; color: #94A3B8; }
+.compose-count { font-size: 20rpx; color: #94A3B8; flex-shrink: 0; }
 
 .compose-foot {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 16rpx;
-	margin-top: 16rpx;
+	margin-top: 18rpx;
 }
-.privacy-note { flex: 1; font-size: 21rpx; line-height: 1.45; color: #64748B; }
+.privacy-note { flex: 1; font-size: 20rpx; line-height: 1.45; color: #94A3B8; }
 .send-btn {
 	flex-shrink: 0;
-	padding: 16rpx 34rpx;
+	padding: 16rpx 36rpx;
 	border-radius: 999rpx;
 	background: #165DFF;
 	color: #FFFFFF;
@@ -793,16 +1011,35 @@ export default {
 }
 .send-btn.disabled { opacity: 0.45; }
 
-.section-head {
+/* Tab 2：服务记录工具条与列表 */
+.records-toolbar {
 	display: flex;
-	align-items: flex-end;
+	align-items: center;
 	justify-content: space-between;
-	margin: 28rpx 4rpx 14rpx;
+	gap: 12rpx;
+	margin-bottom: 16rpx;
 }
-.section-head-copy { display: flex; flex-direction: column; gap: 4rpx; }
-.section-title { display: block; font-size: 29rpx; font-weight: 600; color: #0F172A; }
-.section-sub { display: block; font-size: 22rpx; color: #64748B; }
+.filter-pills { display: flex; align-items: center; gap: 10rpx; flex-wrap: wrap; }
+.filter-pill {
+	padding: 8rpx 20rpx;
+	border-radius: 999rpx;
+	background: #FFFFFF;
+	border: 1rpx solid #E5EAF2;
+	font-size: 22rpx;
+	color: #475569;
+}
+.filter-pill.active {
+	background: #EEF4FF;
+	border-color: #165DFF;
+	color: #165DFF;
+	font-weight: 600;
+}
+.filter-count {
+	margin-left: 6rpx;
+	opacity: 0.78;
+}
 .refresh-btn {
+	flex-shrink: 0;
 	padding: 8rpx 20rpx;
 	border: 1rpx solid #DCE5F2;
 	border-radius: 999rpx;
@@ -811,11 +1048,11 @@ export default {
 	color: #475569;
 }
 
+.records-list { display: flex; flex-direction: column; gap: 12rpx; }
 .conversation {
 	display: flex;
 	align-items: center;
 	gap: 18rpx;
-	margin-bottom: 12rpx;
 	padding: 22rpx;
 	border-radius: 16rpx;
 	background: #FFFFFF;
@@ -832,110 +1069,55 @@ export default {
 	background: #EEF4FF;
 }
 .conv-main { min-width: 0; flex: 1; }
-.conv-top { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.conv-title { font-size: 28rpx; font-weight: 600; color: #0F172A; }
+.conv-top { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
+.conv-title-row { display: flex; align-items: center; gap: 8rpx; min-width: 0; }
+.conv-title { font-size: 27rpx; font-weight: 600; color: #0F172A; }
+.conv-id { font-size: 20rpx; color: #94A3B8; }
 .conv-time { flex-shrink: 0; font-size: 21rpx; color: #94A3B8; }
 .conv-preview { display: block; margin-top: 8rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 23rpx; color: #64748B; }
-.conv-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10rpx; }
+.conv-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 12rpx; }
 .conv-status { padding: 3rpx 14rpx; border-radius: 6rpx; font-size: 20rpx; font-weight: 500; background: #EEF4FF; color: #165DFF; }
 .status-resolved { background: #ECFDF5; color: #059669; }
 .status-held { background: #FFFBEB; color: #B45309; }
 .status-closed { background: #F1F5F9; color: #64748B; }
 .unread-badge {
-	min-width: 32rpx;
-	height: 32rpx;
-	padding: 0 8rpx;
-	box-sizing: border-box;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	padding: 2rpx 12rpx;
 	border-radius: 999rpx;
-	background: #DC2626;
-	color: #FFFFFF;
-	font-size: 19rpx;
+	background: #FEE2E2;
+	color: #DC2626;
+	font-size: 20rpx;
 	font-weight: 600;
 }
 .conv-arrow { flex-shrink: 0; font-size: 32rpx; color: #94A3B8; }
-.conv-toggle {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 10rpx;
-	margin-bottom: 12rpx;
-	padding: 18rpx 22rpx;
-	border-radius: 14rpx;
-	background: #FFFFFF;
-	border: 1rpx solid #E5EAF2;
-}
-.conv-toggle-text { font-size: 23rpx; color: #475569; font-weight: 500; }
-.conv-toggle-caret { font-size: 24rpx; line-height: 1; color: #94A3B8; transition: transform 0.2s ease; }
-.conv-toggle-caret.open { transform: rotate(180deg); }
-
-.ai-entry {
-	display: flex;
-	align-items: center;
-	gap: 16rpx;
-	margin-top: 24rpx;
-	padding: 20rpx 22rpx;
-	border-radius: 16rpx;
-	background: #FFFFFF;
-	border: 1rpx solid #E5EAF2;
-}
-.ai-entry-mark {
-	flex-shrink: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 68rpx;
-	height: 68rpx;
-	border-radius: 16rpx;
-	background: #EEF4FF;
-}
-.ai-entry-main { min-width: 0; flex: 1; }
-.ai-entry-title { display: block; font-size: 27rpx; font-weight: 600; color: #0F172A; }
-.ai-entry-desc { display: block; margin-top: 4rpx; font-size: 21rpx; color: #64748B; }
-.ai-entry-arrow { flex-shrink: 0; font-size: 32rpx; color: #94A3B8; }
-
-.faq-card {
-	overflow: hidden;
-	border-radius: 16rpx;
-	background: #FFFFFF;
-	border: 1rpx solid #E5EAF2;
-}
-.faq-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 18rpx;
-	padding: 24rpx 22rpx;
-	border-bottom: 1rpx solid #F1F5F9;
-}
-.faq-row.last { border-bottom: none; }
-.faq-text { flex: 1; font-size: 26rpx; color: #0F172A; line-height: 1.45; }
-.faq-arrow { flex-shrink: 0; font-size: 30rpx; color: #94A3B8; }
 
 .empty-panel {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 12rpx;
-	padding: 44rpx 28rpx;
-	border-radius: 16rpx;
+	padding: 64rpx 32rpx;
+	border-radius: 18rpx;
 	background: #FFFFFF;
 	border: 1rpx solid #E5EAF2;
 }
-.empty-title { font-size: 27rpx; font-weight: 600; color: #0F172A; }
-.empty-desc { text-align: center; font-size: 22rpx; line-height: 1.55; color: #64748B; }
+.empty-title { font-size: 28rpx; font-weight: 600; color: #0F172A; }
+.empty-desc { text-align: center; font-size: 23rpx; line-height: 1.55; color: #64748B; }
+.empty-cta {
+	margin-top: 12rpx;
+	padding: 14rpx 36rpx;
+	border-radius: 999rpx;
+	background: #165DFF;
+	color: #FFFFFF;
+	font-size: 24rpx;
+	font-weight: 600;
+}
 
 .service-foot {
 	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 6rpx;
+	justify-content: center;
 	padding: 28rpx 0 8rpx;
 	font-size: 21rpx;
-	line-height: 1.5;
-	color: #64748B;
+	color: #94A3B8;
 }
 
 .login-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 40rpx; }

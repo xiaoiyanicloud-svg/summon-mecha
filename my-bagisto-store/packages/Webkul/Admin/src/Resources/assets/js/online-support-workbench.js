@@ -36,6 +36,7 @@ function bootSupportWorkspace() {
     const waitingCount = document.getElementById('waiting-count');
     const inboxTotal = document.getElementById('inbox-total-count');
     const inboxSearch = document.getElementById('inbox-search');
+    const inboxCategoryFilter = document.getElementById('inbox-category-filter');
     const inboxFilterButtons = document.querySelectorAll('[data-inbox-filter]');
     const inboxFilterEmpty = document.getElementById('inbox-filter-empty');
     const soundToggle = document.getElementById('sound-toggle');
@@ -52,6 +53,10 @@ function bootSupportWorkspace() {
     const newMessageTip = document.getElementById('new-message-tip');
     const statusForm = document.getElementById('status-form');
     const statusBadge = document.getElementById('chat-status-badge');
+    const categoryBadge = document.getElementById('chat-category-badge');
+    const priorityLabelEl = document.getElementById('chat-priority-label');
+    const quickReplySearch = document.getElementById('quick-reply-search');
+    const quickRepliesContainer = document.getElementById('quick-replies-container');
     const statusFeedback = document.getElementById('status-feedback');
     const toast = document.getElementById('workspace-toast');
     const heldBadge = document.getElementById('chat-held-badge');
@@ -70,6 +75,7 @@ function bootSupportWorkspace() {
 
     let isOnline = config.initialOnline;
     let status = config.status;
+    let category = config.category || 'other';
     let assigneeId = config.assigneeId;
     let isHeld = !!config.held;
     let composerMode = 'reply';
@@ -77,6 +83,7 @@ function bootSupportWorkspace() {
     let lastTypingPingAt = 0;
     let lastMessageId = config.initialLastMessageId;
     let inboxFilter = 'all';
+    let categoryFilter = 'all';
     let soundEnabled = readFlag('support_sound_enabled', true);
     let notifyEnabled = readFlag('support_notify_enabled', false);
     const savedInboxState = window.__supportInboxState || null;
@@ -372,16 +379,62 @@ function bootSupportWorkspace() {
         });
     }
 
-    document.querySelectorAll('[data-reply]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            if (!input || input.disabled) return;
-            input.value = button.dataset.reply || '';
-            lastQuickReplyKey = button.dataset.replyKey || null;
-            recordQuickReply('insert', lastQuickReplyKey);
-            autoGrow();
-            input.focus();
+    function bindQuickReplyButtons(scope) {
+        (scope || document).querySelectorAll('[data-reply]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (!input || input.disabled) return;
+                input.value = button.dataset.reply || '';
+                lastQuickReplyKey = button.dataset.replyKey || null;
+                recordQuickReply('insert', lastQuickReplyKey);
+                autoGrow();
+                input.focus();
+            });
         });
-    });
+    }
+
+    function applyQuickReplyFilter() {
+        if (!quickRepliesContainer) return;
+        const query = quickReplySearch ? quickReplySearch.value.trim().toLowerCase() : '';
+        quickRepliesContainer.querySelectorAll('[data-reply]').forEach(function (button) {
+            const label = (button.dataset.replyLabel || button.textContent || '').toLowerCase();
+            const content = (button.dataset.reply || '').toLowerCase();
+            const matched = !query || label.indexOf(query) !== -1 || content.indexOf(query) !== -1;
+            button.classList.toggle('hidden', !matched);
+        });
+    }
+
+    function renderQuickReplyGroups(groups) {
+        if (!quickRepliesContainer || !Array.isArray(groups)) return;
+        quickRepliesContainer.innerHTML = '';
+        const showGroupLabel = groups.length > 1;
+        groups.forEach(function (group) {
+            if (showGroupLabel) {
+                const label = document.createElement('span');
+                label.className = 'text-[10px] text-gray-400';
+                label.dataset.replyGroup = '1';
+                label.textContent = group.label || group.key || '';
+                quickRepliesContainer.appendChild(label);
+            }
+            (Array.isArray(group.items) ? group.items : []).forEach(function (item) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'support-chip px-2.5 py-1 text-xs';
+                btn.dataset.replyKey = item.key || '';
+                btn.dataset.reply = item.content || '';
+                btn.dataset.replyLabel = item.label || '';
+                btn.textContent = item.label || '';
+                quickRepliesContainer.appendChild(btn);
+            });
+        });
+        bindQuickReplyButtons(quickRepliesContainer);
+        applyQuickReplyFilter();
+    }
+
+    bindQuickReplyButtons(quickRepliesContainer || document);
+
+    if (quickReplySearch) {
+        quickReplySearch.addEventListener('input', applyQuickReplyFilter);
+    }
 
     if (quickStatsToggle && quickStatsPanel) {
         quickStatsToggle.addEventListener('click', function () {
@@ -435,6 +488,24 @@ function bootSupportWorkspace() {
         statusBadge.dataset.status = status;
         statusBadge.className = 'support-tone ' + (config.statusTones[status] || config.statusTones.closed || 'support-tone-closed');
         if (label) statusBadge.textContent = label;
+    }
+
+    function applyCategoryAndPriority(nextCategory, catLabel, catTone, prioLabel) {
+        if (nextCategory && categoryBadge) {
+            category = nextCategory;
+            const toneKey = catTone || (config.categoryTones && config.categoryTones[nextCategory]) || 'closed';
+            const displayLabel = catLabel || (config.categoryLabels && config.categoryLabels[nextCategory]) || nextCategory;
+            categoryBadge.dataset.category = nextCategory;
+            categoryBadge.className = 'support-tone support-tone-' + toneKey;
+            categoryBadge.textContent = displayLabel;
+            const sel = document.getElementById('ticket-category-select');
+            if (sel && sel.value !== nextCategory) {
+                sel.value = nextCategory;
+            }
+        }
+        if (prioLabel && priorityLabelEl) {
+            priorityLabelEl.textContent = prioLabel;
+        }
     }
 
     function attachmentElement(attachment) {
@@ -497,9 +568,106 @@ function bootSupportWorkspace() {
             return card;
         }
 
+        if (attachment && typeof attachment === 'object' && attachment.type === 'order') {
+            const card = document.createElement(attachment.admin_url ? 'a' : 'div');
+            card.className = 'support-product-attachment';
+            if (attachment.admin_url) {
+                card.href = attachment.admin_url;
+                card.target = '_blank';
+                card.rel = 'noopener noreferrer';
+            }
+            const thumb = document.createElement('span');
+            thumb.className = 'support-product-thumb';
+            thumb.textContent = '订';
+
+            const copy = document.createElement('span');
+            copy.className = 'support-product-copy';
+
+            const kicker = document.createElement('span');
+            kicker.className = 'support-product-kicker';
+            kicker.textContent = '关联交易订单';
+
+            const name = document.createElement('strong');
+            name.className = 'support-product-name';
+            name.textContent = attachment.name || '订单咨询';
+
+            const meta = document.createElement('span');
+            meta.className = 'support-product-meta';
+            if (attachment.increment_id) {
+                const inc = document.createElement('span');
+                inc.textContent = '#' + attachment.increment_id;
+                meta.appendChild(inc);
+            }
+            if (attachment.status_label) {
+                const st = document.createElement('span');
+                st.textContent = attachment.status_label;
+                meta.appendChild(st);
+            }
+            if (attachment.price) {
+                const price = document.createElement('span');
+                price.textContent = '¥' + attachment.price;
+                meta.appendChild(price);
+            }
+            if (attachment.admin_url) {
+                const link = document.createElement('span');
+                link.className = 'support-product-link';
+                link.textContent = '查看订单 →';
+                meta.appendChild(link);
+            }
+
+            copy.appendChild(kicker);
+            copy.appendChild(name);
+            copy.appendChild(meta);
+            card.appendChild(thumb);
+            card.appendChild(copy);
+            return card;
+        }
+
+        if (attachment && typeof attachment === 'object' && attachment.type === 'device') {
+            const card = document.createElement('div');
+            card.className = 'support-product-attachment';
+
+            const thumb = document.createElement('span');
+            thumb.className = 'support-product-thumb';
+            thumb.textContent = '机';
+
+            const copy = document.createElement('span');
+            copy.className = 'support-product-copy';
+
+            const kicker = document.createElement('span');
+            kicker.className = 'support-product-kicker';
+            kicker.textContent = '关联机器设备';
+
+            const name = document.createElement('strong');
+            name.className = 'support-product-name';
+            name.textContent = attachment.name || '已登记设备';
+
+            const meta = document.createElement('span');
+            meta.className = 'support-product-meta';
+            if (attachment.sn) {
+                const sn = document.createElement('span');
+                sn.textContent = 'SN ' + attachment.sn;
+                meta.appendChild(sn);
+            }
+            if (attachment.device_id) {
+                const idEl = document.createElement('span');
+                idEl.textContent = '#' + attachment.device_id;
+                meta.appendChild(idEl);
+            }
+
+            copy.appendChild(kicker);
+            copy.appendChild(name);
+            copy.appendChild(meta);
+            card.appendChild(thumb);
+            card.appendChild(copy);
+            return card;
+        }
+
         const chip = document.createElement('span');
         chip.className = 'max-w-xs truncate rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-blue-600 ring-1 ring-inset ring-gray-200 dark:bg-gray-800 dark:ring-gray-700';
-        chip.textContent = String(attachment || '');
+        chip.textContent = typeof attachment === 'string'
+            ? attachment
+            : (attachment && typeof attachment === 'object' ? JSON.stringify(attachment) : String(attachment || ''));
         return chip;
     }
 
@@ -707,6 +875,7 @@ function bootSupportWorkspace() {
             status = data.status || status;
             assigneeId = data.assignee_id;
             applyStatusBadge(data.status, data.status_label);
+            applyCategoryAndPriority(data.category, data.category_label, data.category_tone, data.priority_label);
             applyReplyPermission(data);
             applyHeld(data.held, data.held_reason);
             if (customerTyping) customerTyping.classList.toggle('hidden', !data.customer_typing);
@@ -772,6 +941,10 @@ function bootSupportWorkspace() {
                 matches = row.dataset[inboxFilter] === '1';
             }
 
+            if (matches && categoryFilter !== 'all') {
+                matches = (row.dataset.category || 'other') === categoryFilter;
+            }
+
             if (matches && query) {
                 matches = (row.dataset.search || '').indexOf(query) !== -1;
             }
@@ -800,6 +973,13 @@ function bootSupportWorkspace() {
 
     if (inboxSearch) {
         inboxSearch.addEventListener('input', applyInboxFilters);
+    }
+
+    if (inboxCategoryFilter) {
+        inboxCategoryFilter.addEventListener('change', function () {
+            categoryFilter = inboxCategoryFilter.value || 'all';
+            applyInboxFilters();
+        });
     }
 
     function inboxUnreadTotal() {
@@ -842,6 +1022,16 @@ function bootSupportWorkspace() {
                 if (asyncCount && typeof data.counts.async !== 'undefined') asyncCount.textContent = data.counts.async;
                 if (heldCount && typeof data.counts.held !== 'undefined') heldCount.textContent = data.counts.held;
                 if (waitingCount && typeof data.counts.waiting !== 'undefined') waitingCount.textContent = data.counts.waiting;
+                if (inboxCategoryFilter && data.counts.categories) {
+                    Array.from(inboxCategoryFilter.options).forEach(function (opt) {
+                        if (opt.value === 'all') {
+                            opt.textContent = '全部分类 (' + (data.counts.total || 0) + ')';
+                        } else if (typeof data.counts.categories[opt.value] !== 'undefined') {
+                            const baseLabel = opt.dataset.catLabel || opt.value;
+                            opt.textContent = baseLabel + ' (' + data.counts.categories[opt.value] + ')';
+                        }
+                    });
+                }
             }
             if (typeof data.online_agents === 'number') paintPresence(data.online_agents);
             paintStats(data.stats);
@@ -958,14 +1148,24 @@ function bootSupportWorkspace() {
 
                 if (payload.data) {
                     applyStatusBadge(payload.data.status, payload.data.status_label);
+                    applyCategoryAndPriority(
+                        payload.data.category,
+                        payload.data.category_label,
+                        payload.data.category_tone,
+                        payload.data.priority_label
+                    );
                     applyReplyPermission(payload.data);
+                    if (Array.isArray(payload.data.quick_replies)) {
+                        renderQuickReplyGroups(payload.data.quick_replies);
+                    }
+                    pollConversations();
                 }
                 if (statusFeedback) {
-                    statusFeedback.textContent = '处置已保存，用户端会看到最新状态。';
+                    statusFeedback.textContent = '归类与处置已保存，快捷话术与用户端已同步。';
                     statusFeedback.classList.remove('hidden');
                     window.setTimeout(function () { statusFeedback.classList.add('hidden'); }, 2600);
                 }
-                showToast(payload.message || '状态已更新');
+                showToast(payload.message || '归类与处置已更新');
             } catch (error) {
                 showToast(error.message || '状态更新失败');
             } finally {
@@ -1084,7 +1284,9 @@ function bootSupportWorkspace() {
     applyHeld(config.held);
     if (savedInboxState) {
         inboxFilter = savedInboxState.filter || 'all';
+        categoryFilter = savedInboxState.category || 'all';
         if (inboxSearch) inboxSearch.value = savedInboxState.query || '';
+        if (inboxCategoryFilter) inboxCategoryFilter.value = categoryFilter;
         inboxFilterButtons.forEach(function (button) {
             button.classList.toggle('support-filter-active', button.dataset.inboxFilter === inboxFilter);
         });
@@ -1119,6 +1321,7 @@ function bootSupportWorkspace() {
 
             window.__supportInboxState = {
                 filter: inboxFilter,
+                category: categoryFilter,
                 query: inboxSearch ? inboxSearch.value : '',
                 scroll: conversationList ? conversationList.scrollTop : 0,
             };

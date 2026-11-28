@@ -680,3 +680,68 @@ it('后台客服工作台展示商品卡并提供商品编辑入口', function (
         ->assertSee('support-product-attachment', false)
         ->assertSee('ADMIN-CARD-001', false);
 });
+
+it('处置归类 JSON 接口更新分类并联动返回最新快捷话术', function () {
+    $admin = $this->loginAsAdmin(onlineAdminUser());
+    $ticket = onlineAdminTicket([
+        'assignee_id' => $admin->id,
+        'category'    => SupportTicket::CATEGORY_OTHER,
+    ]);
+
+    $res = postJson(route('admin.customers.tickets.status', $ticket->id), [
+        'status'   => SupportTicket::STATUS_PROCESSING,
+        'priority' => 'high',
+        'category' => SupportTicket::CATEGORY_DEVICE,
+    ])->assertOk()
+        ->assertJsonPath('data.category', SupportTicket::CATEGORY_DEVICE)
+        ->assertJsonPath('data.category_label', '设备问题')
+        ->assertJsonPath('data.quick_replies.0.key', SupportTicket::CATEGORY_DEVICE);
+
+    $keys = collect($res->json('data.quick_replies.0.items'))->pluck('key')->all();
+    expect($keys)->toContain('device.offline');
+
+    $convs = getJson(route('admin.customers.support.conversations').'?ticket_id='.$ticket->id)
+        ->assertOk();
+    expect($convs->json('data.counts.categories.'.SupportTicket::CATEGORY_DEVICE))->toBeGreaterThanOrEqual(1);
+});
+
+it('后台工作台安全渲染订单与设备结构化附件卡并补全订单详情链接', function () {
+    $admin = $this->loginAsAdmin(onlineAdminUser());
+    $ticket = onlineAdminTicket(['assignee_id' => $admin->id]);
+
+    TicketMessage::create([
+        'ticket_id'   => $ticket->id,
+        'actor_type'  => TicketMessage::ACTOR_CUSTOMER,
+        'actor_id'    => $ticket->customer_id,
+        'content'     => '订单和设备信息附上',
+        'attachments' => [
+            [
+                'type'         => 'order',
+                'order_id'     => 92,
+                'increment_id' => 'SM-20261128-092',
+                'name'         => 'Unitree G1 迎宾方案',
+                'price'        => '12800',
+                'status_label' => '已确认',
+            ],
+            [
+                'type'      => 'device',
+                'device_id' => 12,
+                'name'      => '宇树 G1 EDU',
+                'sn'        => 'G1-0482',
+            ],
+        ],
+        'created_at' => now(),
+    ]);
+
+    getJson(route('admin.customers.tickets.updates', $ticket->id))
+        ->assertOk()
+        ->assertJsonPath('data.messages.0.attachments.0.admin_url', route('admin.sales.orders.view', 92))
+        ->assertJsonPath('data.messages.0.attachments.1.type', 'device');
+
+    $this->get(route('admin.customers.tickets.show', $ticket->id))
+        ->assertOk()
+        ->assertSee('关联交易订单', false)
+        ->assertSee('SM-20261128-092', false)
+        ->assertSee('关联机器设备', false)
+        ->assertSee('G1-0482', false);
+});

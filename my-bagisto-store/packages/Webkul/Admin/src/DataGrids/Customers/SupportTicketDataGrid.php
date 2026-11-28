@@ -8,9 +8,6 @@ use Webkul\Shop\Models\SupportTicket;
 
 /**
  * 客服工单列表（v3.4 步骤 10 的平台端受理台）。
- *
- * 在此之前：用户能开单（`POST /api/tickets`，带 24h SLA），
- * 但**平台端没有任何入口能看见它** —— 工单池是个黑洞，SLA 只写在表里没人管。
  */
 class SupportTicketDataGrid extends DataGrid
 {
@@ -20,6 +17,7 @@ class SupportTicketDataGrid extends DataGrid
     {
         $queryBuilder = DB::table('support_ticket')
             ->leftJoin('customers', 'customers.id', '=', 'support_ticket.customer_id')
+            ->leftJoin('admins', 'admins.id', '=', 'support_ticket.assignee_id')
             ->select(
                 'support_ticket.id',
                 'support_ticket.ticket_no',
@@ -31,8 +29,10 @@ class SupportTicketDataGrid extends DataGrid
                 'support_ticket.assignee_id',
                 'support_ticket.held_at',
                 'support_ticket.sla_due_at',
+                'support_ticket.updated_at',
                 'support_ticket.created_at',
-                'customers.email'
+                'customers.email',
+                'admins.name as assignee_name'
             )
             ->orderByRaw("CASE WHEN support_ticket.service_mode = 'online' AND support_ticket.status = 'open' THEN 0 ELSE 1 END")
             ->orderByDesc('support_ticket.updated_at')
@@ -40,8 +40,10 @@ class SupportTicketDataGrid extends DataGrid
 
         $this->addFilter('id', 'support_ticket.id');
         $this->addFilter('service_mode', 'support_ticket.service_mode');
+        $this->addFilter('category', 'support_ticket.category');
         $this->addFilter('status', 'support_ticket.status');
         $this->addFilter('priority', 'support_ticket.priority');
+        $this->addFilter('assignee_name', 'admins.name');
 
         return $queryBuilder;
     }
@@ -80,10 +82,28 @@ class SupportTicketDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'      => 'category',
-            'label'      => '类别',
-            'type'       => 'string',
-            'searchable' => true,
+            'index'              => 'category',
+            'label'              => '问题分类',
+            'type'               => 'string',
+            'searchable'         => true,
+            'filterable'         => true,
+            'filterable_options' => array_map(
+                fn (string $label, string $value) => ['label' => $label, 'value' => $value],
+                SupportTicket::CATEGORY_LABELS,
+                array_keys(SupportTicket::CATEGORY_LABELS)
+            ),
+            'closure'            => function ($row) {
+                $label = SupportTicket::CATEGORY_LABELS[$row->category] ?? ($row->category ?: '其他');
+                $tone = [
+                    SupportTicket::CATEGORY_DELIVERY => 'badge-active',
+                    SupportTicket::CATEGORY_SKILL    => 'badge-info',
+                    SupportTicket::CATEGORY_DEVICE   => 'badge-pending',
+                    SupportTicket::CATEGORY_PAYMENT  => 'badge-danger',
+                    SupportTicket::CATEGORY_OTHER    => '',
+                ][$row->category] ?? '';
+
+                return '<span class="badge badge-md '.$tone.'">'.e($label).'</span>';
+            },
         ]);
 
         $this->addColumn([
@@ -133,12 +153,25 @@ class SupportTicketDataGrid extends DataGrid
 
                 [$label, $tone] = $map[$row->status] ?? [$row->status, ''];
 
-                // 挂起与状态正交：状态列照常显示真实状态，后面再跟一个「挂起」徽标。
                 $held = ! empty($row->held_at)
                     ? ' <span class="badge badge-md badge-pending">挂起</span>'
                     : '';
 
                 return '<span class="badge badge-md '.$tone.'">'.e($label).'</span>'.$held;
+            },
+        ]);
+
+        $this->addColumn([
+            'index'      => 'assignee_name',
+            'label'      => '受理人',
+            'type'       => 'string',
+            'searchable' => true,
+            'closure'    => function ($row) {
+                if (empty($row->assignee_name)) {
+                    return '<span class="text-xs text-gray-400">待认领</span>';
+                }
+
+                return '<span class="text-xs font-medium text-gray-700 dark:text-gray-200">'.e($row->assignee_name).'</span>';
             },
         ]);
 
@@ -156,7 +189,6 @@ class SupportTicketDataGrid extends DataGrid
                 $settled = in_array($row->status, [SupportTicket::STATUS_RESOLVED, SupportTicket::STATUS_CLOSED], true)
                     || ! empty($row->held_at);
 
-                // 已结单的不再报超时 —— 超时只对"还欠着用户"的单有意义
                 if (! $settled && $due->isPast()) {
                     return '<span class="text-red-700 font-medium">已超时 '.$due->diffForHumans().'</span>';
                 }
@@ -166,8 +198,8 @@ class SupportTicketDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'      => 'created_at',
-            'label'      => '开单时间',
+            'index'      => 'updated_at',
+            'label'      => '最近更新',
             'type'       => 'datetime',
             'sortable'   => true,
         ]);

@@ -5,8 +5,11 @@ namespace Webkul\Admin\Http\Controllers\Customers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Webkul\Admin\DataGrids\Customers\SupportTicketDataGrid;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\Sales\Models\OrderProxy;
+use Webkul\Shop\Models\Device;
 use Webkul\Shop\Models\Incident;
 use Webkul\Shop\Models\OperationLog;
 use Webkul\Shop\Models\SupportAgentState;
@@ -42,7 +45,34 @@ class SupportTicketController extends Controller
             return datagrid(SupportTicketDataGrid::class)->process();
         }
 
-        return view('admin::customers.tickets.index');
+        $stats = $this->dashboardStats();
+        $activeByCategory = SupportTicket::query()
+            ->whereIn('status', [SupportTicket::STATUS_OPEN, SupportTicket::STATUS_PROCESSING])
+            ->selectRaw('category, COUNT(*) as aggregate')
+            ->groupBy('category')
+            ->pluck('aggregate', 'category');
+
+        $categoryBreakdown = [];
+        foreach (SupportTicket::CATEGORY_LABELS as $key => $label) {
+            $categoryBreakdown[] = [
+                'key'   => $key,
+                'label' => $label,
+                'tone'  => SupportTicket::CATEGORY_TONES[$key] ?? 'closed',
+                'count' => (int) ($activeByCategory[$key] ?? 0),
+            ];
+        }
+
+        $overview = [
+            'waiting_reply' => (int) ($stats['waiting_reply'] ?? 0),
+            'overdue'       => (int) ($stats['overdue'] ?? 0),
+            'held'          => (int) ($stats['held'] ?? 0),
+            'new_today'     => (int) ($stats['new_today'] ?? 0),
+            'closed_today'  => (int) ($stats['closed_today'] ?? 0),
+            'active_total'  => (int) $activeByCategory->sum(),
+            'categories'    => $categoryBreakdown,
+        ];
+
+        return view('admin::customers.tickets.index', compact('overview'));
     }
 
     public function show(int $id)
@@ -90,6 +120,24 @@ class SupportTicketController extends Controller
         ));
         $quickReplies = $this->quickReplyGroups($ticket->category);
         $quickReplyStats = $this->quickReplyStats(7);
+        $categoryOptions = SupportTicket::CATEGORY_LABELS;
+
+        $recentOrders = ($ticket->customer_id && Schema::hasTable('orders'))
+            ? OrderProxy::modelClass()::query()
+                ->where('customer_id', $ticket->customer_id)
+                ->orderByDesc('id')
+                ->limit(3)
+                ->get(['id', 'increment_id', 'status', 'grand_total', 'created_at'])
+            : collect();
+
+        $registeredDevices = ($ticket->customer_id && Schema::hasTable('devices'))
+            ? Device::query()
+                ->where('customer_id', $ticket->customer_id)
+                ->where('status', Device::STATUS_BOUND)
+                ->orderByDesc('id')
+                ->limit(5)
+                ->get(['id', 'sn', 'display_name', 'verify_status'])
+            : collect();
 
         $data = compact(
             'ticket',
@@ -107,7 +155,10 @@ class SupportTicketController extends Controller
             'agents',
             'transferableAgents',
             'quickReplies',
-            'quickReplyStats'
+            'quickReplyStats',
+            'categoryOptions',
+            'recentOrders',
+            'registeredDevices'
         );
 
         // embed=1：只回工作台主体，供左栏点击时无刷新替换；不套后台 layout。
@@ -292,9 +343,23 @@ class SupportTicketController extends Controller
             ->get();
 
         if ($tickets->isEmpty()) {
+            $emptyCategories = [];
+            foreach (SupportTicket::CATEGORY_LABELS as $key => $label) {
+                $emptyCategories[$key] = 0;
+            }
+
             return [
                 'rows'   => [],
-                'counts' => ['total' => 0, 'mine' => 0, 'waiting' => 0, 'unread' => 0, 'queue' => 0, 'async' => 0, 'held' => 0],
+                'counts' => [
+                    'total'      => 0,
+                    'mine'       => 0,
+                    'waiting'    => 0,
+                    'unread'     => 0,
+                    'queue'      => 0,
+                    'async'      => 0,
+                    'held'       => 0,
+                    'categories' => $emptyCategories,
+                ],
             ];
         }
 
@@ -372,7 +437,7 @@ class SupportTicketController extends Controller
                 'customer_name'  => $name,
                 'customer_email' => $customer?->email,
                 'search'         => mb_strtolower(implode(' ', array_filter(array_merge(
-                    [$name, $customer?->email],
+                    [$name, $customer?->email, $primary->categoryLabel()],
                     $list->pluck('ticket_no')->all()
                 )))),
                 'unread'         => $unreadCount,
@@ -383,7 +448,9 @@ class SupportTicketController extends Controller
                 'status'         => $primary->status,
                 'status_label'   => $primary->agentStatusLabel(),
                 'service_mode'   => $primary->service_mode,
+                'category'       => isset(SupportTicket::CATEGORY_LABELS[$primary->category]) ? $primary->category : SupportTicket::CATEGORY_OTHER,
                 'category_label' => $primary->categoryLabel(),
+                'category_tone'  => $primary->categoryTone(),
                 'priority'       => $highestPriority,
                 'priority_label' => SupportTicket::PRIORITY_LABELS[$highestPriority] ?? $highestPriority,
                 'assignee_label' => $assigneeLabel !== '' ? $assigneeLabel : '未指派',
@@ -424,14 +491,20 @@ class SupportTicketController extends Controller
             return $b['waiting_minutes'] <=> $a['waiting_minutes'];
         });
 
+        $categoryCounts = [];
+        foreach (SupportTicket::CATEGORY_LABELS as $key => $label) {
+            $categoryCounts[$key] = count(array_filter($rows, fn ($row) => $row['category'] === $key));
+        }
+
         $counts = [
-            'total'   => count($rows),
-            'mine'    => count(array_filter($rows, fn ($row) => $row['is_mine'])),
-            'waiting' => count(array_filter($rows, fn ($row) => $row['waiting_minutes'] !== null)),
-            'unread'  => count(array_filter($rows, fn ($row) => $row['unread'] > 0)),
-            'queue'   => count(array_filter($rows, fn ($row) => $row['is_queue'])),
-            'async'   => count(array_filter($rows, fn ($row) => $row['has_async'])),
-            'held'    => count(array_filter($rows, fn ($row) => $row['is_held'])),
+            'total'      => count($rows),
+            'mine'       => count(array_filter($rows, fn ($row) => $row['is_mine'])),
+            'waiting'    => count(array_filter($rows, fn ($row) => $row['waiting_minutes'] !== null)),
+            'unread'     => count(array_filter($rows, fn ($row) => $row['unread'] > 0)),
+            'queue'      => count(array_filter($rows, fn ($row) => $row['is_queue'])),
+            'async'      => count(array_filter($rows, fn ($row) => $row['has_async'])),
+            'held'       => count(array_filter($rows, fn ($row) => $row['is_held'])),
+            'categories' => $categoryCounts,
         ];
 
         return ['rows' => $rows, 'counts' => $counts];
@@ -882,7 +955,7 @@ class SupportTicketController extends Controller
     }
 
     /**
-     * 商品卡附件补上后台商品编辑链接；字符串链接附件保持原样。
+     * 结构化附件（商品卡/订单卡/设备卡）补上后台跳转链接；字符串链接保持原样。
      *
      * @param  array<int, mixed>  $attachments
      * @return array<int, mixed>
@@ -890,16 +963,32 @@ class SupportTicketController extends Controller
     protected function attachmentPayload(array $attachments): array
     {
         $canEditProduct = bouncer()->hasPermission('catalog.products.edit');
+        $canViewOrder = bouncer()->hasPermission('sales.orders.view');
 
-        return collect($attachments)->map(function ($attachment) use ($canEditProduct) {
-            if (! is_array($attachment) || ($attachment['type'] ?? null) !== 'product') {
+        return collect($attachments)->map(function ($attachment) use ($canEditProduct, $canViewOrder) {
+            if (! is_array($attachment)) {
                 return $attachment;
             }
 
-            $productId = (int) ($attachment['product_id'] ?? 0);
-            $attachment['admin_url'] = ($canEditProduct && $productId > 0)
-                ? route('admin.catalog.products.edit', $productId)
-                : null;
+            $type = $attachment['type'] ?? null;
+
+            if ($type === 'product') {
+                $productId = (int) ($attachment['product_id'] ?? 0);
+                $attachment['admin_url'] = ($canEditProduct && $productId > 0)
+                    ? route('admin.catalog.products.edit', $productId)
+                    : null;
+
+                return $attachment;
+            }
+
+            if ($type === 'order') {
+                $orderId = (int) ($attachment['order_id'] ?? 0);
+                $attachment['admin_url'] = ($canViewOrder && $orderId > 0)
+                    ? route('admin.sales.orders.view', $orderId)
+                    : null;
+
+                return $attachment;
+            }
 
             return $attachment;
         })->all();
@@ -934,12 +1023,17 @@ class SupportTicketController extends Controller
 
         return response()->json([
             'data' => [
-                'id'            => $ticket->id,
-                'status'        => $ticket->status,
-                'status_label'  => $ticket->agentStatusLabel(),
-                'service_mode'  => $ticket->service_mode,
-                'assignee_id'   => $ticket->assignee_id,
-                'assignee_name' => $agent?->name,
+                'id'              => $ticket->id,
+                'status'          => $ticket->status,
+                'status_label'    => $ticket->agentStatusLabel(),
+                'category'        => $ticket->category,
+                'category_label'  => $ticket->categoryLabel(),
+                'category_tone'   => $ticket->categoryTone(),
+                'priority'        => $ticket->priority,
+                'priority_label'  => $ticket->priorityLabel(),
+                'service_mode'    => $ticket->service_mode,
+                'assignee_id'     => $ticket->assignee_id,
+                'assignee_name'   => $agent?->name,
                 'held'          => $ticket->isHeld(),
                 'held_reason'   => $ticket->held_reason,
                 // 用户正在输入：与用户端「客服正在输入」共用同一套 8 秒缓存心跳。
@@ -1579,12 +1673,18 @@ class SupportTicketController extends Controller
                 SupportTicket::STATUS_CLOSED,
             ]),
             'priority' => 'nullable|in:low,normal,high,urgent',
+            'category' => 'nullable|in:'.implode(',', array_keys(SupportTicket::CATEGORY_LABELS)),
         ]);
 
+        $oldCategory = $ticket->category;
         $ticket->status = $data['status'];
 
         if (! empty($data['priority'])) {
             $ticket->priority = $data['priority'];
+        }
+
+        if (! empty($data['category'])) {
+            $ticket->category = $data['category'];
         }
 
         if (in_array($ticket->status, [SupportTicket::STATUS_RESOLVED, SupportTicket::STATUS_CLOSED], true)) {
@@ -1608,25 +1708,34 @@ class SupportTicketController extends Controller
             'ticket.status',
             'support_ticket',
             $ticket->id,
-            ['status' => $ticket->status, 'priority' => $ticket->priority],
+            [
+                'status'       => $ticket->status,
+                'priority'     => $ticket->priority,
+                'old_category' => $oldCategory,
+                'category'     => $ticket->category,
+            ],
             $request->ip()
         );
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => '工单状态已更新。',
+                'message' => '归类与处置已更新。',
                 'data'    => [
                     'id'             => $ticket->id,
                     'status'         => $ticket->status,
                     'status_label'   => $ticket->agentStatusLabel(),
                     'priority'       => $ticket->priority,
                     'priority_label' => $ticket->priorityLabel(),
+                    'category'       => $ticket->category,
+                    'category_label' => $ticket->categoryLabel(),
+                    'category_tone'  => $ticket->categoryTone(),
                     'assignee_id'    => $ticket->assignee_id,
+                    'quick_replies'  => $this->quickReplyGroups($ticket->category),
                 ],
             ]);
         }
 
-        session()->flash('success', '工单状态已更新。');
+        session()->flash('success', '归类与处置已更新。');
 
         return redirect()->route('admin.customers.tickets.show', $ticket->id);
     }

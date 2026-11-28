@@ -39,6 +39,8 @@
             'ticketNo'             => $ticket->ticket_no,
             'serviceMode'          => $ticket->service_mode,
             'status'               => $ticket->status,
+            'category'             => $ticket->category,
+            'priority'             => $ticket->priority,
             'assigneeId'           => $ticket->assignee_id,
             'held'                 => $ticket->isHeld(),
             'currentAdminId'       => $currentAdminId,
@@ -46,6 +48,8 @@
             'initialOnline'        => (bool) ($agentState?->isFresh() ?? false),
             'initialLastMessageId' => (int) ($ticket->messages->max('id') ?? 0),
             'statusTones'          => $statusTones,
+            'categoryTones'        => \Webkul\Shop\Models\SupportTicket::CATEGORY_TONES,
+            'categoryLabels'       => \Webkul\Shop\Models\SupportTicket::CATEGORY_LABELS,
             'titleBase'            => '客服工作台',
         ];
     @endphp
@@ -88,7 +92,17 @@
 
                     {{-- 筛选/搜索是静态的：下面每 3 秒只替换客户行，不能把客服正在输入的搜索词冲掉 --}}
                     <div class="mt-2">
-                        <input id="inbox-search" type="search" placeholder="搜索客户 / 邮箱 / 工单号" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800">
+                        <div class="flex items-center gap-1.5">
+                            <input id="inbox-search" type="search" placeholder="搜索客户 / 单号 / 分类" class="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800">
+                            <select id="inbox-category-filter" aria-label="按问题分类筛选" class="w-28 shrink-0 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                                <option value="all">全部分类 ({{ $inbox['counts']['total'] }})</option>
+                                @foreach (($categoryOptions ?? \Webkul\Shop\Models\SupportTicket::CATEGORY_LABELS) as $catKey => $catLabel)
+                                    <option value="{{ $catKey }}" data-cat-label="{{ $catLabel }}">
+                                        {{ $catLabel }} ({{ $inbox['counts']['categories'][$catKey] ?? 0 }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="support-filter-row mt-1.5">
                             <button type="button" data-inbox-filter="all" class="support-filter support-filter-active">全部 <b id="inbox-total-count">{{ $inbox['counts']['total'] }}</b></button>
                             <button type="button" data-inbox-filter="mine" class="support-filter">我负责 <b id="mine-count">{{ $inbox['counts']['mine'] }}</b></button>
@@ -119,12 +133,13 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <p class="truncate text-base font-semibold text-gray-900 dark:text-white">{{ $customerName }}</p>
                             <span id="chat-status-badge" data-status="{{ $ticket->status }}" class="support-tone {{ $statusTone }}">{{ $ticket->agentStatusLabel() }}</span>
+                            <span id="chat-category-badge" data-category="{{ $ticket->category }}" class="support-tone support-tone-{{ $ticket->categoryTone() }}">{{ $ticket->categoryLabel() }}</span>
                             <span id="chat-held-badge" class="support-tone support-tone-held {{ $ticket->isHeld() ? '' : 'hidden' }}">挂起</span>
                             <span class="support-tone {{ $ticket->service_mode === 'online' ? 'support-tone-online' : 'support-tone-async' }}">{{ $ticket->service_mode === 'online' ? '在线会话' : '留言工单' }}</span>
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
                             <span class="font-mono">{{ $ticket->ticket_no }}</span>
-                            <span>{{ $ticket->categoryLabel() }}</span>
+                            <span>优先级 <b id="chat-priority-label" class="font-medium text-gray-700 dark:text-gray-200">{{ $ticket->priorityLabel() }}</b></span>
                             <span>受理人 <b id="assignee-name" class="font-medium text-gray-700 dark:text-gray-200">{{ $assigneeName ?: '未指派' }}</b></span>
                             <span>SLA {{ $ticket->sla_due_at?->format('m-d H:i') ?? '—' }}</span>
                             @if ($ticket->isOverdue())
@@ -197,11 +212,21 @@
                                                 <div class="mt-2 flex w-full flex-col gap-2 {{ $isAdmin ? 'items-end' : 'items-start' }}">
                                                     @foreach ($message->attachments as $attachment)
                                                         @php
-                                                            $isProductAttachment = is_array($attachment) && (($attachment['type'] ?? null) === 'product');
+                                                            $attType = is_array($attachment) ? ($attachment['type'] ?? null) : null;
+                                                            $isProductAttachment = $attType === 'product';
+                                                            $isOrderAttachment = $attType === 'order';
+                                                            $isDeviceAttachment = $attType === 'device';
+
                                                             $productAdminUrl = $isProductAttachment
                                                                 && ! empty($attachment['product_id'])
                                                                 && bouncer()->hasPermission('catalog.products.edit')
                                                                     ? route('admin.catalog.products.edit', (int) $attachment['product_id'])
+                                                                    : null;
+
+                                                            $orderAdminUrl = $isOrderAttachment
+                                                                && ! empty($attachment['order_id'])
+                                                                && bouncer()->hasPermission('sales.orders.view')
+                                                                    ? route('admin.sales.orders.view', (int) $attachment['order_id'])
                                                                     : null;
                                                         @endphp
                                                         @if ($isProductAttachment)
@@ -226,8 +251,37 @@
                                                                     </span>
                                                                 </span>
                                                             </a>
+                                                        @elseif ($isOrderAttachment)
+                                                            <a
+                                                                class="support-product-attachment"
+                                                                @if ($orderAdminUrl) href="{{ $orderAdminUrl }}" target="_blank" rel="noopener noreferrer" @endif
+                                                            >
+                                                                <span class="support-product-thumb">订</span>
+                                                                <span class="support-product-copy">
+                                                                    <span class="support-product-kicker">关联交易订单</span>
+                                                                    <strong class="support-product-name">{{ $attachment['name'] ?? '订单咨询' }}</strong>
+                                                                    <span class="support-product-meta">
+                                                                        @if (! empty($attachment['increment_id']))<span>#{{ $attachment['increment_id'] }}</span>@endif
+                                                                        @if (! empty($attachment['status_label']))<span>{{ $attachment['status_label'] }}</span>@endif
+                                                                        @if (! empty($attachment['price']))<span>¥{{ $attachment['price'] }}</span>@endif
+                                                                        @if ($orderAdminUrl)<span class="support-product-link">查看订单 →</span>@endif
+                                                                    </span>
+                                                                </span>
+                                                            </a>
+                                                        @elseif ($isDeviceAttachment)
+                                                            <div class="support-product-attachment">
+                                                                <span class="support-product-thumb">机</span>
+                                                                <span class="support-product-copy">
+                                                                    <span class="support-product-kicker">关联机器设备</span>
+                                                                    <strong class="support-product-name">{{ $attachment['name'] ?? '已登记设备' }}</strong>
+                                                                    <span class="support-product-meta">
+                                                                        @if (! empty($attachment['sn']))<span>SN {{ $attachment['sn'] }}</span>@endif
+                                                                        @if (! empty($attachment['device_id']))<span>#{{ $attachment['device_id'] }}</span>@endif
+                                                                    </span>
+                                                                </span>
+                                                            </div>
                                                         @else
-                                                            <span class="max-w-xs truncate rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-blue-600 ring-1 ring-inset ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">{{ $attachment }}</span>
+                                                            <span class="max-w-xs truncate rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-blue-600 ring-1 ring-inset ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">{{ is_string($attachment) ? $attachment : json_encode($attachment, JSON_UNESCAPED_UNICODE) }}</span>
                                                         @endif
                                                     @endforeach
                                                 </div>
@@ -246,15 +300,18 @@
 
                 <div class="border-t border-gray-100 bg-gray-50/70 px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
                     <div class="mb-2 flex flex-wrap items-center gap-1.5">
-                        <span class="mr-1 text-xs text-gray-500">快捷回复</span>
-                        @foreach ($quickReplies as $group)
-                            @if (count($quickReplies) > 1)
-                                <span class="text-[10px] text-gray-400">{{ $group['label'] }}</span>
-                            @endif
-                            @foreach ($group['items'] as $item)
-                                <button type="button" data-reply-key="{{ $item['key'] }}" data-reply="{{ $item['content'] }}" class="support-chip px-2.5 py-1 text-xs">{{ $item['label'] }}</button>
+                        <span class="mr-1 text-xs font-medium text-gray-500">快捷回复</span>
+                        <input id="quick-reply-search" type="search" placeholder="筛选话术…" class="w-28 rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[11px] text-gray-700 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        <div id="quick-replies-container" class="flex flex-wrap items-center gap-1.5">
+                            @foreach ($quickReplies as $group)
+                                @if (count($quickReplies) > 1)
+                                    <span class="text-[10px] text-gray-400" data-reply-group>{{ $group['label'] }}</span>
+                                @endif
+                                @foreach ($group['items'] as $item)
+                                    <button type="button" data-reply-key="{{ $item['key'] }}" data-reply="{{ $item['content'] }}" data-reply-label="{{ $item['label'] }}" class="support-chip px-2.5 py-1 text-xs">{{ $item['label'] }}</button>
+                                @endforeach
                             @endforeach
-                        @endforeach
+                        </div>
                         @if (! empty($quickReplyStats))
                             <button type="button" id="quick-stats-toggle" class="ml-auto text-[10px] text-gray-400 hover:text-gray-600">近 7 天话术效果</button>
                         @endif
@@ -335,6 +392,46 @@
                         </div>
                     @endif
                 </section>
+
+                {{-- 客户订单与登记设备上下文：排查无需切页面翻找 --}}
+                @if (($recentOrders ?? collect())->isNotEmpty() || ($registeredDevices ?? collect())->isNotEmpty())
+                    <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">关联订单与设备</p>
+                            <span class="text-[10px] text-gray-400">排查上下文</span>
+                        </div>
+
+                        @if (($recentOrders ?? collect())->isNotEmpty())
+                            <div class="mt-2.5 space-y-1.5">
+                                <p class="text-[10px] font-medium text-gray-400">近期订单</p>
+                                @foreach ($recentOrders as $recentOrder)
+                                    @php
+                                        $canViewOrderLink = bouncer()->hasPermission('sales.orders.view');
+                                    @endphp
+                                    <a
+                                        @if ($canViewOrderLink) href="{{ route('admin.sales.orders.view', $recentOrder->id) }}" target="_blank" rel="noopener noreferrer" @endif
+                                        class="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-2.5 py-1.5 text-xs transition {{ $canViewOrderLink ? 'hover:border-blue-200 hover:bg-blue-50/40 dark:hover:bg-gray-800' : '' }} dark:border-gray-800"
+                                    >
+                                        <span class="font-mono font-medium text-gray-700 dark:text-gray-200">#{{ $recentOrder->increment_id ?: $recentOrder->id }}</span>
+                                        <span class="shrink-0 text-[10px] text-gray-500">{{ $recentOrder->status_label ?? $recentOrder->status }} · ¥{{ number_format((float) $recentOrder->grand_total, 2, '.', '') }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @if (($registeredDevices ?? collect())->isNotEmpty())
+                            <div class="mt-3 space-y-1.5">
+                                <p class="text-[10px] font-medium text-gray-400">名下登记设备</p>
+                                @foreach ($registeredDevices as $regDevice)
+                                    <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-2.5 py-1.5 text-xs dark:border-gray-800">
+                                        <span class="min-w-0 truncate text-gray-700 dark:text-gray-200">{{ $regDevice->display_name ?: $regDevice->sn }}</span>
+                                        <span class="shrink-0 font-mono text-[10px] text-gray-500">{{ $regDevice->sn }} · {{ $regDevice->verify_status === 'verified' ? '已核验' : '未核验' }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </section>
+                @endif
 
                 {{-- 客户历史：一个客户过去问过什么，不再靠左栏多行去猜 --}}
                 <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -425,12 +522,26 @@
 
                 <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                     <div class="flex items-center justify-between">
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">处置状态</p>
-                        <span class="text-[10px] text-gray-400">及时同步用户</span>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">归类与处置</p>
+                        <span class="text-[10px] text-gray-400">同步联动话术</span>
                     </div>
 
                     <form id="status-form" method="POST" action="{{ route('admin.customers.tickets.status', $ticket->id) }}" data-url="{{ route('admin.customers.tickets.status', $ticket->id) }}" class="mt-3 space-y-2.5">
                         @csrf
+                        <div>
+                            <label class="mb-1 block text-xs text-gray-500">问题分类</label>
+                            <select name="category" id="ticket-category-select" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-800">
+                                @php
+                                    $catList = $categoryOptions ?? \Webkul\Shop\Models\SupportTicket::CATEGORY_LABELS;
+                                @endphp
+                                @if ($ticket->category && ! isset($catList[$ticket->category]))
+                                    <option value="" selected>{{ $ticket->categoryLabel() }}（待重新归类）</option>
+                                @endif
+                                @foreach ($catList as $catKey => $catLabel)
+                                    <option value="{{ $catKey }}" @selected($ticket->category === $catKey)>{{ $catLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div>
                             <label class="mb-1 block text-xs text-gray-500">状态</label>
                             <select name="status" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-800">
@@ -449,7 +560,7 @@
                                 <option value="urgent" @selected($ticket->priority === 'urgent')>紧急</option>
                             </select>
                         </div>
-                        <button type="submit" class="support-btn support-btn-primary w-full">保存处置</button>
+                        <button type="submit" class="support-btn support-btn-primary w-full">保存归类与处置</button>
                         <p id="status-feedback" class="support-note support-note-success mt-2 hidden"></p>
                     </form>
 

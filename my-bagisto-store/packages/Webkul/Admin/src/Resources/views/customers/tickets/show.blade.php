@@ -151,6 +151,7 @@
             .dark .support-rating-title { color: #fcd34d; }
             .dark .support-rating-tags { color: #fbbf24; }
             .support-chip { display: inline-flex; align-items: center; border-radius: 9999px; background: #fff; color: #4b5563; box-shadow: inset 0 0 0 1px #e5e7eb; white-space: nowrap; }
+            .support-chip.hidden { display: none; }
             .support-chip:hover { background: #f9fafb; }
             .dark .support-chip { background: #1f2937; color: #d1d5db; box-shadow: inset 0 0 0 1px #374151; }
             .dark .support-chip:hover { background: #374151; }
@@ -174,6 +175,6 @@
     @endpush
 
     @push('scripts')
-        <script src="{{ route('admin.customers.support.workbench-script', ['v' => '20261030-product-card-1']) }}"></script>
+        <script src="{{ route('admin.customers.support.workbench-script', ['v' => '20261128-classify-1']) }}"></script>
     @endpush
 </x-admin::layouts>
