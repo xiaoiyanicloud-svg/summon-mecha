@@ -28,21 +28,27 @@
       <view class="main-card" v-if="messages.length === 0">
         <view class="card-section">
           <view class="card-header">
-            <view class="card-heading">
-              <text class="card-title"><text class="icon-sparkle">✨</text> 一句话，帮你选对机器人</text>
+            <view class="card-title-row">
+              <view class="card-badge">
+                <image class="card-badge-img" src="/static/icons/mine/state-spark.png" mode="aspectFit"></image>
+              </view>
+              <text class="card-title">一句话，帮你选对机器人</text>
             </view>
           </view>
           <view class="question-btns">
             <view class="q-btn" role="button" tabindex="0" aria-label="询问工厂分拣机器人怎么选型" @tap="onQuestionTap('工厂分拣机器人怎么选型？请结合节拍、精度和预算给建议')" @keydown.enter.prevent="onQuestionTap('工厂分拣机器人怎么选型？请结合节拍、精度和预算给建议')">
-              <text>工厂分拣怎么选型</text>
+              <view class="q-dot"></view>
+              <text class="q-text">工厂分拣怎么选型</text>
               <text class="q-arrow">›</text>
             </view>
             <view class="q-btn" role="button" tabindex="0" aria-label="询问酒店配送机器人怎么部署" @tap="onQuestionTap('酒店配送机器人怎么部署？需要考虑楼层、电梯和高峰期')" @keydown.enter.prevent="onQuestionTap('酒店配送机器人怎么部署？需要考虑楼层、电梯和高峰期')">
-              <text>酒店配送怎么落地</text>
+              <view class="q-dot"></view>
+              <text class="q-text">酒店配送怎么落地</text>
               <text class="q-arrow">›</text>
             </view>
             <view class="q-btn" role="button" tabindex="0" aria-label="询问展会接待机器人租用报价" @tap="onQuestionTap('展会接待机器人租一周大概怎么报价？需要迎宾和互动')" @keydown.enter.prevent="onQuestionTap('展会接待机器人租一周大概怎么报价？需要迎宾和互动')">
-              <text>展会租用怎么报价</text>
+              <view class="q-dot"></view>
+              <text class="q-text">展会租用怎么报价</text>
               <text class="q-arrow">›</text>
             </view>
           </view>
@@ -60,17 +66,19 @@
             <text class="quick-filter-title">按预算和任务筛选</text>
             <text class="quick-filter-sub">已有明确条件时再展开</text>
           </view>
-          <text class="quick-filter-arrow">{{ quickFilterExpanded ? '收起 ↑' : '展开 ↓' }}</text>
+          <text class="quick-filter-arrow">{{ quickFilterExpanded ? '收起' : '展开' }}</text>
         </view>
 
         <view class="quick-filter-panel" v-if="quickFilterExpanded">
+          <text class="filter-group-label">预算区间</text>
           <view class="tags-row">
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('3万以下') ? 'true' : 'false'" :class="{ active: isTagSelected('3万以下') }" @tap="onTagClick('3万以下')" @keydown.enter.prevent="onTagClick('3万以下')">3万以下</text>
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('3-10万') ? 'true' : 'false'" :class="{ active: isTagSelected('3-10万') }" @tap="onTagClick('3-10万')" @keydown.enter.prevent="onTagClick('3-10万')">3-10万</text>
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('10-30万') ? 'true' : 'false'" :class="{ active: isTagSelected('10-30万') }" @tap="onTagClick('10-30万')" @keydown.enter.prevent="onTagClick('10-30万')">10-30万</text>
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('30万以上') ? 'true' : 'false'" :class="{ active: isTagSelected('30万以上') }" @tap="onTagClick('30万以上')" @keydown.enter.prevent="onTagClick('30万以上')">30万以上</text>
           </view>
-          <view class="tags-row" style="margin-top: 12rpx;">
+          <text class="filter-group-label" style="margin-top: 16rpx;">作业场景</text>
+          <view class="tags-row">
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('分拣') ? 'true' : 'false'" :class="{ active: isTagSelected('分拣') }" @tap="onTagClick('分拣')" @keydown.enter.prevent="onTagClick('分拣')">分拣</text>
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('搬运') ? 'true' : 'false'" :class="{ active: isTagSelected('搬运') }" @tap="onTagClick('搬运')" @keydown.enter.prevent="onTagClick('搬运')">搬运</text>
             <text class="tag" role="button" tabindex="0" :aria-pressed="isTagSelected('焊接') ? 'true' : 'false'" :class="{ active: isTagSelected('焊接') }" @tap="onTagClick('焊接')" @keydown.enter.prevent="onTagClick('焊接')">焊接</text>
@@ -88,7 +96,7 @@
             @keydown.enter.prevent="startQuickMatch"
           >
             <text>{{ hasQuickSelection ? '按已选条件开始匹配' : '先选预算或任务，再开始匹配' }}</text>
-            <text class="quick-start-arrow">→</text>
+            <text class="quick-start-arrow">›</text>
           </view>
         </view>
 
@@ -102,7 +110,9 @@
           @tap="goHumanService"
           @keydown.enter.prevent="goHumanService"
         >
-          <text class="human-service-icon">🎧</text>
+          <view class="human-service-mark">
+            <image class="human-service-img" src="/static/icons/mine/service.png" mode="aspectFit"></image>
+          </view>
           <view class="human-service-copy">
             <text class="human-service-title">需要人工客服？</text>
             <text class="human-service-sub">技能安装、设备故障、退款问题，直接找人工</text>
@@ -123,7 +133,10 @@
             @tap="m.thinkingOpen = !m.thinkingOpen"
             @keydown.enter.prevent="m.thinkingOpen = !m.thinkingOpen"
           >
-            <text class="think-title">{{ m.thinkingOpen ? '💭 正在思考…' : '💭 已深度思考' }}</text>
+            <view class="think-title-wrap">
+              <view class="think-dot" :class="{ active: m.generating && m.thinkingOpen }"></view>
+              <text class="think-title">{{ m.thinkingOpen ? '思考过程' : '已深度思考' }}</text>
+            </view>
             <text class="think-toggle">{{ m.thinkingOpen ? '收起' : '展开' }}</text>
           </view>
           <view class="think-body" v-if="m.thinkingOpen">
@@ -135,8 +148,7 @@
           <text class="bubble-text">{{ m.text }}</text>
         </view>
 
-        <!-- 朗读:AI 且有正文才显示。图标沿用项目既有习惯用 emoji 字形
-             (static/ 里没有喇叭图标,页面里的 💭 🎯 📋 💬 ➤ ✕ ✨ 都是 emoji) -->
+        <!-- 回答操作栏 -->
         <view class="answer-actions" v-if="m.role === 'ai' && m.text">
           <view
             class="speak"
@@ -146,6 +158,7 @@
             @tap="onSpeakTap(i)"
             @keydown.enter.prevent="onSpeakTap(i)"
           >
+            <image class="action-pill-icon" src="/static/icons/mine/notify.png" mode="aspectFit"></image>
             <text class="speak-text">{{ speakLabel(i) }}</text>
           </view>
           <view
@@ -156,7 +169,19 @@
             @tap="onCopyAnswer(i)"
             @keydown.enter.prevent="onCopyAnswer(i)"
           >
-            <text class="speak-text">📋 复制</text>
+            <image class="action-pill-icon" src="/static/icons/mine/clipboard.png" mode="aspectFit"></image>
+            <text class="speak-text">复制</text>
+          </view>
+          <view
+            v-if="!m.generating"
+            class="action-assess"
+            role="button"
+            tabindex="0"
+            aria-label="转为人工方案评估"
+            @tap="createSceneRequest(i)"
+            @keydown.enter.prevent="createSceneRequest(i)"
+          >
+            <text class="action-assess-text">转人工评估 ›</text>
           </view>
         </view>
 
@@ -179,10 +204,11 @@
         </view>
 
         <!-- AI 消息附带的推荐卡片 -->
-        <view v-if="m.role === 'ai' && m.text" class="picks"><button class="summon-scene" @tap="createSceneRequest(i)">整理本次需求，继续人工评估与正式报价</button></view>
         <view class="picks" v-if="m.role === 'ai' && m.scene" @tap="goSceneDetail(m.scene)">
           <view class="summon-scene">
-            <text class="summon-scene-icon">{{ m.scene.icon || '🎯' }}</text>
+            <view class="summon-scene-mark">
+              <image class="summon-scene-img" src="/static/icons/mine/hub-cube.png" mode="aspectFit"></image>
+            </view>
             <view class="summon-scene-info">
               <text class="summon-scene-name">{{ m.scene.name }}</text>
               <text class="summon-scene-desc">{{ m.scene.description }}</text>
@@ -534,8 +560,7 @@ export default {
         partial: '',        // 实时识别的中间文字(只有「小程序+插件」链路会有)
         realtime: false,    // 当前是否"边说边出字"，决定浮层提示语
         willCancel: false,  // 手指上滑到取消区
-        level: 0,           // 0~1 音量(仅 H5 有真实值)
-        willCancel: false   // 手指上滑到取消区
+        level: 0            // 0~1 音量(仅 H5 有真实值)
       },
       voiceElapsed: 0,      // 已录时长(毫秒)，用于浮层计时
       voiceHinted: false,   // 是否已经教过用户"按住说话"的手势
@@ -1600,9 +1625,9 @@ export default {
     /** 喇叭按钮文案(模板里直接当函数用) */
     speakLabel(i) {
       if (this.tts.activeIndex === i) {
-        return this.tts.speaking ? '🔊 朗读中 · 点击停止' : '🔊 准备朗读…'
+        return this.tts.speaking ? '朗读中 · 停止' : '准备朗读…'
       }
-      return this.tts.blocked ? '🔈 点击朗读' : '🔊 重播'
+      return this.tts.blocked ? '点击朗读' : '重播'
     },
 
     /** 点喇叭:正在念这条就停;否则整段重播 */
@@ -1967,19 +1992,44 @@ page {
 .msg { display: flex; flex-direction: column; margin-bottom: 24rpx; }
 .msg.user { align-items: flex-end; }
 .msg.ai { align-items: flex-start; }
-.bubble { max-width: 84%; border-radius: 20rpx; padding: 20rpx 24rpx; }
+.bubble { max-width: 86%; border-radius: 22rpx; padding: 20rpx 24rpx; }
 .bubble-text { font-size: 27rpx; line-height: 1.7; word-break: break-word; }
-.bubble.user { background: #165DFF; }
+.bubble.user {
+  background: #165DFF;
+  border-radius: 22rpx 6rpx 22rpx 22rpx;
+  box-shadow: 0 6rpx 18rpx rgba(22, 93, 255, 0.18);
+}
 .bubble.user .bubble-text { color: #FFFFFF; }
-.bubble.ai { background: rgba(255, 255, 255, 0.96); border: 1rpx solid #E2E8F0; }
-.bubble.ai .bubble-text { color: #1F2937; }
-.bubble-thinking { opacity: 0.75; }
+.bubble.ai {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16rpx);
+  -webkit-backdrop-filter: blur(16rpx);
+  border: 1rpx solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6rpx 20rpx rgba(15, 23, 42, 0.05);
+  border-radius: 6rpx 22rpx 22rpx 22rpx;
+}
+.bubble.ai .bubble-text { color: #0F172A; }
+.bubble-thinking { opacity: 0.78; }
 /* 回答工具:贴在 AI 气泡下方、推荐卡片之前 */
-.answer-actions { display: flex; align-items: center; gap: 10rpx; margin-top: 8rpx; }
-.speak, .copy-answer { display: inline-flex; align-items: center; justify-content: center; padding: 8rpx 20rpx; background: rgba(255, 255, 255, 0.72); border: 1rpx solid #D6E4FF; border-radius: 30rpx; }
-.speak:active { transform: scale(0.94); }
-.copy-answer:active { transform: scale(0.94); }
-.speak-text { font-size: 24rpx; color: #165DFF; }
+.answer-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx; margin-top: 10rpx; }
+.speak, .copy-answer, .action-assess {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 8rpx 20rpx;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1rpx solid #DCE5F2;
+  border-radius: 999rpx;
+}
+.action-assess {
+  background: #EEF4FF;
+  border-color: #BFDBFE;
+}
+.speak:active, .copy-answer:active, .action-assess:active { transform: scale(0.96); }
+.action-pill-icon { width: 24rpx; height: 24rpx; flex-shrink: 0; }
+.speak-text { font-size: 23rpx; color: #334155; font-weight: 500; }
+.action-assess-text { font-size: 23rpx; color: #165DFF; font-weight: 600; }
 
 /* H5 键盘焦点必须有可见反馈；小程序端会自动忽略这些规则。 */
 .menu-icon:focus-visible,
@@ -1990,6 +2040,7 @@ page {
 .think-head:focus-visible,
 .speak:focus-visible,
 .copy-answer:focus-visible,
+.action-assess:focus-visible,
 .new-reply-tip:focus-visible,
 .send-icon:focus-visible,
 .drawer-new:focus-visible,
@@ -2017,14 +2068,14 @@ page {
 
 /* 请求过程 / 中断 / 错误恢复 */
 .reply-state {
-  width: 84%;
+  width: 86%;
   margin-top: 12rpx;
   padding: 14rpx 18rpx;
   display: flex;
   align-items: center;
   gap: 12rpx;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1rpx solid #D6E4FF;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1rpx solid #DCE5F2;
   border-radius: 16rpx;
   box-sizing: border-box;
 }
@@ -2038,7 +2089,7 @@ page {
 .reply-state-text { flex: 1; font-size: 24rpx; color: #64748B; line-height: 1.5; }
 .reply-state-action { flex-shrink: 0; font-size: 24rpx; color: #165DFF; padding: 6rpx 4rpx; }
 .reply-state.stopped { border-color: #E2E8F0; }
-.reply-state.error { align-items: flex-start; flex-direction: column; border-color: #FECACA; background: rgba(255, 247, 247, 0.95); }
+.reply-state.error { align-items: flex-start; flex-direction: column; border-color: #FECACA; background: rgba(255, 247, 247, 0.96); }
 .reply-error-text { font-size: 24rpx; line-height: 1.6; color: #B42318; }
 .reply-error-actions { display: flex; gap: 14rpx; margin-top: 6rpx; }
 .reply-error-btn { font-size: 24rpx; color: #475569; padding: 10rpx 20rpx; border: 1rpx solid #CBD5E1; border-radius: 30rpx; background: #FFFFFF; }
@@ -2046,110 +2097,130 @@ page {
 
 /* 推荐追问:贴在推荐卡片之后的可点问题,点一下即作为下一句发送 */
 .followups { width: 100%; margin-top: 16rpx; }
-.followup { padding: 18rpx 24rpx; margin-bottom: 12rpx; background: rgba(255, 255, 255, 0.96); border: 1rpx solid #D6E4FF; border-radius: 16rpx; }
-.followup:active { transform: scale(0.98); }
-.followup-text { font-size: 26rpx; color: #165DFF; line-height: 1.5; }
+.followup {
+  padding: 18rpx 22rpx;
+  margin-bottom: 10rpx;
+  background: rgba(255, 255, 255, 0.90);
+  border: 1rpx solid #DCE5F2;
+  border-radius: 16rpx;
+}
+.followup:active { background: #EEF4FF; border-color: #BFDBFE; }
+.followup-text { font-size: 25rpx; color: #165DFF; line-height: 1.5; font-weight: 500; }
 .picks { width: 100%; margin-top: 12rpx; }
 .chat-tail { height: 40rpx; }
 
 /* ===== 深度思考(可折叠,内容实时流入) ===== */
-.think { width: 100%; max-width: 84%; background: rgba(240, 246, 255, 0.92); border: 1rpx solid #D6E4FF; border-radius: 16rpx; padding: 14rpx 18rpx; margin-bottom: 10rpx; }
+.think {
+  width: 100%;
+  max-width: 86%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14rpx);
+  -webkit-backdrop-filter: blur(14rpx);
+  border: 1rpx solid #DCE5F2;
+  border-radius: 18rpx;
+  padding: 14rpx 18rpx;
+  margin-bottom: 10rpx;
+}
 .think-head { display: flex; align-items: center; justify-content: space-between; }
-.think-title { font-size: 24rpx; color: #165DFF; font-weight: 600; }
+.think-title-wrap { display: flex; align-items: center; gap: 10rpx; }
+.think-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #94A3B8; }
+.think-dot.active { background: #165DFF; }
+.think-title { font-size: 23rpx; color: #475569; font-weight: 600; }
 .think-toggle { font-size: 22rpx; color: #94A3B8; }
-.think-body { margin-top: 10rpx; }
+.think-body { margin-top: 10rpx; padding-top: 10rpx; border-top: 1rpx solid #EEF2F7; }
 .think-text { font-size: 23rpx; line-height: 1.65; color: #64748B; }
 
-/* ===== 融合后的主卡片（半透明） ===== */
+/* ===== 悬浮欢迎主卡片（优化玻璃质感、层级与对称度） ===== */
 .main-card {
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(20rpx);
-  border-radius: 40rpx;
-  padding: 36rpx 32rpx 32rpx 32rpx;
-  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.12);
-  border: 1rpx solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(22rpx);
+  -webkit-backdrop-filter: blur(22rpx);
+  border-radius: 32rpx;
+  padding: 30rpx 26rpx 26rpx;
+  box-shadow: 0 14rpx 40rpx rgba(22, 93, 255, 0.10), 0 4rpx 14rpx rgba(15, 23, 42, 0.05);
+  border: 1rpx solid rgba(255, 255, 255, 0.88);
   position: relative;
   overflow: visible;
-  margin-left: 30rpx;
 }
 
 .card-section {
   position: relative;
 }
 .card-header {
-  margin-bottom: 22rpx;
+  margin-bottom: 20rpx;
 }
-.card-heading {
+.card-title-row {
   display: flex;
-  flex-direction: column;
-  gap: 10rpx;
+  align-items: center;
+  gap: 12rpx;
+}
+.card-badge {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 14rpx;
+  background: #EEF4FF;
+  border: 1rpx solid #DCE5F2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.card-badge-img {
+  width: 26rpx;
+  height: 26rpx;
+  display: block;
 }
 .card-title {
-  font-size: 34rpx;
+  font-size: 31rpx;
   font-weight: 600;
-  color: #1a2a3a;
-}
-.icon-sparkle {
-  margin-right: 10rpx;
-  font-size: 30rpx;
-}
-.card-date {
-  font-size: 24rpx;
-  color: #4a5a6a;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 6rpx 20rpx;
-  border-radius: 30rpx;
+  color: #0F172A;
+  line-height: 1.35;
 }
 .question-btns {
   display: flex;
   flex-direction: column;
-  gap: 14rpx;
+  gap: 12rpx;
 }
 .q-btn {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(8rpx);
-  border: 1rpx solid rgba(255, 255, 255, 0.8);
-  border-radius: 60rpx;
-  padding: 18rpx 32rpx;
-  font-size: 28rpx;
-  color: #1a2a3a;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  border-radius: 20rpx;
+  padding: 20rpx 22rpx;
+  font-size: 27rpx;
+  color: #0F172A;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-  position: relative;
-  overflow: hidden;
+  gap: 14rpx;
+  box-shadow: 0 2rpx 10rpx rgba(15, 23, 42, 0.03);
+}
+.q-btn:active {
+  background: #EEF4FF;
+  border-color: #BFDBFE;
+}
+.q-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #165DFF;
+  opacity: 0.72;
+  flex-shrink: 0;
+}
+.q-text {
+  flex: 1;
+  min-width: 0;
 }
 .q-arrow {
   margin-left: auto;
   flex-shrink: 0;
-  color: #7b8fa5;
-  font-size: 34rpx;
-}
-.q-btn::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 6rpx;
-  height: 100%;
-  background: linear-gradient(180deg, #4291F6, #6EB5FF);
-  border-radius: 6rpx 0 0 6rpx;
-  opacity: 0.6;
-}
-.q-tag {
-  font-size: 20rpx;
-  color: #4291F6;
-  background: rgba(66, 145, 246, 0.15);
-  padding: 2rpx 16rpx;
-  border-radius: 30rpx;
-  margin-left: auto;
+  color: #94A3B8;
+  font-size: 32rpx;
+  line-height: 1;
 }
 .quick-filter-toggle {
-  margin-top: 24rpx;
+  margin-top: 22rpx;
   padding-top: 20rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.65);
+  border-top: 1rpx solid rgba(226, 232, 240, 0.85);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2162,76 +2233,57 @@ page {
   min-width: 0;
 }
 .quick-filter-title {
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
-  color: #1a2a3a;
+  color: #0F172A;
 }
 .quick-filter-sub {
   font-size: 21rpx;
-  color: #718293;
+  color: #64748B;
 }
 .quick-filter-arrow {
   flex-shrink: 0;
-  font-size: 23rpx;
+  font-size: 22rpx;
+  font-weight: 500;
   color: #165DFF;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: #EEF4FF;
 }
 .quick-filter-panel {
-  padding-top: 20rpx;
+  padding-top: 18rpx;
 }
-
-.divider {
-  height: 2rpx;
-  background: rgba(255, 255, 255, 0.5);
-  margin: 28rpx 0 24rpx 0;
-}
-
-.filter-header {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  margin-bottom: 14rpx;
-}
-.filter-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1a2a3a;
-}
-.filter-badge {
-  font-size: 20rpx;
-  background: linear-gradient(135deg, #4291F6, #6EB5FF);
-  color: #fff;
-  padding: 2rpx 18rpx;
-  border-radius: 30rpx;
+.filter-group-label {
+  display: block;
+  font-size: 21rpx;
+  color: #64748B;
+  margin-bottom: 10rpx;
 }
 .tags-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 .tag {
-  background: rgba(255, 255, 255, 0.65);
-  border: 1rpx solid rgba(255, 255, 255, 0.8);
-  border-radius: 60rpx;
-  padding: 6rpx 16rpx;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1rpx solid #DCE5F2;
+  border-radius: 999rpx;
+  padding: 8rpx 20rpx;
   font-size: 22rpx;
-  color: #1a2a3a;
-  font-weight: 450;
-  backdrop-filter: blur(4rpx);
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
+  color: #475569;
   pointer-events: auto;
   user-select: none;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 .tag.active {
-  background: rgba(66, 145, 246, 0.25);
-  border-color: #4291F6;
-  color: #4291F6;
+  background: #EEF4FF;
+  border-color: #165DFF;
+  color: #165DFF;
   font-weight: 600;
-  box-shadow: 0 0 0 2rpx rgba(66, 145, 246, 0.2);
 }
 .quick-start {
   margin-top: 22rpx;
-  padding: 18rpx 24rpx;
+  padding: 20rpx 24rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2239,15 +2291,16 @@ page {
   color: #FFFFFF;
   font-size: 26rpx;
   font-weight: 600;
-  background: linear-gradient(135deg, #165DFF, #4291F6);
+  background: #165DFF;
   box-shadow: 0 8rpx 20rpx rgba(22, 93, 255, 0.18);
 }
 .quick-start.disabled {
-  color: #64748B;
-  background: rgba(255, 255, 255, 0.56);
+  color: #94A3B8;
+  background: rgba(241, 245, 249, 0.9);
   box-shadow: none;
+  font-weight: 500;
 }
-.quick-start-arrow { font-size: 30rpx; }
+.quick-start-arrow { font-size: 30rpx; line-height: 1; }
 
 .new-reply-tip {
   position: fixed;
@@ -2264,24 +2317,34 @@ page {
   box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.12);
 }
 
-/* ===== 底部输入区域 ===== */
+/* ===== 人工客服入口（主卡片内部） ===== */
 .human-service {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  margin-top: 24rpx;
-  padding: 20rpx 24rpx;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1rpx solid #D6E4FF;
+  margin-top: 20rpx;
+  padding: 18rpx 20rpx;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1rpx solid #DCE5F2;
   border-radius: 20rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2rpx 10rpx rgba(15, 23, 42, 0.03);
 }
-.human-service:active { background: rgba(255, 255, 255, 0.92); }
-.human-service-icon { flex-shrink: 0; font-size: 32rpx; }
+.human-service:active { background: #F1F5F9; }
+.human-service-mark {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 16rpx;
+  background: #EEF4FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.human-service-img { width: 32rpx; height: 32rpx; display: block; }
 .human-service-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.human-service-title { font-size: 26rpx; font-weight: 600; color: #1a2a3a; }
-.human-service-sub { margin-top: 6rpx; font-size: 21rpx; line-height: 1.45; color: #607080; }
-.human-service-arrow { flex-shrink: 0; font-size: 34rpx; color: #7b8fa5; }
+.human-service-title { font-size: 25rpx; font-weight: 600; color: #0F172A; }
+.human-service-sub { margin-top: 4rpx; font-size: 21rpx; line-height: 1.45; color: #64748B; }
+.human-service-arrow { flex-shrink: 0; font-size: 32rpx; color: #94A3B8; }
 
 .input-area {
   flex-shrink: 0;
@@ -2718,20 +2781,51 @@ page {
 .summon-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
 .summon-badge { font-size: 26rpx; font-weight: 700; color: #165DFF; background: rgba(22, 93, 255, 0.1); border-radius: 20rpx; padding: 6rpx 20rpx; }
 .summon-close { font-size: 24rpx; color: #94A3B8; padding: 6rpx 12rpx; }
-.summon-scene { display: flex; align-items: center; gap: 16rpx; background: #F0F6FF; border: 1px solid #D6E4FF; border-radius: 16rpx; padding: 18rpx; }
-.summon-scene-icon { font-size: 44rpx; }
+.summon-scene {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14rpx);
+  -webkit-backdrop-filter: blur(14rpx);
+  border: 1rpx solid #DCE5F2;
+  border-radius: 20rpx;
+  padding: 20rpx;
+  box-shadow: 0 4rpx 14rpx rgba(15, 23, 42, 0.04);
+}
+.summon-scene-mark {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 14rpx;
+  background: #EEF4FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.summon-scene-img { width: 32rpx; height: 32rpx; display: block; }
 .summon-scene-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.summon-scene-name { font-size: 30rpx; font-weight: 700; color: #1F2937; }
-.summon-scene-desc { font-size: 22rpx; color: #6B7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.summon-scene-go { font-size: 24rpx; color: #165DFF; flex-shrink: 0; }
+.summon-scene-name { font-size: 28rpx; font-weight: 600; color: #0F172A; }
+.summon-scene-desc { font-size: 22rpx; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summon-scene-go { font-size: 23rpx; font-weight: 500; color: #165DFF; flex-shrink: 0; }
 .summon-answer { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16rpx; padding: 20rpx; margin-bottom: 16rpx; }
-.summon-answer-text { font-size: 26rpx; line-height: 1.7; color: #1F2937; }
-.summon-sub { display: block; font-size: 24rpx; color: #6B7280; margin: 20rpx 0 10rpx; }
-.summon-machine { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14rpx; padding: 16rpx 20rpx; margin-bottom: 10rpx; }
-.summon-machine-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
-.summon-machine-name { font-size: 26rpx; color: #1F2937; font-weight: 600; }
+.summon-answer-text { font-size: 26rpx; line-height: 1.7; color: #0F172A; }
+.summon-sub { display: block; font-size: 23rpx; color: #64748B; margin: 18rpx 0 10rpx; font-weight: 500; }
+.summon-machine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  background: rgba(255, 255, 255, 0.90);
+  border: 1px solid #DCE5F2;
+  border-radius: 16rpx;
+  padding: 18rpx 20rpx;
+  margin-bottom: 10rpx;
+}
+.summon-machine-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.summon-machine-name { font-size: 26rpx; color: #0F172A; font-weight: 600; }
 .summon-machine-reason { font-size: 22rpx; line-height: 1.45; color: #64748B; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.summon-machine-price { font-size: 24rpx; color: #165DFF; font-weight: 700; }
+.summon-machine-price { font-size: 24rpx; color: #165DFF; font-weight: 600; flex-shrink: 0; }
 .summon-alts { margin-top: 6rpx; }
 .summon-alt { display: flex; align-items: center; justify-content: space-between; padding: 14rpx 6rpx; border-bottom: 1px solid #F1F5F9; font-size: 26rpx; color: #334155; }
 .summon-alt-arrow { color: #CBD5E1; }

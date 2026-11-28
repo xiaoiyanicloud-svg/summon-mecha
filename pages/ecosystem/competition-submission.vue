@@ -1,16 +1,12 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">作品提交</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar title="作品提交" fallback-tab="/pages/home/index" />
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :empty="!loading && !errorMessage && !submission"
-      empty-icon="📄"
+      empty-icon="/static/icons/mine/doc-text.png"
       empty-text="参赛条目不存在"
       empty-hint="请先在队伍页完成报名并等待确认。"
       @retry="load"
@@ -73,13 +69,14 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { competitionSubmissionApi } from '@/utils/api'
 import { BASE_URL, TOKEN_KEY } from '@/utils/config'
 
 export default {
   name: 'CompetitionSubmission',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       teamId: 0,
@@ -281,26 +278,23 @@ export default {
 </script>
 
 <style scoped>
-.eco-page { min-height: 100vh; background: #F5F7FB; padding-bottom: 40rpx; box-sizing: border-box; }
-.eco-nav { display: flex; align-items: center; justify-content: space-between; padding: 88rpx 24rpx 22rpx; background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%); color: #FFFFFF; }
-.nav-back, .nav-side { width: 96rpx; height: 60rpx; line-height: 52rpx; font-size: 48rpx; }
-.nav-title { flex: 1; text-align: center; font-size: 34rpx; font-weight: 600; }
-.page-body { padding: 24rpx; }
-.card { background: #FFFFFF; border-radius: 20rpx; padding: 28rpx; margin-bottom: 24rpx; box-shadow: 0 8rpx 24rpx rgba(16, 47, 110, 0.06); }
-.card-title { display: block; font-size: 32rpx; font-weight: 600; color: #102F6E; margin-bottom: 12rpx; }
-.muted { display: block; font-size: 24rpx; color: #7A8699; line-height: 1.6; }
-.muted.warn { color: #C2410C; }
+.eco-page { min-height: 100vh; background: #F4F7FB; padding-bottom: 40rpx; box-sizing: border-box; }
+.page-body { padding: 20rpx 24rpx; }
+.card { background: #FFFFFF; border: 1rpx solid #E5EAF2; border-radius: 18rpx; padding: 26rpx; margin-bottom: 20rpx; }
+.card-title { display: block; font-size: 30rpx; font-weight: 600; color: #0F172A; margin-bottom: 12rpx; }
+.muted { display: block; font-size: 24rpx; color: #64748B; line-height: 1.6; }
+.muted.warn { color: #B45309; }
 .head-row { display: flex; align-items: center; justify-content: space-between; }
-.status-pill { background: #EEF3FF; color: #165DFF; padding: 6rpx 18rpx; border-radius: 999rpx; font-size: 22rpx; }
-.field { margin-top: 16rpx; background: #F5F7FB; border-radius: 12rpx; padding: 22rpx; font-size: 28rpx; color: #1F2D3D; }
+.status-pill { background: #EEF4FF; color: #165DFF; padding: 6rpx 18rpx; border-radius: 999rpx; font-size: 22rpx; font-weight: 500; }
+.field { margin-top: 16rpx; background: #F8FAFC; border: 1rpx solid #DCE5F2; border-radius: 12rpx; padding: 20rpx; font-size: 28rpx; color: #0F172A; }
 .textarea { min-height: 120rpx; }
 .textarea.tall { min-height: 260rpx; }
 .primary-btn { margin-top: 20rpx; background: #165DFF; color: #FFFFFF; border-radius: 14rpx; font-size: 28rpx; line-height: 84rpx; }
-.primary-btn.submit { background: #0F9D58; }
+.primary-btn.submit { background: #059669; }
 .mini-btn { margin-top: 16rpx; background: #165DFF; color: #FFFFFF; border-radius: 12rpx; font-size: 24rpx; padding: 0 24rpx; line-height: 58rpx; }
-.mini-btn.ghost { background: #EEF3FF; color: #165DFF; }
-.attachment-row, .version-row { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0; border-bottom: 1rpx solid #EEF2F8; }
+.mini-btn.ghost { background: #F1F5F9; color: #334155; }
+.attachment-row, .version-row { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0; border-bottom: 1rpx solid #E5EAF2; }
 .attachment-row:last-child, .version-row:last-child { border-bottom: none; }
 .attachment-main { flex: 1; padding-right: 16rpx; }
-.attachment-name, .version-title { display: block; font-size: 26rpx; color: #1F2D3D; }
+.attachment-name, .version-title { display: block; font-size: 26rpx; color: #0F172A; }
 </style>

@@ -1,50 +1,54 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">资讯详情</text>
-      <view class="nav-actions">
-        <view
-          v-if="post"
-          class="nav-fav"
-          :class="{ on: post.favorited }"
-          role="button"
-          tabindex="0"
-          @click="toggleFavorite"
-        >{{ post.favorited ? '已收藏' : '收藏' }}</view>
-        <!-- #ifdef H5 -->
-        <view class="nav-share" role="button" tabindex="0" @click="copyLink">复制链接</view>
-        <!-- #endif -->
-      </view>
-    </view>
+    <nav-bar title="资讯详情" fallback-tab="/pages/home/index">
+      <template #right>
+        <view class="nav-actions">
+          <view
+            v-if="post"
+            class="nav-fav"
+            :class="{ on: post.favorited }"
+            role="button"
+            tabindex="0"
+            @click="toggleFavorite"
+          >{{ post.favorited ? '已收藏' : '收藏' }}</view>
+          <!-- #ifdef H5 -->
+          <view class="nav-share" role="button" tabindex="0" @click="copyLink">分享</view>
+          <!-- #endif -->
+        </view>
+      </template>
+    </nav-bar>
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && !post"
-      empty-icon="📰"
+      empty-icon="/static/icons/mine/empty-news.png"
       empty-text="资讯不存在或未公开"
       empty-hint="请返回列表查看已发布的资讯。"
       @retry="load"
     >
       <view v-if="post" class="detail">
-        <view v-if="coverUrl" class="hero">
-          <image class="hero-img" :src="coverUrl" mode="aspectFill"></image>
-        </view>
-
         <view class="detail-body">
-          <view class="title-row">
-            <text class="detail-type">{{ typeLabel }}</text>
-            <text class="detail-title">{{ post.title }}</text>
+          <view class="head-meta">
+            <text class="detail-type" :class="'tp-' + (post.type || 'news')">{{ typeLabel }}</text>
+            <text v-if="publishedText" class="head-date sm-mono">{{ publishedText }}</text>
           </view>
-          <text v-if="post.summary" class="detail-summary">{{ post.summary }}</text>
 
-          <view class="meta-row">
-            <text v-if="authorText" class="meta-item">{{ authorText }}</text>
-            <text class="meta-item">{{ publishedText }}</text>
+          <text class="detail-title">{{ post.title }}</text>
+
+          <view v-if="authorText" class="byline">
+            <text class="byline-text">{{ authorText }}</text>
+          </view>
+
+          <view v-if="coverUrl" class="hero">
+            <image class="hero-img" :src="coverUrl" mode="aspectFill"></image>
+          </view>
+
+          <view v-if="post.summary" class="summary-callout">
+            <text class="detail-summary">{{ post.summary }}</text>
           </view>
 
           <view v-if="post.correctionNote" class="correction">
@@ -61,7 +65,7 @@
             <view v-for="(source, index) in sources" :key="index" class="source-item">
               <text class="source-name">{{ source.name }}</text>
               <text v-if="source.url" class="source-url">{{ source.url }}</text>
-              <text class="source-meta">
+              <text v-if="source.rightsBasisText || source.verifiedText" class="source-meta sm-mono">
                 <text v-if="source.rightsBasisText">{{ source.rightsBasisText }}</text>
                 <text v-if="source.verifiedText"> · 核验于 {{ source.verifiedText }}</text>
               </text>
@@ -86,7 +90,7 @@
             </view>
           </view>
 
-          <view class="publish-line">
+          <view class="publish-line sm-mono">
             <text>公开时间：{{ publishedText }}</text>
             <text v-if="firstPublishedText && firstPublishedText !== publishedText">首次公开：{{ firstPublishedText }}</text>
           </view>
@@ -97,6 +101,7 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { contentApi, favoriteApi } from '@/utils/api'
 import { BASE_URL, SSR_BASE_URL } from '@/utils/config'
@@ -116,10 +121,6 @@ import {
   resolveShareBase,
 } from '@/utils/ecosystem-public'
 
-/**
- * 分享基址必须是**当前 H5 站点**，不是 API 的 BASE_URL。
- * 小程序没有可复制的网页地址，返回空串（分享仍走 buildSharePath）。
- */
 function h5ShareBase() {
   // #ifdef H5
   return resolveShareBase(window.location)
@@ -131,7 +132,7 @@ function h5ShareBase() {
 
 export default {
   name: 'EcosystemContentDetail',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       slug: '',
@@ -213,12 +214,6 @@ export default {
     return { title: '召唤机甲 · 动态资讯', path: '/pages/ecosystem/content' }
   },
   methods: {
-    goBack() {
-      uni.navigateBack({
-        delta: 1,
-        fail: () => uni.switchTab({ url: '/pages/home/index' }),
-      })
-    },
     applyError(error) {
       const info = errorState(error)
       this.post = null
@@ -287,7 +282,6 @@ export default {
       this.errorInfo = null
 
       try {
-        // 详情只按 slug 重新请求：支持直达/刷新，不依赖列表内存对象。
         const response = await contentApi.getPost(this.slug)
         if (seq !== this.requestSeq) return
 
@@ -323,148 +317,154 @@ export default {
 <style scoped>
 .eco-page {
   min-height: 100vh;
-  background: #F5F7FB;
-  padding-bottom: 40rpx;
+  background: #F4F7FB;
+  padding-bottom: 48rpx;
   box-sizing: border-box;
-}
-.eco-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 88rpx 24rpx 22rpx;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
-  color: #FFFFFF;
-}
-.nav-back,
-.nav-side {
-  width: 96rpx;
-  height: 60rpx;
-  line-height: 52rpx;
-  font-size: 48rpx;
-  font-weight: 300;
 }
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 18rpx;
-  min-width: 96rpx;
+  gap: 12rpx;
   justify-content: flex-end;
+  white-space: nowrap;
 }
 .nav-fav {
-  padding: 6rpx 18rpx;
-  border-radius: 24rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.55);
-  color: #FFFFFF;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #DCE5F2;
+  background: #F8FAFC;
+  color: #475569;
   font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1.2;
 }
 .nav-fav.on {
-  background: #FFFFFF;
-  color: #102F6E;
+  background: #EEF4FF;
+  border-color: #165DFF;
+  color: #165DFF;
   font-weight: 600;
-}
-.nav-back:focus-visible,
-.nav-share:focus-visible,
-.nav-fav:focus-visible {
-  outline: 3rpx solid #FFFFFF;
-  border-radius: 8rpx;
-}
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 34rpx;
-  font-weight: 600;
-  letter-spacing: 2rpx;
 }
 .nav-share {
-  width: auto;
-  text-align: right;
-  font-size: 24rpx;
-  color: #FFFFFF;
+  padding: 8rpx 14rpx;
+  font-size: 23rpx;
+  color: #475569;
+  font-weight: 500;
+  line-height: 1.2;
 }
-.detail { padding: 24rpx; }
-.hero {
-  height: 340rpx;
-  border-radius: 20rpx;
-  overflow: hidden;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
+.nav-share:focus-visible,
+.nav-fav:focus-visible {
+  outline: 3rpx solid #165DFF;
+  border-radius: 999rpx;
 }
-.hero-img { width: 100%; height: 100%; }
+.detail {
+  padding: 20rpx 24rpx 24rpx;
+}
 .detail-body {
-  margin-top: 24rpx;
   background: #FFFFFF;
-  border: 1rpx solid #E5EAF3;
-  border-radius: 20rpx;
-  padding: 28rpx 26rpx 34rpx;
+  border: 1rpx solid #E5EAF2;
+  border-radius: 18rpx;
+  padding: 28rpx 26rpx 36rpx;
 }
-.title-row { display: flex; flex-direction: column; }
+.head-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+}
 .detail-type {
-  align-self: flex-start;
-  padding: 4rpx 16rpx;
-  margin-bottom: 12rpx;
-  border-radius: 8rpx;
-  background: #EEF4FF;
-  color: #102F6E;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  background: #F1F5F9;
+  color: #475569;
   font-size: 22rpx;
-  font-weight: 600;
+  font-weight: 500;
+}
+.detail-type.tp-announcement {
+  background: #FFFBEB;
+  color: #B45309;
+}
+.detail-type.tp-competition_report {
+  background: #EEF4FF;
+  color: #165DFF;
+}
+.head-date {
+  font-size: 22rpx;
+  color: #94A3B8;
 }
 .detail-title {
-  font-size: 40rpx;
+  display: block;
+  font-size: 38rpx;
   font-weight: 700;
   line-height: 1.4;
-  color: #102F6E;
+  color: #0F172A;
+}
+.byline {
+  margin-top: 16rpx;
+  padding-bottom: 18rpx;
+  border-bottom: 1rpx solid #E5EAF2;
+}
+.byline-text {
+  font-size: 24rpx;
+  color: #64748B;
+}
+.hero {
+  margin-top: 22rpx;
+  height: 340rpx;
+  border-radius: 14rpx;
+  overflow: hidden;
+  background: #F1F5F9;
+}
+.hero-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.summary-callout {
+  margin-top: 22rpx;
+  padding: 16rpx 20rpx;
+  border-left: 5rpx solid #CBD5E1;
+  background: #F8FAFC;
+  border-radius: 0 12rpx 12rpx 0;
 }
 .detail-summary {
   display: block;
-  margin-top: 14rpx;
   font-size: 26rpx;
-  line-height: 1.7;
+  line-height: 1.68;
   color: #475569;
-}
-.meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx 24rpx;
-  margin-top: 18rpx;
-  padding-bottom: 18rpx;
-  border-bottom: 1rpx solid #E5EAF3;
-}
-.meta-item {
-  font-size: 23rpx;
-  color: #7A8AA3;
 }
 .correction {
   margin-top: 22rpx;
   padding: 18rpx 20rpx;
-  border-radius: 14rpx;
-  background: #FFF8EC;
-  border: 1rpx solid #F2D8A8;
+  border-radius: 12rpx;
+  background: #FFFBEB;
+  border: 1rpx solid #FDE68A;
 }
 .correction-title {
   display: block;
   font-size: 24rpx;
-  font-weight: 700;
-  color: #92400E;
+  font-weight: 600;
+  color: #B45309;
   margin-bottom: 6rpx;
 }
 .correction-text {
   font-size: 24rpx;
   line-height: 1.6;
-  color: #7C4A03;
+  color: #92400E;
 }
 .section { margin-top: 30rpx; }
 .section-title {
   display: block;
   margin-bottom: 14rpx;
-  padding-left: 16rpx;
-  border-left: 6rpx solid #165DFF;
+  padding-left: 14rpx;
+  border-left: 5rpx solid #165DFF;
   font-size: 29rpx;
-  font-weight: 700;
-  color: #102F6E;
+  font-weight: 600;
+  color: #0F172A;
 }
 .rich-body {
-  font-size: 27rpx;
-  line-height: 1.8;
-  color: #334155;
+  font-size: 28rpx;
+  line-height: 1.85;
+  color: #1E293B;
   word-break: break-word;
 }
 .related-group {
@@ -474,8 +474,8 @@ export default {
   display: block;
   margin-bottom: 8rpx;
   font-size: 23rpx;
-  font-weight: 600;
-  color: #475569;
+  font-weight: 500;
+  color: #64748B;
 }
 .related-items {
   display: flex;
@@ -484,13 +484,15 @@ export default {
 }
 .related-item {
   padding: 8rpx 18rpx;
-  border-radius: 24rpx;
-  background: #F1F5FD;
-  border: 1rpx solid #DCE5F5;
+  border-radius: 999rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E5EAF2;
   font-size: 23rpx;
   color: #334155;
 }
 .related-item.linkable {
+  background: #EEF4FF;
+  border-color: #DCE5F5;
   color: #165DFF;
 }
 .related-item.linkable:focus-visible {
@@ -502,24 +504,24 @@ export default {
   padding: 16rpx 18rpx;
   margin-bottom: 12rpx;
   border-radius: 12rpx;
-  background: #F8FAFF;
-  border: 1rpx solid #E5EAF3;
+  background: #F8FAFC;
+  border: 1rpx solid #E5EAF2;
 }
 .source-name {
   font-size: 25rpx;
   font-weight: 600;
-  color: #102F6E;
+  color: #0F172A;
 }
 .source-url {
   margin-top: 4rpx;
   font-size: 22rpx;
-  color: #5B6B85;
+  color: #64748B;
   word-break: break-all;
 }
 .source-meta {
   margin-top: 4rpx;
   font-size: 21rpx;
-  color: #8A9AA8;
+  color: #94A3B8;
 }
 .publish-line {
   display: flex;
@@ -527,8 +529,8 @@ export default {
   gap: 6rpx;
   margin-top: 30rpx;
   padding-top: 18rpx;
-  border-top: 1rpx solid #E5EAF3;
+  border-top: 1rpx solid #E5EAF2;
   font-size: 22rpx;
-  color: #8A9AA8;
+  color: #94A3B8;
 }
 </style>

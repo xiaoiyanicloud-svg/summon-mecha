@@ -1,87 +1,132 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">动态资讯</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar title="动态资讯" fallback-tab="/pages/home/index" />
 
     <view class="filter-wrap">
       <view class="search-row">
-        <input
-          v-model="filters.q"
-          class="search-input"
-          type="text"
-          confirm-type="search"
-          maxlength="50"
-          placeholder="搜索标题 / 摘要"
-          @confirm="applyFilters"
-        />
-        <input
-          v-model="filters.category"
-          class="search-input category-input"
-          type="text"
-          confirm-type="search"
-          maxlength="64"
-          placeholder="分类"
-          @confirm="applyFilters"
-        />
+        <view class="search-box">
+          <view class="search-icon" aria-hidden="true">
+            <view class="search-icon-ring"></view>
+            <view class="search-icon-handle"></view>
+          </view>
+          <input
+            v-model="filters.q"
+            class="search-input"
+            type="text"
+            confirm-type="search"
+            maxlength="50"
+            placeholder="搜索标题 / 摘要"
+            placeholder-style="color: #94A3B8"
+            @confirm="applyFilters"
+          />
+          <text v-if="filters.q" class="search-clear" role="button" tabindex="0" @click="clearQuery">✕</text>
+        </view>
         <text class="search-btn" role="button" tabindex="0" @click="applyFilters">搜索</text>
       </view>
 
-      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
-        <view class="chip-row">
-          <text
-            class="chip"
-            :class="{ on: datePreset === '' }"
-            role="button"
-            tabindex="0"
-            @click="chooseDatePreset('')"
-          >全部时间</text>
-          <text
-            v-for="option in datePresetOptions"
-            :key="option.value"
-            class="chip"
-            :class="{ on: datePreset === option.value }"
-            role="button"
-            tabindex="0"
-            @click="chooseDatePreset(option.value)"
-          >{{ option.label }}</text>
+      <view class="tab-bar">
+        <scroll-view class="tab-scroll" scroll-x="true" :enhanced="true" :show-scrollbar="false">
+          <view class="tab-row">
+            <text
+              class="type-tab"
+              :class="{ on: filters.type === '' }"
+              role="button"
+              tabindex="0"
+              @click="chooseType('')"
+            >全部</text>
+            <text
+              v-for="option in typeOptions"
+              :key="option.value"
+              class="type-tab"
+              :class="{ on: filters.type === option.value }"
+              role="button"
+              tabindex="0"
+              @click="chooseType(option.value)"
+            >{{ option.label }}</text>
+          </view>
+        </scroll-view>
+        <view
+          class="filter-toggle"
+          :class="{ active: showFilterPanel || activeSecondaryCount > 0 }"
+          role="button"
+          tabindex="0"
+          @click="showFilterPanel = !showFilterPanel"
+        >
+          <text class="filter-toggle-text">筛选</text>
+          <text v-if="activeSecondaryCount > 0" class="filter-badge sm-mono">{{ activeSecondaryCount }}</text>
+          <text class="filter-chevron">{{ showFilterPanel ? '▴' : '▾' }}</text>
         </view>
-      </scroll-view>
+      </view>
 
-      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
-        <view class="chip-row">
-          <text
-            class="chip"
-            :class="{ on: filters.type === '' }"
-            role="button"
-            tabindex="0"
-            @click="chooseType('')"
-          >全部类型</text>
-          <text
-            v-for="option in typeOptions"
-            :key="option.value"
-            class="chip"
-            :class="{ on: filters.type === option.value }"
-            role="button"
-            tabindex="0"
-            @click="chooseType(option.value)"
-          >{{ option.label }}</text>
+      <view v-if="!showFilterPanel && activeSecondaryTags.length" class="active-tags">
+        <view
+          v-for="tag in activeSecondaryTags"
+          :key="tag.key"
+          class="active-tag"
+          role="button"
+          tabindex="0"
+          @click="clearOneFilter(tag.key)"
+        >
+          <text>{{ tag.label }}</text>
+          <text class="active-tag-x">×</text>
         </view>
-      </scroll-view>
+        <text class="active-reset" role="button" tabindex="0" @click="resetSecondaryFilters">重置</text>
+      </view>
+
+      <view v-if="showFilterPanel" class="filter-drawer">
+        <view class="drawer-group">
+          <text class="drawer-label">时间</text>
+          <view class="drawer-chips">
+            <text
+              class="drawer-chip"
+              :class="{ on: datePreset === '' }"
+              role="button"
+              tabindex="0"
+              @click="chooseDatePreset('')"
+            >全部时间</text>
+            <text
+              v-for="option in datePresetOptions"
+              :key="option.value"
+              class="drawer-chip"
+              :class="{ on: datePreset === option.value }"
+              role="button"
+              tabindex="0"
+              @click="chooseDatePreset(option.value)"
+            >{{ option.label }}</text>
+          </view>
+        </view>
+
+        <view class="drawer-group">
+          <text class="drawer-label">分类</text>
+          <input
+            v-model="filters.category"
+            class="cat-input"
+            type="text"
+            confirm-type="search"
+            maxlength="64"
+            placeholder="输入分类关键词（选填）"
+            placeholder-style="color: #94A3B8"
+            @confirm="applyFiltersAndClose"
+          />
+        </view>
+
+        <view class="drawer-actions">
+          <text class="drawer-btn ghost" role="button" tabindex="0" @click="resetAllFilters">重置全部</text>
+          <text class="drawer-btn primary" role="button" tabindex="0" @click="applyFiltersAndClose">完成筛选</text>
+        </view>
+      </view>
     </view>
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && posts.length === 0"
-      empty-icon="📰"
+      empty-icon="/static/icons/mine/empty-news.png"
       empty-text="暂无资讯"
-      empty-hint="资讯发布后会在这里展示。"
+      empty-hint="资讯发布后将在此展示。"
       @retry="reload"
     >
       <view class="list">
@@ -94,13 +139,18 @@
           @click="openDetail(item)"
           @keyup.enter="openDetail(item)"
         >
-          <view class="post-head">
-            <text class="post-type">{{ typeOf(item) }}</text>
-            <text class="post-date">{{ dateOf(item) }}</text>
+          <view class="post-row">
+            <view class="post-main">
+              <text class="post-title">{{ item.title }}</text>
+              <text v-if="item.summary" class="post-summary">{{ item.summary }}</text>
+              <view class="post-foot">
+                <text class="post-type" :class="'tp-' + (item.type || 'news')">{{ typeOf(item) }}</text>
+                <text v-if="authorOf(item)" class="post-author">{{ authorOf(item) }}</text>
+                <text v-if="dateOf(item)" class="post-date sm-mono">{{ dateOf(item) }}</text>
+              </view>
+            </view>
+            <image v-if="coverOf(item)" class="post-thumb" :src="coverOf(item)" mode="aspectFill"></image>
           </view>
-          <text class="post-title">{{ item.title }}</text>
-          <text v-if="item.summary" class="post-summary">{{ item.summary }}</text>
-          <text v-if="authorOf(item)" class="post-author">{{ authorOf(item) }}</text>
         </view>
 
         <view v-if="hasMore" class="load-more">
@@ -112,21 +162,25 @@
             @click="loadMore"
           >{{ loadingMore ? '加载中…' : '加载更多' }}</view>
         </view>
-        <view v-else-if="posts.length" class="list-end">没有更多了</view>
+        <view v-else-if="posts.length" class="list-end">已展示全部内容</view>
       </view>
     </state-view>
   </view>
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { contentApi } from '@/utils/api'
+import { BASE_URL } from '@/utils/config'
 import {
   normalizeContentPage,
   appendUnique,
   errorState,
   contentTypeLabel,
   formatDateShort,
+  resolveMediaUrl,
+  pickCover,
   buildSharePath,
 } from '@/utils/ecosystem-public'
 
@@ -145,11 +199,12 @@ function daysAgo(days) {
 
 export default {
   name: 'EcosystemContent',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       filters: { q: '', type: '', category: '', published_from: '', published_to: '' },
       datePreset: '',
+      showFilterPanel: false,
       datePresetOptions: [
         { value: '7d', label: '近7天' },
         { value: '30d', label: '近30天' },
@@ -170,6 +225,22 @@ export default {
       requestSeq: 0,
     }
   },
+  computed: {
+    activeSecondaryTags() {
+      const tags = []
+      if (this.datePreset) {
+        const hit = this.datePresetOptions.find((o) => o.value === this.datePreset)
+        tags.push({ key: 'datePreset', label: hit ? hit.label : this.datePreset })
+      }
+      if (this.filters.category) {
+        tags.push({ key: 'category', label: `分类: ${this.filters.category}` })
+      }
+      return tags
+    },
+    activeSecondaryCount() {
+      return this.activeSecondaryTags.length
+    },
+  },
   onLoad() {
     this.reload()
   },
@@ -180,12 +251,6 @@ export default {
     this.loadMore()
   },
   methods: {
-    goBack() {
-      uni.navigateBack({
-        delta: 1,
-        fail: () => uni.switchTab({ url: '/pages/home/index' }),
-      })
-    },
     chooseType(value) {
       if (this.filters.type === value) return
       this.filters.type = value
@@ -195,6 +260,38 @@ export default {
       this.filters.q = String(this.filters.q || '').trim()
       this.filters.category = String(this.filters.category || '').trim()
       this.reload()
+    },
+    applyFiltersAndClose() {
+      this.showFilterPanel = false
+      this.applyFilters()
+    },
+    clearQuery() {
+      if (!this.filters.q) return
+      this.filters.q = ''
+      this.reload()
+    },
+    clearOneFilter(key) {
+      if (key === 'datePreset') {
+        this.chooseDatePreset('')
+        return
+      }
+      if (this.filters[key]) {
+        this.filters[key] = ''
+        this.reload()
+      }
+    },
+    resetSecondaryFilters() {
+      this.datePreset = ''
+      this.filters.published_from = ''
+      this.filters.published_to = ''
+      this.filters.category = ''
+      this.reload()
+    },
+    resetAllFilters() {
+      this.filters.q = ''
+      this.filters.type = ''
+      this.showFilterPanel = false
+      this.resetSecondaryFilters()
     },
     chooseDatePreset(value) {
       if (this.datePreset === value) return
@@ -271,6 +368,10 @@ export default {
       const path = buildSharePath('content', item.slug)
       if (path) uni.navigateTo({ url: path })
     },
+    coverOf(item) {
+      const cover = pickCover(item && item.media)
+      return cover ? resolveMediaUrl(cover.url, BASE_URL) : ''
+    },
     typeOf(item) {
       return contentTypeLabel(item.type)
     },
@@ -287,41 +388,14 @@ export default {
 <style scoped>
 .eco-page {
   min-height: 100vh;
-  background: #F5F7FB;
-  padding-bottom: 40rpx;
+  background: #F4F7FB;
+  padding-bottom: 48rpx;
   box-sizing: border-box;
 }
-.eco-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 88rpx 24rpx 22rpx;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
-  color: #FFFFFF;
-}
-.nav-back,
-.nav-side {
-  width: 88rpx;
-  height: 60rpx;
-  line-height: 52rpx;
-  font-size: 48rpx;
-  font-weight: 300;
-}
-.nav-back:focus-visible {
-  outline: 3rpx solid #FFFFFF;
-  border-radius: 8rpx;
-}
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 34rpx;
-  font-weight: 600;
-  letter-spacing: 2rpx;
-}
 .filter-wrap {
-  padding: 20rpx 0 8rpx;
   background: #FFFFFF;
-  border-bottom: 1rpx solid #E5EAF3;
+  border-bottom: 1rpx solid #E5EAF2;
+  padding-top: 16rpx;
 }
 .search-row {
   display: flex;
@@ -329,144 +403,388 @@ export default {
   gap: 12rpx;
   padding: 0 24rpx 14rpx;
 }
+.search-box {
+  flex: 1;
+  min-width: 0;
+  height: 70rpx;
+  padding: 0 14rpx 0 22rpx;
+  border-radius: 999rpx;
+  background: #F4F7FB;
+  border: 1rpx solid #E5EAF2;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+.search-box:focus-within {
+  background: #FFFFFF;
+  border-color: #94B8FF;
+}
+.search-icon {
+  position: relative;
+  width: 24rpx;
+  height: 24rpx;
+  flex: 0 0 24rpx;
+}
+.search-icon-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 17rpx;
+  height: 17rpx;
+  border: 3rpx solid #64748B;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.search-icon-handle {
+  position: absolute;
+  left: 15rpx;
+  top: 15rpx;
+  width: 9rpx;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: #64748B;
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 64rpx;
-  padding: 0 20rpx;
-  border-radius: 32rpx;
-  background: #F5F7FB;
-  border: 1rpx solid #D7DFEE;
-  font-size: 24rpx;
-  color: #1F2937;
+  height: 100%;
+  padding: 0 12rpx;
+  border: 0;
+  outline: none;
+  font-size: 25rpx;
+  color: #0F172A;
+  background: transparent;
 }
-.category-input {
-  flex: 0 0 160rpx;
+.search-clear {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #E2E8F0;
+  color: #475569;
+  font-size: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .search-btn {
   flex: 0 0 auto;
-  padding: 0 22rpx;
-  height: 64rpx;
-  line-height: 64rpx;
-  border-radius: 32rpx;
+  height: 70rpx;
+  line-height: 70rpx;
+  padding: 0 26rpx;
+  border-radius: 999rpx;
   background: #165DFF;
   color: #FFFFFF;
-  font-size: 24rpx;
+  font-size: 25rpx;
+  font-weight: 500;
+}
+.tab-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx 0 8rpx;
+  border-top: 1rpx solid #F1F5F9;
+}
+.tab-scroll {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.tab-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.tab-row {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12rpx;
+}
+.type-tab {
+  position: relative;
+  padding: 20rpx 18rpx;
+  font-size: 27rpx;
+  color: #64748B;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.type-tab.on {
+  color: #0F172A;
   font-weight: 600;
 }
-.chip-scroll {
-  width: 100%;
-  white-space: nowrap;
-}
-.chip-row {
-  display: inline-block;
-  white-space: nowrap;
-  padding: 0 24rpx 12rpx;
-}
-.chip {
-  display: inline-block;
-  padding: 10rpx 26rpx;
-  margin-right: 14rpx;
-  border-radius: 32rpx;
-  border: 1rpx solid #D7DFEE;
-  background: #F8FAFF;
-  color: #4B5563;
-  font-size: 24rpx;
-  line-height: 1.4;
-}
-.chip.on {
+.type-tab.on::after {
+  content: '';
+  position: absolute;
+  left: 20rpx;
+  right: 20rpx;
+  bottom: 0;
+  height: 4rpx;
+  border-radius: 2rpx;
   background: #165DFF;
-  border-color: #165DFF;
+}
+.filter-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 10rpx 18rpx;
+  margin-left: 8rpx;
+  border-radius: 999rpx;
+  background: #F4F7FB;
+  border: 1rpx solid #E5EAF2;
+  color: #475569;
+  font-size: 23rpx;
+}
+.filter-toggle.active {
+  background: #EEF4FF;
+  border-color: #BFDBFE;
+  color: #165DFF;
+  font-weight: 500;
+}
+.filter-badge {
+  min-width: 28rpx;
+  height: 28rpx;
+  line-height: 28rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: #165DFF;
   color: #FFFFFF;
-  font-weight: 600;
+  font-size: 19rpx;
+  text-align: center;
 }
-.chip:focus-visible {
-  outline: 3rpx solid #102F6E;
-  outline-offset: 2rpx;
+.filter-chevron {
+  font-size: 20rpx;
+  line-height: 1;
 }
-.list {
-  padding: 24rpx;
+.active-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  padding: 12rpx 24rpx 14rpx;
+  background: #F8FAFC;
+  border-top: 1rpx solid #F1F5F9;
+}
+.active-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5F2;
+  color: #334155;
+  font-size: 22rpx;
+}
+.active-tag-x {
+  color: #94A3B8;
+  font-size: 24rpx;
+}
+.active-reset {
+  margin-left: auto;
+  font-size: 22rpx;
+  color: #64748B;
+  padding: 4rpx 8rpx;
+}
+.filter-drawer {
+  padding: 18rpx 24rpx 22rpx;
+  background: #F8FAFC;
+  border-top: 1rpx solid #E5EAF2;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 18rpx;
+}
+.drawer-group {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.drawer-label {
+  width: 64rpx;
+  flex-shrink: 0;
+  font-size: 23rpx;
+  color: #64748B;
+}
+.drawer-chips {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+.drawer-chip {
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E5EAF2;
+  color: #475569;
+  font-size: 23rpx;
+}
+.drawer-chip.on {
+  background: #EEF4FF;
+  border-color: #165DFF;
+  color: #165DFF;
+  font-weight: 500;
+}
+.cat-input {
+  flex: 1;
+  height: 60rpx;
+  padding: 0 18rpx;
+  border-radius: 12rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5F2;
+  font-size: 24rpx;
+  color: #0F172A;
+}
+.drawer-actions {
+  display: flex;
+  gap: 16rpx;
+  padding-top: 6rpx;
+}
+.drawer-btn {
+  flex: 1;
+  height: 68rpx;
+  line-height: 68rpx;
+  text-align: center;
+  border-radius: 14rpx;
+  font-size: 25rpx;
+  font-weight: 500;
+}
+.drawer-btn.ghost {
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5F2;
+  color: #475569;
+}
+.drawer-btn.primary {
+  background: #165DFF;
+  color: #FFFFFF;
+}
+.list {
+  padding: 20rpx 24rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 .post-card {
   background: #FFFFFF;
-  border: 1rpx solid #E5EAF3;
-  border-radius: 20rpx;
-  padding: 26rpx 24rpx;
-  box-shadow: 0 6rpx 24rpx rgba(16, 47, 110, 0.06);
-  display: flex;
-  flex-direction: column;
+  border: 1rpx solid #E5EAF2;
+  border-radius: 18rpx;
+  padding: 24rpx;
+  transition: background-color 0.15s ease;
+}
+.post-card:active {
+  background: #F8FAFC;
 }
 .post-card:focus-visible {
   outline: 3rpx solid #165DFF;
   outline-offset: 2rpx;
 }
-.post-head {
+.post-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12rpx;
+  align-items: flex-start;
+  gap: 20rpx;
 }
-.post-type {
-  padding: 4rpx 16rpx;
-  border-radius: 8rpx;
-  background: #EEF4FF;
-  color: #102F6E;
-  font-size: 22rpx;
-  font-weight: 600;
-}
-.post-date {
-  font-size: 22rpx;
-  color: #8A9AA8;
+.post-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .post-title {
-  font-size: 32rpx;
-  font-weight: 700;
+  font-size: 31rpx;
+  font-weight: 600;
   line-height: 1.45;
-  color: #102F6E;
+  color: #0F172A;
 }
 .post-summary {
-  margin-top: 12rpx;
+  margin-top: 10rpx;
   font-size: 25rpx;
-  line-height: 1.6;
+  line-height: 1.58;
   color: #475569;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.post-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+.post-type {
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 21rpx;
+  font-weight: 500;
+}
+.post-type.tp-announcement {
+  background: #FFFBEB;
+  color: #B45309;
+}
+.post-type.tp-competition_report {
+  background: #EEF4FF;
+  color: #165DFF;
+}
 .post-author {
-  margin-top: 14rpx;
   font-size: 22rpx;
-  color: #7A8AA3;
+  color: #64748B;
+}
+.post-date {
+  font-size: 22rpx;
+  color: #94A3B8;
+  margin-left: auto;
+}
+.post-thumb {
+  width: 196rpx;
+  height: 136rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  background: #F1F5F9;
 }
 .load-more {
-  padding: 16rpx 0 28rpx;
+  padding: 16rpx 0 24rpx;
   display: flex;
   justify-content: center;
 }
 .load-btn {
-  min-width: 260rpx;
-  padding: 20rpx 44rpx;
-  border-radius: 40rpx;
-  border: 2rpx solid #165DFF;
-  color: #165DFF;
+  min-width: 240rpx;
+  padding: 18rpx 44rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #CBD5E1;
+  color: #334155;
   background: #FFFFFF;
-  font-size: 27rpx;
-  font-weight: 600;
+  font-size: 26rpx;
+  font-weight: 500;
   text-align: center;
 }
-.load-btn.disabled { opacity: 0.6; }
-.load-btn:focus-visible {
-  outline: 3rpx solid #102F6E;
-  outline-offset: 2rpx;
-}
+.load-btn.disabled { opacity: 0.55; }
 .list-end {
-  padding: 16rpx 0 32rpx;
+  padding: 16rpx 0 28rpx;
   text-align: center;
-  font-size: 24rpx;
-  color: #8A9AA8;
+  font-size: 23rpx;
+  color: #94A3B8;
+}
+</style>
+
+<style>
+::-webkit-scrollbar,
+scroll-view::-webkit-scrollbar,
+uni-scroll-view::-webkit-scrollbar,
+.uni-scroll-view::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+scroll-view,
+uni-scroll-view,
+.uni-scroll-view {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 </style>

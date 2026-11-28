@@ -1,19 +1,15 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">{{ reapplyMode ? '重新报名' : '活动报名' }}</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar :title="reapplyMode ? '重新报名' : '活动报名'" fallback-tab="/pages/home/index" />
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && !event"
-      empty-icon="🏟️"
+      empty-icon="/static/icons/mine/empty-event.png"
       empty-text="活动不存在或未公开"
       empty-hint="请返回列表查看已发布的活动。"
       @retry="load"
@@ -123,6 +119,7 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { eventApi, eventRegistrationApi, authApi } from '@/utils/api'
 import { TOKEN_KEY, CUSTOMER_KEY } from '@/utils/config'
@@ -148,7 +145,7 @@ function newRequestKey() {
 
 export default {
   name: 'EcosystemEventRegister',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       eventId: 0,
@@ -444,38 +441,34 @@ export default {
 </script>
 
 <style scoped>
-.eco-page { min-height: 100vh; background: #f5f7fb; color: #102f6e; }
-.eco-nav { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx; background: #fff; border-bottom: 1rpx solid #e6ecf7; }
-.nav-back { width: 64rpx; font-size: 44rpx; line-height: 1; color: #102f6e; }
-.nav-title { font-size: 32rpx; font-weight: 700; }
-.nav-side { width: 64rpx; }
-.reg-page { padding: 28rpx; }
-.event-head { background: linear-gradient(135deg, #102f6e, #165dff); color: #fff; border-radius: 22rpx; padding: 30rpx; display: flex; flex-direction: column; gap: 8rpx; }
-.event-kind { font-size: 22rpx; opacity: 0.85; }
-.event-title { font-size: 36rpx; font-weight: 700; line-height: 1.35; }
-.event-meta { font-size: 24rpx; opacity: 0.9; }
-.panel { margin-top: 24rpx; background: #fff; border-radius: 22rpx; padding: 30rpx; display: flex; flex-direction: column; gap: 20rpx; box-shadow: 0 8rpx 28rpx rgba(16, 47, 110, 0.06); }
-.panel-title { font-size: 30rpx; font-weight: 700; color: #102f6e; }
-.hint { font-size: 24rpx; color: #64748b; line-height: 1.5; }
-.hint.warn { color: #b45309; }
-.hint.ok { color: #15803d; }
+.eco-page { min-height: 100vh; background: #F4F7FB; color: #0F172A; }
+.reg-page { padding: 20rpx 24rpx 32rpx; }
+.event-head { background: #FFFFFF; border: 1rpx solid #E5EAF2; border-left: 6rpx solid #165DFF; color: #0F172A; border-radius: 16rpx; padding: 24rpx 26rpx; display: flex; flex-direction: column; gap: 8rpx; }
+.event-kind { font-size: 22rpx; color: #165DFF; font-weight: 500; }
+.event-title { font-size: 34rpx; font-weight: 700; line-height: 1.38; color: #0F172A; }
+.event-meta { font-size: 24rpx; color: #64748B; }
+.panel { margin-top: 20rpx; background: #FFFFFF; border: 1rpx solid #E5EAF2; border-radius: 18rpx; padding: 28rpx; display: flex; flex-direction: column; gap: 20rpx; }
+.panel-title { font-size: 30rpx; font-weight: 600; color: #0F172A; }
+.hint { font-size: 24rpx; color: #64748B; line-height: 1.5; }
+.hint.warn { color: #B45309; }
+.hint.ok { color: #059669; }
 .field { display: flex; flex-direction: column; gap: 10rpx; }
 .label { font-size: 24rpx; color: #334155; }
-.req { color: #dc2626; }
-.input, .textarea { border: 1rpx solid #dbe4f3; border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 28rpx; background: #fbfdff; }
+.req { color: #DC2626; }
+.input, .textarea { border: 1rpx solid #DCE5F2; border-radius: 12rpx; padding: 18rpx 20rpx; font-size: 28rpx; background: #F8FAFC; color: #0F172A; }
 .textarea { min-height: 140rpx; width: auto; }
-.error { font-size: 22rpx; color: #dc2626; }
-.privacy { background: #f2f6ff; border-radius: 14rpx; padding: 18rpx; display: flex; flex-direction: column; gap: 8rpx; }
-.privacy-title { font-size: 24rpx; font-weight: 600; }
+.error { font-size: 22rpx; color: #DC2626; }
+.privacy { background: #F8FAFC; border: 1rpx solid #E5EAF2; border-radius: 12rpx; padding: 18rpx; display: flex; flex-direction: column; gap: 8rpx; }
+.privacy-title { font-size: 24rpx; font-weight: 600; color: #0F172A; }
 .privacy-text { font-size: 22rpx; color: #475569; line-height: 1.6; }
 .consent { display: flex; align-items: flex-start; gap: 12rpx; font-size: 24rpx; color: #334155; line-height: 1.5; }
 .actions { display: flex; gap: 16rpx; margin-top: 8rpx; }
 .btn { flex: 1; text-align: center; border-radius: 999rpx; padding: 22rpx 24rpx; font-size: 28rpx; font-weight: 600; }
-.btn.primary { background: #165dff; color: #fff; }
-.btn.ghost { background: #eef4ff; color: #165dff; }
+.btn.primary { background: #165DFF; color: #FFFFFF; }
+.btn.ghost { background: #F1F5F9; color: #334155; }
 .btn.disabled { opacity: 0.55; }
 .kv { display: flex; justify-content: space-between; font-size: 24rpx; color: #475569; }
-.k { color: #94a3b8; }
-.v { color: #102f6e; font-weight: 600; }
+.k { color: #64748B; }
+.v { color: #0F172A; font-weight: 600; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 </style>

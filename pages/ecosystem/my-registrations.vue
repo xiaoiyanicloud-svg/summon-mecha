@@ -1,10 +1,6 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">我的报名</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar title="我的报名" fallback-tab="/pages/mine/index" />
 
     <view v-if="hasToken" class="comp-bar">
       <view class="comp-pill" role="button" tabindex="0" @click="goSub('/pages/ecosystem/competition-team')">组队参赛</view>
@@ -26,10 +22,10 @@
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && items.length === 0"
-      empty-icon="🎟️"
+      empty-icon="/static/icons/mine/empty-event.png"
       empty-text="还没有报名记录"
       empty-hint="到赛事活动页查看可报名的活动。"
       @retry="load"
@@ -83,6 +79,7 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { eventRegistrationApi } from '@/utils/api'
 import { TOKEN_KEY } from '@/utils/config'
@@ -100,7 +97,7 @@ function newKey(prefix) {
 
 export default {
   name: 'EcosystemMyRegistrations',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       hasToken: false,
@@ -262,39 +259,35 @@ export default {
 </script>
 
 <style scoped>
-.eco-page { min-height: 100vh; background: #f5f7fb; color: #102f6e; }
-.eco-nav { display: flex; align-items: center; justify-content: space-between; padding: calc(24rpx + env(safe-area-inset-top)) 28rpx 24rpx; background: #fff; border-bottom: 1rpx solid #e6ecf7; }
+.eco-page { min-height: 100vh; background: #F4F7FB; color: #0F172A; }
 .comp-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; padding: 18rpx 24rpx 0; }
-.comp-pill { text-align: center; padding: 14rpx 8rpx; border-radius: 14rpx; background: #ffffff; border: 1rpx solid #dce5f5; font-size: 24rpx; font-weight: 600; color: #165dff; }
-.nav-back { width: 64rpx; font-size: 44rpx; line-height: 1; color: #102f6e; }
-.nav-title { font-size: 32rpx; font-weight: 700; }
-.nav-side { width: 64rpx; }
-.list { padding: 24rpx; display: flex; flex-direction: column; gap: 20rpx; }
-.card, .panel { background: #fff; border-radius: 22rpx; padding: 28rpx; display: flex; flex-direction: column; gap: 16rpx; box-shadow: 0 8rpx 28rpx rgba(16, 47, 110, 0.06); }
+.comp-pill { text-align: center; padding: 14rpx 8rpx; border-radius: 12rpx; background: #FFFFFF; border: 1rpx solid #DCE5F2; font-size: 24rpx; font-weight: 500; color: #334155; }
+.list { padding: 20rpx 24rpx 28rpx; display: flex; flex-direction: column; gap: 16rpx; }
+.card, .panel { background: #FFFFFF; border: 1rpx solid #E5EAF2; border-radius: 18rpx; padding: 26rpx; display: flex; flex-direction: column; gap: 16rpx; }
 .login-needed { margin: 24rpx; }
 .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; }
-.event-name { font-size: 30rpx; font-weight: 700; line-height: 1.4; }
-.status { font-size: 22rpx; padding: 6rpx 14rpx; border-radius: 999rpx; background: #eef4ff; color: #165dff; white-space: nowrap; }
-.st-submitted { background: #fff7e6; color: #b45309; }
-.st-confirmed { background: #e8fff1; color: #15803d; }
-.st-checked_in { background: #e8f1ff; color: #1d4ed8; }
-.st-rejected, .st-canceled { background: #f1f5f9; color: #64748b; }
+.event-name { font-size: 30rpx; font-weight: 600; color: #0F172A; line-height: 1.4; }
+.status { font-size: 22rpx; padding: 6rpx 14rpx; border-radius: 999rpx; background: #EEF4FF; color: #165DFF; white-space: nowrap; font-weight: 500; }
+.st-submitted { background: #FFFBEB; color: #B45309; }
+.st-confirmed { background: #ECFDF5; color: #059669; }
+.st-checked_in { background: #EEF4FF; color: #165DFF; }
+.st-rejected, .st-canceled { background: #F1F5F9; color: #64748B; }
 .kv { display: flex; justify-content: space-between; font-size: 24rpx; color: #475569; gap: 20rpx; }
-.k { color: #94a3b8; white-space: nowrap; }
-.v { color: #102f6e; text-align: right; }
+.k { color: #64748B; white-space: nowrap; }
+.v { color: #0F172A; text-align: right; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.hint { font-size: 23rpx; color: #64748b; line-height: 1.6; }
-.hint.warn { color: #b45309; }
-.hint.ok { color: #15803d; }
+.hint { font-size: 23rpx; color: #64748B; line-height: 1.6; }
+.hint.warn { color: #B45309; }
+.hint.ok { color: #059669; }
 .actions { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 6rpx; }
 .actions.compact { margin-top: 2rpx; }
 .btn { text-align: center; border-radius: 999rpx; padding: 18rpx 26rpx; font-size: 26rpx; font-weight: 600; }
-.btn.primary { background: #165dff; color: #fff; }
-.btn.ghost { background: #eef4ff; color: #165dff; }
+.btn.primary { background: #165DFF; color: #FFFFFF; }
+.btn.ghost { background: #F1F5F9; color: #334155; }
 .btn.small { padding: 14rpx 22rpx; font-size: 24rpx; }
-.changes, .credential { background: #f7faff; border-radius: 16rpx; padding: 18rpx; display: flex; flex-direction: column; gap: 10rpx; }
-.changes-title { font-size: 24rpx; font-weight: 600; color: #102f6e; }
-.change-row { display: flex; flex-direction: column; gap: 6rpx; padding-top: 8rpx; border-top: 1rpx solid #e6ecf7; }
+.changes, .credential { background: #F8FAFC; border: 1rpx solid #E5EAF2; border-radius: 14rpx; padding: 18rpx; display: flex; flex-direction: column; gap: 10rpx; }
+.changes-title { font-size: 24rpx; font-weight: 600; color: #0F172A; }
+.change-row { display: flex; flex-direction: column; gap: 6rpx; padding-top: 8rpx; border-top: 1rpx solid #E5EAF2; }
 .change-text { font-size: 24rpx; color: #334155; }
-.qr { font-size: 22rpx; color: #102f6e; word-break: break-all; background: #fff; padding: 14rpx; border-radius: 12rpx; }
+.qr { font-size: 22rpx; color: #0F172A; word-break: break-all; background: #FFFFFF; border: 1rpx solid #E5EAF2; padding: 14rpx; border-radius: 12rpx; }
 </style>

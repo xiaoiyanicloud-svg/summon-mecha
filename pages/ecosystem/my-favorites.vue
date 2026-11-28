@@ -1,10 +1,6 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">我的收藏</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar title="我的收藏" fallback-tab="/pages/mine/index" />
 
     <view class="tabs">
       <text
@@ -44,10 +40,10 @@
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && items.length === 0 && staleCount === 0"
-      empty-icon="⭐"
+      empty-icon="/static/icons/mine/favorite.png"
       empty-text="还没有收藏"
       :empty-hint="emptyHint"
       @retry="reload"
@@ -86,6 +82,7 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { favoriteApi, wishlistApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
@@ -100,7 +97,7 @@ const PER_PAGE = 20
 
 export default {
   name: 'EcosystemMyFavorites',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       tab: 'event',
@@ -315,48 +312,42 @@ export default {
 </script>
 
 <style scoped>
-.eco-page { min-height: 100vh; background: #F5F7FB; padding-bottom: 40rpx; box-sizing: border-box; }
-.eco-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 88rpx 24rpx 22rpx;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
-  color: #FFFFFF;
-}
-.nav-back, .nav-side { width: 88rpx; height: 60rpx; line-height: 52rpx; font-size: 48rpx; font-weight: 300; text-align: left; }
-.nav-back:focus-visible { outline: 3rpx solid #FFFFFF; border-radius: 8rpx; }
-.nav-side { text-align: right; }
-.nav-title { flex: 1; text-align: center; font-size: 34rpx; font-weight: 600; letter-spacing: 2rpx; }
+.eco-page { min-height: 100vh; background: #F4F7FB; padding-bottom: 48rpx; box-sizing: border-box; }
 .tabs {
-  display: flex; gap: 16rpx; padding: 20rpx 24rpx;
-  background: #FFFFFF; border-bottom: 1rpx solid #E5EAF3;
+  display: flex; padding: 0 24rpx;
+  background: #FFFFFF; border-bottom: 1rpx solid #E5EAF2;
 }
 .tab {
-  flex: 1; text-align: center; padding: 14rpx 0; border-radius: 32rpx;
-  background: #F5F7FB; color: #4B5563; font-size: 26rpx;
+  position: relative; flex: 1; text-align: center; padding: 22rpx 0;
+  color: #64748B; font-size: 27rpx; font-weight: 500;
 }
-.tab.on { background: #165DFF; color: #FFFFFF; font-weight: 600; }
+.tab.on { color: #0F172A; font-weight: 600; }
+.tab.on::after {
+  content: ''; position: absolute; left: 28%; right: 28%; bottom: 0;
+  height: 4rpx; border-radius: 2rpx; background: #165DFF;
+}
 .kind-filter-bar { display: flex; gap: 12rpx; padding: 16rpx 24rpx 0; flex-wrap: wrap; }
-.kf-pill { font-size: 23rpx; padding: 8rpx 22rpx; border-radius: 999rpx; background: #FFFFFF; border: 1rpx solid #DCE5F5; color: #475569; }
+.kf-pill { font-size: 23rpx; padding: 8rpx 22rpx; border-radius: 999rpx; background: #FFFFFF; border: 1rpx solid #DCE5F2; color: #475569; }
 .kf-pill.on { background: #EEF4FF; border-color: #165DFF; color: #165DFF; font-weight: 600; }
-.tab:focus-visible { outline: 3rpx solid #102F6E; }
-.list { padding: 24rpx; display: flex; flex-direction: column; gap: 18rpx; }
+.tab:focus-visible { outline: 3rpx solid #165DFF; }
+.list { padding: 20rpx 24rpx; display: flex; flex-direction: column; gap: 16rpx; }
 .fav-card {
   display: flex; align-items: stretch; gap: 16rpx;
-  background: #FFFFFF; border: 1rpx solid #E5EAF3; border-radius: 18rpx; padding: 16rpx;
+  background: #FFFFFF; border: 1rpx solid #E5EAF2; border-radius: 16rpx; padding: 18rpx;
 }
 .fav-card:focus-visible { outline: 3rpx solid #165DFF; }
-.fav-cover { width: 150rpx; height: 150rpx; border-radius: 12rpx; flex: 0 0 auto; background: #E8EEF9; }
+.fav-cover { width: 148rpx; height: 148rpx; border-radius: 12rpx; flex: 0 0 auto; background: #F1F5F9; }
 .fav-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.fav-title { font-size: 28rpx; font-weight: 600; color: #102F6E; }
-.fav-summary { margin-top: 6rpx; font-size: 24rpx; color: #64748B; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.fav-title { font-size: 28rpx; font-weight: 600; color: #0F172A; line-height: 1.4; }
+.fav-summary { margin-top: 6rpx; font-size: 24rpx; color: #475569; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .fav-meta { margin-top: 8rpx; font-size: 22rpx; color: #94A3B8; }
 .fav-remove {
-  align-self: flex-start; flex: 0 0 auto; padding: 6rpx 16rpx;
-  border-radius: 20rpx; border: 1rpx solid #DCE5F5; color: #64748B; font-size: 22rpx;
+  align-self: flex-start; flex: 0 0 auto; padding: 6rpx 18rpx;
+  border-radius: 999rpx; border: 1rpx solid #DCE5F2; color: #64748B; font-size: 22rpx;
 }
-.stale-note { padding: 12rpx 16rpx; border-radius: 12rpx; background: #FFF8EC; color: #7C4A03; font-size: 23rpx; }
-.load-more { padding: 10rpx 0 20rpx; text-align: center; }
-.load-btn { display: inline-block; padding: 14rpx 40rpx; border-radius: 32rpx; background: #FFFFFF; border: 1rpx solid #DCE5F5; color: #165DFF; font-size: 25rpx; }
+.stale-note { padding: 14rpx 18rpx; border-radius: 12rpx; background: #FFFBEB; border: 1rpx solid #FDE68A; color: #92400E; font-size: 23rpx; }
+.load-more { padding: 12rpx 0 20rpx; text-align: center; }
+.load-btn { display: inline-block; padding: 16rpx 40rpx; border-radius: 999rpx; background: #FFFFFF; border: 1rpx solid #CBD5E1; color: #334155; font-size: 25rpx; }
 .load-btn.disabled { color: #94A3B8; }
-.list-end { padding: 10rpx 0 20rpx; text-align: center; color: #94A3B8; font-size: 22rpx; }
+.list-end { padding: 12rpx 0 20rpx; text-align: center; color: #94A3B8; font-size: 22rpx; }
 </style>

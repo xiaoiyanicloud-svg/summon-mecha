@@ -7,17 +7,17 @@
     -->
     <view class="feed-head">
       <text class="feed-title">最新资讯</text>
-      <text class="more-link" role="button" tabindex="0" @click="goAll">查看全部 →</text>
+      <text class="more-link" role="button" tabindex="0" @click="goAll">查看全部 ›</text>
     </view>
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && feedList.length === 0"
-      empty-icon="📰"
+      empty-icon="/static/icons/mine/empty-news.png"
       empty-text="暂无资讯"
       empty-hint="资讯内容尚未开放，请以官方发布为准。"
       compact
@@ -33,12 +33,18 @@
           @click="openDetail(item)"
           @keyup.enter="openDetail(item)"
         >
-          <view class="feed-top">
-            <text class="feed-type">{{ typeOf(item) }}</text>
-            <text class="feed-date">{{ dateOf(item) }}</text>
+          <view class="feed-row">
+            <view class="feed-main">
+              <text class="feed-name">{{ item.title }}</text>
+              <text v-if="item.summary" class="feed-text">{{ item.summary }}</text>
+              <view class="feed-foot">
+                <text class="feed-type" :class="'tp-' + (item.type || 'news')">{{ typeOf(item) }}</text>
+                <text v-if="authorOf(item)" class="feed-author">{{ authorOf(item) }}</text>
+                <text v-if="dateOf(item)" class="feed-date sm-mono">{{ dateOf(item) }}</text>
+              </view>
+            </view>
+            <image v-if="coverOf(item)" class="feed-thumb" :src="coverOf(item)" mode="aspectFill"></image>
           </view>
-          <text class="feed-name">{{ item.title }}</text>
-          <text v-if="item.summary" class="feed-text">{{ item.summary }}</text>
         </view>
       </view>
     </state-view>
@@ -48,11 +54,14 @@
 <script>
 import StateView from '@/components/StateView.vue'
 import { contentApi } from '@/utils/api'
+import { BASE_URL } from '@/utils/config'
 import {
   normalizeContentPage,
   errorState,
   contentTypeLabel,
   formatDateShort,
+  resolveMediaUrl,
+  pickCover,
   buildSharePath,
 } from '@/utils/ecosystem-public'
 
@@ -116,11 +125,19 @@ export default {
       const path = buildSharePath('content', item.slug)
       if (path) uni.navigateTo({ url: path })
     },
+    coverOf(item) {
+      const cover = pickCover(item && item.media)
+      return cover ? resolveMediaUrl(cover.url, BASE_URL) : ''
+    },
     typeOf(item) {
       return contentTypeLabel(item.type)
     },
     dateOf(item) {
       return formatDateShort(item.firstPublishedAt || item.publishedAt)
+    },
+    authorOf(item) {
+      if (!item || !item.author) return ''
+      return item.author.org || item.author.name || ''
     },
   },
 }
@@ -134,17 +151,17 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8rpx 2rpx 16rpx;
+  padding: 6rpx 2rpx 14rpx;
 }
 .feed-title {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: #102F6E;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #0F172A;
 }
 .more-link {
   font-size: 24rpx;
   color: #165DFF;
-  font-weight: 600;
+  font-weight: 500;
 }
 .more-link:focus-visible,
 .feed-card:focus-visible {
@@ -154,47 +171,90 @@ export default {
 .feed-list {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 .feed-card {
-  background: #ffffff;
+  background: #FFFFFF;
   border-radius: 16rpx;
   padding: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(16, 47, 110, 0.05);
-  border: 1rpx solid #E5EAF3;
+  border: 1rpx solid #E5EAF2;
+  transition: background-color 0.15s ease;
 }
-.feed-top {
+.feed-card:active {
+  background: #F8FAFC;
+}
+.feed-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8rpx;
+  align-items: flex-start;
+  gap: 18rpx;
 }
-.feed-type {
-  padding: 2rpx 14rpx;
-  border-radius: 8rpx;
-  background: #EEF4FF;
-  color: #102F6E;
-  font-size: 20rpx;
-  font-weight: 600;
-}
-.feed-date {
-  font-size: 21rpx;
-  color: #8A9AA8;
+.feed-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .feed-name {
-  font-size: 27rpx;
-  font-weight: 700;
-  line-height: 1.5;
-  color: #102F6E;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #0F172A;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .feed-text {
   margin-top: 8rpx;
   font-size: 24rpx;
   color: #475569;
-  line-height: 1.6;
+  line-height: 1.55;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.feed-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+.feed-type {
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+.feed-type.tp-announcement {
+  background: #FFFBEB;
+  color: #B45309;
+}
+.feed-type.tp-competition_report {
+  background: #EEF4FF;
+  color: #165DFF;
+}
+.feed-author {
+  font-size: 21rpx;
+  color: #64748B;
+  max-width: 240rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feed-date {
+  font-size: 21rpx;
+  color: #94A3B8;
+  margin-left: auto;
+}
+.feed-thumb {
+  width: 164rpx;
+  height: 116rpx;
+  border-radius: 10rpx;
+  flex-shrink: 0;
+  background: #F1F5F9;
 }
 </style>

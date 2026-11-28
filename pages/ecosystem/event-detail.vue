@@ -1,56 +1,53 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">赛事详情</text>
-      <view class="nav-actions">
-        <view
-          v-if="event"
-          class="nav-fav"
-          :class="{ on: event.favorited }"
-          role="button"
-          tabindex="0"
-          @click="toggleFavorite"
-        >{{ event.favorited ? '已收藏' : '收藏' }}</view>
-        <!-- #ifdef H5 -->
-        <view class="nav-share" role="button" tabindex="0" @click="copyLink">复制链接</view>
-        <!-- #endif -->
-      </view>
-    </view>
+    <nav-bar title="赛事详情" fallback-tab="/pages/home/index">
+      <template #right>
+        <view class="nav-actions">
+          <view
+            v-if="event"
+            class="nav-fav"
+            :class="{ on: event.favorited }"
+            role="button"
+            tabindex="0"
+            @click="toggleFavorite"
+          >{{ event.favorited ? '已收藏' : '收藏' }}</view>
+          <!-- #ifdef H5 -->
+          <view class="nav-share" role="button" tabindex="0" @click="copyLink">分享</view>
+          <!-- #endif -->
+        </view>
+      </template>
+    </nav-bar>
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && !event"
-      empty-icon="🏟️"
+      empty-icon="/static/icons/mine/empty-event.png"
       empty-text="赛事不存在或未公开"
       empty-hint="请返回列表查看已发布的赛事。"
       @retry="load"
     >
       <view v-if="event" class="detail">
-        <view class="hero">
-          <image v-if="coverUrl" class="hero-img" :src="coverUrl" mode="aspectFill"></image>
-          <view v-else class="hero-fallback">
-            <text class="hero-icon">🏁</text>
-            <text class="hero-kind">{{ kindLabel }}</text>
-          </view>
-          <text class="status-badge" :class="'st-' + status.code">{{ status.label }}</text>
+        <view v-if="coverUrl" class="hero">
+          <image class="hero-img" :src="coverUrl" mode="aspectFill"></image>
         </view>
 
-        <view class="detail-body">
-          <view class="title-row">
+        <view class="detail-body" :class="{ 'no-hero': !coverUrl }">
+          <view class="tag-row">
             <text class="detail-kind">{{ kindLabel }}</text>
-            <text class="detail-title">{{ event.name }}</text>
+            <text class="status-badge" :class="'st-' + status.code">{{ status.label }}</text>
           </view>
+
+          <text class="detail-title">{{ event.name }}</text>
           <text v-if="event.summary" class="detail-summary">{{ event.summary }}</text>
 
           <view class="info-grid">
             <view class="info-item">
               <text class="info-label">时间</text>
-              <text class="info-value">{{ whenText }}</text>
+              <text class="info-value sm-mono">{{ whenText }}</text>
               <text v-if="timezoneText" class="info-sub">{{ timezoneText }}</text>
             </view>
             <view class="info-item">
@@ -114,7 +111,7 @@
                 <text class="competition-track-meta">
                   {{ track.min_team_size || '?' }}–{{ track.max_team_size || '?' }} 人
                   · {{ track.allow_multi_team ? '允许一人多队' : '一人一队' }}
-                  <text v-if="track.registration && track.registration.closes_at">
+                  <text v-if="track.registration && track.registration.closes_at" class="sm-mono">
                     · 报名截止 {{ formatDateTime(track.registration.closes_at) }}
                   </text>
                 </text>
@@ -127,10 +124,10 @@
               赛项尚未开放。
             </view>
             <view class="competition-actions">
-              <view class="competition-track-btn" role="button" tabindex="0" @click="openCompetitionResults">
+              <view class="competition-track-btn secondary" role="button" tabindex="0" @click="openCompetitionResults">
                 成绩与展示
               </view>
-              <view class="competition-track-btn" role="button" tabindex="0" @click="openCompetitionShowcase">
+              <view class="competition-track-btn secondary" role="button" tabindex="0" @click="openCompetitionShowcase">
                 展示授权
               </view>
             </view>
@@ -141,7 +138,7 @@
                   <text class="schedule-stage-name">{{ stage.name }}</text>
                   <view v-for="match in stage.matches" :key="match.match_key" class="schedule-match">
                     <text>{{ match.home ? match.home.team_name : '待定' }} vs {{ match.away ? match.away.team_name : '待定' }}</text>
-                    <text class="schedule-time">{{ formatDateTime(match.starts_at) }} · {{ match.venue || '场地待定' }}</text>
+                    <text class="schedule-time sm-mono">{{ formatDateTime(match.starts_at) }} · {{ match.venue || '场地待定' }}</text>
                   </view>
                 </view>
               </view>
@@ -168,11 +165,13 @@
 
           <view v-if="event.source.name" class="section">
             <text class="section-title">信息来源</text>
-            <text class="source-name">{{ event.source.name }}</text>
-            <text v-if="event.source.url" class="source-url">{{ event.source.url }}</text>
+            <view class="source-box">
+              <text class="source-name">{{ event.source.name }}</text>
+              <text v-if="event.source.url" class="source-url">{{ event.source.url }}</text>
+            </view>
           </view>
 
-          <view v-if="publishedText" class="publish-line">公开时间：{{ publishedText }}</view>
+          <view v-if="publishedText" class="publish-line sm-mono">公开时间：{{ publishedText }}</view>
         </view>
       </view>
     </state-view>
@@ -180,6 +179,7 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { eventApi, competitionApi, favoriteApi } from '@/utils/api'
 import { BASE_URL, SSR_BASE_URL } from '@/utils/config'
@@ -216,7 +216,7 @@ function h5ShareBase() {
 
 export default {
   name: 'EcosystemEventDetail',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       eventId: 0,
@@ -317,12 +317,7 @@ export default {
     return { title: '召唤机甲 · 赛事活动', path: '/pages/ecosystem/events' }
   },
   methods: {
-    goBack() {
-      uni.navigateBack({
-        delta: 1,
-        fail: () => uni.switchTab({ url: '/pages/home/index' }),
-      })
-    },
+    formatDateTime,
     applyError(error) {
       const info = errorState(error)
       this.event = null
@@ -366,7 +361,6 @@ export default {
           })
         }
       } catch (error) {
-        // 失败不改本地状态，也不提示成功。
         const message = errorState(error).message || '操作失败，请稍后重试'
         uni.showToast({ title: message, icon: 'none' })
       }
@@ -383,7 +377,6 @@ export default {
       } else if (key === 'contents' && item.slug) {
         uni.navigateTo({ url: `/pages/ecosystem/content-detail?slug=${encodeURIComponent(item.slug)}` })
       }
-      // 机型/技能/场景只展示事实，不提供误导性跳转或购买承诺。
     },
     async load() {
       if (!this.eventId) return
@@ -394,7 +387,6 @@ export default {
       this.errorInfo = null
 
       try {
-        // 详情只按 ID 重新请求：支持直达/刷新，不依赖列表内存对象。
         const response = await eventApi.getEvent(this.eventId)
         if (seq !== this.requestSeq) return
 
@@ -404,8 +396,6 @@ export default {
         this.event = event
         this.applySeo(event)
 
-        // G3：赛事赛项/赛程是附加信息。拉取失败不能把整页详情打成故障，
-        // 但也不能伪造赛项 —— competition 保持 null，页面不显示该区块。
         if (event.kind === 'competition') {
           try {
             const competition = await competitionApi.getByEvent(this.eventId)
@@ -434,7 +424,6 @@ export default {
       copyShareLink(path, h5ShareBase(), (text) => new Promise((resolve, reject) => {
         uni.setClipboardData({ data: text, success: resolve, fail: reject })
       })).then((result) => {
-        // 只有写入成功才提示成功。
         uni.showToast({ title: result.message, icon: result.ok ? 'success' : 'none' })
       })
     },
@@ -487,138 +476,106 @@ export default {
 <style scoped>
 .eco-page {
   min-height: 100vh;
-  background: #F5F7FB;
-  padding-bottom: 40rpx;
+  background: #F4F7FB;
+  padding-bottom: 48rpx;
   box-sizing: border-box;
-}
-.eco-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 88rpx 24rpx 22rpx;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
-  color: #FFFFFF;
-}
-.nav-back,
-.nav-side {
-  width: 96rpx;
-  height: 60rpx;
-  line-height: 52rpx;
-  font-size: 48rpx;
-  font-weight: 300;
 }
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 18rpx;
-  min-width: 96rpx;
+  gap: 12rpx;
   justify-content: flex-end;
+  white-space: nowrap;
 }
 .nav-fav {
-  padding: 6rpx 18rpx;
-  border-radius: 24rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.55);
-  color: #FFFFFF;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #DCE5F2;
+  background: #F8FAFC;
+  color: #475569;
   font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1.2;
 }
 .nav-fav.on {
-  background: #FFFFFF;
-  color: #102F6E;
+  background: #EEF4FF;
+  border-color: #165DFF;
+  color: #165DFF;
   font-weight: 600;
-}
-.nav-back:focus-visible,
-.nav-share:focus-visible,
-.nav-fav:focus-visible {
-  outline: 3rpx solid #FFFFFF;
-  border-radius: 8rpx;
-}
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 34rpx;
-  font-weight: 600;
-  letter-spacing: 2rpx;
 }
 .nav-share {
-  width: 96rpx;
-  text-align: right;
-  font-size: 24rpx;
-  color: #FFFFFF;
+  padding: 8rpx 14rpx;
+  font-size: 23rpx;
+  color: #475569;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.nav-share:focus-visible,
+.nav-fav:focus-visible {
+  outline: 3rpx solid #165DFF;
+  border-radius: 999rpx;
 }
 .detail {
-  padding: 24rpx;
+  padding: 20rpx 24rpx 24rpx;
 }
 .hero {
-  position: relative;
   height: 360rpx;
-  border-radius: 20rpx;
+  border-radius: 18rpx;
   overflow: hidden;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #F1F5F9;
+  margin-bottom: 20rpx;
 }
-.hero-img { width: 100%; height: 100%; }
-.hero-fallback {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.hero-img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
-.hero-icon { font-size: 120rpx; }
-.hero-kind {
-  margin-top: 12rpx;
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.85);
-  letter-spacing: 4rpx;
-}
-.status-badge {
-  position: absolute;
-  top: 20rpx;
-  right: 20rpx;
-  padding: 8rpx 22rpx;
-  border-radius: 28rpx;
-  font-size: 23rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-  background: #475569;
-}
-.st-ongoing { background: #165DFF; }
-.st-upcoming { background: #0E7C5A; }
-.st-ended,
-.st-canceled { background: #52607A; }
-.st-pending { background: #92400E; }
 .detail-body {
-  margin-top: 24rpx;
   background: #FFFFFF;
-  border: 1rpx solid #E5EAF3;
-  border-radius: 20rpx;
+  border: 1rpx solid #E5EAF2;
+  border-radius: 18rpx;
   padding: 28rpx 26rpx 34rpx;
 }
-.title-row {
+.tag-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-bottom: 14rpx;
 }
 .detail-kind {
-  align-self: flex-start;
-  padding: 4rpx 16rpx;
-  margin-bottom: 12rpx;
-  border-radius: 8rpx;
-  background: #EEF4FF;
-  color: #102F6E;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  background: #F1F5F9;
+  color: #475569;
   font-size: 22rpx;
-  font-weight: 600;
+  font-weight: 500;
 }
+.status-badge {
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+  background: #F1F5F9;
+  color: #64748B;
+}
+.st-ongoing { background: #EEF4FF; color: #165DFF; }
+.st-upcoming { background: #ECFDF5; color: #059669; }
+.st-ended,
+.st-canceled { background: #F1F5F9; color: #64748B; }
+.st-pending { background: #FFFBEB; color: #D97706; }
 .detail-title {
-  font-size: 40rpx;
+  display: block;
+  font-size: 38rpx;
   font-weight: 700;
-  line-height: 1.35;
-  color: #102F6E;
+  line-height: 1.38;
+  color: #0F172A;
 }
 .detail-summary {
   display: block;
   margin-top: 14rpx;
   font-size: 26rpx;
-  line-height: 1.7;
+  line-height: 1.68;
   color: #475569;
 }
 .info-grid {
@@ -626,10 +583,10 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18rpx 20rpx;
-  padding: 20rpx 22rpx;
-  border-radius: 16rpx;
-  background: #F8FAFF;
-  border: 1rpx solid #E5EAF3;
+  padding: 22rpx;
+  border-radius: 14rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E5EAF2;
 }
 .info-item {
   display: flex;
@@ -637,42 +594,45 @@ export default {
 }
 .info-label {
   font-size: 22rpx;
-  color: #7A8AA3;
+  color: #64748B;
 }
 .info-value {
   margin-top: 4rpx;
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: 600;
-  line-height: 1.5;
-  color: #102F6E;
-  word-break: break-all;
+  line-height: 1.48;
+  color: #0F172A;
+  word-break: break-word;
 }
 .info-sub {
   margin-top: 2rpx;
   font-size: 21rpx;
-  color: #8A9AA8;
+  color: #94A3B8;
 }
 .reg-card {
-  margin-top: 24rpx;
-  padding: 24rpx;
-  border-radius: 16rpx;
-  border: 1rpx solid #D7E2F7;
-  background: #F4F8FF;
+  margin-top: 22rpx;
+  padding: 22rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid #DCE5F2;
+  background: #F8FAFC;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 .reg-title {
   display: block;
   font-size: 26rpx;
-  font-weight: 700;
-  color: #102F6E;
-  margin-bottom: 14rpx;
+  font-weight: 600;
+  color: #0F172A;
+  margin-bottom: 12rpx;
 }
 .reg-btn {
   display: inline-block;
   padding: 18rpx 48rpx;
-  border-radius: 40rpx;
+  border-radius: 999rpx;
   background: #165DFF;
   color: #FFFFFF;
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
   text-align: center;
 }
@@ -683,24 +643,24 @@ export default {
 .reg-reason {
   font-size: 25rpx;
   line-height: 1.6;
-  color: #5B6B85;
+  color: #64748B;
 }
 .section {
-  margin-top: 30rpx;
+  margin-top: 32rpx;
 }
 .section-title {
   display: block;
-  margin-bottom: 14rpx;
-  padding-left: 16rpx;
-  border-left: 6rpx solid #165DFF;
+  margin-bottom: 16rpx;
+  padding-left: 14rpx;
+  border-left: 5rpx solid #165DFF;
   font-size: 29rpx;
-  font-weight: 700;
-  color: #102F6E;
+  font-weight: 600;
+  color: #0F172A;
 }
 .rich-body {
   font-size: 27rpx;
-  line-height: 1.8;
-  color: #334155;
+  line-height: 1.82;
+  color: #1E293B;
   word-break: break-word;
 }
 .related-group {
@@ -710,8 +670,8 @@ export default {
   display: block;
   margin-bottom: 8rpx;
   font-size: 23rpx;
-  font-weight: 600;
-  color: #475569;
+  font-weight: 500;
+  color: #64748B;
 }
 .related-items {
   display: flex;
@@ -720,43 +680,51 @@ export default {
 }
 .related-item {
   padding: 8rpx 18rpx;
-  border-radius: 24rpx;
-  background: #F1F5FD;
-  border: 1rpx solid #DCE5F5;
+  border-radius: 999rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E5EAF2;
   font-size: 23rpx;
   color: #334155;
 }
 .related-item.linkable {
+  background: #EEF4FF;
+  border-color: #DCE5F5;
   color: #165DFF;
 }
 .related-item.linkable:focus-visible {
   outline: 3rpx solid #165DFF;
 }
+.source-box {
+  padding: 16rpx 18rpx;
+  border-radius: 12rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #E5EAF2;
+}
 .source-name {
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: 600;
-  color: #102F6E;
+  color: #0F172A;
 }
 .source-url {
   display: block;
   margin-top: 6rpx;
-  font-size: 23rpx;
-  color: #5B6B85;
+  font-size: 22rpx;
+  color: #64748B;
   word-break: break-all;
 }
 .publish-line {
   margin-top: 30rpx;
   padding-top: 18rpx;
-  border-top: 1rpx solid #E5EAF3;
+  border-top: 1rpx solid #E5EAF2;
   font-size: 22rpx;
-  color: #8A9AA8;
+  color: #94A3B8;
 }
 .competition-track {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #EEF2F8;
+  border-bottom: 1rpx solid #E5EAF2;
 }
 .competition-track-main {
   flex: 1;
@@ -766,12 +734,12 @@ export default {
   display: block;
   font-size: 28rpx;
   font-weight: 600;
-  color: #1F2D3D;
+  color: #0F172A;
   margin-bottom: 6rpx;
 }
 .competition-track-meta {
   font-size: 23rpx;
-  color: #7A8699;
+  color: #64748B;
   line-height: 1.6;
 }
 .competition-track-btn {
@@ -779,22 +747,24 @@ export default {
   color: #FFFFFF;
   border-radius: 12rpx;
   font-size: 24rpx;
+  font-weight: 500;
   padding: 14rpx 24rpx;
   white-space: nowrap;
 }
 .competition-actions {
   display: flex;
-  gap: 16rpx;
+  gap: 14rpx;
   margin-top: 18rpx;
 }
-.competition-actions .competition-track-btn {
-  background: #EEF2FF;
-  color: #3730A3;
+.competition-track-btn.secondary {
+  background: #F1F5F9;
+  border: 1rpx solid #DCE5F2;
+  color: #334155;
 }
 .competition-empty {
   padding: 18rpx 0;
   font-size: 24rpx;
-  color: #7A8699;
+  color: #64748B;
 }
 .schedule-track {
   margin-top: 22rpx;
@@ -803,17 +773,18 @@ export default {
   display: block;
   font-size: 26rpx;
   font-weight: 600;
-  color: #102F6E;
+  color: #0F172A;
   margin-bottom: 8rpx;
 }
 .schedule-stage {
   margin-top: 14rpx;
-  padding-left: 12rpx;
-  border-left: 4rpx solid #DCE5F5;
+  padding-left: 14rpx;
+  border-left: 4rpx solid #DCE5F2;
 }
 .schedule-stage-name {
   display: block;
   font-size: 24rpx;
+  font-weight: 500;
   color: #165DFF;
   margin-bottom: 6rpx;
 }
@@ -825,7 +796,7 @@ export default {
 .schedule-time {
   display: block;
   font-size: 22rpx;
-  color: #7A8699;
+  color: #64748B;
   margin-top: 4rpx;
 }
 </style>

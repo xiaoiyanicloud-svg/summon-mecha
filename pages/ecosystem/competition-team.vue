@@ -1,16 +1,12 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">{{ team ? team.name : '我的队伍' }}</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar :title="team ? team.name : '我的队伍'" fallback-tab="/pages/home/index" />
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :empty="!loading && !errorMessage && !team && teams.length === 0 && !competition"
-      empty-icon="🤖"
+      empty-icon="/static/icons/mine/empty-robot.png"
       empty-text="暂无可参与的赛项"
       empty-hint="赛事赛项由主办方发布后才会出现在这里。"
       @retry="load"
@@ -142,6 +138,7 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { competitionApi, competitionTeamApi } from '@/utils/api'
 
@@ -151,7 +148,7 @@ function requestKey(prefix) {
 
 export default {
   name: 'CompetitionTeam',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       eventId: 0,
@@ -411,38 +408,30 @@ export default {
 </script>
 
 <style scoped>
-.eco-page { min-height: 100vh; background: #F5F7FB; padding-bottom: 40rpx; box-sizing: border-box; }
-.eco-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 88rpx 24rpx 22rpx;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
-  color: #FFFFFF;
-}
-.nav-back, .nav-side { width: 96rpx; height: 60rpx; line-height: 52rpx; font-size: 48rpx; }
-.nav-title { flex: 1; text-align: center; font-size: 34rpx; font-weight: 600; }
-.page-body { padding: 24rpx; }
-.card { background: #FFFFFF; border-radius: 20rpx; padding: 28rpx; margin-bottom: 24rpx; box-shadow: 0 8rpx 24rpx rgba(16, 47, 110, 0.06); }
-.card-title { display: block; font-size: 32rpx; font-weight: 600; color: #102F6E; margin-bottom: 12rpx; }
-.muted { display: block; font-size: 24rpx; color: #7A8699; line-height: 1.6; }
-.track-row, .team-row, .member-row { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 0; border-bottom: 1rpx solid #EEF2F8; }
+.eco-page { min-height: 100vh; background: #F4F7FB; padding-bottom: 40rpx; box-sizing: border-box; }
+.page-body { padding: 20rpx 24rpx; }
+.card { background: #FFFFFF; border: 1rpx solid #E5EAF2; border-radius: 18rpx; padding: 26rpx; margin-bottom: 20rpx; }
+.card-title { display: block; font-size: 30rpx; font-weight: 600; color: #0F172A; margin-bottom: 12rpx; }
+.muted { display: block; font-size: 24rpx; color: #64748B; line-height: 1.6; }
+.track-row, .team-row, .member-row { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 0; border-bottom: 1rpx solid #E5EAF2; }
 .track-row:last-child, .member-row:last-child, .team-row:last-child { border-bottom: none; }
 .track-main { flex: 1; padding-right: 16rpx; }
-.track-name, .team-name { display: block; font-size: 28rpx; color: #1F2D3D; margin-bottom: 6rpx; }
+.track-name, .team-name { display: block; font-size: 28rpx; color: #0F172A; font-weight: 500; margin-bottom: 6rpx; }
 .mini-btn { background: #165DFF; color: #FFFFFF; border-radius: 12rpx; font-size: 24rpx; padding: 0 24rpx; line-height: 58rpx; }
-.mini-btn.ghost { background: #EEF3FF; color: #165DFF; }
+.mini-btn.ghost { background: #F1F5F9; color: #334155; }
 .primary-btn { margin-top: 20rpx; background: #165DFF; color: #FFFFFF; border-radius: 14rpx; font-size: 28rpx; line-height: 84rpx; }
-.field { margin-top: 16rpx; background: #F5F7FB; border-radius: 12rpx; padding: 22rpx; font-size: 28rpx; color: #1F2D3D; }
+.field { margin-top: 16rpx; background: #F8FAFC; border: 1rpx solid #DCE5F2; border-radius: 12rpx; padding: 20rpx; font-size: 28rpx; color: #0F172A; }
 .team-head { display: flex; align-items: flex-start; justify-content: space-between; }
-.status-pill { background: #EEF3FF; color: #165DFF; padding: 6rpx 18rpx; border-radius: 999rpx; font-size: 22rpx; }
+.status-pill { background: #EEF4FF; color: #165DFF; padding: 6rpx 18rpx; border-radius: 999rpx; font-size: 22rpx; font-weight: 500; }
 .member-list { margin-top: 12rpx; }
-.action-block { margin-top: 24rpx; padding-top: 20rpx; border-top: 1rpx solid #EEF2F8; }
-.section-label { display: block; font-size: 26rpx; font-weight: 600; color: #102F6E; margin-bottom: 10rpx; }
-.token-box { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; background: #F5F7FB; border-radius: 12rpx; padding: 18rpx; }
-.token { flex: 1; font-size: 22rpx; color: #1F2D3D; word-break: break-all; }
-.consent { display: flex; align-items: flex-start; gap: 12rpx; margin-top: 20rpx; font-size: 24rpx; color: #4E5B6E; line-height: 1.6; }
+.action-block { margin-top: 24rpx; padding-top: 20rpx; border-top: 1rpx solid #E5EAF2; }
+.section-label { display: block; font-size: 26rpx; font-weight: 600; color: #0F172A; margin-bottom: 10rpx; }
+.token-box { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; background: #F8FAFC; border: 1rpx solid #E5EAF2; border-radius: 12rpx; padding: 18rpx; }
+.token { flex: 1; font-size: 22rpx; color: #0F172A; word-break: break-all; }
+.consent { display: flex; align-items: flex-start; gap: 12rpx; margin-top: 20rpx; font-size: 24rpx; color: #475569; line-height: 1.6; }
 .footer-actions { display: flex; gap: 16rpx; margin-top: 24rpx; }
 .stage { margin-top: 18rpx; }
-.stage-name { display: block; font-size: 26rpx; color: #102F6E; font-weight: 600; }
-.match { padding: 12rpx 0; border-bottom: 1rpx solid #EEF2F8; }
-.arrow { color: #B7C0CE; font-size: 34rpx; }
+.stage-name { display: block; font-size: 26rpx; color: #0F172A; font-weight: 600; }
+.match { padding: 12rpx 0; border-bottom: 1rpx solid #E5EAF2; }
+.arrow { color: #94A3B8; font-size: 34rpx; }
 </style>

@@ -1,16 +1,12 @@
 <template>
   <view class="eco-page">
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">成绩与展示</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar title="成绩与展示" fallback-tab="/pages/home/index" />
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :empty="!loading && !errorMessage && tracks.length === 0"
-      empty-icon="🏁"
+      empty-icon="/static/icons/mine/celebrate.png"
       empty-text="成绩尚未公开"
       empty-hint="主办方公布成绩后才会出现在这里。"
       @retry="load"
@@ -97,12 +93,13 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
 import { competitionApi, competitionAppealApi } from '@/utils/api'
 
 export default {
   name: 'CompetitionResults',
-  components: { StateView },
+  components: { NavBar, StateView },
   data() {
     return {
       eventId: 0,
@@ -247,30 +244,26 @@ export default {
 </script>
 
 <style scoped>
-.eco-page { min-height: 100vh; background: #f5f7fb; }
-.eco-nav { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx; background: #fff; }
-.nav-back { width: 64rpx; font-size: 44rpx; color: #1f2937; }
-.nav-title { font-size: 32rpx; font-weight: 600; color: #111827; }
-.nav-side { width: 64rpx; }
-.page-body { padding: 24rpx; }
-.card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; }
-.card-title { display: block; font-size: 30rpx; font-weight: 600; color: #111827; margin-bottom: 12rpx; }
-.muted { display: block; font-size: 24rpx; color: #6b7280; line-height: 1.6; }
-.result-row { display: flex; justify-content: space-between; align-items: center; padding: 18rpx 0; border-top: 1rpx solid #f0f1f5; }
+.eco-page { min-height: 100vh; background: #F4F7FB; padding-bottom: 40rpx; box-sizing: border-box; }
+.page-body { padding: 20rpx 24rpx; }
+.card { background: #FFFFFF; border: 1rpx solid #E5EAF2; border-radius: 18rpx; padding: 26rpx; margin-bottom: 20rpx; }
+.card-title { display: block; font-size: 30rpx; font-weight: 600; color: #0F172A; margin-bottom: 12rpx; }
+.muted { display: block; font-size: 24rpx; color: #64748B; line-height: 1.6; }
+.result-row { display: flex; justify-content: space-between; align-items: center; padding: 18rpx 0; border-top: 1rpx solid #E5EAF2; }
 .result-main { flex: 1; }
-.result-team { display: block; font-size: 28rpx; color: #111827; }
-.section-label { display: block; margin-top: 20rpx; font-size: 26rpx; font-weight: 600; color: #374151; }
-.award-row { padding: 10rpx 0; font-size: 26rpx; color: #374151; }
-.appeal-row { display: flex; justify-content: space-between; gap: 16rpx; padding: 16rpx 0; border-top: 1rpx solid #f0f1f5; }
-.appeal-main { flex: 1; font-size: 26rpx; color: #111827; }
+.result-team { display: block; font-size: 28rpx; font-weight: 600; color: #0F172A; }
+.section-label { display: block; margin-top: 20rpx; font-size: 26rpx; font-weight: 600; color: #0F172A; }
+.award-row { padding: 10rpx 0; font-size: 26rpx; color: #334155; }
+.appeal-row { display: flex; justify-content: space-between; gap: 16rpx; padding: 16rpx 0; border-top: 1rpx solid #E5EAF2; }
+.appeal-main { flex: 1; font-size: 26rpx; color: #0F172A; }
 .appeal-actions { display: flex; flex-direction: column; gap: 8rpx; }
-.showcase-row { padding: 16rpx 0; border-top: 1rpx solid #f0f1f5; }
-.showcase-title { display: block; font-size: 28rpx; font-weight: 600; color: #111827; }
-.showcase-summary { display: block; margin-top: 8rpx; font-size: 24rpx; color: #4b5563; line-height: 1.6; }
-.field { width: 100%; box-sizing: border-box; margin-top: 16rpx; padding: 18rpx 20rpx; border: 1rpx solid #e5e7eb; border-radius: 12rpx; font-size: 26rpx; background: #fff; }
+.showcase-row { padding: 16rpx 0; border-top: 1rpx solid #E5EAF2; }
+.showcase-title { display: block; font-size: 28rpx; font-weight: 600; color: #0F172A; }
+.showcase-summary { display: block; margin-top: 8rpx; font-size: 24rpx; color: #475569; line-height: 1.6; }
+.field { width: 100%; box-sizing: border-box; margin-top: 16rpx; padding: 18rpx 20rpx; border: 1rpx solid #DCE5F2; border-radius: 12rpx; font-size: 26rpx; background: #F8FAFC; color: #0F172A; }
 .textarea { min-height: 180rpx; }
 .footer-actions { display: flex; gap: 16rpx; margin-top: 20rpx; }
-.primary-btn { flex: 1; padding: 20rpx; border-radius: 12rpx; background: #2563eb; color: #fff; font-size: 26rpx; }
-.mini-btn { padding: 14rpx 24rpx; border-radius: 12rpx; background: #2563eb; color: #fff; font-size: 24rpx; }
-.mini-btn.ghost { background: #eef2ff; color: #3730a3; }
+.primary-btn { flex: 1; padding: 20rpx; border-radius: 12rpx; background: #165DFF; color: #FFFFFF; font-size: 26rpx; }
+.mini-btn { padding: 14rpx 24rpx; border-radius: 12rpx; background: #165DFF; color: #FFFFFF; font-size: 24rpx; }
+.mini-btn.ghost { background: #F1F5F9; color: #334155; }
 </style>

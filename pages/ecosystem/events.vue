@@ -1,130 +1,176 @@
 <template>
   <view class="eco-page">
-    <!-- 自定义导航：深蓝底色 + 返回。H5 直达/刷新时退回首页 tab。 -->
-    <view class="eco-nav">
-      <view class="nav-back" role="button" tabindex="0" aria-label="返回" @click="goBack">‹</view>
-      <text class="nav-title">赛事活动</text>
-      <view class="nav-side"></view>
-    </view>
+    <nav-bar title="赛事活动" fallback-tab="/pages/home/index" />
 
     <view class="filter-wrap">
       <view class="search-row">
-        <input
-          v-model="filters.q"
-          class="search-input"
-          type="text"
-          confirm-type="search"
-          maxlength="50"
-          placeholder="搜索活动 / 城市 / 地点"
-          @confirm="applyFilters"
-        />
-        <input
-          v-model="filters.city"
-          class="search-input city-input"
-          type="text"
-          confirm-type="search"
-          maxlength="100"
-          placeholder="城市"
-          @confirm="applyFilters"
-        />
+        <view class="search-box">
+          <view class="search-icon" aria-hidden="true">
+            <view class="search-icon-ring"></view>
+            <view class="search-icon-handle"></view>
+          </view>
+          <input
+            v-model="filters.q"
+            class="search-input"
+            type="text"
+            confirm-type="search"
+            maxlength="50"
+            placeholder="搜索活动 / 城市 / 地点"
+            placeholder-style="color: #94A3B8"
+            @confirm="applyFilters"
+          />
+          <text v-if="filters.q" class="search-clear" role="button" tabindex="0" @click="clearQuery">✕</text>
+        </view>
         <text class="search-btn" role="button" tabindex="0" @click="applyFilters">搜索</text>
       </view>
 
-      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
-        <view class="chip-row">
-          <text
-            class="chip"
-            :class="{ on: datePreset === '' }"
-            role="button"
-            tabindex="0"
-            @click="chooseDatePreset('')"
-          >全部时间</text>
-          <text
-            v-for="option in datePresetOptions"
-            :key="option.value"
-            class="chip"
-            :class="{ on: datePreset === option.value }"
-            role="button"
-            tabindex="0"
-            @click="chooseDatePreset(option.value)"
-          >{{ option.label }}</text>
+      <view class="tab-bar">
+        <scroll-view class="tab-scroll" scroll-x="true" :enhanced="true" :show-scrollbar="false">
+          <view class="tab-row">
+            <text
+              class="type-tab"
+              :class="{ on: filters.kind === '' }"
+              role="button"
+              tabindex="0"
+              @click="chooseFilter('kind', '')"
+            >全部</text>
+            <text
+              v-for="option in kindOptions"
+              :key="option.value"
+              class="type-tab"
+              :class="{ on: filters.kind === option.value }"
+              role="button"
+              tabindex="0"
+              @click="chooseFilter('kind', option.value)"
+            >{{ option.label }}</text>
+          </view>
+        </scroll-view>
+        <view
+          class="filter-toggle"
+          :class="{ active: showFilterPanel || activeSecondaryCount > 0 }"
+          role="button"
+          tabindex="0"
+          @click="showFilterPanel = !showFilterPanel"
+        >
+          <text class="filter-toggle-text">筛选</text>
+          <text v-if="activeSecondaryCount > 0" class="filter-badge sm-mono">{{ activeSecondaryCount }}</text>
+          <text class="filter-chevron">{{ showFilterPanel ? '▴' : '▾' }}</text>
         </view>
-      </scroll-view>
+      </view>
 
-      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
-        <view class="chip-row">
-          <text
-            class="chip"
-            :class="{ on: filters.registration_state === '' }"
-            role="button"
-            tabindex="0"
-            @click="chooseFilter('registration_state', '')"
-          >全部报名状态</text>
-          <text
-            v-for="option in registrationStateOptions"
-            :key="option.value"
-            class="chip"
-            :class="{ on: filters.registration_state === option.value }"
-            role="button"
-            tabindex="0"
-            @click="chooseFilter('registration_state', option.value)"
-          >{{ option.label }}</text>
+      <view v-if="!showFilterPanel && activeSecondaryTags.length" class="active-tags">
+        <view
+          v-for="tag in activeSecondaryTags"
+          :key="tag.key"
+          class="active-tag"
+          role="button"
+          tabindex="0"
+          @click="clearOneFilter(tag.key)"
+        >
+          <text>{{ tag.label }}</text>
+          <text class="active-tag-x">×</text>
         </view>
-      </scroll-view>
+        <text class="active-reset" role="button" tabindex="0" @click="resetSecondaryFilters">重置</text>
+      </view>
 
-      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
-        <view class="chip-row">
-          <text
-            class="chip"
-            :class="{ on: filters.kind === '' }"
-            role="button"
-            tabindex="0"
-            @click="chooseFilter('kind', '')"
-          >全部类型</text>
-          <text
-            v-for="option in kindOptions"
-            :key="option.value"
-            class="chip"
-            :class="{ on: filters.kind === option.value }"
-            role="button"
-            tabindex="0"
-            @click="chooseFilter('kind', option.value)"
-          >{{ option.label }}</text>
+      <view v-if="showFilterPanel" class="filter-drawer">
+        <view class="drawer-group">
+          <text class="drawer-label">时间</text>
+          <view class="drawer-chips">
+            <text
+              class="drawer-chip"
+              :class="{ on: datePreset === '' }"
+              role="button"
+              tabindex="0"
+              @click="chooseDatePreset('')"
+            >全部</text>
+            <text
+              v-for="option in datePresetOptions"
+              :key="option.value"
+              class="drawer-chip"
+              :class="{ on: datePreset === option.value }"
+              role="button"
+              tabindex="0"
+              @click="chooseDatePreset(option.value)"
+            >{{ option.label }}</text>
+          </view>
         </view>
-      </scroll-view>
 
-      <scroll-view class="chip-scroll" scroll-x="true" show-scrollbar="false">
-        <view class="chip-row">
-          <text
-            class="chip"
-            :class="{ on: filters.hosting_status === '' }"
-            role="button"
-            tabindex="0"
-            @click="chooseFilter('hosting_status', '')"
-          >全部状态</text>
-          <text
-            v-for="option in statusOptions"
-            :key="option.value"
-            class="chip"
-            :class="{ on: filters.hosting_status === option.value }"
-            role="button"
-            tabindex="0"
-            @click="chooseFilter('hosting_status', option.value)"
-          >{{ option.label }}</text>
+        <view class="drawer-group">
+          <text class="drawer-label">报名</text>
+          <view class="drawer-chips">
+            <text
+              class="drawer-chip"
+              :class="{ on: filters.registration_state === '' }"
+              role="button"
+              tabindex="0"
+              @click="chooseFilter('registration_state', '')"
+            >全部</text>
+            <text
+              v-for="option in registrationStateOptions"
+              :key="option.value"
+              class="drawer-chip"
+              :class="{ on: filters.registration_state === option.value }"
+              role="button"
+              tabindex="0"
+              @click="chooseFilter('registration_state', option.value)"
+            >{{ option.label }}</text>
+          </view>
         </view>
-      </scroll-view>
+
+        <view class="drawer-group">
+          <text class="drawer-label">状态</text>
+          <view class="drawer-chips">
+            <text
+              class="drawer-chip"
+              :class="{ on: filters.hosting_status === '' }"
+              role="button"
+              tabindex="0"
+              @click="chooseFilter('hosting_status', '')"
+            >全部</text>
+            <text
+              v-for="option in statusOptions"
+              :key="option.value"
+              class="drawer-chip"
+              :class="{ on: filters.hosting_status === option.value }"
+              role="button"
+              tabindex="0"
+              @click="chooseFilter('hosting_status', option.value)"
+            >{{ option.label }}</text>
+          </view>
+        </view>
+
+        <view class="drawer-group">
+          <text class="drawer-label">城市</text>
+          <input
+            v-model="filters.city"
+            class="city-input"
+            type="text"
+            confirm-type="search"
+            maxlength="100"
+            placeholder="输入城市名称（如：上海）"
+            placeholder-style="color: #94A3B8"
+            @confirm="applyFiltersAndClose"
+          />
+        </view>
+
+        <view class="drawer-actions">
+          <text class="drawer-btn ghost" role="button" tabindex="0" @click="resetAllFilters">重置全部</text>
+          <text class="drawer-btn primary" role="button" tabindex="0" @click="applyFiltersAndClose">完成筛选</text>
+        </view>
+      </view>
     </view>
 
     <state-view
       :loading="loading"
       :error="errorMessage"
       :error-text="errorInfo ? errorInfo.title : ''"
-      :error-icon="errorInfo ? errorInfo.icon : '📡'"
+      :error-icon="errorInfo ? errorInfo.icon : '/static/icons/mine/state-error.png'"
       :retry="errorInfo ? errorInfo.retryable : true"
       :empty="!loading && !errorMessage && events.length === 0"
-      empty-icon="🏟️"
-      empty-text="暂无赛事"
-      empty-hint="赛事发布后会在这里展示。"
+      empty-icon="/static/icons/mine/empty-event.png"
+      empty-text="暂无赛事活动"
+      empty-hint="赛事发布后将在此展示。"
       @retry="reload"
     >
       <view class="list">
@@ -137,17 +183,31 @@
           @click="openDetail(item)"
           @keyup.enter="openDetail(item)"
         >
-          <view class="cover">
-            <image v-if="coverOf(item)" class="cover-img" :src="coverOf(item)" mode="aspectFill"></image>
-            <text v-else class="cover-icon">🏁</text>
-            <text class="status-badge" :class="'st-' + statusOf(item).code">{{ statusOf(item).label }}</text>
+          <view v-if="coverOf(item)" class="cover">
+            <image class="cover-img" :src="coverOf(item)" mode="aspectFill"></image>
+            <text class="status-badge over-img" :class="'st-' + statusOf(item).code">{{ statusOf(item).label }}</text>
           </view>
-          <view class="card-body">
-            <text class="card-kind">{{ kindOf(item) }}</text>
-            <text class="card-title">{{ item.name }}</text>
-            <text class="card-meta">{{ whenOf(item) }}</text>
-            <text v-if="placeOf(item)" class="card-meta">{{ placeOf(item) }}</text>
-            <text v-if="item.summary" class="card-summary">{{ item.summary }}</text>
+
+          <view class="card-main" :class="{ 'with-date': !coverOf(item) }">
+            <view v-if="!coverOf(item)" class="date-tile">
+              <template v-if="datePartsOf(item)">
+                <text class="date-month">{{ datePartsOf(item).month }}</text>
+                <text class="date-day sm-mono">{{ datePartsOf(item).day }}</text>
+              </template>
+              <SmIcon v-else name="empty-event" size="42rpx" />
+            </view>
+
+            <view class="card-body">
+              <view class="card-top-tags">
+                <text class="card-kind">{{ kindOf(item) }}</text>
+                <text v-if="!coverOf(item)" class="status-pill" :class="'st-' + statusOf(item).code">{{ statusOf(item).label }}</text>
+                <text v-if="item.registration && item.registration.canRegister" class="reg-open-tag">可报名</text>
+              </view>
+              <text class="card-title">{{ item.name }}</text>
+              <text class="card-meta sm-mono">{{ whenOf(item) }}</text>
+              <text v-if="placeOf(item)" class="card-meta">{{ placeOf(item) }}</text>
+              <text v-if="item.summary" class="card-summary">{{ item.summary }}</text>
+            </view>
           </view>
         </view>
 
@@ -160,14 +220,16 @@
             @click="loadMore"
           >{{ loadingMore ? '加载中…' : '加载更多' }}</view>
         </view>
-        <view v-else-if="events.length" class="list-end">没有更多了</view>
+        <view v-else-if="events.length" class="list-end">已展示全部内容</view>
       </view>
     </state-view>
   </view>
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
 import StateView from '@/components/StateView.vue'
+import SmIcon from '@/components/SmIcon.vue'
 import { eventApi } from '@/utils/api'
 import { BASE_URL } from '@/utils/config'
 import {
@@ -177,6 +239,7 @@ import {
   eventStatus,
   eventKindLabel,
   formatEventWhen,
+  formatEventDateParts,
   resolveMediaUrl,
   pickCover,
   buildSharePath,
@@ -204,11 +267,12 @@ function monthRange() {
 
 export default {
   name: 'EcosystemEvents',
-  components: { StateView },
+  components: { NavBar, StateView, SmIcon },
   data() {
     return {
       filters: { q: '', kind: '', hosting_status: '', city: '', registration_state: '', starts_from: '', starts_to: '' },
       datePreset: '',
+      showFilterPanel: false,
       datePresetOptions: [
         { value: 'upcoming', label: '未来30天' },
         { value: 'month', label: '本月' },
@@ -246,6 +310,30 @@ export default {
       requestSeq: 0,
     }
   },
+  computed: {
+    activeSecondaryTags() {
+      const tags = []
+      if (this.datePreset) {
+        const hit = this.datePresetOptions.find((o) => o.value === this.datePreset)
+        tags.push({ key: 'datePreset', label: hit ? hit.label : this.datePreset })
+      }
+      if (this.filters.registration_state) {
+        const hit = this.registrationStateOptions.find((o) => o.value === this.filters.registration_state)
+        tags.push({ key: 'registration_state', label: hit ? hit.label : this.filters.registration_state })
+      }
+      if (this.filters.hosting_status) {
+        const hit = this.statusOptions.find((o) => o.value === this.filters.hosting_status)
+        tags.push({ key: 'hosting_status', label: hit ? hit.label : this.filters.hosting_status })
+      }
+      if (this.filters.city) {
+        tags.push({ key: 'city', label: `城市: ${this.filters.city}` })
+      }
+      return tags
+    },
+    activeSecondaryCount() {
+      return this.activeSecondaryTags.length
+    },
+  },
   onLoad() {
     this.reload()
   },
@@ -256,12 +344,6 @@ export default {
     this.loadMore()
   },
   methods: {
-    goBack() {
-      uni.navigateBack({
-        delta: 1,
-        fail: () => uni.switchTab({ url: '/pages/home/index' }),
-      })
-    },
     chooseFilter(group, value) {
       if (this.filters[group] === value) return
       this.filters[group] = value
@@ -271,6 +353,40 @@ export default {
       this.filters.q = String(this.filters.q || '').trim()
       this.filters.city = String(this.filters.city || '').trim()
       this.reload()
+    },
+    applyFiltersAndClose() {
+      this.showFilterPanel = false
+      this.applyFilters()
+    },
+    clearQuery() {
+      if (!this.filters.q) return
+      this.filters.q = ''
+      this.reload()
+    },
+    clearOneFilter(key) {
+      if (key === 'datePreset') {
+        this.chooseDatePreset('')
+        return
+      }
+      if (this.filters[key]) {
+        this.filters[key] = ''
+        this.reload()
+      }
+    },
+    resetSecondaryFilters() {
+      this.datePreset = ''
+      this.filters.starts_from = ''
+      this.filters.starts_to = ''
+      this.filters.registration_state = ''
+      this.filters.hosting_status = ''
+      this.filters.city = ''
+      this.reload()
+    },
+    resetAllFilters() {
+      this.filters.q = ''
+      this.filters.kind = ''
+      this.showFilterPanel = false
+      this.resetSecondaryFilters()
     },
     chooseDatePreset(value) {
       if (this.datePreset === value) return
@@ -328,7 +444,6 @@ export default {
         if (seq !== this.requestSeq) return
 
         if (append) {
-          // 已有数据时不把整页打成错误态；明确提示本次加载失败。
           uni.showToast({ title: errorState(error).message, icon: 'none' })
         } else {
           const info = errorState(error)
@@ -363,6 +478,9 @@ export default {
     kindOf(item) {
       return eventKindLabel(item.kind)
     },
+    datePartsOf(item) {
+      return formatEventDateParts(item)
+    },
     whenOf(item) {
       return formatEventWhen(item)
     },
@@ -376,43 +494,14 @@ export default {
 <style scoped>
 .eco-page {
   min-height: 100vh;
-  background: #F5F7FB;
-  padding-bottom: 40rpx;
+  background: #F4F7FB;
+  padding-bottom: 48rpx;
   box-sizing: border-box;
 }
-.eco-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 88rpx 24rpx 22rpx;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
-  color: #FFFFFF;
-}
-.nav-back,
-.nav-side {
-  width: 88rpx;
-  height: 60rpx;
-  line-height: 52rpx;
-  font-size: 48rpx;
-  font-weight: 300;
-  text-align: left;
-}
-.nav-back:focus-visible {
-  outline: 3rpx solid #FFFFFF;
-  border-radius: 8rpx;
-}
-.nav-side { text-align: right; }
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 34rpx;
-  font-weight: 600;
-  letter-spacing: 2rpx;
-}
 .filter-wrap {
-  padding: 20rpx 0 8rpx;
   background: #FFFFFF;
-  border-bottom: 1rpx solid #E5EAF3;
+  border-bottom: 1rpx solid #E5EAF2;
+  padding-top: 16rpx;
 }
 .search-row {
   display: flex;
@@ -420,73 +509,280 @@ export default {
   gap: 12rpx;
   padding: 0 24rpx 14rpx;
 }
+.search-box {
+  flex: 1;
+  min-width: 0;
+  height: 70rpx;
+  padding: 0 14rpx 0 22rpx;
+  border-radius: 999rpx;
+  background: #F4F7FB;
+  border: 1rpx solid #E5EAF2;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+.search-box:focus-within {
+  background: #FFFFFF;
+  border-color: #94B8FF;
+}
+.search-icon {
+  position: relative;
+  width: 24rpx;
+  height: 24rpx;
+  flex: 0 0 24rpx;
+}
+.search-icon-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 17rpx;
+  height: 17rpx;
+  border: 3rpx solid #64748B;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.search-icon-handle {
+  position: absolute;
+  left: 15rpx;
+  top: 15rpx;
+  width: 9rpx;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: #64748B;
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 64rpx;
-  padding: 0 20rpx;
-  border-radius: 32rpx;
-  background: #F5F7FB;
-  border: 1rpx solid #D7DFEE;
-  font-size: 24rpx;
-  color: #1F2937;
+  height: 100%;
+  padding: 0 12rpx;
+  border: 0;
+  outline: none;
+  font-size: 25rpx;
+  color: #0F172A;
+  background: transparent;
 }
-.city-input {
-  flex: 0 0 160rpx;
+.search-clear {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #E2E8F0;
+  color: #475569;
+  font-size: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .search-btn {
   flex: 0 0 auto;
-  padding: 0 22rpx;
-  height: 64rpx;
-  line-height: 64rpx;
-  border-radius: 32rpx;
+  height: 70rpx;
+  line-height: 70rpx;
+  padding: 0 26rpx;
+  border-radius: 999rpx;
   background: #165DFF;
   color: #FFFFFF;
-  font-size: 24rpx;
+  font-size: 25rpx;
+  font-weight: 500;
+}
+.tab-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx 0 8rpx;
+  border-top: 1rpx solid #F1F5F9;
+}
+.tab-scroll {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.tab-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.tab-row {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12rpx;
+}
+.type-tab {
+  position: relative;
+  padding: 20rpx 18rpx;
+  font-size: 27rpx;
+  color: #64748B;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.type-tab.on {
+  color: #0F172A;
   font-weight: 600;
 }
-.chip-scroll {
-  width: 100%;
-  white-space: nowrap;
-}
-.chip-row {
-  display: inline-block;
-  white-space: nowrap;
-  padding: 0 24rpx 12rpx;
-}
-.chip {
-  display: inline-block;
-  padding: 10rpx 26rpx;
-  margin-right: 14rpx;
-  border-radius: 32rpx;
-  border: 1rpx solid #D7DFEE;
-  background: #F8FAFF;
-  color: #4B5563;
-  font-size: 24rpx;
-  line-height: 1.4;
-}
-.chip.on {
+.type-tab.on::after {
+  content: '';
+  position: absolute;
+  left: 20rpx;
+  right: 20rpx;
+  bottom: 0;
+  height: 4rpx;
+  border-radius: 2rpx;
   background: #165DFF;
-  border-color: #165DFF;
+}
+.filter-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 10rpx 18rpx;
+  margin-left: 8rpx;
+  border-radius: 999rpx;
+  background: #F4F7FB;
+  border: 1rpx solid #E5EAF2;
+  color: #475569;
+  font-size: 23rpx;
+}
+.filter-toggle.active {
+  background: #EEF4FF;
+  border-color: #BFDBFE;
+  color: #165DFF;
+  font-weight: 500;
+}
+.filter-badge {
+  min-width: 28rpx;
+  height: 28rpx;
+  line-height: 28rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: #165DFF;
   color: #FFFFFF;
-  font-weight: 600;
+  font-size: 19rpx;
+  text-align: center;
 }
-.chip:focus-visible {
-  outline: 3rpx solid #102F6E;
-  outline-offset: 2rpx;
+.filter-chevron {
+  font-size: 20rpx;
+  line-height: 1;
 }
-.list {
-  padding: 24rpx;
+.active-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  padding: 12rpx 24rpx 14rpx;
+  background: #F8FAFC;
+  border-top: 1rpx solid #F1F5F9;
+}
+.active-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5F2;
+  color: #334155;
+  font-size: 22rpx;
+}
+.active-tag-x {
+  color: #94A3B8;
+  font-size: 24rpx;
+}
+.active-reset {
+  margin-left: auto;
+  font-size: 22rpx;
+  color: #64748B;
+  padding: 4rpx 8rpx;
+}
+.filter-drawer {
+  padding: 18rpx 24rpx 22rpx;
+  background: #F8FAFC;
+  border-top: 1rpx solid #E5EAF2;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 18rpx;
+}
+.drawer-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+.drawer-label {
+  width: 64rpx;
+  flex-shrink: 0;
+  font-size: 23rpx;
+  color: #64748B;
+  line-height: 52rpx;
+}
+.drawer-chips {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+.drawer-chip {
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E5EAF2;
+  color: #475569;
+  font-size: 23rpx;
+}
+.drawer-chip.on {
+  background: #EEF4FF;
+  border-color: #165DFF;
+  color: #165DFF;
+  font-weight: 500;
+}
+.city-input {
+  flex: 1;
+  height: 60rpx;
+  padding: 0 18rpx;
+  border-radius: 12rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5F2;
+  font-size: 24rpx;
+  color: #0F172A;
+}
+.drawer-actions {
+  display: flex;
+  gap: 16rpx;
+  padding-top: 6rpx;
+}
+.drawer-btn {
+  flex: 1;
+  height: 68rpx;
+  line-height: 68rpx;
+  text-align: center;
+  border-radius: 14rpx;
+  font-size: 25rpx;
+  font-weight: 500;
+}
+.drawer-btn.ghost {
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5F2;
+  color: #475569;
+}
+.drawer-btn.primary {
+  background: #165DFF;
+  color: #FFFFFF;
+}
+.list {
+  padding: 20rpx 24rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 .event-card {
   background: #FFFFFF;
-  border: 1rpx solid #E5EAF3;
-  border-radius: 20rpx;
+  border: 1rpx solid #E5EAF2;
+  border-radius: 18rpx;
   overflow: hidden;
-  box-shadow: 0 6rpx 24rpx rgba(16, 47, 110, 0.06);
+  transition: background-color 0.15s ease;
+}
+.event-card:active {
+  background: #F8FAFC;
 }
 .event-card:focus-visible {
   outline: 3rpx solid #165DFF;
@@ -494,63 +790,122 @@ export default {
 }
 .cover {
   position: relative;
-  height: 240rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
+  height: 260rpx;
+  background: #F1F5F9;
 }
 .cover-img {
   width: 100%;
   height: 100%;
+  display: block;
 }
-.cover-icon { font-size: 84rpx; }
-.status-badge {
+.status-badge.over-img {
   position: absolute;
   top: 16rpx;
   right: 16rpx;
-  padding: 6rpx 20rpx;
-  border-radius: 28rpx;
-  font-size: 22rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 21rpx;
   font-weight: 600;
   color: #FFFFFF;
-  background: #475569;
+  background: rgba(15, 23, 42, 0.72);
 }
-.st-ongoing { background: #165DFF; }
-.st-upcoming { background: #0E7C5A; }
-.st-ended,
-.st-canceled { background: #52607A; }
-.st-pending { background: #92400E; }
-.card-body {
+.status-badge.over-img.st-ongoing { background: #165DFF; }
+.status-badge.over-img.st-upcoming { background: #059669; }
+.status-badge.over-img.st-ended,
+.status-badge.over-img.st-canceled { background: rgba(71, 85, 105, 0.85); }
+.status-badge.over-img.st-pending { background: #D97706; }
+.card-main.with-date {
+  display: flex;
+  align-items: flex-start;
+  padding: 22rpx 22rpx 24rpx;
+  gap: 20rpx;
+}
+.date-tile {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 14rpx;
+  background: #F4F7FB;
+  border: 1rpx solid #E5EAF2;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 22rpx 24rpx 26rpx;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+}
+.date-month {
+  font-size: 20rpx;
+  color: #64748B;
+  font-weight: 500;
+}
+.date-day {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.1;
+}
+.card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20rpx 22rpx 24rpx;
+}
+.card-main.with-date .card-body {
+  padding: 0;
+}
+.card-top-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 10rpx;
 }
 .card-kind {
-  align-self: flex-start;
-  padding: 4rpx 16rpx;
-  margin-bottom: 10rpx;
-  border-radius: 8rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 21rpx;
+  font-weight: 500;
+}
+.status-pill {
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
+  font-size: 21rpx;
+  font-weight: 500;
+  background: #F1F5F9;
+  color: #64748B;
+}
+.status-pill.st-ongoing { background: #EEF4FF; color: #165DFF; }
+.status-pill.st-upcoming { background: #ECFDF5; color: #059669; }
+.status-pill.st-ended,
+.status-pill.st-canceled { background: #F1F5F9; color: #64748B; }
+.status-pill.st-pending { background: #FFFBEB; color: #D97706; }
+.reg-open-tag {
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
   background: #EEF4FF;
-  color: #102F6E;
-  font-size: 22rpx;
-  font-weight: 600;
+  color: #165DFF;
+  font-size: 21rpx;
+  font-weight: 500;
 }
 .card-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #102F6E;
-  line-height: 1.4;
+  font-size: 31rpx;
+  font-weight: 600;
+  color: #0F172A;
+  line-height: 1.42;
 }
 .card-meta {
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  color: #5B6B85;
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  color: #64748B;
+  line-height: 1.4;
 }
 .card-summary {
-  margin-top: 12rpx;
+  margin-top: 10rpx;
   font-size: 25rpx;
-  line-height: 1.6;
+  line-height: 1.55;
   color: #475569;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -558,32 +913,45 @@ export default {
   overflow: hidden;
 }
 .load-more {
-  padding: 16rpx 0 28rpx;
+  padding: 16rpx 0 24rpx;
   display: flex;
   justify-content: center;
 }
 .load-btn {
-  min-width: 260rpx;
-  padding: 20rpx 44rpx;
-  border-radius: 40rpx;
-  border: 2rpx solid #165DFF;
-  color: #165DFF;
+  min-width: 240rpx;
+  padding: 18rpx 44rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #CBD5E1;
+  color: #334155;
   background: #FFFFFF;
-  font-size: 27rpx;
-  font-weight: 600;
+  font-size: 26rpx;
+  font-weight: 500;
   text-align: center;
 }
 .load-btn.disabled {
-  opacity: 0.6;
-}
-.load-btn:focus-visible {
-  outline: 3rpx solid #102F6E;
-  outline-offset: 2rpx;
+  opacity: 0.55;
 }
 .list-end {
-  padding: 16rpx 0 32rpx;
+  padding: 16rpx 0 28rpx;
   text-align: center;
-  font-size: 24rpx;
-  color: #8A9AA8;
+  font-size: 23rpx;
+  color: #94A3B8;
+}
+</style>
+
+<style>
+::-webkit-scrollbar,
+scroll-view::-webkit-scrollbar,
+uni-scroll-view::-webkit-scrollbar,
+.uni-scroll-view::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+scroll-view,
+uni-scroll-view,
+.uni-scroll-view {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 </style>

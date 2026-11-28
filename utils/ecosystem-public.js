@@ -485,6 +485,21 @@ export function formatDateISO(value) {
   return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`
 }
 
+/**
+ * 活动日期徽章（月/日）：直接取服务端本地时间偏移，不做浏览器时区换算。
+ * 无有效开始时间时返回 null。
+ */
+export function formatEventDateParts(event) {
+  if (!event || !event.startsAt) return null
+  const parts = isoParts(event.startsAt)
+  if (!parts) return null
+
+  return {
+    month: `${parts.month}月`,
+    day: pad2(parts.day),
+  }
+}
+
 export function timezoneLabel(timezone) {
   if (!isNonEmptyString(timezone)) return ''
   if (timezone === 'Asia/Shanghai') return '北京时间'

@@ -1,52 +1,44 @@
 <template>
 	<view class="page-container">
-		<view class="nav-area">
-			<view class="nav-content">
-				<view class="nav-back" role="button" tabindex="0" aria-label="返回" @tap="goBack">
-					<text>‹</text>
+		<nav-bar :title="ticket ? categoryLabel(ticket.category) : '客服会话'" fallback-tab="/pages/mine/tickets">
+			<template #right>
+				<view
+					v-if="showEnd"
+					class="nav-end-btn"
+					role="button"
+					tabindex="0"
+					aria-label="结束会话"
+					@tap="endConversation"
+				>
+					<text>结束</text>
 				</view>
-				<view class="nav-left">
-					<text class="brand">客服会话</text>
-					<text class="subtitle" v-if="ticket">{{ categoryLabel(ticket.category) }}</text>
-					<text class="subtitle" v-else>人工服务</text>
-				</view>
-				<view class="nav-right"></view>
-			</view>
-		</view>
+			</template>
+		</nav-bar>
 
-		<view v-if="loading" class="state-wrap">
-			<view class="state-card glass">
-				<view class="loading-orbit"><view></view></view>
-				<text class="state-title">正在进入会话</text>
-				<text class="state-desc">正在同步客服回复与服务记录</text>
-			</view>
-		</view>
-
-		<view v-else-if="loadError" class="state-wrap">
-			<view class="state-card glass">
-				<view class="error-symbol">!</view>
-				<text class="state-title">暂时无法加载会话</text>
-				<text class="state-desc">{{ loadError }}</text>
-				<view class="state-btn" @tap="fetchTicket(false)">重新加载</view>
-			</view>
-		</view>
-
-		<view v-else-if="!ticket" class="state-wrap">
-			<view class="state-card glass">
-				<view class="empty-symbol">—</view>
-				<text class="state-title">会话不存在</text>
-				<text class="state-desc">链接可能已失效，请返回客服中心重新进入。</text>
-				<view class="state-btn" @tap="goBack">返回客服中心</view>
-			</view>
-		</view>
+		<state-view
+			v-if="loading || loadError || !ticket"
+			:loading="loading"
+			loading-text="正在同步会话…"
+			:error="loadError"
+			error-text="暂时无法加载会话"
+			:empty="!loading && !loadError && !ticket"
+			empty-icon="/static/icons/mine/empty-inbox.png"
+			empty-text="会话不存在"
+			empty-hint="链接可能已失效，请返回客服中心重新进入。"
+			empty-action
+			empty-action-text="返回客服中心"
+			btn-color="#165DFF"
+			@empty-action="goBack"
+			@retry="fetchTicket(false)"
+		/>
 
 		<view v-else class="chat-shell">
-			<view class="service-bar glass">
-				<view class="service-meta">
-					<text class="service-title">人工服务</text>
-					<text class="service-hours">{{ serviceHours }}</text>
+			<view class="service-bar">
+				<view class="service-left">
+					<text class="status-tag" :class="'st-' + (ticket.held ? 'held' : ticket.status)">{{ ticketStatusText }}</text>
+					<text class="service-id sm-mono" v-if="ticket.id">#{{ ticket.id }}</text>
 				</view>
-				<view v-if="showEnd" class="end-link" role="button" tabindex="0" aria-label="结束会话" @tap="endConversation">结束</view>
+				<text class="service-hours sm-mono">人工服务 {{ serviceHours }}</text>
 			</view>
 
 			<view v-if="syncError" class="sync-banner">
@@ -54,18 +46,19 @@
 			</view>
 
 			<view v-if="ticket.incident" class="incident-banner">
+				<SmIcon name="state-warn" size="36rpx" />
 				<view class="incident-left">
 					<text class="incident-kicker">事故追溯</text>
 					<text class="incident-title">已进入事故处理流程</text>
-					<text class="incident-meta">{{ ticket.incident.incident_no }} · {{ ticket.incident.severity_label }} · {{ ticket.incident.status_label }}</text>
+					<text class="incident-meta sm-mono">{{ ticket.incident.incident_no }} · {{ ticket.incident.severity_label }} · {{ ticket.incident.status_label }}</text>
 				</view>
-				<text class="incident-mark">!</text>
 			</view>
 
 			<scroll-view
 				class="messages-scroll"
 				scroll-y="true"
-				show-scrollbar="false"
+				:enhanced="true"
+				:show-scrollbar="false"
 				:scroll-into-view="scrollAnchor"
 				:scroll-with-animation="true"
 			>
@@ -77,7 +70,7 @@
 					<block v-for="message in renderedMessages" :key="message.id">
 						<view v-if="message.showDay" class="day-divider">
 							<view></view>
-							<text>{{ message.dayLabel }}</text>
+							<text class="sm-mono">{{ message.dayLabel }}</text>
 							<view></view>
 						</view>
 
@@ -94,7 +87,7 @@
 							<view class="message-column">
 								<view class="message-meta">
 									<text class="message-actor">{{ actorText(message.actor_type) }}</text>
-									<text class="message-time">{{ clockTime(message.created_at) }}</text>
+									<text class="message-time sm-mono">{{ clockTime(message.created_at) }}</text>
 									<text
 										v-if="message.actor_type === 'customer'"
 										class="message-receipt"
@@ -108,12 +101,12 @@
 											<view v-if="isProductAttachment(attachment)" class="message-product-card">
 												<view class="message-product-image">
 													<image v-if="attachment.image" :src="attachment.image" mode="aspectFill"></image>
-													<text v-else>{{ attachmentBadgeText(attachment) }}</text>
+													<SmIcon v-else :name="attachmentIconName(attachment)" size="40rpx" />
 												</view>
 												<view class="message-product-main">
 													<text class="message-product-kicker">{{ attachmentKicker(attachment) }}</text>
 													<text class="message-product-name">{{ attachment.name }}</text>
-													<text class="message-product-meta">
+													<text class="message-product-meta sm-mono">
 														<text v-if="attachment.increment_id">#{{ attachment.increment_id }} </text>
 														<text v-if="attachment.sn">SN {{ attachment.sn }} </text>
 														<text v-if="attachment.sku">{{ attachment.sku }} </text>
@@ -123,8 +116,8 @@
 												</view>
 											</view>
 											<view v-else class="attachment" @click="copyAttachment(attachment)">
-												<text class="attachment-icon">↗</text>
-												<text class="attachment-text">附件 {{ index + 1 }}</text>
+												<SmIcon name="doc-text" size="22rpx" />
+												<text class="attachment-text">附件 {{ index + 1 }}（点击复制）</text>
 											</view>
 										</block>
 									</view>
@@ -137,10 +130,10 @@
 				</view>
 			</scroll-view>
 
-			<view v-if="ticket.can_rate || ticket.rating" class="rating-card glass">
+			<view v-if="ticket.can_rate || ticket.rating" class="rating-card">
 				<block v-if="ticket.can_rate">
 					<view class="rating-head">
-						<text class="rating-title">这次服务怎么样？</text>
+						<text class="rating-title">服务评价</text>
 						<text class="rating-sub">评价会进入客服复盘</text>
 					</view>
 					<view class="rating-stars">
@@ -168,7 +161,7 @@
 						v-model="ratingComment"
 						class="rating-input"
 						maxlength="300"
-						placeholder="补充一句（选填）"
+						placeholder="补充一句评价说明（选填）"
 						placeholder-class="rating-placeholder"
 					/>
 					<view
@@ -194,7 +187,7 @@
 			</view>
 
 			<view class="composer-panel">
-				<scroll-view v-if="canReply && !hasStaffReply" class="quick-scroll" scroll-x="true" show-scrollbar="false">
+				<scroll-view v-if="canReply && !hasStaffReply" class="quick-scroll" scroll-x="true" :enhanced="true" :show-scrollbar="false">
 					<view class="quick-list">
 						<view v-for="reply in quickReplies" :key="reply" class="quick-chip" @tap="useQuickReply(reply)">
 							<text>{{ reply }}</text>
@@ -216,26 +209,26 @@
 							@input="onDraftInput"
 							@confirm="sendMessage"
 						/>
-						<text v-if="draft.length > 1600" class="input-count">{{ draft.length }}/2000</text>
+						<text v-if="draft.length > 1600" class="input-count sm-mono">{{ draft.length }}/2000</text>
 					</view>
 					<view
-						class="send-icon"
+						class="send-btn"
 						:class="{ disabled: sending || !draft.trim() }"
 						role="button"
 						tabindex="0"
 						aria-label="发送消息"
 						@tap="sendMessage"
 					>
-						<text>{{ sending ? '…' : '➤' }}</text>
+						<text>{{ sending ? '…' : '发送' }}</text>
 					</view>
 				</view>
 
-				<view v-else class="closed-panel glass">
+				<view v-else class="closed-panel">
 					<view class="closed-copy">
 						<text class="closed-title">本次会话已结束</text>
-						<text class="closed-desc">如果问题仍需处理，请返回客服中心重新发起咨询。</text>
+						<text class="closed-desc">如果问题仍需处理，可返回客服中心发起新咨询。</text>
 					</view>
-					<view class="closed-btn" @tap="goBack">返回客服中心</view>
+					<view class="closed-btn" role="button" tabindex="0" @tap="goBack">返回客服中心</view>
 				</view>
 			</view>
 		</view>
@@ -243,18 +236,23 @@
 </template>
 
 <script>
+import NavBar from '@/components/NavBar.vue'
+import SmIcon from '@/components/SmIcon.vue'
+import StateView from '@/components/StateView.vue'
 import { ticketApi } from '@/utils/api'
 import {
 	RATING_TAGS,
 	SERVICE_HOURS,
 	categoryLabel,
+	statusLabel,
 	quickRepliesFor,
 } from '@/utils/customer-service'
 
-const ACTOR_TEXT = { customer: '我', admin: '平台客服', developer: '技术团队', system: '系统' }
+const ACTOR_TEXT = { customer: '我', admin: '平台客服', agent: '在线客服', staff: '在线客服', developer: '技术团队', system: '系统' }
 const SEEN_KEY = 'customer_service_seen_tickets_v1'
 
 export default {
+	components: { NavBar, SmIcon, StateView },
 	data() {
 		return {
 			id: null,
@@ -282,6 +280,11 @@ export default {
 		},
 		showEnd() {
 			return !!this.ticket && this.ticket.service_mode === 'online' && this.ticket.status !== 'closed'
+		},
+		ticketStatusText() {
+			if (!this.ticket) return ''
+			if (this.ticket.held) return '待补充'
+			return this.ticket.status_label || statusLabel(this.ticket.status)
 		},
 		serviceHours() {
 			return SERVICE_HOURS
@@ -351,11 +354,11 @@ export default {
 		isProductAttachment(attachment) {
 			return !!(attachment && typeof attachment === 'object' && ['product', 'order', 'device'].includes(attachment.type))
 		},
-		attachmentBadgeText(att) {
-			if (!att) return '卡'
-			if (att.type === 'order') return '单'
-			if (att.type === 'device') return '机'
-			return '商'
+		attachmentIconName(att) {
+			if (!att) return 'hub-cube'
+			if (att.type === 'order') return 'clipboard'
+			if (att.type === 'device') return 'devices'
+			return 'hub-cube'
 		},
 		attachmentKicker(att) {
 			if (!att) return ''
@@ -470,7 +473,6 @@ export default {
 			if (next.length) this.messages = this.messages.concat(next).sort((a, b) => Number(a.id) - Number(b.id))
 		},
 		applyReceipts(receipts) {
-			// 已读状态不会产生新消息，服务端单独下发；这里只更新已有气泡，不改消息顺序。
 			if (!Array.isArray(receipts) || !receipts.length) return
 			const map = {}
 			receipts.forEach((item) => {
@@ -490,7 +492,6 @@ export default {
 			const hasUnread = this.messages.some(message => message.actor_type !== 'customer' && !message.read_at)
 			if (hasUnread) {
 				ticketApi.markRead(this.id).then(() => {
-					// 服务端已标记已读；本地同步收掉未读，否则每一轮轮询都会重复请求已读接口。
 					this.messages = this.messages.map((message) => (
 						message.actor_type !== 'customer' && !message.read_at
 							? { ...message, read_at: message.created_at || 'read' }
@@ -505,7 +506,6 @@ export default {
 			const now = Date.now()
 			if (now - this.lastTypingPingAt < 4000) return
 			this.lastTypingPingAt = now
-			// 输入中只是协作信号，失败不能打断用户打字
 			ticketApi.typing(this.id).catch(() => {})
 		},
 		setRating(value) {
@@ -552,14 +552,12 @@ export default {
 				this.draft = ''
 				const redirectId = res && res.data && res.data.redirect_ticket_id
 				if (redirectId && Number(redirectId) !== Number(this.id)) {
-					// 这张旧单已解决，客户当前另有进行中的会话：消息已转投过去，直接切过去。
 					uni.showToast({ title: '已发送到你进行中的会话', icon: 'none' })
 					setTimeout(() => {
 						uni.redirectTo({ url: `/pages/mine/ticket-detail?id=${redirectId}` })
 					}, 600)
 					return
 				}
-				// 用户发出消息即解除挂起，不必等下一轮轮询才收掉「等待补充」提示。
 				this.ticket = { ...this.ticket, held: false }
 				const message = res && res.data && res.data.message
 				this.mergeMessages(message ? [message] : [])
@@ -599,131 +597,353 @@ export default {
 </script>
 
 <style scoped>
-page {
-	background: #F4F7FB;
-	min-height: 100vh;
-	height: 100%;
+.page-container {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
 	overflow: hidden;
+	background: #F4F7FB;
 }
-.page-container { position: relative; z-index: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: linear-gradient(180deg, #102F6E 0%, #174299 280rpx, #F4F7FB 460rpx, #F4F7FB 100%); }
-.glass { background: #FFFFFF; border: 1rpx solid #E5EAF2; }
-
-.nav-area { flex-shrink: 0; padding: calc(80rpx + env(safe-area-inset-top)) 30rpx 12rpx 30rpx; padding: calc(80rpx + constant(safe-area-inset-top)) 30rpx 12rpx 30rpx; }
-.nav-content { display: flex; align-items: flex-start; }
-.nav-back { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; margin-right: 16rpx; border: 1rpx solid rgba(255, 255, 255, 0.28); border-radius: 50%; background: rgba(255, 255, 255, 0.16); backdrop-filter: blur(8rpx); }
-.nav-back text { margin-top: -4rpx; font-size: 44rpx; line-height: 1; color: #ffffff; }
-.nav-left { min-width: 0; flex: 1; }
-.brand { display: block; font-size: 44rpx; font-weight: 700; line-height: 1.2; letter-spacing: 2rpx; color: #ffffff; text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2); }
-.subtitle { display: inline-block; margin-top: 8rpx; padding: 4rpx 16rpx; border-radius: 30rpx; background: rgba(0, 0, 0, 0.2); font-size: 22rpx; color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4rpx); }
-.nav-right { flex-shrink: 0; width: 64rpx; }
+.nav-end-btn {
+	padding: 8rpx 20rpx;
+	border-radius: 999rpx;
+	background: #F1F5F9;
+	border: 1rpx solid #DCE5F2;
+	font-size: 22rpx;
+	font-weight: 500;
+	color: #475569;
+	white-space: nowrap;
+}
 
 .chat-shell { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.service-bar { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 0 24rpx 10rpx; padding: 12rpx 22rpx; border-radius: 999rpx; box-shadow: 0 8rpx 22rpx rgba(22, 93, 255, 0.06); }
-.service-meta { min-width: 0; display: flex; align-items: center; gap: 14rpx; }
-.service-title { font-size: 22rpx; font-weight: 600; color: #1a2a3a; }
-.service-hours { font-size: 20rpx; color: #5f7080; }
-.end-link { flex-shrink: 0; padding-left: 18rpx; border-left: 1rpx solid rgba(22, 93, 255, 0.14); font-size: 20rpx; color: #5f7080; }
+.service-bar {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	padding: 14rpx 28rpx;
+	background: #FFFFFF;
+	border-bottom: 1rpx solid #E5EAF2;
+}
+.service-left { display: flex; align-items: center; gap: 12rpx; }
+.status-tag {
+	padding: 4rpx 14rpx;
+	border-radius: 6rpx;
+	font-size: 21rpx;
+	font-weight: 500;
+	background: #EEF4FF;
+	color: #165DFF;
+}
+.st-resolved { background: #ECFDF5; color: #059669; }
+.st-held { background: #FFFBEB; color: #B45309; }
+.st-closed { background: #F1F5F9; color: #64748B; }
+.service-id { font-size: 21rpx; color: #94A3B8; }
+.service-hours { font-size: 21rpx; color: #64748B; }
 
-.sync-banner { flex-shrink: 0; margin: 0 24rpx 10rpx; padding: 12rpx 18rpx; border: 1rpx solid #fde3ba; border-radius: 16rpx; background: rgba(255, 249, 238, 0.92); font-size: 19rpx; color: #9a6a36; }
-.incident-banner { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; margin: 0 24rpx 10rpx; padding: 18rpx 20rpx; border: 1rpx solid #f3d3b6; border-radius: 20rpx; background: rgba(255, 248, 241, 0.94); }
-.incident-left { display: flex; flex-direction: column; }
-.incident-kicker { font-size: 16rpx; letter-spacing: 2rpx; color: #c27b45; }
-.incident-title { margin-top: 5rpx; font-size: 24rpx; font-weight: 600; color: #7b4c2a; }
-.incident-meta { margin-top: 5rpx; font-size: 18rpx; color: #ac8465; }
-.incident-mark { display: flex; align-items: center; justify-content: center; width: 38rpx; height: 38rpx; border-radius: 50%; background: #c9814d; color: #fff; font-size: 24rpx; font-weight: 600; }
+.sync-banner {
+	flex-shrink: 0;
+	margin: 12rpx 24rpx 0;
+	padding: 12rpx 18rpx;
+	border: 1rpx solid #FDE68A;
+	border-radius: 12rpx;
+	background: #FFFBEB;
+	font-size: 21rpx;
+	color: #92400E;
+}
+.incident-banner {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 14rpx;
+	margin: 12rpx 24rpx 0;
+	padding: 16rpx 18rpx;
+	border: 1rpx solid #FDE68A;
+	border-radius: 14rpx;
+	background: #FFFBEB;
+}
+.incident-left { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.incident-kicker { font-size: 19rpx; color: #B45309; font-weight: 600; }
+.incident-title { margin-top: 2rpx; font-size: 25rpx; font-weight: 600; color: #78350F; }
+.incident-meta { margin-top: 4rpx; font-size: 20rpx; color: #92400E; }
 
-.messages-scroll { flex: 1; height: 0; }
-.messages-body { padding: 14rpx 28rpx 18rpx; }
-.welcome-note { display: flex; justify-content: center; padding: 4rpx 24rpx 24rpx; }
-.welcome-note text { padding: 8rpx 20rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.45); text-align: center; font-size: 19rpx; line-height: 1.55; color: #4f6275; }
+.messages-scroll {
+	flex: 1;
+	height: 0;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.messages-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.messages-body { padding: 18rpx 24rpx; }
+.welcome-note { display: flex; justify-content: center; padding: 4rpx 16rpx 22rpx; }
+.welcome-note text {
+	padding: 8rpx 20rpx;
+	border-radius: 999rpx;
+	background: #FFFFFF;
+	border: 1rpx solid #E5EAF2;
+	text-align: center;
+	font-size: 21rpx;
+	line-height: 1.5;
+	color: #64748B;
+}
 
 .day-divider { display: flex; align-items: center; gap: 14rpx; margin: 20rpx 0; }
-.day-divider view { flex: 1; height: 1rpx; background: rgba(22, 93, 255, 0.14); }
-.day-divider text { font-size: 17rpx; color: #4f6275; }
-.system-row { display: flex; justify-content: center; margin: 16rpx 30rpx; }
-.system-row text { padding: 10rpx 18rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.62); text-align: center; font-size: 18rpx; line-height: 1.5; color: #5f7080; }
+.day-divider view { flex: 1; height: 1rpx; background: #E2E8F0; }
+.day-divider text { font-size: 20rpx; color: #94A3B8; }
+.system-row { display: flex; justify-content: center; margin: 16rpx 24rpx; }
+.system-row text {
+	padding: 8rpx 18rpx;
+	border-radius: 999rpx;
+	background: #EEF2F6;
+	text-align: center;
+	font-size: 21rpx;
+	line-height: 1.5;
+	color: #64748B;
+}
 
-.message-row { display: flex; margin-bottom: 24rpx; }
+.message-row { display: flex; margin-bottom: 22rpx; }
 .message-row.mine { justify-content: flex-end; }
 .message-column { display: flex; flex-direction: column; align-items: flex-start; max-width: 84%; }
 .message-row.mine .message-column { align-items: flex-end; }
-.message-meta { display: flex; align-items: center; gap: 10rpx; margin: 0 6rpx 7rpx; }
-.message-actor { font-size: 18rpx; color: #4f6275; }
-.message-time { font-size: 16rpx; color: #6b7a88; }
-.message-receipt { font-size: 16rpx; color: #94a3b8; }
-.message-receipt.read { color: #165dff; }
-.typing-indicator { flex-shrink: 0; align-self: flex-start; display: flex; align-items: center; gap: 10rpx; margin: 0 28rpx 8rpx; padding: 8rpx 18rpx; border: 1rpx solid rgba(255, 255, 255, 0.66); border-radius: 999rpx; background: rgba(255, 255, 255, 0.62); }
+.message-meta { display: flex; align-items: center; gap: 10rpx; margin: 0 4rpx 6rpx; }
+.message-actor { font-size: 20rpx; color: #64748B; font-weight: 500; }
+.message-time { font-size: 19rpx; color: #94A3B8; }
+.message-receipt { font-size: 19rpx; color: #94A3B8; }
+.message-receipt.read { color: #165DFF; }
+
+.typing-indicator {
+	flex-shrink: 0;
+	align-self: flex-start;
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+	margin: 0 24rpx 10rpx;
+	padding: 8rpx 18rpx;
+	border: 1rpx solid #E5EAF2;
+	border-radius: 999rpx;
+	background: #FFFFFF;
+}
 .typing-dots { display: flex; align-items: center; gap: 5rpx; }
-.typing-dots text { width: 8rpx; height: 8rpx; border-radius: 50%; background: #165dff; opacity: .35; }
-.typing-dots text:nth-child(2) { animation: typing-pulse 1.2s infinite .15s; }
-.typing-dots text:nth-child(3) { animation: typing-pulse 1.2s infinite .3s; }
-.typing-text { font-size: 18rpx; color: #5f7080; }
-@keyframes typing-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
-.message-bubble { padding: 20rpx 24rpx; border: 1rpx solid #e2e8f0; border-radius: 20rpx; background: rgba(255, 255, 255, 0.97); box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.08); }
-.message-row.mine .message-bubble { border-color: #165dff; background: #165dff; box-shadow: 0 8rpx 22rpx rgba(22, 93, 255, 0.22); }
-.message-content { font-size: 27rpx; line-height: 1.7; color: #1f2937; white-space: pre-wrap; word-break: break-word; }
-.message-row.mine .message-content { color: #ffffff; }
+.typing-dots text { width: 8rpx; height: 8rpx; border-radius: 50%; background: #165DFF; opacity: 0.35; }
+.typing-dots text:nth-child(2) { animation: typing-pulse 1.2s infinite 0.15s; }
+.typing-dots text:nth-child(3) { animation: typing-pulse 1.2s infinite 0.3s; }
+.typing-text { font-size: 20rpx; color: #64748B; }
+@keyframes typing-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+.message-bubble {
+	padding: 18rpx 22rpx;
+	border: 1rpx solid #E5EAF2;
+	border-radius: 6rpx 18rpx 18rpx 18rpx;
+	background: #FFFFFF;
+}
+.message-row.mine .message-bubble {
+	border-color: #165DFF;
+	background: #165DFF;
+	border-radius: 18rpx 6rpx 18rpx 18rpx;
+}
+.message-content { font-size: 27rpx; line-height: 1.68; color: #0F172A; white-space: pre-wrap; word-break: break-word; }
+.message-row.mine .message-content { color: #FFFFFF; }
+
 .attachment-list { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
-.attachment { display: flex; align-items: center; gap: 6rpx; padding: 8rpx 12rpx; border-radius: 12rpx; background: rgba(22, 93, 255, 0.08); }
-.message-row.mine .attachment { background: rgba(255, 255, 255, 0.16); }
-.attachment-icon { font-size: 18rpx; color: #165dff; }
-.message-product-card { width: 100%; min-width: 410rpx; display: flex; gap: 16rpx; padding: 16rpx; border-radius: 18rpx; background: rgba(255, 255, 255, 0.98); border: 1rpx solid rgba(22, 93, 255, 0.16); box-sizing: border-box; }
-.message-product-image { width: 92rpx; height: 92rpx; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 14rpx; background: #eef4ff; color: #165dff; font-size: 28rpx; font-weight: 700; }
+.attachment {
+	display: inline-flex;
+	align-items: center;
+	gap: 6rpx;
+	padding: 8rpx 14rpx;
+	border-radius: 10rpx;
+	background: #F8FAFC;
+	border: 1rpx solid #E5EAF2;
+}
+.message-row.mine .attachment {
+	background: rgba(255, 255, 255, 0.16);
+	border-color: rgba(255, 255, 255, 0.25);
+}
+.attachment-text { font-size: 20rpx; color: #165DFF; }
+.message-row.mine .attachment-text { color: #FFFFFF; }
+
+.message-product-card {
+	width: 100%;
+	min-width: 390rpx;
+	display: flex;
+	gap: 14rpx;
+	padding: 14rpx;
+	border-radius: 12rpx;
+	background: #F8FAFC;
+	border: 1rpx solid #DCE5F2;
+	box-sizing: border-box;
+}
+.message-product-image {
+	width: 84rpx;
+	height: 84rpx;
+	flex-shrink: 0;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 10rpx;
+	background: #EEF4FF;
+}
 .message-product-image image { width: 100%; height: 100%; }
 .message-product-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; text-align: left; }
-.message-product-kicker { color: #165dff; font-size: 18rpx; font-weight: 600; }
-.message-product-name { overflow: hidden; color: #1a2a3a; font-size: 25rpx; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.message-product-meta { display: flex; flex-wrap: wrap; gap: 8rpx 14rpx; color: #6b7a88; font-size: 19rpx; }
-.message-row.mine .attachment-icon { color: #dbeaff; }
-.attachment-text { font-size: 18rpx; color: #165dff; }
-.message-row.mine .attachment-text { color: #eaf2ff; }
-.message-bottom { height: 4rpx; }
+.message-product-kicker { color: #165DFF; font-size: 19rpx; font-weight: 600; }
+.message-product-name { overflow: hidden; color: #0F172A; font-size: 24rpx; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.message-product-meta { display: flex; flex-wrap: wrap; gap: 6rpx 12rpx; color: #64748B; font-size: 20rpx; }
+.message-bottom { height: 6rpx; }
 
-.rating-card { flex-shrink: 0; margin: 0 20rpx 12rpx; padding: 22rpx 24rpx; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(22, 93, 255, 0.08); }
+.rating-card {
+	flex-shrink: 0;
+	margin: 0 24rpx 12rpx;
+	padding: 22rpx;
+	border-radius: 16rpx;
+	background: #FFFFFF;
+	border: 1rpx solid #E5EAF2;
+}
 .rating-head { display: flex; align-items: baseline; justify-content: space-between; }
-.rating-title { font-size: 26rpx; font-weight: 600; color: #1a2a3a; }
-.rating-sub { font-size: 19rpx; color: #6b7a88; }
-.rating-stars { display: flex; align-items: center; gap: 8rpx; margin-top: 14rpx; }
-.rating-star { font-size: 44rpx; line-height: 1; color: rgba(22, 93, 255, 0.18); }
-.rating-star.on { color: #f5a623; }
-.rating-value { margin-left: 10rpx; font-size: 21rpx; color: #5f7080; }
-.rating-tags { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 14rpx; }
-.rating-tag { padding: 8rpx 18rpx; border: 1rpx solid rgba(22, 93, 255, 0.18); border-radius: 999rpx; background: rgba(255, 255, 255, 0.62); font-size: 20rpx; color: #3c5573; }
-.rating-tag.active { border-color: #165dff; background: rgba(22, 93, 255, 0.12); color: #165dff; }
-.rating-input { width: 100%; height: 88rpx; margin-top: 12rpx; padding: 16rpx 20rpx; box-sizing: border-box; border: 1rpx solid rgba(255, 255, 255, 0.7); border-radius: 18rpx; background: rgba(255, 255, 255, 0.62); font-size: 22rpx; color: #1a2a3a; }
-.rating-placeholder { color: #7b8fa5; }
-.rating-submit { display: flex; align-items: center; justify-content: center; height: 72rpx; margin-top: 14rpx; border-radius: 999rpx; background: linear-gradient(135deg, #4291f6, #6eb5ff); color: #ffffff; font-size: 24rpx; box-shadow: 0 8rpx 20rpx rgba(66, 145, 246, 0.28); }
-.rating-submit.disabled { opacity: .45; box-shadow: none; }
+.rating-title { font-size: 27rpx; font-weight: 600; color: #0F172A; }
+.rating-sub { font-size: 21rpx; color: #64748B; }
+.rating-stars { display: flex; align-items: center; gap: 8rpx; margin-top: 12rpx; }
+.rating-star { font-size: 42rpx; line-height: 1; color: #CBD5E1; }
+.rating-star.on { color: #F59E0B; }
+.rating-value { margin-left: 10rpx; font-size: 22rpx; color: #475569; }
+.rating-tags { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
+.rating-tag {
+	padding: 8rpx 18rpx;
+	border: 1rpx solid #DCE5F2;
+	border-radius: 999rpx;
+	background: #F8FAFC;
+	font-size: 22rpx;
+	color: #475569;
+}
+.rating-tag.active { border-color: #165DFF; background: #EEF4FF; color: #165DFF; font-weight: 500; }
+.rating-input {
+	width: 100%;
+	height: 84rpx;
+	margin-top: 12rpx;
+	padding: 14rpx 18rpx;
+	box-sizing: border-box;
+	border: 1rpx solid #DCE5F2;
+	border-radius: 12rpx;
+	background: #F8FAFC;
+	font-size: 24rpx;
+	color: #0F172A;
+}
+.rating-placeholder { color: #94A3B8; }
+.rating-submit {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 74rpx;
+	margin-top: 14rpx;
+	border-radius: 999rpx;
+	background: #165DFF;
+	color: #FFFFFF;
+	font-size: 25rpx;
+	font-weight: 600;
+}
+.rating-submit.disabled { opacity: 0.45; }
 .rating-done { display: flex; align-items: center; justify-content: center; gap: 14rpx; }
-.rating-done-stars { font-size: 30rpx; letter-spacing: 4rpx; color: #f5a623; }
-.rating-done-text { font-size: 21rpx; color: #5f7080; }
+.rating-done-stars { font-size: 28rpx; letter-spacing: 4rpx; color: #F59E0B; }
+.rating-done-text { font-size: 22rpx; color: #64748B; }
 
-.composer-panel { flex-shrink: 0; padding: 8rpx 20rpx calc(56rpx + env(safe-area-inset-bottom)); padding: 8rpx 20rpx calc(56rpx + constant(safe-area-inset-bottom)); }
-.quick-scroll { width: 100%; margin-bottom: 10rpx; white-space: nowrap; }
+.composer-panel {
+	flex-shrink: 0;
+	background: #FFFFFF;
+	border-top: 1rpx solid #E5EAF2;
+	padding: 12rpx 20rpx calc(20rpx + env(safe-area-inset-bottom));
+	padding: 12rpx 20rpx calc(20rpx + constant(safe-area-inset-bottom));
+}
+.quick-scroll {
+	width: 100%;
+	margin-bottom: 10rpx;
+	white-space: nowrap;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.quick-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .quick-list { display: inline-flex; gap: 10rpx; padding-right: 10rpx; }
-.quick-chip { flex-shrink: 0; padding: 12rpx 20rpx; border: 1rpx solid #d6e4ff; border-radius: 999rpx; background: rgba(255, 255, 255, 0.92); font-size: 21rpx; color: #1a2a3a; }
-.input-area { display: flex; align-items: flex-end; gap: 12rpx; padding: 12rpx 16rpx; border: 1rpx solid rgba(255, 255, 255, 0.3); border-radius: 60rpx; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(30rpx); }
+.quick-chip {
+	flex-shrink: 0;
+	padding: 10rpx 18rpx;
+	border: 1rpx solid #DCE5F2;
+	border-radius: 999rpx;
+	background: #F8FAFC;
+	font-size: 22rpx;
+	color: #334155;
+}
+.input-area {
+	display: flex;
+	align-items: flex-end;
+	gap: 12rpx;
+}
 .input-main { flex: 1; min-width: 0; position: relative; display: flex; }
-.input-box { flex: 1; width: 100%; min-height: 72rpx; max-height: 220rpx; padding: 16rpx 24rpx; box-sizing: border-box; border: 1rpx solid rgba(255, 255, 255, 0.7); border-radius: 40rpx; background: rgba(255, 255, 255, 0.72); font-size: 27rpx; line-height: 1.5; color: #1a2a3a; }
-.input-box .uni-textarea-textarea { height: auto !important; min-height: 40rpx; max-height: 188rpx; }
-.input-placeholder { color: #6b7a88; }
-.input-count { position: absolute; right: 20rpx; bottom: 8rpx; font-size: 18rpx; color: #94a3b8; pointer-events: none; }
-.send-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 72rpx; height: 72rpx; border-radius: 50%; background: linear-gradient(135deg, #4291f6, #6eb5ff); color: #ffffff; font-size: 30rpx; box-shadow: 0 6rpx 18rpx rgba(66, 145, 246, 0.3); }
-.send-icon.disabled { opacity: .45; box-shadow: none; }
+.input-box {
+	flex: 1;
+	width: 100%;
+	min-height: 72rpx;
+	max-height: 200rpx;
+	padding: 16rpx 22rpx;
+	box-sizing: border-box;
+	border: 1rpx solid #DCE5F2;
+	outline: none;
+	resize: none;
+	border-radius: 36rpx;
+	background: #F4F7FB;
+	font-size: 27rpx;
+	line-height: 1.5;
+	color: #0F172A;
+}
+.input-box .uni-textarea-textarea { height: auto !important; min-height: 40rpx; max-height: 170rpx; }
+.input-placeholder { color: #94A3B8; }
+.input-count { position: absolute; right: 18rpx; bottom: 8rpx; font-size: 19rpx; color: #94A3B8; pointer-events: none; }
+.send-btn {
+	flex-shrink: 0;
+	height: 72rpx;
+	padding: 0 28rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999rpx;
+	background: #165DFF;
+	color: #FFFFFF;
+	font-size: 25rpx;
+	font-weight: 600;
+}
+.send-btn.disabled { opacity: 0.45; }
 
-.closed-panel { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; padding: 22rpx; border-radius: 26rpx; }
+.closed-panel {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	padding: 12rpx 4rpx;
+}
 .closed-copy { min-width: 0; flex: 1; }
-.closed-title { display: block; font-size: 24rpx; font-weight: 600; color: #1a2a3a; }
-.closed-desc { display: block; margin-top: 6rpx; font-size: 18rpx; line-height: 1.5; color: #5f7080; }
-.closed-btn { flex-shrink: 0; padding: 12rpx 20rpx; border-radius: 999rpx; background: linear-gradient(135deg, #4291f6, #6eb5ff); color: #ffffff; font-size: 20rpx; }
+.closed-title { display: block; font-size: 25rpx; font-weight: 600; color: #0F172A; }
+.closed-desc { display: block; margin-top: 4rpx; font-size: 21rpx; line-height: 1.45; color: #64748B; }
+.closed-btn {
+	flex-shrink: 0;
+	padding: 14rpx 24rpx;
+	border-radius: 999rpx;
+	background: #165DFF;
+	color: #FFFFFF;
+	font-size: 23rpx;
+	font-weight: 500;
+}
+</style>
 
-.state-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 48rpx; }
-.state-card { width: 100%; display: flex; flex-direction: column; align-items: center; padding: 48rpx 36rpx; border-radius: 36rpx; box-shadow: 0 16rpx 40rpx rgba(22, 93, 255, 0.12); }
-.loading-orbit { position: relative; width: 70rpx; height: 70rpx; border: 2rpx solid rgba(22, 93, 255, 0.2); border-radius: 50%; animation: orbit 1.2s linear infinite; }
-.loading-orbit view { position: absolute; top: -5rpx; left: 29rpx; width: 10rpx; height: 10rpx; border-radius: 50%; background: #165dff; }
-@keyframes orbit { to { transform: rotate(360deg); } }
-.error-symbol, .empty-symbol { display: flex; align-items: center; justify-content: center; width: 66rpx; height: 66rpx; border: 1rpx solid rgba(22, 93, 255, 0.24); border-radius: 50%; color: #165dff; font-size: 30rpx; }
-.state-title { margin-top: 26rpx; font-size: 29rpx; font-weight: 600; color: #1a2a3a; }
-.state-desc { margin-top: 12rpx; text-align: center; font-size: 22rpx; line-height: 1.6; color: #5f7080; }
-.state-btn { margin-top: 28rpx; padding: 14rpx 34rpx; border-radius: 999rpx; background: linear-gradient(135deg, #4291f6, #6eb5ff); color: #fff; font-size: 22rpx; box-shadow: 0 8rpx 20rpx rgba(66, 145, 246, 0.28); }
+<style>
+::-webkit-scrollbar,
+scroll-view::-webkit-scrollbar,
+uni-scroll-view::-webkit-scrollbar,
+.uni-scroll-view::-webkit-scrollbar {
+	width: 0 !important;
+	height: 0 !important;
+	display: none !important;
+}
+scroll-view,
+uni-scroll-view,
+.uni-scroll-view {
+	scrollbar-width: none !important;
+	-ms-overflow-style: none !important;
+}
 </style>

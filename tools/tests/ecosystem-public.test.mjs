@@ -10,6 +10,7 @@ import {
   eventStatus,
   formatDateTime,
   formatEventWhen,
+  formatEventDateParts,
   errorState,
   renderRichHtml,
   resolveMediaUrl,
@@ -166,6 +167,8 @@ test('date formatting uses the server-returned event timezone offset, not browse
     '2026年11月1日 09:00–18:00',
   )
   assert.equal(formatEventWhen({ startsAt: null, endsAt: null }), '时间待定')
+  assert.deepEqual(formatEventDateParts({ startsAt: '2026-11-01T09:00:00+08:00' }), { month: '11月', day: '01' })
+  assert.equal(formatEventDateParts({ startsAt: null }), null)
 })
 
 test('event status covers canceled / ended / ongoing / upcoming / pending', () => {

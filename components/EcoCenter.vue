@@ -84,17 +84,17 @@
       <view v-show="currentTab === 'event'" class="tab-panel">
         <view class="eco-subhead">
           <text class="eco-subtitle">近期赛事</text>
-          <text class="eco-more" role="button" tabindex="0" @click="goAllEvents">查看全部 →</text>
+          <text class="eco-more" role="button" tabindex="0" @click="goAllEvents">查看全部 ›</text>
         </view>
 
         <state-view
           :loading="eventLoading"
           :error="eventError"
           :error-text="eventErrorInfo ? eventErrorInfo.title : ''"
-          :error-icon="eventErrorInfo ? eventErrorInfo.icon : '📡'"
+          :error-icon="eventErrorInfo ? eventErrorInfo.icon : '/static/icons/mine/state-error.png'"
           :retry="eventErrorInfo ? eventErrorInfo.retryable : true"
           :empty="!eventLoading && !eventError && eventList.length === 0"
-          empty-icon="🏟️"
+          empty-icon="/static/icons/mine/empty-event.png"
           empty-text="暂无赛事"
           empty-hint="赛事发布后会在这里展示。"
           compact
@@ -110,12 +110,19 @@
               @click="openEvent(item)"
               @keyup.enter="openEvent(item)"
             >
-              <view class="event-cover">
+              <view class="event-cover" :class="{ 'has-img': Boolean(coverOf(item)) }">
                 <image v-if="coverOf(item)" class="event-cover-img" :src="coverOf(item)" mode="aspectFill"></image>
-                <SmIcon v-else name="empty-event" size="56rpx" />
-                <text class="event-status" :class="'st-' + statusOf(item).code">{{ statusOf(item).label }}</text>
+                <view v-else-if="datePartsOf(item)" class="event-date-tile">
+                  <text class="event-date-month">{{ datePartsOf(item).month }}</text>
+                  <text class="event-date-day sm-mono">{{ datePartsOf(item).day }}</text>
+                </view>
+                <SmIcon v-else name="empty-event" size="46rpx" />
               </view>
               <view class="event-info">
+                <view class="event-tags">
+                  <text class="event-kind">{{ kindOf(item) }}</text>
+                  <text class="event-status-tag" :class="'st-' + statusOf(item).code">{{ statusOf(item).label }}</text>
+                </view>
                 <text class="event-name">{{ item.name }}</text>
                 <text class="event-meta">{{ whenOf(item) }}</text>
                 <text v-if="placeOf(item)" class="event-meta">{{ placeOf(item) }}</text>
@@ -141,7 +148,9 @@ import {
   normalizeEventPage,
   errorState,
   eventStatus,
+  eventKindLabel,
   formatEventWhen,
+  formatEventDateParts,
   resolveMediaUrl,
   pickCover,
   buildSharePath,
@@ -361,6 +370,12 @@ export default {
     statusOf(item) {
       return eventStatus(item);
     },
+    kindOf(item) {
+      return eventKindLabel(item.kind);
+    },
+    datePartsOf(item) {
+      return formatEventDateParts(item);
+    },
     whenOf(item) {
       return formatEventWhen(item);
     },
@@ -498,13 +513,13 @@ export default {
   padding: 6rpx 2rpx 14rpx;
 }
 .eco-subtitle {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: #102F6E;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #0F172A;
 }
 .eco-more {
   font-size: 24rpx;
-  font-weight: 600;
+  font-weight: 500;
   color: #165DFF;
 }
 .eco-more:focus-visible,
@@ -518,55 +533,61 @@ export default {
   gap: 16rpx;
 }
 .event-card {
-  background: #ffffff;
+  background: #FFFFFF;
   border-radius: 16rpx;
   padding: 18rpx;
   display: flex;
   align-items: center;
-  min-height: 180rpx;
-  box-shadow: 0 2rpx 12rpx rgba(16, 47, 110, 0.05);
-  border: 1rpx solid #E5EAF3;
+  min-height: 164rpx;
+  border: 1rpx solid #E5EAF2;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.15s ease;
 }
 .event-card:active {
-  transform: scale(0.98);
-  background: #F8FAFF;
+  background: #F8FAFC;
 }
 .event-cover {
   position: relative;
-  width: 180rpx;
-  height: 140rpx;
-  border-radius: 14rpx;
+  width: 148rpx;
+  height: 128rpx;
+  border-radius: 12rpx;
   overflow: hidden;
   flex-shrink: 0;
   margin-right: 20rpx;
-  background: linear-gradient(135deg, #102F6E 0%, #165DFF 100%);
+  background: #F4F7FB;
+  border: 1rpx solid #E5EAF2;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.event-cover.has-img {
+  width: 176rpx;
+  border: none;
+  background: #F1F5F9;
 }
 .event-cover-img {
   width: 100%;
   height: 100%;
 }
-.event-cover-icon { font-size: 64rpx; }
-.event-status {
-  position: absolute;
-  left: 8rpx;
-  bottom: 8rpx;
-  padding: 2rpx 12rpx;
-  border-radius: 20rpx;
-  font-size: 19rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-  background: #475569;
+.event-date-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
 }
-.st-ongoing { background: #165DFF; }
-.st-upcoming { background: #0E7C5A; }
-.st-ended,
-.st-canceled { background: #52607A; }
-.st-pending { background: #92400E; }
+.event-date-month {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #64748B;
+  line-height: 1.2;
+}
+.event-date-day {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.1;
+}
 .event-info {
   flex: 1;
   min-width: 0;
@@ -574,16 +595,50 @@ export default {
   flex-direction: column;
   justify-content: center;
 }
+.event-tags {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 8rpx;
+}
+.event-kind {
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+.event-status-tag {
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  background: #F1F5F9;
+  color: #64748B;
+}
+.st-ongoing { background: #EEF4FF; color: #165DFF; }
+.st-upcoming { background: #ECFDF5; color: #059669; }
+.st-ended,
+.st-canceled { background: #F1F5F9; color: #64748B; }
+.st-pending { background: #FFFBEB; color: #D97706; }
 .event-name {
-  font-size: 29rpx;
-  font-weight: 700;
-  color: #102F6E;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #0F172A;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .event-meta {
   font-size: 22rpx;
-  color: #7A8AA3;
+  color: #64748B;
   margin-top: 6rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ===== 技能搜索(v3.4) ===== */
